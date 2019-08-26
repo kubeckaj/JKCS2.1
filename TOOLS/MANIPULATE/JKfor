@@ -1,0 +1,9 @@
+for i in `ls -d SYS*`
+do
+ cd $i
+ echo $i
+ sh -c "$*"
+ cd ..
+# echo ''
+done
+

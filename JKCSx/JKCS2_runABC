@@ -1,0 +1,268 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## This program start the ABCluster bussiness             ##
+## To adjust program just change setup                    ##
+##       for help use arguement -help                     ##
+############################################################
+## "If I should show 1 equation, it would be:exp(iPi)-1=0 ##
+## Contains all magic numbers (0,1,-1,Pi,i)."Jakub Kubecka##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+###############################################################################
+###################################### HELP ###################################
+###############################################################################
+
+### THIS IS HELP
+function help {
+  printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "Program for preparing different cluster compositions\n"
+  printf """
+  $scriptfile ${cfGRAY}[OPTIONS]${cfDEF}
+
+  ALL OPTIONS:
+    -help ............. print this help and exit
+    -l,-lm \"X\" ........ X local minima will saved [def=]
+    -g,-gen \"X\" ....... amount of ABC generations [def=200]
+    -s,-sc \"X\" ........ amount of scout bees [def=4]
+    -pop,-i,-init \"X\" . amount of initial guesses [def=]
+    OTHERS: -box
+    OTHERS: -time(-t), -partition(-par), -programs, -short 
+
+  BASIC EXAMPLES:
+    
+    JKCS2_runABC
+
+  BASIC EXAMPES:
+    
+    Weak/fast configurational sampling:
+            JKCS1_prepare -lm 50 -gen 50 -i 500
+    Strong/slow configurational sampling:
+            JKCS1_prepare -lm 1000 -gen 100 -i 2000
+    Exhausting configurational sampling:
+            JKCS1_prepare -lm 15000 -gen 200 -sc 6 -i 4000\n""" 
+  printf "#################################################################\n"
+  exit
+}
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours           # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+# check for folderbasename_something arguments and in case enter directories
+JKloaddirs
+currentdir=${PWD##*/}
+
+# method and folder name
+folderNEW=ABC
+METHOD=ABC        # could be also DFT, XTB, DLPNO ...
+
+# load amount of molecules
+M=`head -n 1 $inputfile | awk '{print $6}'`
+
+# -loc or load supercomputer parameters
+JKloadsupercomputer
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+#reading arguments important for this script
+
+# initial setup of parameters
+LM="300*M"
+GEN=100
+INIT="300*M"
+SC=4
+BOX="7+M"
+
+last=""
+# loop over all arguments
+arguments_help=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  # read argument of parameter
+  if [ "$last" == "-l" ];    then next=0; last=""; LM=$iter;   continue; fi
+  if [ "$last" == "-g" ];    then next=0; last=""; GEN=$iter;  continue; fi
+  if [ "$last" == "-i" ];    then next=0; last=""; INIT=$iter; continue; fi
+  if [ "$last" == "-s" ];    then next=0; last=""; SC=$iter;   continue; fi
+  if [ "$last" == "-box" ];  then next=0; last=""; BOX=$iter;  continue; fi
+  # read paramter name
+  if [ "$iter" == "-l" ] || [ "$iter" == "-lm" ]   || [ "$iter" == "-LM" ];   then next=1;last="-l";  continue;fi
+  if [ "$iter" == "-g" ] || [ "$iter" == "-gen" ]  || [ "$iter" == "-GEN" ];  then next=1;last="-g";  continue;fi
+  if [ "$iter" == "-pop" ] || [ "$iter" == "-i" ] || [ "$iter" == "-init" ] || [ "$iter" == "-INIT" ]; then next=1;last="-i";  continue;fi
+  if [ "$iter" == "-s" ] || [ "$iter" == "-sc" ]   || [ "$iter" == "-SC" ];   then next=1;last="-s";  continue;fi
+  if [ "$iter" == "-box" ];                                                   then next=1;last="-box";continue;fi
+  arguments_help+=( "${arguments[i]}" )
+done
+arguments=("${arguments_help[@]}")
+
+LM=`echo $LM     | sed "s/M/$M/" | sed "s/NoC/$NoC/" | bc`
+GEN=`echo $GEN   | sed "s/M/$M/" | sed "s/NoC/$NoC/" | bc`
+INIT=`echo $INIT | sed "s/M/$M/" | sed "s/NoC/$NoC/" | bc`
+SC=`echo $SC     | sed "s/M/$M/" | sed "s/NoC/$NoC/" | bc`
+BOX=`echo $BOX | sed "s/M/$M/" | sed "s/NoC/$NoC/" | bc`
+
+JKecho 1 "ABCluster parameters set: LM(${cfGREEN}$LM${cfDEF}),GEN(${cfGREEN}$GEN${cfDEF}),INIT(${cfGREEN}$INIT${cfDEF}),SC(${cfGREEN}$SC${cfDEF}),BOX(${cfGREEN}$BOX${cfDEF})."
+
+# there should not be more arguments
+therest="${arguments[@]}"
+if [ ! -z "$therest" ]
+then 
+  JKecho 0 "Some argument(s) is/are not understood: ${therest}. [${cfRED}EXITING${cfDEF}]"
+  exit
+fi
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+# load files and checking their existence
+Nfiles=`grep "FILES =" $inputfile | awk '{print $3}'`
+JKecho 2 "Number of files read: $Nfiles"
+NfilesSTART=`grep -n "# name | q | path" $inputfile | sed 's/:/ /' | awk '{print $1}'`
+NfilesEND=`echo $NfilesSTART+$Nfiles | bc`
+JKecho 3 "Starting positions of files found: $NfilesSTART (+1)"
+JKecho 3 "Starting positions of files found: $NfilesEND"
+files=`head -n $NfilesEND $inputfile | tail -n ${Nfiles} | awk '{print $3}' | xargs`
+for i in $files
+do
+  if [ ! -e $i ]
+  then
+    JKecho 0 "File $i saved in $userinput does not exist. Please, check its path! ${cfRED}[EXITING]${cfDEF}]"
+    exit
+  fi
+done
+JKecho 3 "Files loaded: $files"
+constitutions=`tail -n 1 $inputfile`
+JKecho 2 "Combinations read: ${cfYELLOW}$constitutions${cfDEF}"
+# if no combination exist, then end
+count=`Felements $constitutions`
+if [ $count -eq 0 ]; 
+then
+  JKecho 1 "No combination exist. [LEAVING]"
+  exit
+fi
+
+### Going through all combinations
+
+# creating ABC. if it exist, I will just enter it
+if [ ! -d ABC ]; then mkdir ABC; fi
+cd ABC 
+JKecho 2 "Creating ABC subfolders."
+#TODO here is the question: should be done in the jobs itself 
+for i in $constitutions
+do
+  JKecho 3 "  Combination - ${cfYELLOW}$i${cfDEF}"
+  #####################
+  ### CREATING PATH ###
+  folder=ABC_$i
+  ## 
+  if [ -d $folder ]; 
+  then 
+    JKecho 1 "    ${cfGREEN}$folder${cfDEF} already exist"; 
+    continue
+  fi
+  mkdir $folder
+  cd $folder
+  ######################
+  ### CREATE name.CLUSTER
+  echo $Nfiles >> $F1
+  for var in `seq 1 $Nfiles`
+  do
+    num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
+    path=`echo $files | awk -v var0=$var '{print $var0}'` 
+    echo $path $num >> $F1
+  done
+  echo "* $BOX" >> $F1
+  JKecho 3 "    File $F1 has been created." 
+  ######################
+  ### CREATE name.INP
+  echo """$F1 #_file_containing_monomers 
+$INIT #_initial_amount_of_random_configurations
+$GEN #_ammount_of_generations_(loops)
+$SC #_amount_of_scout_bees_(survival_value)
+$BOX #_size_of_sampling_box
+$name #_name_of_output_folder
+$LM #_amount_of_Local_Minima_to_be_saved""" | column -t >> $F2
+  ######################
+  # command
+  command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp" 
+  printf "$command" > run${scriptfilecommand}.sh
+  commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
+  echo $commandTODO >> ../commands_TODO.txt
+  JKecho 3 "    Command $commandTODO [$command] written to ABC/commands_TODO.txt"
+  cd ..
+done
+JKecho 2 "ABC subfolders created."
+
+### Sending jobs ###
+jobscount=`wc -l commands_TODO.txt | awk '{print $1}'` 
+JKecho 2 "Counting amount of jobs: $jobscount"
+if [ $jobscount -lt $SCtasks ]
+then
+  SCtasks=$jobcount
+fi
+JKecho 2 "Tasks used: $SCtasks"
+for i in `seq 1 $SCtasks`
+do
+  #echo "sendjob $currentdir-ABC" 
+  $SC_command sh $toolspath/SCRIPTS/JKperform.sh
+  #echo "$SC_command"
+done
+
+cd ..
+exit
+
+  if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
+  then 
+    parameters=""
+    # calculate
+    sh run${scriptfile}.sh
+  else
+    # calculate ... send to queue
+    #echo $programSendToQueue1part $parameters $programSendToQueue2part \""$command"\"
+    queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part sh run${scriptfile}.sh`
+    echo "$scriptfile: $queue"
+  # checking queue program
+    echo $queue | awk '{print $4}' >> ../../$queuefile
+  fi
+cd ../..
+CPU=`echo $CPU/$count | bc`
+if [ $CPU -gt 8 ]; then CPU=8; fi
+if [ $CPU -gt 1 ];
+then
+  parameters+=" -n $CPU"
+fi

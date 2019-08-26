@@ -1,0 +1,28 @@
+JOBID = LOC
+mother dir = /Users/jakub/WORKDIR/JKCS2.0/TEST/SYS_1MSA_1A_1W/ABC
+Job number: 0+1
+Line to be done: cd /Users/jakub/WORKDIR/JKCS2.0/TEST/SYS_1MSA_1A_1W/ABC/ABC_0_1_0_1_0_1_0; sh runJKCS2_runABC.sh;
+Linenumber to be done: 1
+runtime = 6
+totruntime = 6
+Job number: 0+1+1
+Line to be done: cd /Users/jakub/WORKDIR/JKCS2.0/TEST/SYS_1MSA_1A_1W/ABC/ABC_0_1_1_0_0_0_1; sh runJKCS2_runABC.sh;
+Linenumber to be done: 2
+runtime = 6
+totruntime = 12
+Job number: 0+1+1+1
+Line to be done: cd /Users/jakub/WORKDIR/JKCS2.0/TEST/SYS_1MSA_1A_1W/ABC/ABC_1_0_0_1_1_0_0; sh runJKCS2_runABC.sh;
+Linenumber to be done: 3
+runtime = 6
+totruntime = 18
+Job number: 0+1+1+1+1
+Line to be done: cd /Users/jakub/WORKDIR/JKCS2.0/TEST/SYS_1MSA_1A_1W/ABC/ABC_1_0_1_0_0_1_0; sh runJKCS2_runABC.sh;
+Linenumber to be done: 4
+runtime = 7
+totruntime = 25
+Job number: 0+1+1+1+1+1
+Everything is finished or already calculating. [EXITING]
+JOBID = LOC
+mother dir = /Users/jakub/WORKDIR/JKCS2.0/TEST/SYS_1MSA_1A_1W/ABC
+Job number: 0+1
+Everything is finished or already calculating. [EXITING]

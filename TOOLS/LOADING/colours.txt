@@ -1,0 +1,49 @@
+if [ $Qcolours -eq 1 ]
+then 
+
+# foreground text
+cfDEF="\e[39m"
+cfDEFAULT="\e[39m"
+cfRED="\e[31m"
+cfGREEN="\e[32m"
+cfYELLOW="\e[33m"
+cfBLUE="\e[34m"
+cfMAGENTA="\e[35m"
+cfCYAN="\e[36m"
+cfWHITE="\e[97m"
+
+# background text
+cbDEF="\e[49m"
+cbDEFAULT="\e[49m"
+cbRED="\e[41m"
+cbGREEN="\e[42m"
+cbYELLOW="\e[43m"
+cbBLUE="\e[44m"
+cbMAGENTA="\e[45m"
+cbCYAN="\e[46m"
+cbWHITE="\e[107m"
+else
+
+# foreground text
+cfDEF=""
+cfDEFAULT=""
+cfRED=""
+cfGREEN=""
+cfYELLOW=""
+cfBLUE=""
+cfMAGENTA=""
+cfCYAN=""
+cfWHITE=""
+
+# background text
+cbDEF=""
+cbDEFAULT=""
+cbRED=""
+cbGREEN=""
+cbYELLOW=""
+cbBLUE=""
+cbMAGENTA=""
+cbCYAN=""
+cbWHITE=""
+
+fi

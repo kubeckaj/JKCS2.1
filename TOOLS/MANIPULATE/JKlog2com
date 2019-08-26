@@ -1,0 +1,269 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program that prepare input from gaussian output        ##
+## To understand program run help:                        ##
+##        JKlog2com -help                                 ##
+############################################################
+## "Life is mud and shit. And, just pig can live in it."  ##
+##                                       Jakub Kubecka    ##
+############################################################
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo "Program that prepare input from gaussian output"
+  echo """
+  JKlog2com [OPTIONS] [FILES]
+  OPTIONS:
+   -help ............ print this help and exit
+   -s,-same ......... use the same input as in __.com 
+   -m,-method \"XX\" .. use XX as an input line
+   -mem \"X\" ......... memory specification
+   -c,-cpu \"x\" ...... specify number of CPUs=x 
+   -nr .............. if f.com exist, create fN.com
+   -new \"XX\" ........ new name of file [e.q.: test]
+   -addbase \"atomname\" . add basis set to the end of file [not tested]
+  FILES:
+   gaussian (G16) output(s) is(are) expected
+  EXAMPLES:
+     JKlog2com
+     JKlog2com -same -cpu 4 2.log ob.log
+     JKlog2com -method \""#" B3LYP 6-31+g* opt\" *.log
+  """
+  exit
+}
+
+### INITIATE SOME VARIABLES
+Qcpu=1
+Qmem=0
+Qsame=0
+Qnew=0
+Qadd=0
+Qcharge=0
+Qmultiplicity=1
+Qmethod=""
+Qnotrewrite=0
+next=0
+last=""
+what=""
+### SOLVING INPUT
+for i in "$@"
+do
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+  firstletter=`echo $i | cut -c 1`
+  if [ "$firstletter" == "-" ] || [ $next -eq 1 ]
+  then 
+    ### -method "X X X" 
+    if [ "$last" == "-method" ]
+    then
+      Qmethod=$i
+      last=""
+      next=0
+    fi
+    if [ "$i" == "-method" ] || [ "$i" == "-m" ]
+    then
+      next=1
+      last="-method"
+    fi
+    ### -same
+    if [ "$i" == "-same" ] || [ "$i" == "-s" ]
+    then
+      Qsame=1
+    fi
+    ### -new XX
+    if [ "$last" == "-new" ]
+    then
+      Qnew=1
+      Qnewname=$i
+      last=""
+      next=0
+    fi
+    if [ "$i" == "-new" ]
+    then
+      next=1
+      last="-new"
+    fi
+    ### -mem -x
+    if [ "$last" == "-mem" ]
+    then
+      Qmem=1
+      MEMORY=$i
+      last=""
+      next=0
+    fi
+    if [ "$i" == "-mem" ]
+    then
+      next=1
+      last="-mem"
+    fi
+    ###  -add  
+    if [ "$last" == "-add" ]
+    then
+      Qadd=1
+      addfile=$i
+      last=""
+      next=0
+    fi
+    if [ "$i"  == "-addbase" ] || [ "$i" == "-add" ] || [ "$i" == "-bs" ]
+    then
+      next=1
+      last="-add"
+    fi
+    ### -cpu X
+    if [ "$last" == "-cpu" ]
+    then
+      Qcpu=$i     
+      last=""
+      next=0
+    fi
+    if [ "$i" == "-cpu" ]  || [ "$i" == "-c" ]
+    then
+      next=1
+      last="-cpu"
+    fi
+    ### -nr
+    if [ "$i" == "-nr" ]
+    then
+      Qnotrewrite=1
+    fi
+    ###
+  else 
+    ### UPDATE LOG FILES
+    what+="$i "
+  fi
+done
+
+### CHECK METHOD
+if [ -z "$Qmethod" ] && [ $Qsame -eq 0 ]
+then
+ echo "Write a method: (e.q. # HF 6-31g opt)"
+ read Qmethod
+fi
+### CHECK WHAT 
+if [ -z "$what" ]; then what=`ls *.log`;fi
+
+### MAIN PROGRAM // in the case a lot of file might take a few seconds
+echo "Wait a moment ..."
+
+for file in $what
+do
+  ### Finding information about number of atoms
+  test=`grep -c 'NAtoms=' $file`
+  if [ $test -eq 0 ]
+  then
+    #D=`grep "Deg. of freedom" $file | head -n 1 | awk '{print $4}'`
+    #if [ $D -eq 0 ]; then N=1;fi
+    #if [ $D -eq 1 ]; then N=2;fi
+    #if [ $D -eq 3 ]; then N=3;fi
+    #if [ $D -gt 3 ]; then N0=`echo $D+6|bc`;N=`echo $N0/3|bc`;fi
+    # this is better because of some symmetry shits:
+    N=`grep -C 2 "Distance matrix (angstroms):" $file | head -n 1 | awk '{print $1}'`
+  else
+    N=`grep 'NAtoms=' $file | head -n 1 | awk '{print $2}'`
+  fi
+  N1=`echo $N+1 |bc`
+  N2=`echo $N+2 |bc`
+ 
+  ### 
+  grep -C $N1 "Symbolic Z-matrix:" $file | tail -n $N | awk '{print $1}' > helpingfile1
+  grep -C $N2 " Center     Atomic      Atomic             Coordinates (Angstroms)" $file | tail -n $N | awk '{print $4,$5,$6}' > helpingfile2
+ 
+  ### CREATING NEW FILE
+  # output and rewriting test
+  oldfile=$(basename $file .log).com
+  if [ $Qnew -eq 1 ]
+  then 
+    base=$(basename $Qnewname .log)
+    base=$(basename $base .com)
+  else
+    base=$(basename $file .log)
+  fi
+  test=0
+  if [ $Qnotrewrite -eq 0 ]; 
+  then 
+    test=1;
+    newfile=${base}.com;
+  else
+    NEW=""
+    while [ $test -eq 0 ]
+    do
+      newfile=${base}${NEW}.com
+      if [ ! -e $newfile ];
+      then
+        test=1;
+      else
+        NEW+="N"
+      fi
+    done
+  fi
+  ####
+  if [ ! $Qsame -eq 0 ]
+  then
+    if [ ! -e $oldfile ]
+    then
+      echo "Sorry, but the $oldfile does not exist. [EXITING]"
+      exit
+    fi
+    lines=`grep -n "#" $oldfile | cut -c1-1`
+    lines=`echo $lines + 4 |bc`
+    head -n $lines $oldfile > helpingfile
+    test=`grep -c -i '..rocshared' helpingfile`
+    if [ $test -eq 0 ]
+    then
+     sed -i "1i %Nprocshared=$Qcpu" helpingfile
+    else
+     echo "The same amount of CPU used."
+     #sed -i "1s/.*/%Nprocshared=$Qcpu/" helpingfile
+    fi
+    if [ -e $newfile ]; then rm $newfile; fi
+    cat helpingfile > $newfile
+    rm helpingfile
+  else
+    if [ -e $newfile ]; then rm $newfile;fi
+    echo "%Nprocshared=$Qcpu" >> $newfile
+    if [ $Qmem -eq 1 ]; then echo "%Mem=$MEMORY" >> $newfile;fi
+    echo "$Qmethod" >> $newfile
+    echo " " >> $newfile
+    echo "REOPT" >> $newfile
+    echo " " >> $newfile
+    echo `grep "Charge =" $file | head -n 1 | awk '{print $3,$6}'` >> $newfile
+  fi
+
+  paste helpingfile1 helpingfile2 >> $newfile
+  echo " "  >> $newfile
+  if [ $Qadd -eq 1 ]
+  then
+    atom=$addfile
+    if [ ! -e $addfile.bs ]
+    then
+      scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+      if [ -e $scriptpath/BASIS_SETS/$addfile.bs ]
+      then
+        addfilepath=$scriptpath/BASIS_SETS/$addfile
+      else
+        echo File $addfile.bs does not exist!
+        echo File $scriptpath/BASIS_SETS/$addfile.bs also does not exist!
+        continue
+      fi
+    else
+      addfilepath=$addfile
+    fi
+    atoms=`cat helpingfile1 | xargs -n 1 | sort -u`
+    atomsnot=""
+    for i in $atoms
+    do
+      if [ $i != $atom ]
+      then
+        atomsnot+="$i "
+      fi
+    done
+    atomsnot+="0"
+    echo $atomsnot >> $newfile
+    cat $addfilepath.bs >> $newfile
+  fi
+done
+
+rm helpingfile1 helpingfile2
+
+echo "Done :-D"

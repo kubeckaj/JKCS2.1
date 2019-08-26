@@ -1,0 +1,310 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program that prepare input for gaussian from __.xyz    ##
+## To understand program run help:                        ##
+##        JKxyz2com -help                                 ##
+############################################################
+## "If excrements had been sweet, people would have       ##
+## shitting to their coffees"            Jakub Kubecka    ##
+############################################################
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo """
+  JKxyz2com [OPTIONS] [FILES]
+  OPTIONS:
+   -help ............... print this help and exit
+   -m,-method \"XX\" ..... use XX as an input line
+   -mem \"X\" ............ memory specification
+   -c,-cpu \"x\" ......... specify number of CPUs=x
+   -char,-ch,-q \"x\" .... specify system charge ch=x
+   -mult \"x\" ........... specify system multiplicity m=x
+   -nr ................. if f.com exist, create fN.com
+   -addbase \"atomname\" . add basis set to the end of file [not tested]
+  FILES:
+   xyz file(s) is(are) expected
+  EXAMPLES:
+     JKxyz2com
+     JKxyz2com -ch 1 -m 2 1.xyz
+     JKxyz2com -method \""#" B3LYP 6-31+g* opt\" *.xyz
+  """
+  exit
+}
+
+### INITIATE SOME VARIABLES
+Qnotrewrite=0
+Qcpu=1
+Qmem=0
+Qadd=0
+Qcharge=0
+Qmultiplicity=1
+Qmethod=""
+next=0
+last=""
+### SOLVING INPUT
+for i in "$@" 
+do
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+  firstletter=`echo $i | cut -c 1`
+  if [ "$firstletter" == "-" ] || [ $next -eq 1 ]
+  then
+    #echo "first letter = $firstletter , input = $i "
+    ### -method "X X X"
+    if [ "$last" == "-method" ]
+    then
+      Qmethod=$i
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-method" ] || [ "$i" == "-m" ]
+    then
+      next=1
+      last="-method"
+      continue
+    fi
+    ### -cpu X
+    if [ "$last" == "-cpu" ]
+    then
+      Qcpu=$i
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-cpu" ] || [ "$i" == "-c" ]
+    then
+      next=1
+      last="-cpu"     
+      continue
+    fi
+    ### -ch -x
+    if [ "$last" == "-ch" ]
+    then
+      Qcharge=$i
+      last="" 
+      next=0
+      continue
+    fi
+    if [ "$i" == "-char" ] || [ "$i" == "-ch" ] || [ "$i" == "-q" ]
+    then
+      next=1
+      last="-ch"
+      continue
+    fi
+    ### -m -x
+    if [ "$last" == "-mult" ]
+    then
+      Qmultiplicity=$i
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-mult" ]
+    then
+      next=1
+      last="-mult"
+      continue
+    fi
+    ### -mem -x
+    if [ "$last" == "-mem" ]
+    then
+      Qmem=1
+      MEMORY=$i
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-mem" ]
+    then
+      next=1
+      last="-mem"
+      continue
+    fi
+    ### -nr
+    if [ "$i" == "-nr" ]
+    then
+      Qnotrewrite=1     
+      continue
+    fi
+    ###  -add  
+    if [ "$last" == "-add" ]
+    then
+      Qadd=1
+      addfile=$i
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i"  == "-addbase" ] || [ "$i" == "-add" ] || [ "$i" == "-bs" ] 
+    then
+      next=1
+      last="-add"
+      continue
+    fi
+    ###
+    echo "I do not understand input $i. [EXITING]"
+    exit   
+  else
+    ### UPDATE LOG FILES
+    what+="$i "
+  fi
+done
+
+### CHECK METHOD
+if [ -z "$Qmethod" ]
+then
+ echo "Write a method: (e.q. # wb97xd 6-31++g** opt)"
+ read Qmethod
+ if [ -z "$Qmethod" ]
+ then
+  Qmethod="# wb97xd 6-31++g** opt"
+ fi
+fi
+### CHECK WHAT
+if [ -z "$what" ]; then echo "JKxyz2com: No input by user, input files selected automatically.";what=`ls *.xyz`;fi
+
+### MAIN PROGRAM // in the case a lot of file might take a few seconds
+echo "JKxyz2com: Wait a moment ..."
+for file in $what
+do
+ if [ ! -e $file ]
+ then
+   echo "File $file does not exist.[CONTINUE]"
+   continue:
+ fi 
+ # output and rewriting test
+ test=0
+ NEW=""
+ while [ $test -eq 0 ]
+ do
+   filename=$(basename $file .xyz)${NEW}.com
+   if [ $Qnotrewrite -eq 0 ]
+   then
+     test=1
+   else
+     if [ ! -e $filename ]; 
+     then 
+       test=1; 
+     else 
+       NEW+="N"
+     fi
+   fi
+ done
+ ####
+ echo "%Nprocshared=$Qcpu" > $filename
+ if [ $Qmem -eq 1 ]; then echo "%Mem=$MEMORY" >> $filename;fi
+ echo "$Qmethod" >> $filename
+ echo " " >> $filename
+ echo "$file" >> $filename
+ echo " " >> $filename
+ echo "$Qcharge $Qmultiplicity" >> $filename
+ cat $file | awk 'NR>2{print}' >> $filename
+ echo " " >> $filename
+ #### Addition of basis for I,Br etc.
+ if [ $Qadd -eq 1 ] 
+ then
+   # this might be list of atoms
+   atoms=`echo $addfile | sed "s/,/ /"`
+   allatoms=`cat $file | awk 'NR>2{print}' | awk '{print $1}' | xargs -n 1 | sort -u`
+   atomsnot=""
+   atomsyes=""
+   for i in $allatoms
+   do
+     test=0
+     for j in $atoms
+     do
+       if [ $i == $j ]
+       then
+         atomsyes+="$i "
+         test=1
+       fi
+     done
+     if [ $test -eq 0 ]
+     then
+       atomsnot+="$i "
+     fi
+   done
+   # Atoms not
+   if [ ! -z "$atomsnot" ]
+   then
+     atomsnot+="0"
+     echo $atomsnot >> $filename
+     echo "aug-cc-pVTZ" >> $filename
+   fi
+   # Atoms yes
+   atomsyes=`echo $atomsyes | sort -u`
+   #########   
+   for step in "aug-cc-pVTZ"
+   do
+     for atom in $atoms
+     do
+       test=0
+       for i in $atomsyes
+       do
+         if [ "$i" == "$atom" ]
+         then
+           test=1
+         fi
+       done
+       if [ $test -eq 0 ]; then continue; fi
+       ####
+       echo "****" >> $filename
+       if [ ! -e ${atom}_${step}.bs ]
+       then
+         scriptpath="$( cd "$(dirname "$0")" ; pwd -P )" 
+         if [ -e $scriptpath/BASIS_SETS/${atom}_${step}.bs ]
+         then
+           addfilepath=$scriptpath/BASIS_SETS/${atom}_${step}.bs
+         else
+           echo File ${atom}_${step}.bs does not exist!
+           echo File $scriptpath/BASIS_SETS/${atom}_${step}.bs also does not exist!
+           continue 
+         fi
+       else 
+         addfilepath=${atom}_${step}.bs
+       fi
+       cat $addfilepath >> $filename
+     done
+     echo "****" >> $filename
+   done
+   #######
+   echo "" >> $filename
+   for step in "aug-cc-pVTZ_ECP"
+   do
+     for atom in $atoms
+     do
+       test=0
+       for i in $atomsyes
+       do
+         if [ "$i" == "$atom" ]
+         then
+           test=1
+         fi
+       done
+       if [ $test -eq 0 ]; then continue; fi
+       ####
+       if [ ! -e ${atom}_${step}.bs ]
+       then
+         scriptpath="$( cd "$(dirname "$0")" ; pwd -P )" 
+         if [ -e $scriptpath/BASIS_SETS/${atom}_${step}.bs ]
+         then
+           addfilepath=$scriptpath/BASIS_SETS/${atom}_${step}.bs
+         else
+           echo File ${atom}_${step}.bs does not exist!
+           echo File $scriptpath/BASIS_SETS/${atom}_${step}.bs also does not exist!
+           continue 
+         fi
+       else 
+         addfilepath=${atom}_${step}.bs
+       fi
+       cat $addfilepath >> $filename
+     done
+   done
+   ######
+   echo "" >> $filename
+ ###
+ fi
+done
+echo "JKxyz2com: Done :-D"

@@ -1,0 +1,5 @@
+1
+K(+)
+K 0.0 0.0 0.0
+water_ions_tip4p  q   epsilon (kJ/mol) sigma (AA)
++1.00 0.3640 3.14265 # POT

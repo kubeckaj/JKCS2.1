@@ -1,0 +1,78 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program analyze gaussian output by using sw GoodVibes  ##
+## To understand program run help:                        ##
+##        JKgoodvibes -help                               ##
+############################################################
+## "Nad Bestvinkou se tahnou mraky, tak se vyser a tahni  ##
+## taky."                                  Jakub Kubecka  ##
+############################################################
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo "Program analyze gaussian output by using sw GoodVibes"
+  echo """
+  JKgoodvibes [OPTIONS] [FILES]
+  OPTIONS:
+   -help ......... print this help and exit
+  FILES:
+   gaussian (G16) output(s) is(are) expected
+  EXAMPLES:
+     JKgoodvibes file.log
+     JKgoodvibes 2.log 3.log
+  """
+  exit
+}
+
+### SOLVING INPUT
+what=""
+next=0
+Qloc=1  ### NOT SURE IF THIS IS COMPATIBLE WITH ALL OTHER PROGRAMS
+for i in $*
+do
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+  firstletter=`echo $i | cut -c 1`
+  if [ "$firstletter" == "-" ] || [ $next -eq 1 ]
+  then
+    if [ "$i" == "-loc" ]
+    then 
+      Qloc=1
+      continue
+    fi
+    ARGUMENTS+=" $i"
+    if [ $next -eq 1 ]
+    then
+      next=0
+    else
+      next=1
+    fi
+  else
+    ### UPDATE LOG FILES
+    what+="$i "
+  fi
+done
+echo WHAT = $what > out
+echo ARGUMENTS= $ARGUMENTS > out
+
+if [ -z "$what" ]
+then
+  what=`ls *.log`
+fi
+
+# locate TOOLS path and load programs (GoodVibes)
+scriptpath=$(dirname $0)
+toolspath="$scriptpath/../TOOLS"
+Qprograms=programs.txt
+source $toolspath/../$Qprograms
+
+### MAIN PROGRAM
+
+if [ $Qloc -eq 0 ]
+then
+  sbatch $goodvibes $what $ARGUMENTS
+else
+  sh $goodvibes $what $ARGUMENTS
+fi
+

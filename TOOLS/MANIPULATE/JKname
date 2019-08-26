@@ -1,0 +1,186 @@
+#!/bin/bash
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo "Program for that change name of file accordingly to its composition"
+  echo """
+  JKname [file(s).xyz]
+  BEHAVIOUR
+    - recognize: sa, sam, gd, am, dma, p
+    - if file.xyz exist, then create file-#.xyz, where # is increasing nnumber
+
+  OPTIONS:
+    -log ...... use .log instead if .xyz (convert first .log to .xyz)
+    OTHERS: -hom
+
+  EXAMPLES:
+    JKname 
+    JKname -log
+    JKname 123.xyz
+    JKname -log 123.log 234.log
+  """
+  exit
+}
+
+Qhom=0
+FILES=""
+
+Qlog=0
+next=0
+for i in $*
+do
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+  firstletter=`echo $i | cut -c 1`
+  if [ $firstletter == "-" ] || [ $next -eq 1 ]
+  then
+    if [ "$i" == "-hom" ]
+    then
+      Qhom=1
+      continue
+    fi
+    if [ "$i" == "-log" ]
+    then
+      Qlog=1
+      continue
+    fi
+  fi
+  files+=" $i"
+done
+
+if [ -z "$files" ]
+then
+  if [ $Qlog -eq 1 ]
+  then 
+    files=`ls *.log`
+  else
+    files=`ls *.xyz`
+  fi
+fi
+
+#echo FILES = $files
+for file in $files
+do
+  if [ $Qlog -eq 1 ]
+  then
+    #echo FILE = $file
+    JKlog2xyz $file >> output 
+    fileXYZ=`basename $file .log`.xyz
+  else
+    fileXYZ=`basename $file .xyz`.xyz
+  fi
+  
+  atoms=`cat $fileXYZ | awk '{print $1}' | xargs`
+  
+  C=0
+  S=0
+  O=0
+  H=0
+  N=0
+
+  for i in $atoms
+  do
+    case $i in 
+    "N") N=`echo $N + 1 | bc` 
+         ;;
+    "C") C=`echo $C + 1 | bc` 
+         ;;
+    "S") S=`echo $S + 1 | bc` 
+         ;;
+    "O") O=`echo $O + 1 | bc` 
+         ;;
+    "H") H=`echo $H + 1 | bc` 
+         ;;
+    esac
+  done
+  
+  echo C${C}N${N}O${O}S${S}H${H}
+ 
+  # HOM
+  hom=0
+  if [ $Qhom -ge 1 ] && [ $C -ge 10 ]
+  then
+    hom=1
+    C=`echo $C-10*$hom | bc`
+    O=`echo $O-8*$hom | bc`
+    H=`echo $H-16*$hom | bc`
+  fi
+  # H2SO4
+    sam=0
+    sa=$S
+    O=`echo $O-4*$sa | bc`
+    H=`echo $H-2*$sa | bc`
+    S=`echo $S-$sa | bc`
+  
+  if (( $(echo "$N > $C" |bc -l) ))
+  then
+  # GD = C1N3H5
+    dma=0
+    gd=$C
+    H=`echo $H-5*$gd | bc`
+    N=`echo $N-3*$gd | bc`
+    C=`echo $C-1*$gd | bc`
+  else
+  # DMA = C2N1H7
+    gd=0
+    dma=$N
+    H=`echo $H-7*$dma | bc`
+    N=`echo $N-1*$dma | bc`
+    C=`echo $C-2*$dma | bc`
+  fi
+
+  # A = NH3
+    am=$N
+    H=`echo $H-3*$am | bc`
+    N=`echo $N-1*$am | bc`
+ 
+  # proton
+    p=$H
+    if [ $p -eq -1 ]
+    then
+      sam=1
+      sa=`echo $sa-1 | bc`
+      H=0
+    else
+      H=`echo $H-1*$p | bc`
+    fi
+ 
+  echo C${C}N${N}O${O}S${S}H${H}
+  name=""
+  if [ $hom -gt 0 ]; then echo hom = $hom;name+="${hom}hom"; fi
+  if [ $sa  -gt 0 ]; then echo sa  = $sa ;name+="${sa}sa"; fi
+  if [ $sam -gt 0 ]; then echo sam = $sam;name+="${sam}sam"; fi
+  if [ $gd  -gt 0 ]; then echo gd  = $gd ;name+="${gd}gd"; fi
+  if [ $dma -gt 0 ]; then echo dma = $dma;name+="${dma}dma"; fi
+  if [ $am  -gt 0 ]; then echo am  = $am ;name+="${am}am"; fi
+  if [ $p   -gt 0 ]; then echo p   = $p  ;name+="${p}p"; fi
+  
+  if [ "$fileXYZ" != "$name.xyz" ]
+  then
+    name0=$name
+    num=0
+    test=0
+    while [ $test -eq 0 ]
+    do
+      if [ -e $name.log ]
+      then
+        num=`echo $num+1 | bc`
+        name=${name0}-$num
+      else
+        test=1
+      fi
+    done
+    
+    
+    #echo fileXYZ = $fileXYZ
+    base=$(basename $fileXYZ .xyz)
+    #echo BASE = $base
+    for i in `ls $base.*`
+    do
+      #echo THIS $i
+      ext=${i#*.}
+      mv $base.$ext $name.$ext
+    done
+  fi
+done
+

@@ -1,0 +1,7 @@
+calc.cluster  #_file_containing_monomers
+30            #_initial_amount_of_random_configurations
+100           #_ammount_of_generations_(loops)
+4             #_amount_of_scout_bees_(survival_value)
+10            #_size_of_sampling_box
+calc          #_name_of_output_folder
+30            #_amount_of_Local_Minima_to_be_saved

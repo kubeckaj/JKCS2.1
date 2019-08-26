@@ -1,0 +1,292 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program for preparin input file for user setup         ##
+## See help:                                              ##
+##        JKCS0_copy -help                                ##
+############################################################
+## "Nowadays time period should be called silicon era ... ##
+## era of sil. aerosols, el. devices and great boobs." JK ##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+path1="$toolspath/STRUCTURES/ABC"
+path2="$toolspath/STRUCTURES/JACOB"
+
+###############################################################################
+###################################### HELP ###################################
+###############################################################################
+
+function help {
+  printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "  It copies input files for JKCS to your folder.\n"
+  printf """
+  $scriptfile ${cfGRAY}[OPTION(s)] [STRUCTURE(s)]${cfDEF}
+
+  ${cfRED}OPTIONS:${cfDEF}
+   -help ........ print this help
+
+  ${cfRED}STRUCTURES:${cfDEF}
+   W ............ water
+   
+   HNO3 ......... nitric acid
+   SA ........... sulphuric acid
+   MSA .......... methanesulfonic acid
+
+   A,AM ......... ammonia
+   GD ........... guanidine
+   DMA .......... dimethyl ammine
+   TMA .......... trimethyl ammine
+   urea ......... urea
+   
+   CO2 .......... carbon dioxide
+   CH4 .......... methane
+   Ar ........... argone
+   Ne ........... neone
+   He ........... helium 
+  
+   H ............ proton (+)
+   Na ........... sodium (+)
+   Cl ........... chloride (-)
+  
+   HIO3 ......... iodic acid
+   HIO2 ......... iodous acid
+   I2O5 ......... iodine pentoxide
+
+  ${cfRED}EXAMPLES:${cfDEF}
+
+	$scriptfile ${cfGREEN}SA GD ${cfDEF} \n"""
+  printf "#################################################################\n"
+  exit
+}
+
+###############################################################################
+################################## ARGUMENTS ##################################
+###############################################################################
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours           # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+###############################################################################
+###  CONTENT  ###
+# controling path
+# forming input file
+# function add > end line in input file
+# go through all user arguments
+# preparing command file
+# informing user what to do next
+#--------------------------------------
+JKecho 2 "Main program start."
+
+#
+JKecho 2 "Controling existence of paths $path1 and $path2"
+if [ ! -d $path1 ] || [ ! -d $path2 ]
+then 
+  JKecho 1 "Sorry, the path ${cfYELLOW}$path1${cfDEF}"
+  JKecho 1 "  or the path ${cfYELLOW}$path2${cfDEF} do not exist!"
+  JKecho 1 "  Never mind, BUT setup directories in ${cfYELLOW}${userinputfile}${cfDEF} properly."
+fi
+
+# forming input file
+JKecho 2 "Checking length of arguments: ${arguments[@]}"
+arguments_length=`echo "${#arguments[@]}"`
+if [ $arguments_length -eq 0 ]; then arguments_length=2; fi
+for i in `seq 1 $arguments_length`; 
+do
+  if [ $i -eq 1 ]
+  then
+    composition_example="1"
+  else
+    composition_example+="_1"
+  fi
+done 
+JKecho 2 "Composition_example formed: $composition_example"
+
+#
+JKecho 2 "Creating file $userinputfile"
+echo """######################################################
+## SUPERCOMPUTER PARAMETERS                         ##
+## Number of Combinations - NoC                     ##
+######################################################
+## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
+======================================================
+ABC  NoC     1    1   72:00:00   serial     4000
+XTB  NoC     1    1   72:00:00   serial     4000
+DFT  100     8    1   72:00:00   serial     4000
+CC   100     8    1   330:00:00  longrun    4000
+-loc 1       1    1   -          -          -
+======================================================
+
+#####################################
+## SYSTEM CHARGE AND MULTIPLICITY  ##
+#####################################
+TotalCharge        0  
+TotalMultiplicity  1  
+
+###################################################################
+## COMPOSITION:                                                  ##
+## e.g.: 1_1_2 1_2_1 1_3                                         ##                  
+## e.g.: 1_3-6             = 1_3 1_4 1_5 1_6                     ##
+## e.g.: (1,3,5)_1         = 1_1 3_5 5_1                         ##
+## e.g.: (2,4)_1-3_1       = 2_1_1 4_1_1 2_2_1 4_2_1 2_3_1 4_3_1 ## 
+## e.g.: 1_1_F2            = 1_1_0-2 #protons# to fulfill charge ## 
+###################################################################
+Composition     $composition_example  `echo $composition_example | sed 's/1/2/g'`
+
+######################################
+## STRUCTURES OF BUILDING MONOMERS: ##
+######################################
+# name | q | path """ > $userinputfile
+
+# function add > end line in input file 
+function add {
+  JKecho 2 "Adding link for $1 in the end of $userinputfile."
+  what=`echo $1 | awk '{print tolower($0)}'`
+  case ${what} in
+  "a"|"am") echo   "  A      0   $path1/nh3.xyz"         >> $userinputfile
+       echo   "  A      1   $path1/nh4.xyz"         >> $userinputfile
+       ;;
+  "hno3") echo   "  HNO3      0   $path1/hno3.xyz"         >> $userinputfile
+       echo   "  HNO3     -1   $path1/no3.xyz"         >> $userinputfile
+       ;;
+  "sa") echo  "  SA     0   $path1/h2so4.xyz"       >> $userinputfile
+        echo  "  SA     0   $path2/h2so4_cis.xyz"   >> $userinputfile
+        echo  "  SA    -1   $path1/hso4.xyz"        >> $userinputfile
+        echo  "  SA    -2   $path1/so4.xyz"         >> $userinputfile
+        ;;
+  "gd") echo  "  GD     0   $path2/g.xyz"           >> $userinputfile
+        echo  "  GD     1   $path1/guanidinium.xyz" >> $userinputfile
+        ;;
+  "w") echo   "  W     -1   $path1/oh.xyz"          >> $userinputfile
+       echo   "  W      0   $path2/aq.xyz"          >> $userinputfile
+       echo   "  W      1   $path2/aqp.xyz"         >> $userinputfile
+       ;;
+  "msa") echo "  MSA    0   $path2/msa.xyz"         >> $userinputfile
+         echo "  MSA   -1   $path2/msam.xyz"        >> $userinputfile
+         ;;
+  "dma") echo "  DMA    0   $path1/c2h6nh.xyz"      >> $userinputfile
+         echo "  DMA    1   $path2/dmap.xyz"        >> $userinputfile
+         ;;
+  "co2") echo "  CO2    0   $path1/co2.xyz"         >> $userinputfile
+         ;;
+  "ch4") echo "  CH4    0   $path1/ch4.xyz"         >> $userinputfile
+         ;;
+  "ar") echo  "  Ar     0   $path1/ar.xyz"          >> $userinputfile
+        ;;
+  "he") echo  "  He     0   $path1/he.xyz"          >> $userinputfile
+        ;;
+  "cl") echo  "  Cl    -1   $path1/cl.xyz"          >> $userinputfile
+        ;;
+  "na") echo  "  Na     1   $path1/na.xyz"          >> $userinputfile
+        ;;
+  "ne") echo  "  Ne     0   $path1/ne.xyz"          >> $userinputfile
+        ;;
+  "urea") echo   "  urea   0   $path1/urea.xyz"     >> $userinputfile
+       ;;
+  "h") echo   "  H      1   $path1/h.xyz"           >> $userinputfile
+       ;;
+  "tma") echo "  TMA    0   $path2/tma.xyz"         >> $userinputfile
+         echo "  TMA    1   $path2/tmap.xyz"        >> $userinputfile
+         ;;
+  "hio3") echo "  HIO3   0   $path2/hio3.xyz"         >> $userinputfile
+         echo "  HIO3  -1   $path2/io3.xyz"        >> $userinputfile
+         ;;
+  "hio2") echo "  HIO2   0   $path2/hio2.xyz"         >> $userinputfile
+         ;;
+  "i2o5") echo "  I2O5   0   $path2/i2o5.xyz"         >> $userinputfile
+         ;;
+  *) JKecho 0 "${cfRED}ERROR${cfDEF}: argument ${cfYELLOW}${what}${cfDEF} does not exist! ${cfRED}[EXITING]${cfDEF}"
+     exit
+     ;;
+  esac
+}
+
+# go through all user arguments
+JKecho 2 "checking user molecule-arguments: $arguments"
+for iter in "${!arguments[@]}"
+do
+  i="${arguments[$iter]}"
+  if [ "$i" == "-all" ]
+  then
+    add "W"
+
+    add "HNO3"
+    add "SA"
+    add "MSA"
+
+    add "A"
+    add "GD"
+    add "DMA"
+    add "TMA"
+    add "urea"
+
+    add "CO2"
+    add "CH4"
+    add "Ar"
+    add "Ne"
+    add "He"
+
+    add "H"
+    add "Cl"
+    add "Na"
+
+    add "HIO3"
+    add "HIO2"
+    add "I2O5"
+    continue
+  else
+    add $i
+  fi
+done
+if [ -z "$arguments" ]
+then
+  add "A"
+  add "SA"
+fi
+
+# preparing command file
+JKecho 2 "preparing $commandsfile"
+echo """#sequence of commands for JKCS (Jammy Key for Configuration Sampling) 
+#JKCS1_prepare has to be already finished
+JKCS2_runABC                 
+JKCS3_runXTB                 
+JKCS4_collect XTB -dip            
+JKCS7_filter resultsXTB.dat -c3 4 -rgm 3 -dm 3.5 -sm 80
+JKCS5_runDFT -f \"DFT_HIGH\" -m \""# wb97xd 6-31++g** opt=verytight int=ultrafine gfinput IOP\(6\/7\=1\)"\"
+JKCS4_collect DFT_HIGH       
+JKCS7_filter resultsDFT_HIGH.dat -dm 1.7
+JKCS5_runDFT -f \"DFT_HIGH_freq\" -r \"DFT_HIGH\" -m \""# wb97xd 6-31++g** freq gfinput IOP\(6\/7\=1\)"\"
+JKCS4_collect DFT_HIGH_freq -gibbsh
+JKCS7_filter  resultsDFT_HIGH_freq.dat -c2 4 -d 1 """ > $commandsfile
+
+JKecho 1 "File ${cfYELLOW}$userinputfile${cfDEF} has been copied to your directory."
+nextscript=`ls $scriptpath/JKCS1*`
+nextscript="${cfRED}J${cfGREEN}K${cfYELLOW}C${cfBLUE}S${cfDEF}"`echo ${nextscript##*/} | cut -c5-` 
+JKecho 1 "Change it (e.g., with program vim) and then run ${nextscript}."

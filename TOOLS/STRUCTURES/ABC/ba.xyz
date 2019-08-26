@@ -1,0 +1,5 @@
+1
+Ba(2+)
+Ba 0.0 0.0 0.0
+water_ions_tip4p  q   epsilon (kJ/mol) sigma (AA)
++2.00     0.6276     3.3676 # BAR

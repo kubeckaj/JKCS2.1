@@ -1,0 +1,5 @@
+1
+Mg(2+)
+Mg 0.0 0.0 0.0
+water_ions_tip4p  q   epsilon (kJ/mol) sigma (AA)
++2.00 0.06276 2.1114 # SOD

@@ -1,0 +1,5 @@
+1
+Ca(2+)
+Ca 0.0 0.0 0.0
+water_ions_tip4p   q   epsilon (kJ/mol) sigma (AA)
++2.00  0.5020  2.4357  # CAL

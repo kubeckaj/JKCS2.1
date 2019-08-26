@@ -1,0 +1,67 @@
+# Do you want colorful output?
+Qcolours=1
+# Do you want the program symbol?
+Qsymbol=1
+
+##########################################################################################
+# ABCluster script paths: rigidmol-optimizer 
+# abcluster uses OpenMP. Use all available CPU, unless OMP_NUM_THREADS is specified.
+function program_ABC {
+  input=$1                             # $name.inp
+  output=$(basename $input .inp).out   # $name.out
+ 
+  ############ 
+  ### TODO ###
+  ############ 
+  #path to the script
+  rigidmoloptimizer="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-Linux/rigidmol-optimizer"
+  
+  $rigidmoloptimizer $input > $output 
+}
+##########################################################################################
+# GNF2-xTB script: xtb
+# xtb uses OMP parallelization. Use all available CPU, unless OMP_NUM_THREADS is specified.
+function program_XTB {
+  input=$1                     # file.xyz    
+  base=$(basename $input .xyz) # file
+  output=$base.log             # file.log
+  args=${@:2}                  # all arguments except the first one
+
+  ############
+  ### TODO ###
+  ############
+  export XTBHOME=/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/ 
+  export PATH=$PATH:${XTBHOME}/bin:${XTBHOME}/scripts
+ 
+  #CREATING WORKING DIRECTORY
+  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  ADD=""
+  test=0
+  while [ $test -eq 0 ]
+  do
+    XTB_NAME=$WRKDIR/TMP/XTB_${SLURM_JOBID}${ADD}
+    if [ -d $NAME ]; then ADD="_${RANDOM}"
+    else test=1;fi     
+  done
+ 
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  mkdir $XTB_NAME
+  cd $XTB_NAME
+  cp $DIR/$input .
+  $XTBHOME/bin/xtb $input $args > $output
+
+  #COPYING RESULTS BACK
+  cp $DIR/$input $DIR/$base.old
+  cp $output $DIR/
+  if [ -e xtbopt.xyz ]
+  then
+   cp xtbopt.xyz $DIR/$base.xyz
+  fi
+
+  #CLEANING
+  cd $DIR
+  rm -rf $XTB_NAME
+}
+##########################################################################################
+

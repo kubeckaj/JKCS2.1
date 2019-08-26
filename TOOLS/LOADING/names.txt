@@ -1,0 +1,33 @@
+userinputfile="input.txt"
+inputfile="parameters.txt"
+commandsfile="commands.txt"
+commandssendfile="commandssend.txt"
+queuefile="queue.dat"
+queuefile2="queue2.dat"
+folderbasename="SYS"
+calculated="calculated.dat"
+
+###########
+### ABC ###
+###########
+
+name=calc
+F1=${name}.cluster
+F2=${name}.inp
+
+#####################
+### Results files ###
+#####################
+
+# .txt
+collectionfile="collection"
+# .dat
+resultsfile="results"
+# .xyz
+moviefile="movie"
+
+########################
+### Script file name ###
+########################
+
+scriptfile=${0##*/}

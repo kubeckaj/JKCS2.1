@@ -1,0 +1,264 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program for preparing different cluster compositions   ##
+## To adjust program just change setup                    ##
+##       for help use arguement -help                     ##
+############################################################
+## "Я весёлый поросенок, Я играю и пою, Солнце всходит,   ##
+## И заходит, И в душе, Моей светло."  JK:"I LOVE IT!"    ##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+###############################################################################
+###################################### HELP ###################################
+###############################################################################
+
+function help {
+  printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "Program for preparing different cluster compositions\n"
+  printf """
+  $scriptfile ${cfGRAY}[OPTIONS]${cfDEF}
+  
+  OPTIONS:
+    -help ............ print this help and exit
+
+  ${cfRED}EXAMPLES:${cfDEF}
+
+        $scriptfile  \n"""
+  printf "#################################################################\n"
+  exit
+} 
+
+###############################################################################
+################################## ARGUMENTS ##################################
+###############################################################################
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours           # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+# there should not be more arguments
+therest="${arguments[@]}"
+if [ ! -z "$therest" ]
+then
+  JKecho 0 "Some argument(s) is/are not understood: ${therest}. ${cfRED}[EXITING]${cfDEF}"
+  exit
+fi
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+###############################################################################
+### CONTENT ###
+# Reading input file from user
+# Composition analysis
+# Loop over all compositions
+#  - FORMING NAME OF SPECIFIC FOLDER
+#  - CREATING FILES IN SPECIFIC DIRECTORY
+#  - CYCLE OVER ALL POSSIBLE MOLECULAR TYPE COMBINATIONS
+#  - 
+# Reporting finish job
+##############################################################################
+
+# Reading input file from user
+#search for # name
+JKecho 2 "Checking for \”\# name\" in $userinputfile."
+check=`grep -c "# name" $userinputfile`
+if [ $check -ne 1 ]; 
+then 
+  JKecho 0 "Input format in $userinputfile file has been changed. (”\# name\" error). ${cfRED}[EXITING]${cfDEF}"; 
+  exit; 
+fi
+namerow=`grep -n '# name' $userinputfile | awk '{print $1}' | sed 's/[^0-9]//g'`
+
+#checking existence of structures files
+JKecho 2 "Checking existence of structure files."
+structure_files=`sed 1,${namerow}d $userinputfile | awk '{print $3}' | xargs`
+for file in $structure_files
+do
+  test=`is_absolute $file`
+  if [ ! -e $file ] || [ $test -eq 0 ]
+  then
+    JKecho 0 "File $file specified in input $userinputfile was not found. ${cfRED}[EXITING]${cfDEF}]"
+    exit
+  fi
+done
+
+#read name of components
+molecules=`sed 1,${namerow}d $userinputfile | awk '{print $1}' | uniq | xargs`
+JKecho 2 "Reading names of molecules: $cfBLUE$molecules$cfDEF"
+totcharge=`grep "TotalCharge" $userinputfile | awk '{print $2}'`
+JKecho 2 "Reading total charge: $cfBLUE$totcharge$cfDEF"
+structurelines=`sed 1,${namerow}d $userinputfile | awk '{print $1}' | xargs`
+numberofstructurelines=`echo $structurelines | xargs -n 1 | wc -l`
+
+#reading composition
+composition=`grep Composition $userinputfile | awk '{ $1 = "";print $0}'`
+JKecho 2 "Reading molecular composition: $cfBLUE$composition$cfDEF"
+
+##############################################################################
+
+# Composition analysis
+JKecho 2 "Composition analysis"
+
+JKecho 2 "Initial composition   :$cfBLUE$composition$cfDEF"
+composition=`Cbrackets $composition`
+JKecho 2 "Composition without (): ${cfBLUE}$composition$cfDEF"
+composition=`Cdash $composition`
+JKecho 2 "Composition without - : ${cfBLUE}$composition${cfDEF}"
+
+##############################################################################
+
+# Loop over all compositions
+JKecho 2 "Loop over all compositions"
+constitutions_count_tot=0
+for composition_iter in $composition
+do
+  JKecho 2 "  Composition - ${cfGREEN}$composition_iter${cfDEF}"
+  #######################################
+  ### FORMING NAME OF SPECIFIC FOLDER ###
+  #######################################
+  #number of each molecular conformer
+  composition_numbers=`echo $composition_iter | sed 's/_/ /g'`
+  #tot amount of molecules moleculartypes
+  numberofmolecules=0
+  numberofmoleculartypes=0
+  for add in $composition_numbers; 
+  do 
+    if [[ "${add}" != "F"* ]]
+    then
+      numberofmolecules=`echo $numberofmolecules+$add | bc`;
+      numberofmoleculartypes=`echo $numberofmoleculartypes+1 | bc`;
+    fi
+  done
+  JKecho 2 "  Total amount of molecules: $cfBLUE$numberofmolecules$cfDEF"
+  JKecho 2 "  Total amount of molecular types: $cfBLUE$numberofmoleculartypes$cfDEF"
+  if [ $numberofmolecules -eq 0 ]; then 
+    JKecho 1 "  No molecule in this composition ($cfGREEN$composition_iter$cfDEF). ${cfYELLOW}[CONTINUE]${cfDEF}"
+    continue;
+  fi
+  #creating folder name
+  folder=$folderbasename
+  for molecule_i in `seq 1 $numberofmoleculartypes`
+  do
+    numero=`echo $composition_numbers | awk -v var=$molecule_i '{print $var}'`
+    if [ "$numero" != "0" ] && [[ "${numero}" != "F"* ]]
+    then
+      name=`echo $molecules | awk -v var=$molecule_i '{print $var}'`
+      folder+="_${numero}${name}" 
+    fi
+  done
+  JKecho 2 "  Name of folder was created: ${cfGREEN}$folder${cfDEF}"
+  if [ -d $folder ]; 
+  then 
+    JKecho 0 "Folder ${cfGREEN}$folder${cfDEF} already exists. ${cfYELLOW}[CONTINUE to another folder]${cfDEF}";
+    continue;
+  fi
+  #going to specific directory
+  mkdir $folder
+  cd $folder
+  JKecho 2 "  Entering folder ${cfGREEN}$folder${cfDEF}."
+  
+  ############################################
+  ### CREATING FILES IN SPECIFIC DIRECTORY ### 
+  ############################################
+  
+  # PRINT input // parameters.txt
+  JKecho 2 "    Creating file $inputfile"
+  echo "FILES = ${numberofstructurelines}  MOLECULES = $numberofmolecules" > $inputfile
+  head -n $namerow  ../$userinputfile | sed "s/.*Composition.*/Composition $composition_iter/" >> $inputfile
+  sed 1,${namerow}d ../$userinputfile >> $inputfile
+ 
+  #######################################################
+  # CYCLE OVER ALL POSSIBLE MOLECULAR TYPE COMBINATIONS #
+  #######################################################
+  JKecho 2 "    Loop over all possible combinations."
+  numii=0      # how many loops?
+  saveALL=""   # I will save here what is in saveALL2 after each loop
+
+  COMBINATIONSstructure=""
+  COMBINATIONSmaximum=""
+  COMBINATIONScharges=""
+  for molecule_i in $molecules
+  do
+    #Loop declaration
+    saveALL2=""                # clear name
+    numii=`echo $numii+1 |bc`  # update amount of loop
+    chain=""                   # clear chain
+    JKecho 2 "      Loop number $numii/molecule $molecule_i."
+  
+    #amount i of molecule_i
+    i=`echo $composition_numbers | awk -v var=$numii '{print $var}'` 
+    JKecho 2 "      Using $i of $molecule_i."
+
+    # checking Qf, does F commands has been used?
+    Qf=0; 
+    if [[ ${i} == "F"* ]]; 
+    then 
+      i=`echo $i | cut -c2-`;
+      Qf=1;
+      JKecho 2 "        OK, using upto $i of $molecule_i."
+    fi
+  
+    # states = of one molecule charges and isomers 
+    states=`sed 1,${namerow}d ../$userinputfile | awk -v var="$molecule_i" '$1==var' | awk '{print $2}' | xargs`
+    JKecho 2 "      All states = $states"
+    states_amount=`echo $states | xargs -n 1 | wc -l | awk '{print $1}'`
+    JKecho 2 "      Amount of states = $states_amount"
+   
+    #JK: hint: the first comma will be removed  
+    for state_i in $states
+    do 
+      COMBINATIONScharges+=",$state_i"
+    done 
+    COMBINATIONSstructure+=",$states_amount"
+    COMBINATIONSmaximum+=",$i"
+  done
+
+  JKecho 2 "  Running script for all combinatorical constitutions."
+  JKecho 3 "    program_PYTHON2 $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge"
+  constitutions=`program_PYTHON2 $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge`  
+  JKecho 2 "  Constitutions: `echo $constitutions | xargs`"
+  echo $constitutions >> $inputfile
+  constitutions_count=`echo $constitutions | xargs -n 1 | wc -l`
+  constitutions_count=`printf "%-3s" $constitutions_count`
+  JKecho 2 "  Amount of constitutions: $cfBLUE$constitutions_count$cfDEF"
+  #JK: hint: sed -i command does not work for Mac system
+  sed "s/NoC/$constitutions_count/g" $inputfile > .${inputfile}_help; mv .${inputfile}_help $inputfile
+  JKecho 2 "  Replacing NoC by $cfBLUE$constitutions_count$cfDEF in the file $cfYELLOW$inputfile${cfDEF}."
+
+  cd ..
+  JKecho 1 "Folder ${cfGREEN}$folder${cfDEF} has been prepared."
+  constitutions_count_tot=`echo $constitutions_count_tot+$constitutions_count | bc`
+done
+
+# Reporting finish job
+JKecho 2 "----------------------------------------------------" 
+JKecho 1 "DONE :-) --> Total amount of combinations: ${cfBLUE}$constitutions_count_tot${cfDEF}"
+nextscript=`ls $scriptpath/JKCS2*`
+nextscript="${cfRED}J${cfGREEN}K${cfYELLOW}C${cfBLUE}S${cfDEF}"`echo ${nextscript##*/} | cut -c5-`
+JKecho 1 "Now, just run ${nextscript}."

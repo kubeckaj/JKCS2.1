@@ -1,0 +1,479 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program for analysis of gaussian output                ##
+## To understand program run help:                        ##
+##        JKgaussstat -help                               ##
+############################################################
+## "Never vomit on your colleagues. Let say that it is    ##
+## not profesional colaboration."        Jakub Kubecka    ##
+############################################################
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo "Program for analysis of gaussian output"
+  echo """
+  JKgaussiangrep [OPTIONS] [FILES]
+  OPTIONS:
+   -help .......... print this help and exit
+ 
+   -name .......... print name of the file
+   -p,-pwdname .... print full file path
+   -b,-basename ... print basename of the file (___.log)
+
+   -el,-elen ...... print last electronic energy (SCF Done)
+   -zpe,-ZPE ...... print zero-point energy (correction)
+   -g,-gibbs ...... print Gibbs Free Energy (293.15 K)
+   -gh,-gibbsh .... print Gibbs Free Energy (293.15 K) (GoodVibes)  
+   -gc,-gcorr ..... Gibbs Free Energy (293.15 K) correction
+   -gch,-gcorrh ... Gibbs Free Energy (293.15 K) correction (GoodVibes)
+
+   -dlpno ......... DLPNO energy from .out
+   -GD ............ DLPNO + dGcorr
+   -GDh ........... DLPNO + dGcorrh (GoodVibes)
+
+   -s,-entropy .... print Total entropy (hartree/K units)
+   -h,-enthalpy ... print Enthalpy energy
+
+   -rx,-ry,-rz .... print rotational constant in 1 axis
+   -r2 ............ calculate squared rotational constant
+
+   -dx,-dy,-dz .... print dipole moment in 1 axis (dy=0,dx=0)
+   -d,-dtot ....... calculate total dipole moment = dz
+   -pol ........... print total polarizability [Angstrom^3] 
+ 
+   -T,-temp \"X\" ... asumming temperature X in Kelvin
+   -v \"X\" ......... anharmonicity scaling factor
+
+   -t,-time ....... time in minutes # PRINT JUST LAST TIME 
+   -err ........... do not print for missing \"Normal termination\"
+   [OTHERS: -nt, -gibbscorr|-gcorr|-gc]
+  FILES:
+   gaussian (G16) output is expected
+  EXAMPLES:
+     JKgaussstat
+     JKgaussstat -basename -rx -ry -rz -elen 1.log 2log
+     JKgaussstat -name -elen
+     JKgaussstat -basename -elen *.log
+  """
+  exit
+}
+### PREPARING WHAT AND HOW
+
+# locate TOOLS path and load programs (GoodVibes)
+scriptpath=$(dirname $0)
+toolspath="$scriptpath"
+Qprograms=programs.txt
+if [ -e $toolspath/../$Qprograms ]
+then
+  source $toolspath/../$Qprograms
+fi
+
+Qerr=0
+Qfreqerr=0
+QT=0
+temp=298.15
+factor=1.0
+what=""
+how=""
+next=0
+input=`echo $*`
+for i in $input
+do
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;fi
+  firstletter=`echo $i | cut -c 1`
+  if [ "$firstletter" == "-" ] || [ $next -eq 1 ]
+  then
+    if [ "$i" == "-err" ]
+    then 
+      Qerr=1
+      continue
+    fi
+    # TEMP
+    if [ "$last" == "-temp" ]
+    then
+      QT=1
+      temp="$i"
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-T" ] || [ "$i" == "-temp" ] || [ "$i" == "-Temp" ] || [ "$i" == "-TEMP" ]
+    then
+      last="-temp"
+      next=1
+      continue
+    fi
+    # FACTOR
+    if [ "$last" == "-v" ]
+    then
+      QT=1
+      factor="$i"
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-v" ] 
+    then
+      last="-v"
+      next=1
+      continue
+    fi
+    ### NOTHING FROM ABOVE
+    how+="$i "
+    if [ "$i" == "-gibbs" ] || [ "$i" == "-g" ]
+    then 
+      Qfreqerr=1
+    fi
+  else #INPUT files 
+    what+="$i "
+  fi
+done
+
+if [ -z "$what" ]; then what=`ls *.log`;fi
+if [ -z "$how"  ]; then how="-name -elen -gibbs";fi
+
+
+### LOOP OVER FILES
+for i in $what
+do
+  output=""
+  ### CHECK ERRORS
+  if [ $Qerr -eq 1 ]
+  then
+    number=`grep -c "Normal termination" $i`
+    min=1
+    if [ $Qfreqerr -eq 1 ]
+    then
+      min=2
+    fi
+    if [ $number -lt $min ] 
+    then
+      continue
+    fi 
+  fi
+  ### LOOP OVER HOW
+  for j in $how
+  do
+    ############    
+    ### NAME ###
+    ############
+    if [ $j == "-name" ] || [ $j == "-n" ]
+    then 
+      var=$i
+      output+="$var    \t"
+    fi
+    ################
+    ### BASENAME ###
+    ################
+    if [ $j == "-basename" ] || [ $j == "-b" ]
+    then
+      var=`basename $i .log`;
+      output+="$var    \t"
+    fi    
+    ###############
+    ### PWDNAME ###
+    ###############
+    if [ $j == "-pwdname" ] || [ $j == "-p" ]
+    then
+      var=`readlink -f $i`;
+      output+="$var    \t"
+    fi
+    ############
+    ### ELEN ###
+    ############
+    if [ $j == "-elen" ] || [ $j == "-el" ] 
+    then
+      var=`grep "SCF Done" $i | tail -n 1 | awk '{print $5}'`
+      output+="$var "
+    fi
+    ###########
+    ### ZPE ###
+    ###########
+    if [ $j == "-zpe" ] || [ $j == "-ZPE" ]
+    then
+      var=`grep "Zero-point correction=" $i | awk '{print $3}'`
+      output+="$var "
+    fi
+    #############
+    ### GIBBS ###
+    #############
+    if [ $j == "-gibbs" ] || [ $j == "-g" ]
+    then
+      count=`grep -c "Free Energies" $i` 
+      if [ $count -eq 1 ]
+      then
+        if [ $QT -eq 1 ]
+        then
+          var=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $8}'`
+        else
+          var=`grep "Free Energies" $i | awk '{print $8}'`
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    ###############
+    ### GIBBS.h ###
+    ###############
+    if [ $j == "-gibbsh" ] || [ $j == "-gh" ]
+    then
+      count=`grep -c "Free Energies" $i`
+      if [ $count -eq 1 ]
+      then
+        var=`$toolspath/JKgoodvibes -loc $i -v $factor -t $temp | tail -n 2 | head -n 1  | awk '{print $9}'`
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    ##################
+    ### GIBBS CORR ###
+    ##################
+    if [ $j == "-gibbscorr" ] || [ $j == "-gcorr" ] || [ $j == "-gc" ]
+    then
+      count=`grep -c "Thermal correction to Gibbs Free Energy" $i`
+      if [ $count -eq 1 ]
+      then
+        if [ $QT -eq 1 ] 
+        then
+          varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1`
+          var2=`echo $varB  | awk '{print $3}'`
+          var3=`echo $varB  | awk '{print $8}'`
+          var=`echo $var3-1.0*$var2 | bc -l`
+        else
+          var=`grep "Thermal correction to Gibbs Free Energy" $i | awk '{print $7}'`
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    ####################
+    ### GIBBS CORR.h ###
+    ####################
+    if [ $j == "-gibbscorrh" ] || [ $j == "-gcorrh" ] || [ $j == "-gch" ]
+    then
+      count=`grep -c "Thermal correction to Gibbs Free Energy" $i`
+      if [ $count -eq 1 ]
+      then
+        varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1`
+        var2=`echo $varB | awk '{print $3}'`
+        var3=`echo $varB | awk '{print $9}'`
+        var=`echo $var3-1.0*$var2 | bc -l`
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    ################
+    ### ENTHALPY ###
+    ################
+    if [ $j == "-enthalpy" ] || [ $j == "-h" ]
+    then
+      count=`grep -c "Sum of electronic and thermal Enthalpies" $i`
+      if [ $count -eq 1 ]
+      then
+        if [ $QT -eq 1 ]
+        then
+          var=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $5}'`
+        else
+          var=`grep "Sum of electronic and thermal Enthalpies" $i | awk '{print $7}'`
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    ###############
+    ### ENTROPY ###
+    ###############
+    if [ $j == "-entropy" ] || [ $j == "-s" ]
+    then
+      count=`grep -c "E (Thermal)             CV                S" $i`
+      if [ $count -eq 1 ]
+      then
+        var=`grep -C 2 "E (Thermal)             CV                S" $i | tail -n 1 | awk '{print $4}'`
+        var=`echo "$var/627509" | bc -l`
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    #############
+    ### DLPNO ###
+    #############
+    if [ $j == "-dlpno" ]
+    then
+      outfile=`basename $i .log`.out
+      if [ -e $outfile ]
+      then 
+        count=`grep -c "FINAL SING" $outfile`
+        if [ $count -eq 1 ]
+        then
+          var=`grep 'FINAL SIN' $outfile |  awk '{print $5}'`
+        else
+          var="-----------"
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    #################
+    ### G + DLPNO ###
+    #################
+    if [ $j == "-GD" ]
+    then
+      outfile=`basename $i .log`.out
+      if [ -e $outfile ]
+      then
+        count=`grep -c "FINAL SING" $outfile`
+        if [ $count -eq 1 ]
+        then
+          var1=`grep 'FINAL SIN' $outfile |  awk '{print $5}'`
+          if [ $QT -eq 1 ]
+          then
+            varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1`
+            var2=`echo $varB  | awk '{print $3}'`
+            var3=`echo $varB  | awk '{print $8}'`
+            var2=`echo $var3-1.0*$var2 | bc -l`
+          else
+            var2=`grep "Thermal correction to Gibbs Free Energy" $i | awk '{print $7}'`
+          fi
+          var=`echo $var1+$var2 | bc -l`
+        else
+          var="-----------"
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    ###################
+    ### G + DLPNO.h ###
+    ###################
+    if [ $j == "-GDh" ]
+    then
+      outfile=`basename $i .log`.out
+      if [ -e $outfile ]
+      then
+        count=`grep -c "FINAL SING" $outfile`
+        if [ $count -eq 1 ]
+        then
+          var1=`grep 'FINAL SIN' $outfile |  awk '{print $5}'`
+          varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1`
+          var2=`echo $varB  | awk '{print $3}'`
+          var3=`echo $varB  | awk '{print $9}'`
+          var=`echo $var1+$var3-1.0*$var2 | bc -l`
+        else
+          var="-----------"
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    ############
+    ### TIME ###
+    ############
+    if [ $j == "-time" ] || [ $j == "-t" ]
+    then
+      timeline=`grep "Elapsed time" $i`
+      tD=`echo $timeline | awk '{print $3}'`
+      tH=`echo $timeline | awk '{print $5}'`
+      tM=`echo $timeline | awk '{print $7}'`
+      tS=`echo $timeline | awk '{print $9}'`
+      var=`echo $tD*24*60+$tH*60+$tM+$tS/60 |bc -l`
+      output+="$var "
+    fi
+    ###################
+    ### RX RY RZ R2 ###
+    ###################
+    if [ $j == "-rx" ] || [ $j == "-ry" ] || [ $j == "-rz" ] || [ $j == "-r2" ]
+    then
+      rx=`grep "Rotational constants" $i | tail -n 1 | awk '{print $4}'`
+      ry=`grep "Rotational constants" $i | tail -n 1 | awk '{print $5}'`
+      rz=`grep "Rotational constants" $i | tail -n 1 | awk '{print $6}'`
+    fi
+    if [ $j == "-rx" ] 
+    then
+      var=$rx
+      output+="$var "
+    fi
+    if [ $j == "-ry" ]
+    then
+      var=$ry
+      output+="$var "
+    fi
+    if [ $j == "-rz" ]
+    then
+      var=$rz
+      output+="$var "
+    fi
+    if [ $j == "-r2" ]
+    then
+      var=`echo $rx*$rx+1.0*$ry*$ry+1.0*$rz*$rz | bc -l`
+      output+="$var "
+    fi
+    ######################
+    ### POLARIZABILITY ###
+    ######################
+    if [ $j == "-pol" ]
+    then 
+      # in Angstrom^3
+      var=`grep -C 4 "Dipole polarizability" $i | tail -n 1 | awk '{print $3}' | sed 's/D/E/' | awk '{print $1+0}'`
+      output+="$var "
+    fi
+    ###################
+    ### DX DY DZ D2 ###
+    ###################
+    if [ $j == "-dx" ] || [ $j == "-dy" ] || [ $j == "-dz" ] || [ $j == "-dtot" ] || [ $j == "-d" ]
+    then
+      Dunits=3 # 2=au | 3=Debye | 4=10**-30 SI
+    fi
+    if [ $j == "-dx" ]
+    then
+      var=`grep -C 4 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
+      output+="$var "
+    fi
+    if [ $j == "-dy" ]
+    then
+      var=`grep -C 5 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
+      output+="$var "
+    fi
+    if [ $j == "-dz" ]
+    then
+      var=`grep -C 6 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
+      output+="$var "
+    fi
+    if [ $j == "-dtot" ] || [ $j == "-d" ]
+    then
+      var=`grep -C 3 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}' | sed 's/D/E/' | awk '{print $1+0}'`
+      output+="$var "
+    fi
+    ##########################
+    ### Normal Termination ###
+    ##########################
+    if [ $j == "-nt" ]
+    then
+      var=`grep -c "Normal termination" $i`
+      if [ $var -gt 0 ] 
+      then
+        output+="DONE$var   "
+      else
+        var1=`grep -c "srun: Terminating job step" $i`
+        var2=`grep -c "srun: error:" $i`
+        if [ $var1 -gt 0 ] || [ $var2 -gt 0 ]
+        then
+          output+="ERROR$var1$var2 "
+        else
+          output+="        "
+        fi
+      fi
+    fi
+  done
+  echo -e "$output"
+done
