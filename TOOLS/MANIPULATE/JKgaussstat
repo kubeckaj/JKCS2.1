@@ -22,19 +22,23 @@ function help {
    -p,-pwdname .... print full file path
    -b,-basename ... print basename of the file (___.log)
 
-   -el,-elen ...... print last electronic energy (SCF Done)
-   -zpe,-ZPE ...... print zero-point energy (correction)
-   -g,-gibbs ...... print Gibbs Free Energy (293.15 K)
-   -gh,-gibbsh .... print Gibbs Free Energy (293.15 K) (GoodVibes)  
-   -gc,-gcorr ..... Gibbs Free Energy (293.15 K) correction
-   -gch,-gcorrh ... Gibbs Free Energy (293.15 K) correction (GoodVibes)
+   -el,-elen ...... EL = (last) electronic energy (SCF Done)
+   -zpe,-ZPE ...... ZPE = zero-point energy (correction)
+   -g,-gibbs ...... G = Gibbs Free Energy (293.15 K)
+   -gh,-gibbsh .... Gh = Gibbs Free Energy (293.15 K) (GoodVibes)  
+   -gc,-gcorr ..... dGcorr = Gibbs Free Energy (293.15 K) correction
+   -gch,-gcorrh ... dGcorrh = Gibbs Free Energy (293.15 K) correction (GoodVibes)
 
-   -dlpno ......... DLPNO energy from .out
-   -GD ............ DLPNO + dGcorr
-   -GDh ........... DLPNO + dGcorrh (GoodVibes)
+   -dlpno ......... DLPNO = electronic energy from .out (orca output)
+   -GD ............ DLPNO-G = DLPNO + dGcorr
+   -GDh ........... DLPNO-Gh = DLPNO + dGcorrh (GoodVibes)
 
-   -s,-entropy .... print Total entropy (hartree/K units)
-   -h,-enthalpy ... print Enthalpy energy
+   -h,-enthalpy ... H = enthalpy energy
+   -HD, -hdlpno ... DLPNO-H = DLPNO - EL + H
+   -s,-entropy .... S = total entropy (hartree/K units)
+   -sh,-entropyh .. Sh = total entropy (hartree/K units) (GoodVibes)
+   -Us,-Uentropy .. S = total entropy (cal/(mol.K) units)
+   -Ush,-Uentropyh  Sh = total entropy (cal/(mol.K) units) (GoodVibes)
 
    -rx,-ry,-rz .... print rotational constant in 1 axis
    -r2 ............ calculate squared rotational constant
@@ -43,8 +47,8 @@ function help {
    -d,-dtot ....... calculate total dipole moment = dz
    -pol ........... print total polarizability [Angstrom^3] 
  
-   -T,-temp \"X\" ... asumming temperature X in Kelvin
-   -v \"X\" ......... anharmonicity scaling factor
+   -T,-temp \"X\" ... asumming temperature X in Kelvin (GoodVibes)
+   -v \"X\" ......... anharmonicity scaling factor (GoodVibes)
 
    -t,-time ....... time in minutes # PRINT JUST LAST TIME 
    -err ........... do not print for missing \"Normal termination\"
@@ -63,7 +67,12 @@ function help {
 
 # locate TOOLS path and load programs (GoodVibes)
 scriptpath=$(dirname $0)
-toolspath="$scriptpath"
+if [ -e $scriptpath/JKgoodvibes ]
+then
+  toolspath="$scriptpath"
+else
+  toolspath="$scriptpath/../PROGRAM_SCRIPTS"
+fi
 Qprograms=programs.txt
 if [ -e $toolspath/../$Qprograms ]
 then
@@ -125,6 +134,7 @@ do
     if [ "$i" == "-gibbs" ] || [ "$i" == "-g" ]
     then 
       Qfreqerr=1
+      continue
     fi
   else #INPUT files 
     what+="$i "
@@ -287,16 +297,74 @@ do
       fi
       output+="$var "
     fi
+    ######################
+    ### DLPNO ENTHALPY ###
+    ######################
+    if [ $j == "-HD" ] || [ $j == "-hdlpno" ]
+    then
+      outfile=`basename $i .log`.out
+      if [ -e $outfile ]
+      then
+        count1=`grep -c "Sum of electronic and thermal Enthalpies" $i`
+        count2=`grep -c "FINAL SING" $outfile`
+        if [ $count1 -eq 1 ] && [ $count2 -eq 1 ]
+        then
+          if [ $QT -eq 1 ]
+          then
+            var1=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $5}'`
+          else
+            var1=`grep "Sum of electronic and thermal Enthalpies" $i | awk '{print $7}'`
+          fi
+          var2=`grep "SCF Done" $i | tail -n 1 | awk '{print $5}'`
+          var3=`grep 'FINAL SIN' $outfile |  awk '{print $5}'`
+          var=`echo $var1-1.0*$var2+$var3 | bc -l`
+        else
+          var="-----------"
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
     ###############
     ### ENTROPY ###
     ###############
-    if [ $j == "-entropy" ] || [ $j == "-s" ]
+    if [ $j == "-entropy" ] || [ $j == "-s" ] || [ $j == "-Us" ] || [ $j == "-Uentropy" ]
     then
       count=`grep -c "E (Thermal)             CV                S" $i`
       if [ $count -eq 1 ]
       then
-        var=`grep -C 2 "E (Thermal)             CV                S" $i | tail -n 1 | awk '{print $4}'`
-        var=`echo "$var/627509" | bc -l`
+        if [ $QT -eq 1 ]
+        then
+          var=`$toolspath/JKgoodvibes -loc $i -v $factor -t $temp | tail -n 2 | head -n 1  | awk '{print $6}'`
+          var=`echo $var/$temp | bc -l`
+        else
+          var=`grep -C 2 "E (Thermal)             CV                S" $i | tail -n 1 | awk '{print $4}'`
+          var=`echo "$var/627509" | bc -l`
+        fi
+        if [ $j == "-Us" ] || [ $j == "-Uentropy" ]
+        then
+          var=`echo "$var*627509" | bc -l`
+        fi
+      else
+        var="-----------"
+      fi
+      output+="$var "
+    fi
+    #################
+    ### ENTROPY.h ###
+    #################
+    if [ $j == "-entropyh" ] || [ $j == "-sh" ] || [ $j == "-Ush" ] || [ $j == "-Uentropyh" ]
+    then
+      count=`grep -c "E (Thermal)             CV                S" $i`
+      if [ $count -eq 1 ]
+      then
+        var=`$toolspath/JKgoodvibes -loc $i -v $factor -t $temp | tail -n 2 | head -n 1  | awk '{print $7}'`
+        var=`echo $var/$temp | bc -l`
+        if [ $j == "-Ush" ] || [ $j == "-Uentropyh" ]
+        then
+          var=`echo "$var*627509" | bc -l`
+        fi
       else
         var="-----------"
       fi

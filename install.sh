@@ -1,34 +1,36 @@
 # START
 echo "-----------------------"
 echo 'Hi, I will just test what is written in your ~/.bashrc file'
-##
+
+# PATH DECLARATION
 path=$PWD
 path1="${path}/JKCSx"
 path2="${path}/TOOLS/MANIPULATE"
+
+# DOES ~/.bashrc exist?
 if [ ! -e ~/.bashrc ]
 then
   touch ~/.bashrc
 fi
-T=0
-test=`grep -c "$path1" ~/.bashrc`
-if [ $test -eq 0 ]
-then 
-  echo "export PATH=$path1:\$PATH" >> ~/.bashrc
-  T=`echo $T+1|bc`
-fi
-test=`grep -c $path2 ~/.bashrc`
-if [ $test -eq 0 ]
-then
-  echo "export PATH=$path2:\$PATH" >> ~/.bashrc
-  T=`echo $T+1|bc`
-fi
-if [ $T -gt 0 ]
-then
-  echo "Write followinng command: "
-  echo "          source ~/.bashrc"
-else
-  echo "No change in ~/.bashrc requiered."
-fi
+
+function writetobashrc {
+  command="$1"
+  test=`grep -c "$command" ~/.bashrc`
+  if [ $test -ne 0 ]
+  then 
+    sed -i "$command" ~/.bashrc
+  fi
+  echo "$command" >> ~/.bashrc
+}
+
+command1="export PATH=$path1:\$PATH"
+writetobashrc "$command1"
+
+command2="export PATH=$path2:\$PATH"
+writetobashrc "$command2"
+
+echo "Write followinng command: "
+echo "          source ~/.bashrc"
 echo "-----------------------"
 
 if [ ! -e ~/.JKCSusersetup.txt ]
