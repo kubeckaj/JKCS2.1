@@ -1,3 +1,7 @@
+# USE
+# ./setup.sh
+# ./setup.sh -r //rewrite ~/.JKCSusersetup.txt
+
 # START
 echo "-----------------------"
 echo 'Hi, I will just test what is written in your ~/.bashrc file'
@@ -18,7 +22,7 @@ function writetobashrc {
   test=`grep -c "$command" ~/.bashrc`
   if [ $test -ne 0 ]
   then 
-    sed -i "$command" ~/.bashrc
+    sed -i "\#$command#d" ~/.bashrc
   fi
   echo "$command" >> ~/.bashrc
 }
@@ -33,7 +37,7 @@ echo "Write followinng command: "
 echo "          source ~/.bashrc"
 echo "-----------------------"
 
-if [ ! -e ~/.JKCSusersetup.txt ]
+if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ]
 then
   cp .JKCSusersetup.txt ~/.JKCSusersetup.txt
   echo "Please, change all required paths in file ~/.JKCSusersetup.txt"

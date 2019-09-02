@@ -134,16 +134,19 @@ JKecho 2 "Creating file $userinputfile"
 echo """######################################################
 ## SUPERCOMPUTER PARAMETERS                         ##
 ## Number of Combinations - NoC                     ##
-######################################################
+######################################################""" > $userinputfile
 ## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
-======================================================
-ABC  NoC     1    1   72:00:00   serial     4000
-XTB  NoC     1    1   72:00:00   serial     4000
-DFT  100     8    1   72:00:00   serial     4000
-CC   100     8    1   330:00:00  longrun    4000
--loc 1       1    1   -          -          -
-======================================================
 
+#======================================================
+#ABC  NoC     1    1   72:00:00   serial     4000
+#XTB  NoC     1    1   72:00:00   serial     4000
+#DFT  100     8    1   72:00:00   serial     4000
+#CC   100     8    1   330:00:00  longrun    4000
+#-loc 1       1    1   -          -          -
+#======================================================
+echo_SCpartitions >> $userinputfile
+
+echo """
 #####################################
 ## SYSTEM CHARGE AND MULTIPLICITY  ##
 #####################################
@@ -163,7 +166,7 @@ Composition     $composition_example  `echo $composition_example | sed 's/1/2/g'
 ######################################
 ## STRUCTURES OF BUILDING MONOMERS: ##
 ######################################
-# name | q | path """ > $userinputfile
+# name | q | path """ >> $userinputfile
 
 # function add > end line in input file 
 function add {

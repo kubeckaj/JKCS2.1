@@ -1,7 +1,42 @@
-# Do you want colorful output?
+##########################################################################################
+############################## USER SETUP ################################################
+##########################################################################################
+
+##########################
+### Output style setup ###			
+##########################
+
+# Do you want colorful output? [1/0]
 Qcolours=1
-# Do you want the program symbol?
+# Do you want the program symbol? [1/0]
 Qsymbol=1
+
+#########################
+### Paths declaration ###
+#########################
+
+PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-Linux/rigidmol-optimizer"
+PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
+
+###################################
+### Default supercomputer setup ###
+###################################
+
+function echo_SCpartition {
+  echo """
+## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
+======================================================
+ABC  NoC     1    1   72:00:00   serial     4000
+XTB  NoC     1    1   72:00:00   serial     4000
+DFT  100     8    1   72:00:00   serial     4000
+CC   100     8    1   330:00:00  longrun    4000
+-loc 1       1    1   -          -          -
+======================================================"""
+}
+
+##########################################################################################
+########################## ADVANCED USER SETUP ###########################################
+##########################################################################################
 
 ##########################################################################################
 # ABCluster script paths: rigidmol-optimizer 
@@ -10,12 +45,10 @@ function program_ABC {
   input=$1                             # $name.inp
   output=$(basename $input .inp).out   # $name.out
  
-  ############ 
-  ### TODO ###
-  ############ 
   #path to the script
-  rigidmoloptimizer="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-Linux/rigidmol-optimizer"
-  
+  rigidmoloptimizer=$PATH_ABCluster
+ 
+  #performing the calculation 
   $rigidmoloptimizer $input > $output 
 }
 ##########################################################################################
@@ -27,10 +60,7 @@ function program_XTB {
   output=$base.log             # file.log
   args=${@:2}                  # all arguments except the first one
 
-  ############
-  ### TODO ###
-  ############
-  export XTBHOME=/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/ 
+  export XTBHOME=$PATH_XTB
   export PATH=$PATH:${XTBHOME}/bin:${XTBHOME}/scripts
  
   #CREATING WORKING DIRECTORY
