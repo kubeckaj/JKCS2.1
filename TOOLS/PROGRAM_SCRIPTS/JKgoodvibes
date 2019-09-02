@@ -33,7 +33,7 @@ Qloc=1  ### NOT SURE IF THIS IS COMPATIBLE WITH ALL OTHER PROGRAMS
 for i in $*
 do
   if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
-  firstletter=`echo $i | cut -c 1`
+  firstletter=`echo "$i" | cut -c 1`
   if [ "$firstletter" == "-" ] || [ $next -eq 1 ]
   then
     if [ "$i" == "-loc" ]
@@ -64,15 +64,15 @@ fi
 # locate TOOLS path and load programs (GoodVibes)
 scriptpath=$(dirname $0)
 toolspath="$scriptpath/../TOOLS"
-Qprograms=programs.txt
-source $toolspath/../$Qprograms
+source ~/.JKCSusersetup.txt
+
 
 ### MAIN PROGRAM
-
 if [ $Qloc -eq 0 ]
 then
-  sbatch $goodvibes $what $ARGUMENTS
+  sbatch JKsend program_GoodVibes $what $ARGUMENTS
 else
-  sh $goodvibes $what $ARGUMENTS
+  program_GoodVibes $what $ARGUMENTS
 fi
+
 
