@@ -133,10 +133,9 @@ JKecho 2 "Composition_example formed: $composition_example"
 JKecho 2 "Creating file $userinputfile"
 echo """######################################################
 ## SUPERCOMPUTER PARAMETERS                         ##
-## Number of Combinations - NoC                     ##
-######################################################""" > $userinputfile
-## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
-
+## Number of Combinations - NoC                     ##""" > $userinputfile
+#######################################################
+### MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
 #======================================================
 #ABC  NoC     1    1   72:00:00   serial     4000
 #XTB  NoC     1    1   72:00:00   serial     4000
@@ -144,7 +143,9 @@ echo """######################################################
 #CC   100     8    1   330:00:00  longrun    4000
 #-loc 1       1    1   -          -          -
 #======================================================
-echo_SCpartitions >> $userinputfile
+#printf "\b\b\b" >> $userinputfile
+
+echo_SCpartition >> $userinputfile
 
 echo """
 #####################################

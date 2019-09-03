@@ -230,6 +230,7 @@ function JKloaddirs {
 
 #loading Qprint from arguments
 function JKloadprint {
+  Qprint=1
   arguments_help=()
   # first search for -print
   saveQprint="no"

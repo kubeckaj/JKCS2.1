@@ -23,7 +23,7 @@ PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
 ###################################
 
 function echo_SCpartition {
-  echo """
+  echo """######################################################
 ## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
 ======================================================
 ABC  NoC     1    1   72:00:00   serial     4000
