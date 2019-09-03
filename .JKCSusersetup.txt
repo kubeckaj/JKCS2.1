@@ -15,7 +15,7 @@ Qsymbol=1
 ### Paths declaration ###
 #########################
 
-PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-Linux/rigidmol-optimizer"
+PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-Linux2.0/rigidmol-optimizer"
 PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
 
 ###################################
@@ -94,4 +94,8 @@ function program_XTB {
   rm -rf $XTB_NAME
 }
 ##########################################################################################
-
+# Python2
+#
+function program_PYTHON2 {
+  python ${@}
+}
