@@ -47,8 +47,10 @@ function help {
    -d,-dtot ....... calculate total dipole moment = dz
    -pol ........... print total polarizability [Angstrom^3] 
  
-   -T,-temp \"X\" ... asumming temperature X in Kelvin (GoodVibes)
-   -v \"X\" ......... anharmonicity scaling factor (GoodVibes)
+   -T,-temp \"X\" ... asumming temperature X in Kelvin (GoodVibes is used for other
+                                                    variables: -h,-s,-HD,-g ...)
+   -v \"X\" ......... anharmonicity scaling factor (GoodVibes is used for other
+                                                    variables: -h,-s,-HD,-g ...)
 
    -t,-time ....... time in minutes # PRINT JUST LAST TIME 
    -err ........... do not print for missing \"Normal termination\"

@@ -18,7 +18,8 @@ function JKecho {
       printf "😘  $scriptfile: ${@:2}\n"
     else
       printf    "$scriptfile: ${@:2}\n"
-    fi 
+    fi
+    printf "$scriptfile: ${@:2}\n" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" >> output
   fi
 }
 
@@ -166,7 +167,7 @@ function JKloadsupercomputer {
   then
     SC_command=""
   else
-    SC_command="sbatch -p $SCpar --time $SCtime -N $SCnodes --mem $SCmem -c $SCcpu $toolspath/SCRIPTS/JKsend "
+    SC_command="sbatch -p $SCpar --time $SCtime -N $SCnodes --mem $SCmem -c $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
   fi
 }
 
