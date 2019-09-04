@@ -1,0 +1,388 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program that runs PM7/XTB calculations out of ABC      ##
+## To understand program run help:                        ##
+##       for help use arguement -help                     ##
+############################################################
+## "Willigness to do anything is zero in moments when you ##
+## are thinking about it. Enjoy your work." Jakub Kubecka ##
+############################################################
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo "Program that runs PM7/XTB calculations out of ABC"
+  echo """
+  JKCS3_runXTB [OPTIONS]
+
+  ALL OPTIONS:
+   -help ............ print this help and exit
+   -sp .............. no OPT = single point calc.
+   -pm7 ............. use PM7 with Gaussian
+   OTHERS: -time1, -time2, (or both -time)
+           -par1, -par2, (or both -partition(-par))
+           -repeat, -programs
+
+  BASIC EXAMPLES:
+    
+    JKCS3_runXTB 
+    JKCS3_runXTB -sp
+    JKCS3_runXTB -pm7
+
+  """
+  exit
+}
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+# do not play with multiplicity, it is not setted up anywhere
+MULTIPLICITY=1
+
+METHOD="XTB"      ## PM7, wb97xd, TPSS, B3LYP
+METHODname="XTB"  ## I will keep both the same
+XTBmethod="-opt vtight"
+BASIS=""
+
+Qtime2='72:00:00'
+
+#how many time repeat in case of error (for PM7 cca 3)
+REPEAT=0
+
+#user's programs
+Qprograms=programs.txt
+
+# loop over all arguments
+for i in $*
+do
+  # -help
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+  # -sp
+  if [ "$i" == "-sp" ]
+  then
+    XTBmethod="-sp"
+    continue
+  fi
+  # -pm7
+  if [ "$i" == "-pm7" ]
+  then
+    METHOD=PM7
+    METHODname=PM7
+    BASIS=''
+    continue
+  fi
+  # repeat
+  if [ "$last" == '-repeat' ]
+  then
+    REPEAT="$i"
+    last=''
+    continue
+  fi
+  if [ "$i" == "-repeat" ]
+  then
+    last='-repeat'
+    continue
+  fi
+  # partition 1
+  if [ "$last" == '-par1' ]
+  then
+    last=''
+    parameters+=" -p $i"
+    continue
+  fi
+  if [ "$i" == "-par1" ] || [ "$i" == "-partition1" ]
+  then
+    last="-par1"
+    continue
+  fi
+  # partition 2
+  if [ "$last" == '-par2' ]
+  then
+    last=''
+    Qpartition2="$i"
+    continue
+  fi
+  if [ "$i" == "-par2" ] || [ "$i" == "-partition2" ]
+  then
+    last="-par2"
+    continue
+  fi
+  # partition 
+  if [ "$last" == '-par' ]
+  then
+    last=''
+    parameters+=" -p $i"
+    Qpartition2="$i"
+    continue
+  fi
+  if [ "$i" == "-par" ] || [ "$i" == "-partition" ]
+  then
+    last="-par"
+    continue
+  fi
+  # time
+  if [ "$last" == '-time' ]
+  then
+    parameters+=" --time $i"
+    Qtime2="$i"
+    last=''
+    continue
+  fi
+  if [ "$i" == "-time" ] || [ "$i" == "-t" ] 
+  then
+    last='-time'
+    continue
+  fi
+  # time1
+  if [ "$last" == '-time1' ]
+  then
+    parameters+=" --time $i"
+    last=''
+    continue
+  fi
+  if [ "$i" == "-time1" ] || [ "$i" == "-t1" ]
+  then
+    last='-time1'
+    continue
+  fi
+  # time2
+  if [ "$last" == '-time2' ] 
+  then
+    Qtime2="$i"
+    last=''
+    continue
+  fi
+  if [ "$i" == "-time2" ] || [ "$i" == "-t2" ]
+  then
+    last='-time2'
+    continue
+  fi
+  # programs
+  if [ "$last" == '-programs' ]
+  then
+    last=''
+    if [ "$i" == 2 ]
+    then
+      Qprograms="programs2.txt"
+    else
+      Qprograms="$i"
+    fi
+    continue
+  fi
+  if [ "$i" == "-programs" ]
+  then
+    last='-programs'
+    continue
+  fi
+  # folder
+  L4=`echo $i | cut -c1-4`
+  if [ -d "$i" ] && [ "$L4" == "SYS_" ]
+  then
+    folders+=" $i"
+    continue
+  fi
+  # nothing correspond? --> EXIT
+  echo "$scriptfile: Probably some mistake in argument $i. [EXITING]"
+  exit
+done
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath=$(dirname $0)
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/TOOLSextra/names.txt
+
+# load functions
+source $toolspath/TOOLSextra/functions.sh
+
+# load parameters
+source $toolspath/TOOLSextra/loadparameters.sh
+
+parameters2=$parameters
+# programs
+source $toolspath/../$Qprograms
+parameters+=" $parameters2"
+
+###############################################################################
+
+##################################
+## LOOP OVER ALL FOLDERS
+##################################
+nfold=0
+for folder in $folders
+do
+  # going through all directories
+  nfold=`echo $nfold+1|bc`
+  echo "$scriptfile: `echo "${PWD##*/}"`: Entering folder $folder"
+  if [ ! -d $folder ]; 
+  then 
+    echo "$scriptfile: Some problem in reading directory $folder. EXITING"; 
+    exit ; 
+  fi
+  cd $folder
+  if [ -d $METHODname ]; 
+  then 
+    echo "$scriptfile: $METHODname in folder $folder already exists (SKIPPED)"; 
+    cd ..;
+    continue; 
+  fi
+  
+  ## CHECKING IF ABC WAS FINISHED
+  subdirs=`ls -d ABC/ABC*`
+  Nsubdirs=`Felements $subdirs`
+  test1=`ls ABC/*/calc.out 2> /dev/null`
+  if [ ! -z "$test1" ]
+  then
+    finished=`grep -c "Normal termination" ABC/*/calc.out | rev | cut -c-1 | xargs`
+  else
+    finished=0
+  fi
+  test2=`ls ABC/*/output 2> /dev/null`
+  if [ ! -z "$test2" ]
+  then
+    finished2=`grep -c "Normal termination" ABC/*/output | rev | cut -c-1 | xargs`
+  else
+    finished2=0
+  fi
+  SUM=0
+  for i in $finished; do SUM=`echo $SUM+$i | bc`; done
+  for i in $finished2; do SUM=`echo $SUM+$i | bc`; done
+  if [ $Nsubdirs -ne $SUM ]; then echo "$scriptfile: $folder: ABCluster has not finished yet";cd ..;continue;fi
+  #########################
+ 
+  Nfiles=`grep "FILES =" $inputfile | awk '{print $3}'`
+  Nfilesp1=`echo $Nfiles + 1 | bc`
+  constitutions=`sed 1,${Nfilesp1}d $inputfile | xargs`
+  files=`head -n ${Nfilesp1} $inputfile | tail -n ${Nfiles} | awk '{print $4}' | xargs`
+  CPU=`echo $allCPU | awk -v var=$nfold '{print $var}'`
+  count=`Felements $constitutions`
+  CPU=`echo $CPU/$count | bc` 
+  maxjobs=$CPU 
+  mkdir $METHODname
+  cd $METHODname
+
+  ### LOOP OVER ALL CONSTITUTIONS
+  for i in $constitutions
+  do
+    folder=${METHODname}_$i
+    mkdir $folder
+    cd $folder
+    mkdir $name-LM
+    cd $name-LM
+
+    ### DELETING BAD STRUCTURES
+    if [ -e ../../../ABC/ABC_${i}/calc.out ]
+    then
+      filean=../../../ABC/ABC_${i}/calc.out
+    else
+      filean=../../../ABC/ABC_${i}/output
+    fi
+    countLMs=`grep  "LMs will be saved in" $filean | awk '{print $2}'`
+    countLMs=`echo $countLMs+1 |bc`
+    # are some energies below 0?
+    ABCen=`grep -C 2 "LMs will be saved in" $filean | tail -n 1 | awk '{print $2}'`;
+    st=`echo "$ABCen > 0.0" | bc`;
+    if [ $st -eq 1 ]
+    then
+      echo "$scriptfile: OJ OJ, ask Jacob but maybe there is some shit going on! (all ABC energies are positive)"
+      testQrm=1
+    else
+      testQrm=0
+    fi
+    # 
+    while [ $testQrm -eq 0 ]
+    do
+      ABCen=`grep -C $countLMs "LMs will be saved in" $filean | tail -n 1 | awk '{print $2}'`;
+      st=`echo "$ABCen > 0.0" | bc`;
+      if [ $st -eq 1 ];
+      then
+        toremove=`echo $countLMs-2 | bc`
+        if [ -e ../../../ABC/ABC_${i}/${name}-LM/${toremove}.xyz ]
+        then
+          rm ../../../ABC/ABC_${i}/${name}-LM/${toremove}.xyz
+        fi
+      else
+        testQrm=1
+      fi
+      countLMs=`echo $countLMs-1 |bc`
+    done
+
+    # upgrade feed
+    feeding=`echo $countLMs/$maxjobs + 1 |bc`
+
+    ### LOCATING FILES
+    xyzfiles=`ls ../../../ABC/ABC_${i}/${name}-LM/*.xyz`
+
+    ###
+    if [ $METHODname != "XTB" ]
+    then
+      method="# $METHOD $BASIS opt=(maxcycles=50) gfinput IOp(6/7=3)"
+      $toolspath/JKxyz2com -feed 10 -method "$method" -ch "$totcharge" -mult "$MULTIPLICITY" $xyzfiles
+    else
+      echo "$scriptfile: xyz are prepared ... NICE" > /dev/null
+    fi
+ 
+    #queue file name
+    random=$RANDOM
+    test=0
+    while [ $test -eq 0 ]
+    do 
+      queueJKCS=queueJKCS_${random}.dat
+      if [ -e "$queueJKCS3" ]
+      then
+        random=$RANDOM
+      else 
+        test=1
+      fi
+    done
+    qf=../../../$queuefile
+     
+    ### RUN CALCULATIONS
+    #command 
+    command="$toolspath/JKrun -programs $Qprograms -time $Qtime2 -q $qf -max $maxjobs -r $REPEAT -f $feeding -inp $queueJKCS"
+    if [ ! -z $Qpartition2 ]
+    then
+      command+=" -partition $Qpartition2"
+    fi
+    ##
+    if [ $METHOD != "XTB" ]
+    then
+      inpfiles=`ls *.com`
+    else
+      inpfiles=$xyzfiles     
+      #unpaired electrons 2*S=M-1
+      unpaired=`echo $MULTIPLICITY-1|bc`
+      #command improvement
+      command+=`echo " -p XTB -opt \"$XTBmethod -chrg $totcharge -uhf $unpaired\""`
+    fi
+    echo $inpfiles > $queueJKCS
+  
+    echo "$command" > run${scriptfile}.sh 
+    # checking queue program
+    if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
+    then
+      # calculate
+      sh run${scriptfile}.sh
+    else
+      # calculate ... send to queue
+      queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part sh run${scriptfile}.sh`
+      echo "$scriptfile: $queue"
+      echo $queue | awk '{print $4}' >> $qf
+    fi
+    ##################### 
+    
+    cd ../../
+  done
+  cd ../
+  echo "$scriptfile: Done :-D"
+  cd ..
+done

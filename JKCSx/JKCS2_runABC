@@ -133,14 +133,14 @@ do
   if [ "$last" == "-walltimebased" ];
   then
     last=""
-    time=`echo $iter/60/60 | sed "s/s//" | sed "s/m/*60/" | sed "s/h/*60*60/" | sed "s/d/*24*60*60/" | bc -l`
+    time=`echo $iter | sed "s/s//" | sed "s/m/*60/" | sed "s/h/*60*60/" | sed "s/d/*24*60*60/" | bc -l`
     # [sec/job] = [time (h)]*[3600 (s/h)]/{CPU}/NoC
     # Exp. (gen=100,sc=4):
-    #   [sec/job] = 0.02*M*M*M*M*[POP]
+    #   [sec/job] = 0.2*M*M*M*M*[POP]
     #   [INIT] = [POP] = [time (h)]*[3600 (s/h)]/{CPU}/NoC/0.02/M/M/M/M
     #TODO CPU not included
     GEN=100
-    INIT="$time*3600/NoC/0.02/M/M/M/M"
+    INIT="$time/NoC/0.02/M/M/M/M"
     continue
   fi
   # 
