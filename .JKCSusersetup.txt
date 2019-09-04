@@ -99,3 +99,9 @@ function program_XTB {
 function program_PYTHON2 {
   python ${@}
 }
+##########################################################################################
+# sbatch
+# command: sbatch [some_parameters] $SBATCHuseradd script
+SBATCHuseradd=""
+
+##########################################################################################
