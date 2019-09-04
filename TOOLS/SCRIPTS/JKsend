@@ -6,7 +6,6 @@
 #SBATCH -e output
 #SBATCH -o output
 #SBATCH --open-mode=append
-#SBATCH --account=hvehkama
 
 eval "$@"
 
