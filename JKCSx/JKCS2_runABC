@@ -133,7 +133,7 @@ do
   if [ "$last" == "-walltimebased" ];
   then
     last=""
-    time=`echo $iter | sed "s/s//" | sed "s/m/*60/" | sed "s/h/*60*60/" | sed "s/d/*24*60*60/" | bc -l`
+    time=`echo $iter | sed "s/s//" | sed "s/m/*60/" | sed "s/h/*60*60/" | sed "s/d/*24*60*60/"`
     # [sec/job] = [time (h)]*[3600 (s/h)]/{CPU}/NoC
     # Exp. (gen=100,sc=4):
     #   [sec/job] = 0.2*M*M*M*M*[POP]
@@ -148,11 +148,17 @@ do
 done
 arguments=("${arguments_help[@]}")
 
-LM=`echo $LM     | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc`
-GEN=`echo $GEN   | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc`
-INIT=`echo $INIT | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc`
-SC=`echo $SC     | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc`
-BOX=`echo $BOX   | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc`
+LM=`echo $LM     | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+LM=`echo "($LM+0.5)/1" | bc`
+GEN=`echo $GEN   | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+GEN=`echo "($GEN+0.5)/1" | bc`
+INIT=`echo $INIT | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+INIT=`echo "($INIT+0.5)/1" | bc`
+SC=`echo $SC     | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+SC=`echo "($SC+0.5)/1" | bc`
+BOX=`echo $BOX   | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+BOX=`echo "($BOX+0.5)/1" | bc`
+
 
 JKecho 1 "ABCluster parameters set: LM(${cfGREEN}$LM${cfDEF}),GEN(${cfGREEN}$GEN${cfDEF}),INIT(${cfGREEN}$INIT${cfDEF}),SC(${cfGREEN}$SC${cfDEF}),BOX(${cfGREEN}$BOX${cfDEF})."
 
