@@ -140,7 +140,7 @@ do
     #   [INIT] = [POP] = [time (h)]*[3600 (s/h)]/{CPU}/NoC/0.02/M/M/M/M
     #TODO CPU not included
     GEN=100
-    INIT="$time/NoC/0.002/M/M/M/M"
+    INIT="$time/NoC/0.0012/M/M/M/M"
     continue
   fi
   # 

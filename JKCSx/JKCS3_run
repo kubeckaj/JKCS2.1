@@ -39,9 +39,6 @@ function help {
 ################################ DO NOT TOUCH #################################
 ###############################################################################
 
-# do not play with multiplicity, it is not setted up anywhere
-MULTIPLICITY=1
-
 METHOD="XTB"      ## PM7, wb97xd, TPSS, B3LYP
 METHODname="XTB"  ## I will keep both the same
 XTBmethod="-opt vtight"

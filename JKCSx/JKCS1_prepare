@@ -258,7 +258,9 @@ done
 
 # Reporting finish job
 JKecho 2 "----------------------------------------------------" 
-JKecho 1 "DONE :-) --> Total amount of combinations: ${cfBLUE}$constitutions_count_tot${cfDEF}"
+amountoffolders=`ls -d SYS_* | wc -l`
+JKecho 1 "DONE :-) --> Total amount of cluster types: ${cfBLUE}$amountoffolders${cfDEF}"
+JKecho 1 "DONE :-) --> Total amount of monomeric combinations: ${cfBLUE}$constitutions_count_tot${cfDEF}"
 nextscript=`ls $scriptpath/JKCS2*`
 nextscript="${cfRED}J${cfGREEN}K${cfYELLOW}C${cfBLUE}S${cfDEF}"`echo ${nextscript##*/} | cut -c5-`
 JKecho 1 "Now, just run ${nextscript}."
