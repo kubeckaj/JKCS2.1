@@ -207,10 +207,11 @@ function JKloaddirs {
     fi
   fi
   # Entering to all folders
+  motherdir=$PWD
   for i in $folders
   do
     JKecho 1 "Entering directory ${cfGREEN}${i}${cfDEF}"
-    cd $i
+    cd $motherdir/$i
     commandarguments1=`printf '"%s" ' "${arguments[@]}"` 
     commandarguments2=`printf '"%s" ' "${arguments_help_pass[@]}"`
     #echo $commandarguments1

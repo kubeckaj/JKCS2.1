@@ -299,7 +299,36 @@ then
 fi
 JKecho 2 "Subfoldering parameter set to: $Qsubfoldering"
 
- 
+#TAKING LIST OF FILES 
+#from OLD or from resultsXXX.dat
+if [ $QfromfolderOLD -eq 1 ]
+then
+  #taking from OLD folder
+  if [ -d ${folderOLD}/${name}-LM ]
+  then
+    files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
+    if [ -z $files ]
+    then
+      cd ${folderOLD}/${name}-LM
+      $toolspath/JKlog2xyz *.log
+      cd ..
+      files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
+    fi
+  else
+    files=`ls ${PWD}/${folderOLD}/*/${name}-LM/*.xyz`
+  fi
+else
+  #Taking from results file (varibale filetake)
+  files=`cat $filetake | awk '{print $1}' | xargs`
+fi
+if [ -z "$files" ]
+then
+  JKecho 1 "Probably no xyz files in this folder. ${cfRED}SKIP${cfDEF}"
+  exit
+fi
+amountoffiles=`wc -l $files | awk '{print $1}'`
+JKecho 2 "Files were collected. The amount of files: ${cfBLUE}${amountoffiles}${cfDEF}."
+
 exit
   #Are we taking structures from file or from some folder? 
   if [ -e results${addition}.dat ]   
