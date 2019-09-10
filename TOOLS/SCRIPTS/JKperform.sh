@@ -1,3 +1,11 @@
+#!/bin/bash
+
+# FUNCTIONS:
+# waitcheck = .wait
+# getcommand = DOING/DONE/WAITING
+# fincommand = DOING -> DONE
+# timming
+
 starttime=`date +%s`
 
 # WAITING QUESTION. MAYBE SOME OTHER GUY IS WORKING WITH FILE
@@ -42,6 +50,7 @@ function getcommand {
     local doingcount=0
     local linenumber=0
     local test=0
+    local linktest=0 #testing how many calc. are already linked 
     for i in `seq 1 $jobscount`
     do
       local linenumber=`echo $linenumber+1 | bc`
@@ -67,6 +76,25 @@ function getcommand {
           waitcheck 0
           exit
         fi
+      elif [ "$firstword" == "LINK" ]
+      then
+        test=1
+        linkentered=`echo $line | awk '{print $2}'`
+        if [ "$linkentered" == "0" ]
+        then
+          line=${line:7}
+          sed "${linenumber}s/LINK 0//" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+          sed "${linenumber}s/^/LINK $MY_ID /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+          break
+        elif [ "$linkentered" == "$MY_ID" ]
+        then
+          sed "${linenumber}s/LINK/DONE/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt           
+          waitcheck 0
+          exit
+        else
+          doingcount=`echo $doingcount+1 | bc`
+          continue
+        fi 
       else
         test=1
         sed "${linenumber}s/^/DOING $MY_ID /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
@@ -96,6 +124,7 @@ function getcommand {
 function fincommand { 
   waitcheck 1
   sed "${MY_LINENUMBER}s/DOING //" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+  sed "${MY_LINENUMBER}s/LINK //" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
   sed "${MY_LINENUMBER}s/^/DONE /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
   waitcheck 0 
 }
@@ -141,7 +170,7 @@ if [ -z "$MY_ID" ]; then MY_ID="LOC"; echo 1 local task is running; fi
 MY_output=output.$MY_ID
 MY_motherdir=$PWD
 #TODO link hours to requesting time
-MY_reqtime=72 #in hours
+MY_reqtime=24 #in hours
 
 echo JOBID = $MY_ID >> $MY_output
 echo mother dir = $MY_motherdir >> $MY_output
@@ -152,7 +181,7 @@ MY_jobnumber=0
 while [ 1 -eq 1 ]
 do
   jobtime=`date +%s`
-  MY_jobnumber=`echo $MY_jobnumber+1`
+  MY_jobnumber=`echo $MY_jobnumber+1 | bc`
   echo "Job number: $MY_jobnumber" >> $MY_output
   # LOADING COMMAND
   getcommand #gives: MY_LINE, MY_LINENUMBER

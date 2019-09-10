@@ -42,7 +42,7 @@ function JKloadhelp {
 #load parameters for supercomputer
 function JKloadsupercomputer {
   JKecho 2 "Loading default parameters for supercomputer."
-  METHODsupercomputer=$METHOD
+  METHODsupercomputer=$program
   arguments_help=()
   # first search for -loc
   for i in "${!arguments[@]}"
@@ -229,6 +229,43 @@ function JKloaddirs {
     exit 
   fi
 }
+
+#loading program from arguments, checking if the function exist
+function JKloadprogram {
+  program=XTB
+  arguments_help=()
+  # first search for -print
+  saveQprogram="no"
+  for i in "${!arguments[@]}"
+  do
+    # this is just when -print is argument
+    if [ "$saveQprint" == "yes" ]
+    then
+      saveQprogram="no"
+      arguments_help_pass+=( "${arguments[i]}" )
+      program=${arguments[i]};
+      continue
+    fi
+    if [ "${arguments[i]}"  == "-p" ] || [ "${arguments[i]}"  == "-program" ];
+    then
+      arguments_help_pass+=( "${arguments[i]}" )
+      saveQprogram="yes"
+    else
+      arguments_help+=( "${arguments[i]}" )
+    fi
+  done
+  #now check if function program_${program} exist?
+  JKecho 2 "Program set: $program"
+  if [ `type -t program_$program`"" == 'function' ]; 
+  then 
+    JKecho 2 "Function ${cfGREEN}program_$program${cfDEF} from ${cfYELLOW}~/.JKCSusersetup.txt${cfDEF} is utilized."
+  else
+    JKecho 1 "Sorry, I did not find function ${cfGREEN}program_$program${cfDEF} in ${cfYELLOW}~/.JKCSusersetup.txt${cfDEF}. [${cfRED}EXITING${cfDEF}]"
+    exit 
+  fi
+  arguments=("${arguments_help[@]}")
+}
+
 
 #loading Qprint from arguments
 function JKloadprint {

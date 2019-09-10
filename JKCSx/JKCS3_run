@@ -82,12 +82,6 @@ function help {
 ################################ DO NOT TOUCH #################################
 ###############################################################################
 
-<<<<<<< HEAD
-METHOD="XTB"      ## PM7, wb97xd, TPSS, B3LYP
-METHODname="XTB"  ## I will keep both the same
-XTBmethod="-opt vtight"
-BASIS=""
-=======
 arguments=("$@")       # arguments of this script
 arguments_help=()      # 
 arguments_help_pass=() # arguments which are passed if all arguments are passed
@@ -101,13 +95,12 @@ JKloadcolours           # some coloured output
 # check -help option
 JKloadhelp             # check if user asks for -help
 
+# method 
+JKloadprogram
+
 # check for folderbasename_something arguments and in case enter directories
 JKloaddirs
 currentdir=${PWD##*/}
-
-# method 
-METHOD=XTB        # could be also DFT, XTB, DLPNO ...
-JKloadprogram
 
 # load amount of molecules
 M=`head -n 1 $inputfile | awk '{print $6}'`
@@ -121,11 +114,8 @@ JKloadsupercomputer
 ###############################################################################
 #reading arguments important for this script
 
-# initial setup of parameters
-MULTIPLICITY=1
-
 #new folder name
-folderNEW=$METHOD
+folderNEW=$program
 
 #old folder name
 folderOLD="ABC"
@@ -134,16 +124,12 @@ folderOLD="ABC"
 QfromfolderOLD=1
 # just testing user input for -rf and -of
 Qtestboth=0
->>>>>>> 2c5cfc1d6b8f2ecee86b0c13afc228424332219c
 
 #how many times repeat in case of fail
 #TODO REPEAT=0
 
 ### METHOD 
 method="-opt vtight"
-
-# from what
-addition="XTB"
 
 last=""
 # loop over all arguments
@@ -281,213 +267,265 @@ else
   JKecho 2 "Folder $folderNEW has been created."
 fi
 
+#echo MOTHERDIR = $motherdir
 #subfoldering
-Qsubfoldering=0
 if [ $QfromfolderOLD -eq 1 ]
 then
   cd $folderOLD
-  subfolders=`ls $folderOLD_*`
-  cd ..
-  if [ ! -z "$subfolders" ]
+  subfolders="`ls -d ${folderOLD}_* | xargs`"
+  if [ ! -z "$subfolders" ] 
   then
-    subfolders=`sed "s/$folderOLD/$folderNEW/g" <<< $subfolders`
-    cd $folderNEW
-    mkdir $subfolders
-    cd ..
-    Qsubfoldering=1
-  fi
-fi
-JKecho 2 "Subfoldering parameter set to: $Qsubfoldering"
-
-#TAKING LIST OF FILES 
-#from OLD or from resultsXXX.dat
-if [ $QfromfolderOLD -eq 1 ]
-then
-  #taking from OLD folder
-  if [ -d ${folderOLD}/${name}-LM ]
-  then
-    files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
-    if [ -z $files ]
-    then
-      cd ${folderOLD}/${name}-LM
-      $toolspath/JKlog2xyz *.log
-      cd ..
-      files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
-    fi
-  else
-    files=`ls ${PWD}/${folderOLD}/*/${name}-LM/*.xyz`
-  fi
-else
-  #Taking from results file (varibale filetake)
-  files=`cat $filetake | awk '{print $1}' | xargs`
-fi
-if [ -z "$files" ]
-then
-  JKecho 1 "Probably no xyz files in this folder. ${cfRED}SKIP${cfDEF}"
-  exit
-fi
-amountoffiles=`wc -l $files | awk '{print $1}'`
-JKecho 2 "Files were collected. The amount of files: ${cfBLUE}${amountoffiles}${cfDEF}."
-
-exit
-  #Are we taking structures from file or from some folder? 
-  if [ -e results${addition}.dat ]   
-  then  
-    filetake=results${addition}.dat
-  else
-    echo "$scriptfile: results${addition}.dat does not exist (SKIPPED)"; cd ..;continue;
-  fi
-  if [ -e results${addition}_FILTERED.dat ] 
-  then 
-    filetake=results${addition}_FILTERED.dat
-  fi
-  ### TAKING LIST OF FILES 
-  # from OLD or from resultsXXX.dat
-  if [ $QfromfolderOLD -eq 1 ]
-  then
-    #taking from OLD folder
-    if [ -d ${folderOLD}/${name}-LM ]
-    then
-      files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
-      if [ -z $files ]
-      then
-        cd ${folderOLD}/${name}-LM
-        $toolspath/JKlog2xyz *.log
-        cd ..
-        files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
-      fi
-    else
-      files=`ls ${PWD}/${folderOLD}/*/${name}-LM/*.xyz`
-    fi
-  else
-    #Take just something in energy range or all files
-    if [ $Qdiff -eq 1 ]
-    then
-      # 3 or 4 columns?
-      columns=4
-      test=`head -n 1 $filetake | awk -v var=$columns '{print $var}'` 
-      if [ -z $test ]; then columns=3; fi
-      #find minimum in column
-      min=`cat $filetake | sort -nrk $columns | tail -n 1 | awk -v var=$columns '{print $var}'` 
-      #take specific files
-      files=`cat $filetake | awk -v var1=$diff -v var2=$min -v var3=$columns '$var3<(var2+var1/627.503)' | awk '{print $1}' | xargs`
-    else
-      #take all files
-      files=`cat $filetake | awk '{print $1}' | xargs` 
-    fi
-  fi
-  if [ -z "$files" ]
-  then
-    echo "$scriptfile: Probably no xyz files. CONTINUING"
-    cd ../
-    continue
-  fi
-  ###############################
-  row=`Felements $files`
-  echo "$scriptfile: $row files in total"
-  
-  ##PREPARE NEW FOLDER
-  cd $folderNEW
-  #calculate just those what were not calculated yet
-  if [ -e $calculated ] 
-  then
-    row=0 
-    for i in $files 
+    JKecho 2 "Subfoldering from previous directory is used."
+    JKecho 3 "Subfolders: $subfolders"
+    for sub in $subfolders
     do 
-      N=`grep -c "$i" calculated.dat`
-      if [ $N -eq 0 ]
-      then
-        echo $i >> $calculated
-        filesNEXT+=" $i"
-        row=`echo $row+1|bc`
-      fi
+      newsub=`sed "s/$folderOLD/$folderNEW/g" <<< $sub`
+      cd $motherdir/$folderOLD/${sub}/${name}-LM/
+      files=`ls *.xyz`
+      cd $motherdir/$folderNEW
+      mkdir $newsub
+      mkdir $newsub/${name}-LM
+      for file in $files
+      do
+        #command="source ~/.JKCSusersetup.txt;\n program_$program $motherdir/$folderOLD/${name}-LM/$file"
+        #printf "$command" > run${scriptfilecommand}.sh
+        commandTODO="cd $motherdir/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $motherdir/$folderOLD/$sub/${name}-LM/$file;"
+        echo $commandTODO >> $newsub/commands_TODO.txt
+      done
+      JKecho 3 "    Commands like $commandTODO written to $newsub/commands_TODO.txt"
+      echo "LINK 0 cd $newsub; sh $toolspath/SCRIPTS/JKperform.sh; cd .." >> commands_TODO.txt
     done
-    files=$filesNEXT
-  else 
-    echo $files | xargs -n 1 > $calculated
-    row="all"
-  fi 
-  ###
-  if [ ! -d ${name}-LM ]; then mkdir ${name}-LM;fi
-  cd ${name}-LM
-  ###
-  #queue file name
-  random=$RANDOM
-  test=0
-  while [ $test -eq 0 ]
-  do
-    queueJKCS=queue${scriptfile}_${random}.dat
-    if [ -e $queueJKCS ]
-    then
-      random=$RANDOM
-    else
-      test=1
-    fi
-  done
-  qf=../../$queuefile 
-  qf2=../../$queuefile2
- 
-  # RUN/
-  echo "$scriptfile: $row files are gonna be calculated"
-  if [ ! -z "$files" ]
-  then
-    #command
-    command="$toolspath/JKrun -programs $Qprograms -time $Qtime2 -q $qf2 -max $MAXJOBS -r $REPEAT -f $feeding -p $program -inp $queueJKCS"
-    if [ ! -z $Qpartition2 ]
-    then
-      command+=" -partition $Qpartition2"
-    fi
-    ###
-    # G16
-    if [ "$program" == "G16" ]
-    then 
-      $toolspath/JKxyz2com -cpu $CPU  $addmemory -nr -char $totcharge -mult $MULTIPLICITY $addbase -method "$method" $files >> output
-      inpfiles=`ls *.com`
-    fi
-    # XTB
-    if [ "$program" == "XTB" ] 
-    then
-      cp $files ./ 
-      inpfiles=`ls *.xyz`
-      #unpaired electrons 2*S=M-1
-      unpaired=`echo $MULTIPLICITY-1|bc`
-      #command improvement
-      command+=`echo " -opt \"$method -chrg $totcharge -uhf $unpaired\""`
-    fi
-    # ORCA
-    if [ "$program" == "ORCA" ]
-    then
-      $toolspath/JKxyz2inp -cpu $CPU $addmemory -char $totcharge -mult $MULTIPLICITY -method "$method" $files >> output
-      inpfiles=`ls *.job`
-    fi
-    # DLPNO
-    if [ "$program" == "DLPNO" ]
-    then
-      cp $files ./ 
-      inpfiles=`ls *.xyz`
-      if [ "$method" == "# wb97xd 6-31+g* opt" ]; then method=""; fi
-      #command improvement
-      command+=`echo " -opt \"$method -chrg $totcharge -mult $MULTIPLICITY\""`
-    fi
-    ################
-    echo $inpfiles > $queueJKCS
-
-    echo "$command" > run${scriptfile}_${random}.sh 
-    # checking queue program
-    if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
-    then
-      # calculate
-      sh run${scriptfile}_${random}.sh 
-    else
-      # calculate ... send to queue
-      #echo "$scriptfile: $programSendToQueue1part $parameters $programSendToQueue2part \"${command}\""
-      queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part sh run${scriptfile}_${random}.sh`
-      echo "$scriptfile: $queue"
-      echo $queue | awk '{print $4}' >> $qf
-    fi
-    ##################### 
+  else
+    JKecho 2 "Calculations will be performed in directory ${cfYELLOW}$folderNEW/${name}-LM${cfDEF}"
+    cd ${name}-LM/
+    files=`ls *.xyz`
+    cd $motherdir/$folderNEW
+    mkdir ${name}-LM
+    for file in $files
+    do
+      #command="source ~/.JKCSusersetup.txt;\n program_$program $motherdir/$folderOLD/${name}-LM/$file"
+      #printf "$command" > run${scriptfilecommand}.sh
+      commandTODO="cd $motherdir/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $motherdir/$folderOLD/${name}-LM/$file;"
+      echo $commandTODO >> commands_TODO.txt
+    done
+    JKecho 3 "    Commands like "$commandTODO" written to commands_TODO.txt"
   fi
+fi
+JKecho 2 "Subfolder $folderNEW has been created."
+cd $motherdir/$folderNEW
 
-  cd ../../../
-#done
-echo "$scriptfile: Done :-D"
+### Sending jobs ###
+if [ ! -e commands_TODO.txt ]; then touch commands_TODO.txt; fi
+jobscount=`wc -l commands_TODO.txt | awk '{print $1}'`
+JKecho 2 "Counting amount of jobs: $jobscount"
+if [ $jobscount -lt $SCtasks ]
+then
+  SCtasks=$jobcount
+fi
+JKecho 2 "Tasks used: $SCtasks"
+for i in `seq 1 $SCtasks`
+do
+  #echo "sendjob $currentdir-ABC" 
+  $SC_command sh $toolspath/SCRIPTS/JKperform.sh
+  #echo "$SC_command"
+done
+
+###################################################################
+JKecho 1 "I, this script, did all my job :-D"
+exit
+
+
+##cd $motherdir
+##JKecho 2 "Subfoldering parameter set to: $Qsubfoldering"
+##
+###TAKING LIST OF FILES 
+###from OLD or from resultsXXX.dat
+##if [ $QfromfolderOLD -eq 1 ]
+##then
+##  #taking from OLD folder
+##  checkdir=${motherdir}/${folderOLD}/${name}-LM
+##  if [ -d $checkdir ]
+##  then
+##    files=`ls $checkdir/*.xyz`
+##    #if [ -z "$files" ]
+##    #then
+##    #  JKecho 1 "No xyz files found in ${cfGREEN}${checkdir}${cfDEF}. [${cfRED}SKIP${cfDEF}]"
+##    #  cd ${motherdir}${folderOLD}/${name}-LM
+##    #  $toolspath/JKlog2xyz *.log
+##    #  cd -
+##    #  files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
+##    #fi
+##  else
+##    checkdir=${motherdir}/${folderOLD}/*/${name}-LM/
+##    files=`ls ${checkdir}*.xyz`
+##  fi
+##  if [ -z "$files" ]
+##  then
+##    JKecho 1 "No xyz files found in ${cfGREEN}${checkdir}${cfDEF}. [${cfRED}SKIP${cfDEF}]"
+##    exit
+##  fi
+##else
+##  #Taking from results file (varibale filetake)
+##  files=`cat $filetake | awk '{print $1}' | xargs`
+##  if [ -z "$files" ]
+##  then
+##    JKecho 1 "Probably no xyz files in the file ${cfYELLOW}$filetake${cfDEF}. ${cfRED}SKIP${cfDEF}"
+##    exit
+##  fi
+##fi
+##echo $files
+##amountoffiles=`cat $files | wc -l`
+##JKecho 2 "Files were collected. The amount of files: ${cfBLUE}${amountoffiles}${cfDEF}."
+##
+##
+##exit
+##  ### TAKING LIST OF FILES 
+##  # from OLD or from resultsXXX.dat
+##  if [ $QfromfolderOLD -eq 1 ]
+##  then
+##    #taking from OLD folder
+##    if [ -d ${folderOLD}/${name}-LM ]
+##    then
+##      files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
+##      if [ -z $files ]
+##      then
+##        cd ${folderOLD}/${name}-LM
+##        $toolspath/JKlog2xyz *.log
+##        cd ..
+##        files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
+##      fi
+##    else
+##      files=`ls ${PWD}/${folderOLD}/*/${name}-LM/*.xyz`
+##    fi
+##  else
+##    #Take just something in energy range or all files
+##    if [ $Qdiff -eq 1 ]
+##    then
+##      # 3 or 4 columns?
+##      columns=4
+##      test=`head -n 1 $filetake | awk -v var=$columns '{print $var}'` 
+##      if [ -z $test ]; then columns=3; fi
+##      #find minimum in column
+##      min=`cat $filetake | sort -nrk $columns | tail -n 1 | awk -v var=$columns '{print $var}'` 
+##      #take specific files
+##      files=`cat $filetake | awk -v var1=$diff -v var2=$min -v var3=$columns '$var3<(var2+var1/627.503)' | awk '{print $1}' | xargs`
+##    else
+##      #take all files
+##      files=`cat $filetake | awk '{print $1}' | xargs` 
+##    fi
+##  fi
+##  if [ -z "$files" ]
+##  then
+##    echo "$scriptfile: Probably no xyz files. CONTINUING"
+##    cd ../
+##    continue
+##  fi
+##  ###############################
+##  row=`Felements $files`
+##  echo "$scriptfile: $row files in total"
+##  
+##  ##PREPARE NEW FOLDER
+##  cd $folderNEW
+##  #calculate just those what were not calculated yet
+##  if [ -e $calculated ] 
+##  then
+##    row=0 
+##    for i in $files 
+##    do 
+##      N=`grep -c "$i" calculated.dat`
+##      if [ $N -eq 0 ]
+##      then
+##        echo $i >> $calculated
+##        filesNEXT+=" $i"
+##        row=`echo $row+1|bc`
+##      fi
+##    done
+##    files=$filesNEXT
+##  else 
+##    echo $files | xargs -n 1 > $calculated
+##    row="all"
+##  fi 
+##  ###
+##  if [ ! -d ${name}-LM ]; then mkdir ${name}-LM;fi
+##  cd ${name}-LM
+##  ###
+##  #queue file name
+##  random=$RANDOM
+##  test=0
+##  while [ $test -eq 0 ]
+##  do
+##    queueJKCS=queue${scriptfile}_${random}.dat
+##    if [ -e $queueJKCS ]
+##    then
+##      random=$RANDOM
+##    else
+##      test=1
+##    fi
+##  done
+##  qf=../../$queuefile 
+##  qf2=../../$queuefile2
+## 
+##  # RUN/
+##  echo "$scriptfile: $row files are gonna be calculated"
+##  if [ ! -z "$files" ]
+##  then
+##    #command
+##    command="$toolspath/JKrun -programs $Qprograms -time $Qtime2 -q $qf2 -max $MAXJOBS -r $REPEAT -f $feeding -p $program -inp $queueJKCS"
+##    if [ ! -z $Qpartition2 ]
+##    then
+##      command+=" -partition $Qpartition2"
+##    fi
+##    ###
+##    # G16
+##    if [ "$program" == "G16" ]
+##    then 
+##      $toolspath/JKxyz2com -cpu $CPU  $addmemory -nr -char $totcharge -mult $MULTIPLICITY $addbase -method "$method" $files >> output
+##      inpfiles=`ls *.com`
+##    fi
+##    # XTB
+##    if [ "$program" == "XTB" ] 
+##    then
+##      cp $files ./ 
+##      inpfiles=`ls *.xyz`
+##      #unpaired electrons 2*S=M-1
+##      unpaired=`echo $MULTIPLICITY-1|bc`
+##      #command improvement
+##      command+=`echo " -opt \"$method -chrg $totcharge -uhf $unpaired\""`
+##    fi
+##    # ORCA
+##    if [ "$program" == "ORCA" ]
+##    then
+##      $toolspath/JKxyz2inp -cpu $CPU $addmemory -char $totcharge -mult $MULTIPLICITY -method "$method" $files >> output
+##      inpfiles=`ls *.job`
+##    fi
+##    # DLPNO
+##    if [ "$program" == "DLPNO" ]
+##    then
+##      cp $files ./ 
+##      inpfiles=`ls *.xyz`
+##      if [ "$method" == "# wb97xd 6-31+g* opt" ]; then method=""; fi
+##      #command improvement
+##      command+=`echo " -opt \"$method -chrg $totcharge -mult $MULTIPLICITY\""`
+##    fi
+##    ################
+##    echo $inpfiles > $queueJKCS
+##
+##    echo "$command" > run${scriptfile}_${random}.sh 
+##    # checking queue program
+##    if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
+##    then
+##      # calculate
+##      sh run${scriptfile}_${random}.sh 
+##    else
+##      # calculate ... send to queue
+##      #echo "$scriptfile: $programSendToQueue1part $parameters $programSendToQueue2part \"${command}\""
+##      queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part sh run${scriptfile}_${random}.sh`
+##      echo "$scriptfile: $queue"
+##      echo $queue | awk '{print $4}' >> $qf
+##    fi
+##    ##################### 
+##  fi
+##
+##  cd ../../../
+###done
+##echo "$scriptfile: Done :-D"
