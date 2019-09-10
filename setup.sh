@@ -42,6 +42,6 @@ then
   cp .JKCSusersetup.txt ~/.JKCSusersetup.txt
   echo "Please, change all required paths in file ~/.JKCSusersetup.txt"
 else
-  echo "File ~/.JKCSusersetup.txt already exist, but check, if all paths in this file are correct."
+  echo "File ~/.JKCSusersetup.txt already exist, but check, if all paths in this file are correct. (or use -r argument to rewrite)"
 fi
 echo "-----------------------"

@@ -3,6 +3,19 @@
 ############################## USER SETUP ################################################
 ##########################################################################################
 
+# CONTENT:
+# USER SETUP
+#   - Output style setup
+#   - Paths declaration
+#   - Default supercomputer setup
+# ADVANCED USER SETUP
+#   - program_ABC
+#   - program_XTB
+#   - program_G16
+#   - program_PYTHON2 & program_PYTHON3
+#   - program_GoodVibes
+#   - SBATCHuseradd
+
 ##########################
 ### Output style setup ###			
 ##########################
@@ -16,7 +29,7 @@ Qsymbol=1
 ### Paths declaration ###
 #########################
 
-PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-Linux2.0/rigidmol-optimizer"
+PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
 PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
 PATH_GoodVibes="/wrk/kubeckaj/Desktop/Ph.D./COLL/goodvibes/goodvibes/GoodVibes.py"
 
@@ -67,23 +80,23 @@ function program_XTB {
 
   export XTBHOME=$PATH_XTB
   export PATH=$PATH:${XTBHOME}/bin:${XTBHOME}/scripts
- 
+  
   #CREATING WORKING DIRECTORY
   if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
   ADD=""
   test=0
   while [ $test -eq 0 ]
   do
-    XTB_NAME=$WRKDIR/TMP/XTB_${SLURM_JOBID}${ADD}
-    if [ -d $XTB_NAME ]; then ADD="_${RANDOM}"
+    CALC_NAME=$WRKDIR/TMP/XTB${SLURM_JOBID}${ADD}
+    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
     else test=1;fi     
   done
  
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
-  mkdir $XTB_NAME
-  cp $input $XTB_NAME
-  cd $XTB_NAME
+  mkdir $CALC_NAME
+  cp $input $CALC_NAME
+  cd $CALC_NAME
   $XTBHOME/bin/xtb $input $args > $output
 
   #COPYING RESULTS BACK
@@ -95,7 +108,51 @@ function program_XTB {
 
   #CLEANING
   cd $DIR
-  rm -rf $XTB_NAME
+  rm -rf $CALC_NAME
+}
+##########################################################################################
+##########################################################################################
+# G16 script: gaussian
+# loadinng gaussian licence might be required
+##########################################################################################
+function program_G16 {
+  input=$1                     # file.xyz    
+  base=$(basename $input .xyz) # file
+  inputCOM=$base.com
+  output=$base.log             # file.log
+  args=${@:2}                  # all arguments except the first one
+
+  export g16root=/appl/chem/G16RevA.03
+  source $g16root/g16/bsd/g16.login
+  export OMP_NUM_THREADS=1
+ 
+  #CREATING WORKING DIRECTORY
+  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  ADD=""
+  test=0
+  while [ $test -eq 0 ]
+  do
+    CALC_NAME=$WRKDIR/TMP/G16${SLURM_JOBID}${ADD}
+    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
+    else test=1;fi
+  done
+
+  export GAUSS_SCRDIR=$CALC_NAME 
+
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  mkdir $GAUSS_SCRDIR
+  
+  JKxyz2com $input 
+  exit
+  srun g16 < $inputCOM >& $output
+  JKlog2xyz $output
+
+  #COPYING RESULTS BACK
+  cp $output $DIR/
+
+  #CLEANING
+  rm -rf $CALC_NAME
 }
 ##########################################################################################
 ##########################################################################################
