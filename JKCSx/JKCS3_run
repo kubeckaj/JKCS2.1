@@ -102,6 +102,9 @@ JKloadprogram
 JKloaddirs
 currentdir=${PWD##*/}
 
+# load charge and multiplicity
+JKloadCHARM
+
 # load amount of molecules
 M=`head -n 1 $inputfile | awk '{print $6}'`
 
