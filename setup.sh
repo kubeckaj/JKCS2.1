@@ -39,6 +39,7 @@ echo "-----------------------"
 
 if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ]
 then
+  if [ -e ~/.JKCSusersetup.txt ]; then cp ~/.JKCSusersetup.txt ~/.oldJKCSusersetup.txt; fi
   cp .JKCSusersetup.txt ~/.JKCSusersetup.txt
   echo "Please, change all required paths in file ~/.JKCSusersetup.txt"
 else

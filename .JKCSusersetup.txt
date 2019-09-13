@@ -66,7 +66,7 @@ function program_ABC {
   rigidmoloptimizer=$PATH_ABCluster
  
   #performing the calculation 
-  module load gcc/8.2.0 2>/dev/null 
+  module load gcc/8.2.0 2>/dev/null
   $rigidmoloptimizer $input > $output 
 }
 ##########################################################################################
@@ -99,16 +99,16 @@ function program_XTB {
   mkdir $CALC_NAME
   cp $input $CALC_NAME
   cd $CALC_NAME
-  $XTBHOME/bin/xtb $input $method $args > $output 2>$output
+  $XTBHOME/bin/xtb $input $method $args > $output
 
   #COPYING RESULTS BACK
   cp $output $DIR/
-  if [ -e $base.xyz ]
-  then
-   cp $base.xyz $DIR/$base.xyz
-  else
-   cp $input $DIR/$base.xyz
-  fi
+  if [ -e $base.xyz ]					      
+  then								 
+   cp $base.xyz $DIR/$base.xyz				     
+  else							     
+   cp $input $DIR/$base.xyz				      
+  fi  
 
   #CLEANING
   cd $DIR
@@ -145,7 +145,7 @@ function program_G16 {
   DIR=$PWD
   mkdir $CALC_NAME
   
-  JKxyz2com $input -method $method -mem $MEMinsert -cpu $SCcpu -char $CHARGE -mult $MULTIPLICITY  $args
+  JKxyz2com $input -method $method -mem $MEMORY -cpu $SCcpu -char $CHARGE -mult $MULTIPLICITY  $args
   exit
   srun g16 < $inputCOM >& $output
   JKlog2xyz $output
@@ -187,8 +187,8 @@ function program_ORCA {
   DIR=$PWD
   mkdir $CALC_NAME
 
-  MEMinsert=`echo 0.85*$mem | sed 's/mb//' | sed 's/gb/*1000/' | bc`
-  JKxyz2inp $input -method $method -mem $MEMinsert -cpu $SCcpu -char $CHARGE -mult $MULTIPLICITY  $args
+  MEMinsert=`echo 0.85*$MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
+  JKxyz2inp $input -method $method -mem $MEMinsert -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
   rm *.job
   $PATH_ORCA $inputINP > $output
   #JKout2xyz $output
