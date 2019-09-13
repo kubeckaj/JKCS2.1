@@ -309,6 +309,14 @@ then
       #command="source ~/.JKCSusersetup.txt;\n program_$program $motherdir/$folderOLD/${name}-LM/$file"
       #printf "$command" > run${scriptfilecommand}.sh
       commandTODO="cd $motherdir/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $motherdir/$folderOLD/${name}-LM/$file;"
+      echo """method=$method
+CHARGE=$CHARGE
+MULTIPLICITY=$MULTIPLICITY
+MEMORY=$SCmem
+PARTITION=$SCpar
+NODES=$SCnodes
+TIME=$SCtime
+CPU=$SCcpu""" > arguments.txt
       echo $commandTODO >> commands_TODO.txt
     done
     JKecho 3 "    Commands like "$commandTODO" written to commands_TODO.txt"

@@ -304,7 +304,6 @@ done
 
 cd ..
 
-JKecho 1 "I, this script, did all my job :-D"
 exit
 
   if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]

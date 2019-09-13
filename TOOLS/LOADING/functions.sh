@@ -41,8 +41,8 @@ function JKloadhelp {
 
 #load charge and multiplicity 
 function JKloadCHARM {
-  CHARGE=`grep "TotalCharge" $inputfile | awk '{print $2}'`
-  MULTIPLICITY=`grep "TotalMultiplicity" $inputfile | awk '{print $2}'`
+  CHARGE=`grep "TotalCharge" $inputfile | awk '{print $2}'`
+  MULTIPLICITY=`grep "TotalMultiplicity" $inputfile | awk '{print $2}'`
   JKecho 2 "Loading charge ($CHARGE) and multiplicity ($MULTIPLICITY)"
 }
 

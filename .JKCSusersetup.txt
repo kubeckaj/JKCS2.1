@@ -66,6 +66,7 @@ function program_ABC {
   rigidmoloptimizer=$PATH_ABCluster
  
   #performing the calculation 
+  module load gcc/8.2.0 2>/dev/null 
   $rigidmoloptimizer $input > $output 
 }
 ##########################################################################################
@@ -98,13 +99,15 @@ function program_XTB {
   mkdir $CALC_NAME
   cp $input $CALC_NAME
   cd $CALC_NAME
-  $XTBHOME/bin/xtb $input $method $args > $output
+  $XTBHOME/bin/xtb $input $method $args > $output 2>$output
 
   #COPYING RESULTS BACK
   cp $output $DIR/
-  if [ -e xtbopt.xyz ]
+  if [ -e $base.xyz ]
   then
-   cp xtbopt.xyz $DIR/$base.xyz
+   cp $base.xyz $DIR/$base.xyz
+  else
+   cp $input $DIR/$base.xyz
   fi
 
   #CLEANING
