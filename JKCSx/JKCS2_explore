@@ -43,8 +43,9 @@ function help {
     -s,-sc \"X\" ........ amount of scout bees [def=4]
     -pop,-i,-init \"X\" . amount of initial guesses [def=]
     OTHERS: -box
-    OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}
     OTHERS: -time(-t), -partition(-par), -programs, -short 
+    OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}
+    OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...}
 
   BASIC EXAMPLES:
     
@@ -125,7 +126,7 @@ do
   if [ "$iter" == "-pop" ] || [ "$iter" == "-i" ] || [ "$iter" == "-init" ] || [ "$iter" == "-INIT" ]; then last="-i";  continue;fi
   if [ "$iter" == "-s" ] || [ "$iter" == "-sc" ]   || [ "$iter" == "-SC" ];   then last="-s";  continue;fi
   if [ "$iter" == "-box" ];                                                   then last="-box";continue;fi
-  # -time
+  # -walltimebased
   if [ "$iter" == "-walltimebased" ] || [ "$iter" == "-wtb" ]
   then
     last="-walltimebased"
@@ -141,7 +142,32 @@ do
     #   [INIT] = [POP] = [time (h)]*[3600 (s/h)]/{CPU}/NoC/0.02/M/M/M/M
     #TODO CPU not included
     GEN=100
-    INIT="$time/NoC/0.002/M/M/M/M"
+    INIT="$time/NoC/0.0012/M/M/M/M"
+    continue
+  fi
+  # -walltimecontrolled
+  if [ "$iter" == "-walltimecontrolled" ] || [ "$iter" == "-wtc" ]
+  then
+    last="-walltimecontrolled"
+    continue
+  fi
+  if [ "$last" == "-walltimecontrolled" ];
+  then
+    last=""
+    time=`echo $iter | sed "s/s//" | sed "s/m/*60/" | sed "s/h/*60*60/" | sed "s/d/*24*60*60/"`
+    # [sec/job] = [time (h)]*[3600 (s/h)]/{CPU}/NoC
+    # Exp. (gen=100,sc=4):
+    #   [sec/job] = 0.2*M*M*M*M*[POP]
+    #   [INIT] = [POP] = [time (h)]*[3600 (s/h)]/{CPU}/NoC/0.02/M/M/M/M
+    #TODO CPU not included
+    GENcheck=`echo $GEN   | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+    GENcheck=`echo "($GENcheck+0.5)/1" | bc`
+    if [ $GENcheck -gt 100 ]; then GEN=100; fi
+    INITinp=`echo "$time/NoC/0.0012/M/M/M/M" | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+    INITinp=`echo "($INITinp+0.5)/1" | bc`
+    INITcheck=`echo $INIT | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
+    INITcheck=`echo "($INITcheck+0.5)/1" | bc`
+    if [ $INITcheck -gt $INITinp ]; then INIT="$time/NoC/0.0012/M/M/M/M"; fi
     continue
   fi
   # 
@@ -159,7 +185,13 @@ SC=`echo $SC     | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
 SC=`echo "($SC+0.5)/1" | bc`
 BOX=`echo $BOX   | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
 BOX=`echo "($BOX+0.5)/1" | bc`
-
+#CORRECT IF THERE IS JUST 1 MOLECULE:
+if [ $M -eq 1 ]
+then
+  LM=1
+  GEN=1
+  INIT=1
+fi
 
 JKecho 1 "ABCluster parameters set: LM(${cfGREEN}$LM${cfDEF}),GEN(${cfGREEN}$GEN${cfDEF}),INIT(${cfGREEN}$INIT${cfDEF}),SC(${cfGREEN}$SC${cfDEF}),BOX(${cfGREEN}$BOX${cfDEF})."
 
@@ -269,27 +301,29 @@ do
   $SC_command sh $toolspath/SCRIPTS/JKperform.sh
   #echo "$SC_command"
 done
-JKecho 1 "I, this script, did all my job :-D" 
+
 cd ..
+
+JKecho 1 "I, this script, did all my job :-D"
 exit
 
-##  if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
-##  then 
-##    parameters=""
-##    # calculate
-##    sh run${scriptfile}.sh
-##  else
-##    # calculate ... send to queue
-##    #echo $programSendToQueue1part $parameters $programSendToQueue2part \""$command"\"
-##    queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part sh run${scriptfile}.sh`
-##    echo "$scriptfile: $queue"
-##  # checking queue program
-##    echo $queue | awk '{print $4}' >> ../../$queuefile
-##  fi
-##cd ../..
-##CPU=`echo $CPU/$count | bc`
-##if [ $CPU -gt 8 ]; then CPU=8; fi
-##if [ $CPU -gt 1 ];
-##then
-##  parameters+=" -n $CPU"
-##fi
+  if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
+  then 
+    parameters=""
+    # calculate
+    sh run${scriptfile}.sh
+  else
+    # calculate ... send to queue
+    #echo $programSendToQueue1part $parameters $programSendToQueue2part \""$command"\"
+    queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part sh run${scriptfile}.sh`
+    echo "$scriptfile: $queue"
+  # checking queue program
+    echo $queue | awk '{print $4}' >> ../../$queuefile
+  fi
+cd ../..
+CPU=`echo $CPU/$count | bc`
+if [ $CPU -gt 8 ]; then CPU=8; fi
+if [ $CPU -gt 1 ];
+then
+  parameters+=" -n $CPU"
+fi

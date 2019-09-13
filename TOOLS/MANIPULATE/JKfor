@@ -2,7 +2,7 @@ for i in `ls -d SYS*`
 do
  cd $i
  echo $i
- sh -c "$*"
+ eval "$@"
  cd ..
 # echo ''
 done

@@ -1,5 +1,0 @@
-DONE 45159929 cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/XTB/XTB_0_2_0/calc-LM/; source ~/.JKCSusersetup.txt; program_XTB /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/ABC/ABC_0_2_0/calc-LM/0.xyz;
-DONE 45159929 cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/XTB/XTB_0_2_0/calc-LM/; source ~/.JKCSusersetup.txt; program_XTB /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/ABC/ABC_0_2_0/calc-LM/1.xyz;
-DONE 45159929 cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/XTB/XTB_0_2_0/calc-LM/; source ~/.JKCSusersetup.txt; program_XTB /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/ABC/ABC_0_2_0/calc-LM/2.xyz;
-DONE 45159929 cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/XTB/XTB_0_2_0/calc-LM/; source ~/.JKCSusersetup.txt; program_XTB /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/ABC/ABC_0_2_0/calc-LM/3.xyz;
-DONE 45159929 cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/XTB/XTB_0_2_0/calc-LM/; source ~/.JKCSusersetup.txt; program_XTB /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/ABC/ABC_0_2_0/calc-LM/4.xyz;

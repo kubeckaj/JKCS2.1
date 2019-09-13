@@ -32,6 +32,7 @@ Qsymbol=1
 PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
 PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
 PATH_GoodVibes="/wrk/kubeckaj/Desktop/Ph.D./COLL/goodvibes/goodvibes/GoodVibes.py"
+PATH_ORCA="/wrk/kubeckaj/DONOTREMOVE/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
 
 ###################################
 ### Default supercomputer setup ###
@@ -97,7 +98,7 @@ function program_XTB {
   mkdir $CALC_NAME
   cp $input $CALC_NAME
   cd $CALC_NAME
-  $XTBHOME/bin/xtb $input $args > $output
+  $XTBHOME/bin/xtb $input $method $args > $output
 
   #COPYING RESULTS BACK
   cp $output $DIR/
@@ -137,19 +138,61 @@ function program_G16 {
     else test=1;fi
   done
 
-  export GAUSS_SCRDIR=$CALC_NAME 
-
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
-  mkdir $GAUSS_SCRDIR
+  mkdir $CALC_NAME
   
-  JKxyz2com $input 
+  JKxyz2com $input -method $method -mem $MEMinsert -cpu $SCcpu -char $CHARGE -mult $MULTIPLICITY  $args
   exit
   srun g16 < $inputCOM >& $output
   JKlog2xyz $output
 
   #COPYING RESULTS BACK
   cp $output $DIR/
+  cp *.xyz $DIR/
+
+  #CLEANING
+  rm -rf $CALC_NAME
+}
+##########################################################################################
+##########################################################################################
+# ORCA script: orca
+# 
+##########################################################################################
+function program_ORCA {
+  input=$1                     # file.xyz    
+  base=$(basename $input .xyz) # file
+  inputINP=$base.inp
+  output=$base.out             # file.out
+  args=${@:2}                  # all arguments except the first one
+
+  export OMP_NUM_THREADS=1 
+  module load orca-env/4.0.1.2
+
+  #CREATING WORKING DIRECTORY
+  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  ADD=""
+  test=0
+  while [ $test -eq 0 ]
+  do
+    CALC_NAME=$WRKDIR/TMP/ORCA${SLURM_JOBID}${ADD}
+    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
+    else test=1;fi
+  done
+
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  mkdir $CALC_NAME
+
+  MEMinsert=`echo 0.85*$mem | sed 's/mb//' | sed 's/gb/*1000/' | bc`
+  JKxyz2inp $input -method $method -mem $MEMinsert -cpu $SCcpu -char $CHARGE -mult $MULTIPLICITY  $args
+  rm *.job
+  $PATH_ORCA $inputINP > $output
+  #JKout2xyz $output
+
+  #COPYING RESULTS BACK
+  cp $output $DIR/
+  cp *.xyz $DIR/
 
   #CLEANING
   rm -rf $CALC_NAME

@@ -1,1 +1,0 @@
-DONE LOC cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_1W/ABC/ABC_0_1_0; sh runJKCS2_explore.sh;

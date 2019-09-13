@@ -188,9 +188,6 @@ toolspath="$scriptpath/../TOOLS"
 # load names
 source $toolspath/TOOLSextra/names.txt
 
-# programs
-source $toolspath/../$Qprograms
-
 ###############################################################################
 
 ##################################
@@ -220,6 +217,7 @@ echo "#!/bin/bash -l
 #SBATCH --mem-per-cpu=$muisti2  # requested memory per process in MB
 #SBATCH -e jobfile-$(basename $i .xyz).err%J
 #SBATCH -o $(basename $i .xyz).out
+
 mkdir $(basename $i .xyz)
 cp $(basename $i .xyz).inp $(basename $i .xyz).xyz $(basename $i .xyz)
 cd $(basename $i .xyz)
