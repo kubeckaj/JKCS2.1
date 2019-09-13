@@ -39,6 +39,13 @@ function JKloadhelp {
   arguments=("${arguments_help[@]}")
 }
 
+#load charge and multiplicity 
+function JKloadCHARM {
+  CHARGE=`grep "TotalCharge" $inputfile | awk '{print $2}'`
+  MULTIPLICITY=`grep "TotalMultiplicity" $inputfile | awk '{print $2}'`
+  JKecho 2 "Loading charge ($CHARGE) and multiplicity ($MULTIPLICITY)"
+}
+
 #load parameters for supercomputer
 function JKloadsupercomputer {
   JKecho 2 "Loading default parameters for supercomputer."
@@ -104,7 +111,7 @@ function JKloadsupercomputer {
       continue
     fi
     if [ "$last" == "-cpu" ]; then
-      SCcpu`echo "${arguments[i]}" | sed "s/M/$M/" | sed "s/NoC/$NoC/" | bc`
+      SCcpu=`echo "${arguments[i]}" | sed "s/M/$M/" | sed "s/NoC/$NoC/" | bc`
       last=''
       continue
     fi
