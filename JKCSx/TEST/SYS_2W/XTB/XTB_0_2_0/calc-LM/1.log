@@ -1,0 +1,198 @@
+      -----------------------------------------------------------      
+     |                   =====================                   |     
+     |                           x T B                           |     
+     |                   =====================                   |     
+     |                         S. Grimme                         |     
+     |          Mulliken Center for Theoretical Chemistry        |     
+     |                    University of Bonn                     |     
+     |                 Version 6.0.1 (SAW181210)                 |     
+      -----------------------------------------------------------      
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+   
+   FOR NON-COMMERCIAL, ACADEMIA USE ONLY.
+   
+   Cite this work as:
+   S. Grimme, C. Bannwarth, P. Shushkov, J. Comput. Theory Chem., 2017,
+   13, 1989-2009.
+   C. Bannwarth, S. Ehlert and S. Grimme., ChemRxiv, 2018, preprint.
+   http://doi.org/10.26434/chemrxiv.7246238.v1
+   
+   for sTDA-xTB:
+   S. Grimme and C. Bannwarth, J. Chem. Phys., 2016, 145, 054103.
+   
+   in the mass-spec context:
+   V. Asgeirsson, C. Bauer and S. Grimme, Chem. Sci., 2017, 8, 4879.
+   
+   if GBSA is used:
+   P. Shushkov, F. März and S. Grimme, unpublished.
+   
+   for ANC optimizer:
+   S. Grimme, unpublished.
+   Rational Function algorithm used in ANCopt:
+   F. Eckert, P. Pulay, H.-J. Werner, J. Comput. Chem., 1997, 18, 1473.
+   
+   with help from (in alphabetical order)
+   C. Bannwarth, F. Bohle, G. Brandenburg, E. Caldeweyher, M. Checinski,
+   S. Dohm, S. Ehlert, S. Ehrlich, F. März, H. Neugebauer, J. Pisarek,
+   P. Pracht, P. Shushkov, and S. Spicher.
+   
+ * started run on 2019/09/09 at 16:38:47.392     
+========================================================================
+ # omp threads = 1
+========================================================================
+number of atoms            : 6
+number of electrons        : 16
+charge                     : 0
+spin                       : .0
+first test random number   : .8957
+
+########################################################################
+# WARNING! Please study the warnings concerning your input carefully
+#  - XTBPATH is not set, using XTBHOME instead
+########################################################################
+
+           ------------------------------------------------- 
+          |                 G F N 2 - x T B                 |
+          | Geometry, Frequencies, Noncovalent interactions |
+          |            JCTC 2018 parametrisation            |
+           ------------------------------------------------- 
+      method parameters     
+ k(s)        :  1.8500
+ k(p)        :  2.2300
+ k(d)        :  2.2300
+ k(f)        :  2.0000
+ kEN (H0ij)  : -2.0000
+ D4 a1       :  0.5200
+ D4 a2       :  5.0000
+ D4 s6       :  1.0000
+ D4 s8       :  2.7000
+ D4 s9       :  5.0000
+ alphaj      :  2.0000
+
+
+            Z     q(EN)     CN     RAES       Cart. coordinates
+     1  O   6.0   -0.27    1.93    1.82     1.22875     0.61981    -2.81054
+     2  H   1.0    0.16    1.03    1.43     0.34467     0.33730    -1.24426
+     3  H   1.0    0.14    0.97    1.43     2.91368    -0.01151    -2.53298
+     4  O   6.0   -0.30    2.00    1.83    -0.96780    -0.29802     1.68326
+     5  H   1.0    0.14    0.97    1.43    -2.17194    -1.63003     1.98395
+     6  H   1.0    0.14    0.97    1.43    -1.34736     0.98245     2.92057
+
+  Z AO/shell   Hii/eV     exponent
+  1     Wed Apr 25 08:07:45 CEST 2018   EN: 2.200 GM2: 0.406  GM3: 0.0800  RAES: 1.40
+     1s    -10.707211    1.230000
+  8     Wed Apr 25 08:07:45 CEST 2018   EN: 3.440 GM2: 0.452  GM3:-0.0517  RAES: 1.80
+     2s    -20.229985    2.439742
+     2p    -15.503117    2.137023
+ no old-style atom pair restraining (fixing) potential
+
+molecular fragmentation (1/2 indicates fragments):
+111222
+# atoms in fragment 1/2:     3     3
+ fragment masses (1/2) :       18.02       18.02
+CMA distance (Bohr)    :   5.121
+constraining FC (au)   :  0.0500
+           ------------------------------------------------- 
+          |        Self-Consistent Charge Iterations        |
+           ------------------------------------------------- 
+
+ Ncao       : 12
+ Nao        : 12
+ Nshell     : 8
+ Nel        : 16
+ T(el)      :   300.0
+ intcut     :    25.0
+ scfconv/Eh :  0.100E-05
+   qconv/e  :  0.100E-03
+ intneglect :  0.100E-07
+ broydamp   :      0.250
+ iter      E             dE          RMSdq      gap      omega  full diag
+   1    -10.1842434 -0.101842E+02  0.590E+00   14.74       0.0  T
+   2    -10.2007514 -0.165081E-01  0.402E+00   13.79       1.0  T
+   3    -10.2127668 -0.120154E-01  0.985E-01   11.79       1.0  T
+   4    -10.2099545  0.281237E-02  0.150E+00   12.81       1.0  T
+   5    -10.2133857 -0.343119E-02  0.104E-01   12.07       1.0  T
+   6    -10.2133832  0.241339E-05  0.905E-02   12.07       1.0  T
+   7    -10.2133951 -0.118448E-04  0.453E-03   12.03       9.0  T
+   8    -10.2133951 -0.190915E-07  0.115E-03   12.03      35.4  T
+   9    -10.2133951  0.104731E-08  0.120E-03   12.03      34.1  T
+  10    -10.2133951 -0.192767E-08  0.151E-04   12.03     269.7  T
+  11    -10.2133951 -0.247340E-10  0.400E-05   12.03    1019.4  T
+speedup  1.08
+cpu  time for SCC    0.00 s
+wall time for SCC    0.00 s
+
+   *** convergence criteria satisfied after 11 iterations ***
+
+          eigenvalues
+ #    :           1          2          3          4          5          6          7          8
+ occ. :        2.000      2.000      2.000      2.000      2.000      2.000      2.000      2.000
+ eps  :       -19.199    -17.523    -16.076    -15.194    -14.109    -13.039    -12.642    -11.133
+ #    :           9         10         11         12
+ occ. :        0.000      0.000      0.000      0.000
+ eps  :         0.900      4.206      5.864      9.212
+
+
+   #   Z            q   n(s)   n(p)   n(d)      C6AA      α(0)
+   1   8 O     -0.601  1.747  4.854  0.000    25.212     6.777
+   2   1 H      0.309  0.691  0.000  0.000     0.695     1.310
+   3   1 H      0.267  0.733  0.000  0.000     0.831     1.432
+   4   8 O     -0.563  1.737  4.826  0.000    24.310     6.655
+   5   1 H      0.294  0.706  0.000  0.000     0.739     1.350
+   6   1 H      0.294  0.706  0.000  0.000     0.739     1.350
+
+ Mol. C6AA /au·bohr⁶  :        178.704313
+ Mol. C8AA /au·bohr⁸  :       3200.563355
+ Mol. α(0) /au        :         18.872754
+
+ 
+ Wiberg/Mayer (AO) data. WBOs > 0.1 written file <wbo>
+ largest (>0.05) Wiberg bond orders for each atom
+           total WBO             WBO to atom ...
+     1  O   1.817    H    3 0.929    H    2 0.864
+     2  H   0.905    O    1 0.864
+     3  H   0.929    O    1 0.929
+     4  O   1.873    H    6 0.909    H    5 0.909
+     5  H   0.913    O    4 0.909
+     6  H   0.913    O    4 0.909
+ MOs/occ written to file <molden.input>
+ 
+molecular dipole:
+                 x           y           z       tot (Debye)
+ q only:       -0.346      -0.294       1.126
+   full:       -0.433      -0.409       1.521       4.152
+molecular quadrupole (traceless):
+                xx          xy          yy          xz          yz          zz
+ q only:        2.620       0.089      -0.330      -2.299       1.650      -2.290
+  q+dip:        3.691       0.116      -0.550      -3.305       2.278      -3.142
+   full:        3.787       0.132      -0.644      -3.502       2.314      -3.143
+
+SCC energy    :     -10.2133951
+rep           :       0.0662256
+ES            :       0.0637869
+AES           :      -0.0026595
+AXC           :      -0.0014290
+disp          :      -0.0008102
+XB            :       0.0000000
+fix           :       0.0000000
+total E       :     -10.1471694
+atomizationE  :       1.0416528      653.65
+(atE without considering molecular charge,
+ total energy contains solvation terms)
+H-L gap (eV)  :         12.0328
+
+------------------------------------------------------------------------
+ * finished run on 2019/09/09 at 16:38:47.432     
+------------------------------------------------------------------------
+ total:
+ * wall-time:     0 d,  0 h,  0 min,  0.038 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.034 sec
+ * ratio c/w:     0.888 speedup
+ SCF:
+ * wall-time:     0 d,  0 h,  0 min,  0.018 sec
+ *  cpu-time:     0 d,  0 h,  0 min,  0.015 sec
+ * ratio c/w:     0.852 speedup
+

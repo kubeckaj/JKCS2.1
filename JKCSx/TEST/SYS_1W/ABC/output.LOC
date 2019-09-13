@@ -1,0 +1,9 @@
+JOBID = LOC
+mother dir = /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_1W/ABC
+Job number: 0+1
+Line to be done: cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_1W/ABC/ABC_0_1_0; sh runJKCS2_explore.sh;
+Linenumber to be done: 1
+runtime = 2
+totruntime = 2
+Job number: 0+1+1
+Everything is finished or already calculating. [EXITING]

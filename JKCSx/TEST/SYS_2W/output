@@ -1,0 +1,330 @@
+JKCS2_explore: ABCluster parameters set: LM(600),GEN(10),INIT(10),SC(4),BOX(9).
+JKCS2_explore: Leaving directory SYS_2W
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB already exists. [SKIP]
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+8
+96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB already exists. [SKIP]
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Subfoldering parameter set to: 1
+JKCS3_run: Files were collected. The amount of files: 96.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: 
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: ABC  2  1  1  72:00:00  serial  4000  XTB  2  1  1  00:05:00  test  4000  DFT  100  8  1  72:00:00  serial  4000  CC  100  8  1  330:00:00  longrun  4000  -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: 2  1  1  72:00:00  serial  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 2
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  00:05:00  test  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  00:05:00  test  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  00:05:00  test  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  00:05:00  test  4000
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: loc
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: loc  1  1  1  -  -  -
+JKCS3_run: Folder XTB has been created.
+JKCS3_run: Output printing set to level 3
+JKCS3_run: Colours loaded.
+JKCS3_run: Program set: XTB
+JKCS3_run: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS3_run: Loading default parameters for supercomputer.
+JKCS3_run: Type of method used: XTB
+JKCS3_run: Extracting values from parameters.txt
+JKCS3_run: Default supercomputer parameters: XTB  2  1  1  00:05:00  test  4000
+JKCS3_run: Loading parameters given by user
+JKCS3_run: Final supercomputer parameters: XTB  2  1  1  00:05:00  test  4000
+JKCS3_run: Folder XTB has been created.
+JKCS4_collect: Folder 0 does not exist in this folder. SKIP
+JKCS4_collect: Output printing set to level 2
+JKCS4_collect: Colours loaded.
+JKCS4_collect: Program set: XTB
+JKCS4_collect: Function program_XTB from ~/.JKCSusersetup.txt is utilized.
+JKCS4_collect: Loading default parameters for supercomputer.
+JKCS4_collect: Type of method used: loc
+JKCS4_collect: Extracting values from parameters.txt
+JKCS4_collect: Default supercomputer parameters: -loc  1  1  1  -  -  -
+JKCS4_collect: Loading parameters given by user
+JKCS4_collect: Final supercomputer parameters: loc  1  1  1  -  -  -

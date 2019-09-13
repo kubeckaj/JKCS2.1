@@ -1,0 +1,341 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program that collect your results from JKCS folders    ##
+## To understand program run help:                        ##
+##       for help use arguement -help                     ##
+############################################################
+## "It's funny that I can call on girlfrien Lol, she does ##
+## not know if I am laughing at her."       Jakub Kubecka ##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+###############################################################################
+###################################### HELP ###################################
+###############################################################################
+
+### THIS IS HELP
+
+function help {
+  printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "Program that collect your results from JKCS folders\n"
+  printf """
+  $scriptfile ${cfGRAY}[OPTIONS]${cfDEF}
+
+  ALL OPTIONS:
+   -help ............ print this help and exit
+   [FOLDER] ......... from which are data collected [default: XTB]
+   -dlpno ........... needs files from -dlpno1 & -dlpno2
+   -dlpno1 \"X\" ...... set dlpno file [default: resultsDLPNO.dat]
+   -dlpno2 \"X\" ...... set free energy file [default: resultsDFT_HIGH_freq.dat]
+   New Colective Coordinates: (3rd column)
+   -ncc ............. + something assuming hydrogen bond lengths
+   -dip ............. + dipoles
+   -g,-gibbs ........ + Gibbs free energy
+   -gh,-gibbsh ...... + Gibbs free energy (GoodVibes)
+   -b,-bonds [ATOM] [thresh] .................... ++ amount of bonds with spec. atom
+   -b2,-bonds2 [ATOM1] [ATOM2] [thresh] ......... ++ amount of bonds with spec. atoms
+   -b3,-bonds3 [ATOM1] [ATOM2] [ATOM3] [thresh] . ++ amount of bonds with spec. atoms
+   OTHERS: -time, -time1, -time2, -programs, -partition(-par)
+           
+
+  BASIC EXAMPLES:
+    
+    JKCS4_collect DFT_HIGH_freq -gibbs
+    JKCS4_collect XTB -time 1:00:00
+    JKCS4_collect DFT_HIGH -programs 2\n"""
+  printf "#################################################################\n"
+  exit
+}
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+################################################################################
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours           # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+# method 
+method=XTB
+#JKloadprogram
+
+# check for folderbasename_something arguments and in case enter directories
+JKloaddirs
+currentdir=${PWD##*/}
+
+# load amount of molecules
+M=`head -n 1 $inputfile | awk '{print $6}'`
+
+# -loc or load supercomputer parameters
+JKloadsupercomputer
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+#reading arguments important for this script
+
+QJKsend=0
+Qcheck=0                   
+Qprograms=programs.txt    # where to take script parameters
+Qncc=0                    # calculate and collect new collective variable
+Qncc2=0
+Qncc2a=""
+Qncc2b=""
+Qncc2c=""
+Qncc2d=""
+#collect all
+Qdlpno=0                         # values from resultsDLPNO.dat and resultsDFT_HIGH_freq.dat
+Qdlpno1=resultsDLPNO.dat         # values from resultsDLPNO.dat and resultsDFT_HIGH_freq.dat
+Qdlpno2=resultsDFT_HIGH_freq.dat # values from resultsDLPNO.dat and resultsDFT_HIGH_freq.dat
+
+# loop over all arguments
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  ###
+  if [ "$iter" == "-gibbs" ] || [ "$iter" == "-g" ]
+  then
+    Qncc=3
+    continue
+  fi
+  ###
+  if [ "$iter" == "-gibbsh" ] || [ "$iter" == "-gh" ]
+  then
+    Qncc=4
+    continue
+  fi
+  ###
+  if [ "$iter" == "-dlpno" ] 
+  then
+    Qdlpno=1
+    continue
+  fi
+  ###
+  if [ "$last" == "-dlpno1" ]
+  then
+    Qdlpno1=$iter
+    last=""
+    continue
+  fi
+  if [ "$iter" == "-dlpno1" ]
+  then
+    last="-dlpno1"
+    continue
+  fi
+  ### atom bonds3
+  if [ "$last" == "-bonds3" ]; then
+    Qncc2=5; Qncc2a="$iter"; last="-bonds3s"; continue
+  fi
+  if [ "$last" == "-bonds3s" ]; then
+    Qncc2b="$iter"; last='-bonds3ss'; continue
+  fi
+  if [ "$last" == "-bonds3ss" ]; then
+    Qncc2c="$iter"; last='-bonds3sss'; continue
+  fi
+  if [ "$last" == "-bonds3sss" ]; then
+    Qncc2d="$iter"; last=''; continue
+  fi
+  if [ "$iter" == "-bonds3" ] || [ "$iter" == "-b3" ]; then
+    last="-bonds3"; continue
+  fi
+  ### atom bonds2
+  if [ "$last" == "-bonds2" ]; then
+    Qncc2=5; Qncc2a="$iter"; last="-bonds2s"; continue
+  fi
+  if [ "$last" == "-bonds2s" ]; then
+    Qncc2b="$iter"; last='-bonds2ss'; continue
+  fi
+  if [ "$last" == "-bonds2ss" ]; then
+    Qncc2c="-"; Qncc2d="$iter"; last=''; continue
+  fi
+  if [ "$iter" == "-bonds2" ] || [ "$iter" == "-b2" ]; then
+    last="-bonds2"; continue
+  fi
+  ### atom bonds
+  if [ "$last" == "-bonds" ]
+  then
+    Qncc2=5
+    Qncc2a="$iter"
+    last="-bondss" 
+    continue
+  fi
+  if [ "$last" == "-bondss" ]
+  then
+    Qncc2d="$iter"
+    Qncc2c="-"
+    Qncc2b="-"
+    last=''
+    continue
+  fi
+  if [ "$iter" == "-bonds" ] || [ "$iter" == "-b" ]
+  then
+    last="-bonds"
+    continue
+  fi
+  ###
+  if [ "$last" == "-dlpno2" ]
+  then
+    Qdlpno2=$iter
+    last=""
+    continue
+  fi
+  if [ "$iter" == "-dlpno2" ]
+  then
+    last="-dlpno2"
+    continue
+  fi
+  ###
+  if [ "$iter" == "-ncc" ] 
+  then
+    Qncc=1
+    continue
+  fi
+  ###
+  if [ "$iter" == "-dip" ] 
+  then
+    Qncc=2
+    continue
+  fi
+  ###
+  method="${i%/*}"  # It is checked later if some folder with name method exist. + "/" is removed immidiately
+done
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+#Does method exist
+if [ ! -d ${method} ]
+then
+  JKecho 1 "Folder ${method} does not exist in this folder. ${cfYELLOW}SKIP${cfDEF}"
+  exit
+fi
+
+#files
+savefile="$collectionfile${method}.txt"
+resultfile="$resultsfile${method}.dat"
+movie="$moviefile${method}.xyz"
+
+if [ ! -e $savefile ]; then touch $savefile;fi
+if [ -e $resultfile ]; then rm $resultfile;fi
+JKecho 2 "Output files checked ($savefile,$resultfile,$movie)"
+  
+### IF DLPNO FIN #############################################
+if [ $Qdlpno -eq 1 ]
+then
+  #test Qdlpno1 extension
+  ext=`echo $Qdlpno1 | rev | cut -c1-4 | rev`
+  if [ "$ext" == ".dat" ]
+  then
+    file1=$Qdlpno1
+    f1=collection`echo $(basename $Qdlpno1 .dat) | cut -c8-`.txt
+    f2=collection`echo $(basename $Qdlpno2 .dat) | cut -c8-`.txt
+  else
+    file1=$Qdlpno1
+    f1=$Qdlpno1
+    f2=$Qdlpno2
+  fi
+  /#for all lines
+  lines=`cat $file1 | wc -l`
+  for i in `seq 1 $lines`
+  do
+    file=`head -n $i $f1 | tail -n 1 | awk '{print $1}'`
+    filename=`echo ${file#*calc-LM}`;
+    DFTel=`grep $filename $f2 | awk '{print $3}'`
+    DFTg=` grep $filename $f2 | awk '{print $4}'`
+    DLPNO=`head -n $i $f1 | tail -n 1 | awk '{print $3}'`
+    dG=`echo "$DLPNO+($DFTg-1.0*$DFTel)" | bc -l`
+    echo " $file || $DFTel $DFTg $DLPNO || $dG "
+  #
+  done
+  continue
+fi   
+#############################################################
+
+if [ -d ${method}/${name}-LM ]
+then 
+  subfolders="${method}/${name}-LM"
+else
+  subfolders=`ls -d XTB/XTB_*/calc-LM | xargs`
+fi
+#################################################
+tocontrol=""
+
+for subfolder in $subfolders
+do
+  ## ENTERING FOLDER
+  cd $subfolder
+  JKecho 2 "Analyzing subfolder $subfolder"
+
+  #################################################################
+  # command
+  command="$toolspath/TOOLSextra/JKcollect $Qprograms RUN $method $savefile $Qncc $Qncc2 $Qncc2a $Qncc2b $Qncc2c $Qncc2d"
+  #echo $command
+  # checking queue program
+  if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
+  then
+    parameters=""
+    # calculate
+    sh -c "$command"
+  else
+    # calculate ... send to queue
+    queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part "$command"`
+    echo "$scriptfile: $queue"
+    tocontrol+=" `echo $queue | awk '{print $4}'`"
+  fi
+  ######################    
+
+  cd $motherdir
+done
+
+echo "$scriptfile: Sending to CONTROL collection." 
+echo "in $PWD" 
+######################
+# command
+command="$toolspath/TOOLSextra/JKcollect $Qprograms CONTROL $method $savefile $Qncc $resultfile $movie"
+# checking queue program
+if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
+then
+  parameters=""
+  touch collectqueuetocontrolfile$method
+  # calculate
+  sh -c "$command"
+else
+  # calculate ... send to queue
+  echo $tocontrol > collectqueuetocontrolfile$method
+  queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part "$command"`
+  echo "$scriptfile: $queue"
+  echo $queue | awk '{print $4}' >> $queuefile
+fi
+######################    
+
+cd ..
+echo "$scriptfile: Done :-D"

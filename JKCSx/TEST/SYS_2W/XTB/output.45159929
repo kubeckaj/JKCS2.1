@@ -1,0 +1,14 @@
+JOBID = 45159929
+mother dir = /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/TEST/SYS_2W/XTB
+Job number: 1
+Line to be done: cd XTB_0_2_0; sh /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/../TOOLS/SCRIPTS/JKperform.sh; cd ..
+Linenumber to be done: 1
+runtime = 0
+totruntime = 0
+Job number: 2
+Line to be done: cd XTB_1_0_1; sh /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/../TOOLS/SCRIPTS/JKperform.sh; cd ..
+Linenumber to be done: 2
+runtime = 2
+totruntime = 2
+Job number: 3
+Everything is finished or already calculating. [EXITING]

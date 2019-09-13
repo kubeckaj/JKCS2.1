@@ -1,0 +1,109 @@
+                                                      
+       * * * * * * * * * * * * * * * * * *            
+      *       ____   _____ _           _   *          
+     *  /\   |  _ \ / ____| |         | |  * * * * *  
+    *  /  \  | |_) | |    | |_   _ ___| |_ ___ _ __  *
+   *  / /\ \ |  _ <| |    | | | | / __| __/ _ \ '__| *
+  *  / ____ \| |_) | |____| | |_| \__ \ ||  __/ |  *  
+  * /_/    \_\____/ \_____|_|\__,_|___/\__\___|_|  *  
+  *                                                *  
+  * * * * * * * * * * * * * * * * * * * * * * * * *   
+                                                      
+
+ABCluster 2.0
+Specific flag:  official version
+Platform:       LINUX/UNIX
+Compiled by:    junzhang@gellmann.scs.illinois.edu
+Compiling date: Jul 30 2018 10:38:43
+C++ compiler:   g++
+C++ options:    -O3 -Os -fno-exceptions --std=c++0x -fopenmp -fPIC -msse4 
+
+Contributors:
+Jun Zhang(University of Cologne): Design and coding.
+
+For any suggestions, comments, and questions on the theory and
+implementation of ABCluster, please feel free to contact:
+
+Dr. Jun Zhang, ZhangJunQcc@gmail.com
+
+If you used this program in your work, please cite this reference:
+
+[1] Zhang, J.; Dolg, M.; ABCluster: The Artificial Bee Colony Algorithm for
+    Cluster Global Optimization. Phys. Chem. Chem. Phys. 2015, 17, 24173-24181.
+[2] Zhang, J.; Dolg, M.; Global Optimization of Clusters of Rigid Molecules by the
+    Artificial Bee Colony Algorithm. Phys. Chem. Chem. Phys. 2016, 18, 3003-3010.
+
+Program starts at Wed Sep  4 17:24:01 2019.
+Command line: " /wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-2.0-Linux/rigidmol-optimizer calc.inp "
+Process ID:   40507
+Run by:       kubeckaj@taito-login3.csc.fi
+Available CPU cores:    16
+Read "OMP_NUM_THREADS": Unset
+
+Random number testing (integers): 1368155175...1451501880
+Random number testing (fractals): 0.59747342...0.56735869
+
+ -- Input/Output Parameters --
+Input file name:      calc.inp
+Cluster file name:    calc.cluster
+Result file name:     calc.(cluster/xyz/gjf)
+Temporary file name:  abclusterkubeckajtaito-login3.csc.fi40507-OPT
+# of saved LMs:       600
+LMs are stored in:    calc-LM
+
+ -- ABC Control Parameters --
+Population size:                   10
+Maximal generation:                10
+Scout limit:                        4
+Amplitude:                 9.00000000
+
+ -- Cluster Components: from [ calc.cluster ] --
+ -----------------------------------------------------------
+   Source                                       #   Charge
+ -----------------------------------------------------------
+   /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/../TOOLS/STRUCTURES/ABC/oh.xyz     0   -1.000
+   /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/../TOOLS/STRUCTURES/JACOB/aq.xyz     2    0.000
+   /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/JKCSx/../TOOLS/STRUCTURES/JACOB/aqp.xyz     0    1.000
+ -----------------------------------------------------------
+   Dimension: 0, an isolate cluster.
+ -----------------------------------------------------------
+   External electric field:           0.00000000 Volt/Angstrom
+ -----------------------------------------------------------
+ ! ! ! WARNING: The non-neutral system may exhibit a Coulombic explosion!
+
+Artificial Bee Colony Optimization Starts!
+----------------------------------------------------------------------------------
+ * Population: 10; Maximal cycles: 10
+ * EM = Employed Bee; Trigonometric mutation
+ * OL = Onlooker Bee; ABC/best/2(0.5)+ABC/current/2(0.5);
+        Tournament selection from 5 nectars.
+ * SC = Scout Bee; Random nectar; Limit = 4
+----------------------------------------------------------------------------------
+    #       Diversity            maxE            minE    byEM    byOL    bySC
+----------------------------------------------------------------------------------
+    1      0.00443298    -41.65691598    -41.66596299       5       0       0
+    2      0.00361985    -41.65691598    -41.66596670       4       0       0
+    3      0.00271487    -41.65691598    -41.66596670       1       0       0
+    4      0.00000105    -41.66596464    -41.66596670       1       0       0
+    5      0.00000105    -41.66596464    -41.66596670       0       0       0
+    6      0.00000105    -41.66596464    -41.66596670       0       0       0
+    7     10.08556699     -8.03936613    -41.66596631       0       0       9
+    8      0.00414720    -41.65691598    -41.66596636       3       0       1
+    9      0.00443337    -41.65691598    -41.66596636       0       1       0
+   10      0.00443300    -41.65691598    -41.66596636       2       0       0
+----------------------------------------------------------------------------------
+Artificial Bee Colony Optimization Finished!
+
+ -- Results Report --
+ * 3 LMs will be saved in [ calc-LM ].
+      #          Energy
+      0    -41.66596299
+      1    -41.65691598
+      2     -8.03936613
+
+ * Final Global Minimal Energy:    -41.66596299
+ * The Global Minimum is saved as: [ calc-OPT.(cluster/xyz/gjf) ]
+
+===== (^ _ ^) =====
+Normal termination at Wed Sep  4 17:24:02 2019.
+Total run time: 1 seconds = 0 days 0 hours 0 minutes 1 seconds.

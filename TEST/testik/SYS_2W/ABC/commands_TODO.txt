@@ -1,0 +1,2 @@
+DONE LOC cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/TEST/testik/SYS_2W/ABC/ABC_0_2_0; sh runJKCS2_explore.sh;
+DONE LOC cd /wrk/kubeckaj/DONOTREMOVE/Apps/JKCS2.0/TEST/testik/SYS_2W/ABC/ABC_1_0_1; sh runJKCS2_explore.sh;
