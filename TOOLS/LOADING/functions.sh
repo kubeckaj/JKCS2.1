@@ -220,8 +220,8 @@ function JKloaddirs {
     command=`echo $scriptpath/$scriptfilecommand $commandarguments1 $commandarguments2`
     JKecho 2 "Evaluating command ${cfYELLOW}$command${cfDEF}"
     eval $command
-    JKecho 1 "Leaving directory ${cfRED}${i}${cfDEF}"
     cd ..
+    JKecho 1 "Leaving directory ${cfRED}${i}${cfDEF}"
   done
   if [ ! -z "$folders" ]
   then
@@ -260,7 +260,7 @@ function JKloadprogram {
   then 
     JKecho 2 "Function ${cfGREEN}program_$program${cfDEF} from ${cfYELLOW}~/.JKCSusersetup.txt${cfDEF} is utilized."
   else
-    JKecho 1 "Sorry, I did not find function ${cfGREEN}program_$program${cfDEF} in ${cfYELLOW}~/.JKCSusersetup.txt${cfDEF}. [${cfRED}EXITING${cfDEF}]"
+    JKecho 0 "Sorry, I did not find function ${cfGREEN}program_$program${cfDEF} in ${cfYELLOW}~/.JKCSusersetup.txt${cfDEF}. [${cfRED}EXITING${cfDEF}]"
     exit 
   fi
   arguments=("${arguments_help[@]}")
