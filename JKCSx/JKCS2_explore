@@ -102,7 +102,7 @@ JKloadsupercomputer
 #reading arguments important for this script
 
 # initial setup of parameters
-LM="300*M"
+LM="300*M/NoC"
 GEN=100
 INIT="300*M"
 SC=4
