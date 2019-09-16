@@ -238,6 +238,7 @@ fi
 ################################ MAIN PROGRAM #################################
 ################################ DO NOT TOUCH #################################
 ###############################################################################
+JKecho 1 "$program calculations will be performed."
 
 #checking old folder or results file
 if [ $QfromfolderOLD -eq 0 ]
@@ -350,7 +351,7 @@ do
 done
 
 ###################################################################
-#JKecho 1 "I, this script, did all my job :-D"
+JKecho 1 "This subfolder is finished."
 exit
 
 

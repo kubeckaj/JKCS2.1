@@ -214,6 +214,11 @@ function JKloaddirs {
     fi
   fi
   # Entering to all folders
+  if [ ! -z "$folders" ]
+  then
+    JKecho 1 "I, this script, will enter to all subfolders. :-D"
+    exit
+  fi
   motherdir=$PWD
   for i in $folders
   do

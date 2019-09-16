@@ -290,13 +290,12 @@ fi
 #################################################
 tocontrol=""
 
-JKecho 2 "Collection from all ${method} subfolders."
+JKecho 1 "Collection from all ${method} subfolders."
 for subfolder in $subfolders
 do
   ## ENTERING FOLDER
-  cd $subfolder
   JKecho 3 "    Analyzing subfolder $subfolder"
-
+  cd $subfolder
   #################################################################
   # command
   command="$toolspath/SCRIPTS/JKcollect --- RUN $method $savefile $Qncc $Qncc2 $Qncc2a $Qncc2b $Qncc2c $Qncc2d"
@@ -308,12 +307,33 @@ do
   ##
 done
 ###
-JKecho 1 "Sending to CONTROL collection." 
+cd $motherdir/$method
+jobscount=`echo $subfolders | xargs -n 1 | wc -l `
+echo $subfolders
+JKecho 2 "Counting amount of jobs: $jobscount"
+
+JKecho 2 "+ Sending to CONTROL collection." 
+commandTODO="WAITING cd $motherdir; $toolspath/SCRIPTS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie"
+echo $commandTODO >> commands_TODO.txt
+
+### Sending jobs ###
+if [ $jobscount -lt $SCtasks ]
+then
+  SCtasks=$jobcount
+fi
+JKecho 2 "Tasks used: $SCtasks"
+for i in `seq 1 $SCtasks`
+do
+  #echo "sendjob $currentdir-ABC" 
+  $SC_command sh $toolspath/SCRIPTS/JKperform.sh
+  #echo "$SC_command"
+done
+cd $motherdir
+JKecho 1 "Subfolder finished/submitted."
 
 exit
 ######################
 # command
-command="$toolspath/SCRITPS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie"
 # checking queue program
 if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
 then

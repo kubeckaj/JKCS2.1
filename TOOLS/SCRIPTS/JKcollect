@@ -15,7 +15,7 @@
 
 # locate TOOLS path
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
-toolspath="$scriptpath/../TOOLS"
+toolspath="$scriptpath/../"
 
 # load names
 source $toolspath/LOADING/names.txt
@@ -89,45 +89,46 @@ then
   Qncc=$5
   resultfile=$6
   movie=$7
-  tocontrol=`cat collectqueuetocontrolfile$method`
-  if [ -e collectqueuetocontrolfile$method ]; then rm collectqueuetocontrolfile$method; fi
-  echo "TEST-jakub BEFORE"
-  if [ ! -z "$tocontrol" ]
-  then
-    test=1
-    while [ $test -ne 0 ]
-    do
-      sleep $test;
-      testMEM=$test
-      test=0
-      for i in $tocontrol
-      do
-        state=`sacct -j $i  --format=State | tail -n 1`
-        if [ $state == "COMPLETED" ]
-        then
-          continue
-        else
-          test=1
-        fi
-      done
-      if [ $test -ne 0 ]
-      then
-        if [ $testMEM -ne 10 ]
-        then
-          test=`echo $testMEM+1 |bc`
-        else
-          test=$testMEM
-        fi
-      fi
-    done
-  fi
-  echo "TEST-jakub AFTER"
+  #if [ -e collectqueuetocontrolfile$method ]; 
+  #then 
+  #  tocontrol=`cat collectqueuetocontrolfile$method`
+  #  rm collectqueuetocontrolfile$method; 
+  #fi
+  #if [ ! -z "$tocontrol" ]
+  #then
+  #  test=1
+  #  while [ $test -ne 0 ]
+  #  do
+  #    sleep $test;
+  #    testMEM=$test
+  #    test=0
+  #    for i in $tocontrol
+  #    do
+  #      state=`sacct -j $i  --format=State | tail -n 1`
+  #      if [ $state == "COMPLETED" ]
+  #      then
+  #        continue
+  #      else
+  #        test=1
+  #      fi
+  #    done
+  #    if [ $test -ne 0 ]
+  #    then
+  #      if [ $testMEM -ne 10 ]
+  #      then
+  #        test=`echo $testMEM+1 |bc`
+  #      else
+  #        test=$testMEM
+  #      fi
+  #    fi
+  #  done
+  #fi
   ## for savefile
   if [ -e $savefile ]; then rm $savefile; fi
   cat */$savefile     >> $savefile 2>/dev/null
   cat */*/$savefile   >> $savefile 2>/dev/null
   cat */*/*/$savefile >> $savefile 2>/dev/null
-  echo "TEST after savefile"
+  #echo "TEST after savefile"
   ## are there 4 columns??
   test4=0
   test4c=`head -n 1 $savefile | awk '{print $4}'`
@@ -151,7 +152,6 @@ then
     SORT=4
     u3=3
   fi
-  echo TEST-going for UNIQUENESS
   # send for uniqueness
   $scriptpath/$scriptfile "---" "UNIQUENESS" $savefile $resultfile $movie $SORT $u1 $u2 $u3
 fi

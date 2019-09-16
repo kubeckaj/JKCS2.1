@@ -68,8 +68,8 @@ function getcommand {
         if [ $doingcount -eq 0 ]
         then
           test=1
-          line=${line:2}
-          sed "${linenumber}s/WAITITNG//" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+          line=${line:8}
+          sed "${linenumber}s/WAITING//" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
           sed "${linenumber}s/^/DOING $MY_ID /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
           break
         else
@@ -180,6 +180,7 @@ source ~/.JKCSusersetup.txt
 MY_jobnumber=0
 while [ 1 -eq 1 ]
 do
+  echo "################" >> $MY_output 
   jobtime=`date +%s`
   MY_jobnumber=`echo $MY_jobnumber+1 | bc`
   echo "Job number: $MY_jobnumber" >> $MY_output
