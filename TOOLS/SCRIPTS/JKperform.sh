@@ -194,7 +194,8 @@ do
   # UPDATING COMMANDS
   fincommand 
   # CHECK IF I AM NOT OUT OF TIME
-  timing 
+  timing
+  echo "################" >> $MY_output 
 done
 
 
