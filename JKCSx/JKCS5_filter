@@ -1,0 +1,299 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program that filter your data                          ##
+## To understand program run help:                        ##
+##       for help use arguement -help                     ##
+############################################################
+## "Heaven is not such a place what everybody things it   ##
+## is. #4% "   Jakub Kubecka                              ##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+Qhelp=0
+Quniq=0
+#u1=2
+#u2=3
+#u3=3
+#Qs=3
+
+# loop over all arguments
+for i in $*
+do
+  ### GENERAL ###
+  ## help
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then Qhelp=1;continue;fi
+  # partition
+  if [ "$last" == '-par' ]
+  then
+    last=''
+    parameters+=" -p $i"
+    continue
+  fi
+  if [ "$i" == "-par" ] || [ "$i" == "-partition" ]
+  then
+    last="-par"
+    continue
+  fi
+  ## time
+  if [ "$last" == "-time" ]
+  then
+    last=""
+    parameters+=" --time $i"
+    continue
+  fi
+  if [ "$i" == "-time" ] || [ "$i" == "-t" ]
+  then
+    last="-time"
+    continue
+  fi
+  # programs
+  if [ "$last" == '-programs' ]
+  then
+    last=''
+    if [ "$i" == 2 ]
+    then
+      Qprograms="programs2.txt"
+    else
+      Qprograms="$i"
+    fi
+    continue
+  fi
+  if [ "$i" == "-programs" ]
+  then
+    last='-programs'
+    continue
+  fi
+  ##
+  ### UNIQUENESS ###
+  # uniqueness
+  if [ "$i" == "-u" ] || [ "$i" == "-uniq" ]
+  then
+    Quniq=1
+    continue
+  fi
+  # u1
+  if [ "$last" == "-u1" ]
+  then
+    last=""
+    u1=$i
+    Quniq=1
+    continue
+  fi
+  if [ "$i" == "-u1" ] 
+  then
+    last="-u1"
+    continue
+  fi
+  # u2
+  if [ "$last" == "-u2" ]
+  then
+    last=""
+    u2=$i
+    Quniq=1
+    continue
+  fi
+  if [ "$i" == "-u2" ]
+  then
+    last="-u2"
+    continue
+  fi
+  # u3
+  if [ "$last" == "-u3" ]
+  then
+    last=""
+    u3=$i
+    Quniq=1
+    continue
+  fi
+  if [ "$i" == "-u3" ]
+  then
+    last="-u3"
+    continue
+  fi
+  # sort 
+  if [ "$last" == "-sort" ]
+  then
+    last=""
+    Qs=$i
+    Quniq=1
+    continue
+  fi
+  if [ "$i" == "-sort" ] 
+  then
+    last="-sort"
+    continue
+  fi
+  # folder
+  L4=`echo $i | cut -c1-4`
+  if [ -d "$i" ] && [ "$L4" == "SYS_" ]
+  then
+    folders+=" $i"
+    continue
+  fi
+  ### SAMPLING AND FILTERING ###
+  arguments+=" $i" 
+  ###
+done
+
+# checking is input file is in this folder:
+# going through the argument
+testfile=0
+for i in $arguments
+do
+  # one of the argument should be file.dat containing the values
+  text=`echo "aaaa$i" | rev | cut -c-4 | rev`
+  if [ "$text" == ".dat" ]
+  then
+    if [ -e $i ]
+    then
+    testfile=`echo $testfile+1 | bc`
+    fi
+  fi
+done
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+if [ $Qhelp -ne 1 ]
+then
+  # load parameters
+  if [  $testfile -gt 0 ]
+  then
+    folders="."
+  else
+    source $toolspath/TOOLSextra/loadparameters.sh
+  fi
+fi
+
+###############################################################################
+# asking just for help?
+if [ $Qhelp -eq 1 ]
+then 
+  eval "$python2 $toolspath/SCRIPTS/DataFilter.py -help"
+  exit
+fi
+
+##################################
+## LOOP OVER ALL FOLDERS
+##################################
+for folder in $folders
+do
+  echo "$scriptfile: `echo "${PWD##*/}"`: Entering folder $folder"
+  cd $folder
+
+  ########################
+  # going through all arguments
+  testfile=0
+  file=""
+  for i in $arguments
+  do
+    # one of the argument should be file.dat containing the values
+    text=`echo "aaaa$i" | rev | cut -c-4 | rev`
+    if [ "$text" == ".dat" ]
+    then
+      if [ ! -e $i ] 
+      then
+        echo "$scriptfile: error - $i does not exist. EXITING"
+        exit
+      fi
+      testfile=`echo $testfile+1 | bc`
+      file+=" $i"
+    fi
+  done 
+  # checking amount of input files
+  if [ $testfile -eq 0 ]
+  then
+    echo "$scriptfile: error - input file is missing (the one with .dat extension). EXITING"
+    exit
+  fi 
+  if [ $testfile -gt 2 ]
+  then
+    echo "$scriptfile: error - too many input files ($testfile) (those with .dat extension) (RESELECT IS DISABLED NOW). EXITING"
+    exit
+  fi
+  ##############
+  # UNIQUENESS #
+  ##############
+  if [ $Quniq -eq 1 ]
+  then
+    #file
+    foldername=`echo $file | cut -c8- | rev | cut -c5- | rev` 
+    colfile=collection${foldername}.txt
+    movfile=movie${foldername}.xyz
+    if [ ! -e $colfile ]
+    then
+      echo "$scriptfile: error - collection file ($colfile) does not exist. EXITING"
+      exit
+    fi
+    search="UNIQUENESS: $file"
+    if [ -e FILTER.txt ]
+    then
+      if [ -z "$u1" ]; then u1=`grep $search FILTER.txt | tail -n 1 | awk '{print $8}'`; fi
+      if [ -z "$u2" ]; then u2=`grep $search FILTER.txt | tail -n 1 | awk '{print $10}'`; fi
+      if [ -z "$u3" ]; then u3=`grep $search FILTER.txt | tail -n 1 | awk '{print $12}'`; fi
+      if [ -z "$Qs" ]; then Qs=`grep $search FILTER.txt | tail -n 1 | awk '{print $14}'`; fi
+    fi
+    if [ -z "$u1" ]; then u1=2; fi
+    if [ -z "$u2" ]; then u2=3; fi
+    if [ -z "$u3" ]; then u3=-1; fi
+    if [ -z "$Qs" ]; then Qs=3; fi
+    # send for uniqueness
+    $toolspath/TOOLSextra/JKcollect $Qprograms "UNIQUENESS" $colfile $file $moviefile $Qs $u1 $u2 $u3
+  fi
+
+  ###############################
+  ### FILTERING AND SELECTING ###
+  ###############################
+  # no filtering or sampling
+  arg=`Felements $arguments`
+  if [ "$arg" -eq "$testfile" ]
+  then
+    cd ..
+    continue
+  fi 
+  # running the job
+  if [ $testfile -eq 1 ]
+  then
+    command="$python $toolspath/TOOLSextra/DataFilter.py $arguments"
+  else
+    #this case: testfile=2 DISABLED NOW, SEE ABOVE
+    command="$toolspath/TOOLSextra/reselectfromfromfilter.sh $arguments"
+  fi
+  # checking queue program
+  #if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
+  #then
+    # calculate
+  sh -c "$command"
+  #else
+    # calculate ... send to queue
+  #  queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part "$command"`
+  #  echo "$scriptfile: $queue"
+  #  echo $queue | awk '{print $4}' >> $queuefile
+  #fi
+  ##################### 
+  cd ..
+done
+
+echo "$scriptfile: Done."
