@@ -81,7 +81,8 @@ JKloadcolours           # some coloured output
 # check -help option
 JKloadhelp             # check if user asks for -help
 
-# method 
+# program 
+program=XTB
 method=XTB
 #JKloadprogram
 
@@ -224,7 +225,7 @@ do
     continue
   fi
   ###
-  method="${i%/*}"  # It is checked later if some folder with name method exist. + "/" is removed immidiately
+  method="${iter%/*}"  # It is checked later if some folder with name method exist. + "/" is removed immidiately
 done
 
 ###############################################################################
@@ -284,43 +285,35 @@ if [ -d ${method}/${name}-LM ]
 then 
   subfolders="${method}/${name}-LM"
 else
-  subfolders=`ls -d XTB/XTB_*/calc-LM | xargs`
+  subfolders=`ls -d ${method}/${method}_*/calc-LM | xargs`
 fi
 #################################################
 tocontrol=""
 
+JKecho 2 "Collection from all ${method} subfolders."
 for subfolder in $subfolders
 do
   ## ENTERING FOLDER
   cd $subfolder
-  JKecho 2 "Analyzing subfolder $subfolder"
+  JKecho 3 "    Analyzing subfolder $subfolder"
 
   #################################################################
   # command
-  command="$toolspath/TOOLSextra/JKcollect $Qprograms RUN $method $savefile $Qncc $Qncc2 $Qncc2a $Qncc2b $Qncc2c $Qncc2d"
-  #echo $command
-  # checking queue program
-  if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
-  then
-    parameters=""
-    # calculate
-    sh -c "$command"
-  else
-    # calculate ... send to queue
-    queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part "$command"`
-    echo "$scriptfile: $queue"
-    tocontrol+=" `echo $queue | awk '{print $4}'`"
-  fi
-  ######################    
-
+  command="$toolspath/SCRIPTS/JKcollect --- RUN $method $savefile $Qncc $Qncc2 $Qncc2a $Qncc2b $Qncc2c $Qncc2d"
+  printf "$command" > run${scriptfilecommand}.sh
+  commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
   cd $motherdir
+  echo $commandTODO >> $method/commands_TODO.txt
+  JKecho 3 "    Command $commandTODO [$command] written to $method/commands_TODO.txt"
+  ##
 done
+###
+JKecho 1 "Sending to CONTROL collection." 
 
-echo "$scriptfile: Sending to CONTROL collection." 
-echo "in $PWD" 
+exit
 ######################
 # command
-command="$toolspath/TOOLSextra/JKcollect $Qprograms CONTROL $method $savefile $Qncc $resultfile $movie"
+command="$toolspath/SCRITPS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie"
 # checking queue program
 if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
 then

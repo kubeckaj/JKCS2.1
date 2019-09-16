@@ -304,25 +304,3 @@ done
 
 cd ..
 
-exit
-
-  if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
-  then 
-    parameters=""
-    # calculate
-    sh run${scriptfile}.sh
-  else
-    # calculate ... send to queue
-    #echo $programSendToQueue1part $parameters $programSendToQueue2part \""$command"\"
-    queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part sh run${scriptfile}.sh`
-    echo "$scriptfile: $queue"
-  # checking queue program
-    echo $queue | awk '{print $4}' >> ../../$queuefile
-  fi
-cd ../..
-CPU=`echo $CPU/$count | bc`
-if [ $CPU -gt 8 ]; then CPU=8; fi
-if [ $CPU -gt 1 ];
-then
-  parameters+=" -n $CPU"
-fi
