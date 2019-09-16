@@ -29,10 +29,13 @@ Qsymbol=1
 ### Paths declaration ###
 #########################
 
-PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
-PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
-PATH_GoodVibes="/wrk/kubeckaj/Desktop/Ph.D./COLL/goodvibes/goodvibes/GoodVibes.py"
-PATH_ORCA="/wrk/kubeckaj/DONOTREMOVE/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
+PATH_ABCluster="/projappl/hvehkama/kubeckaj/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
+PATH_XTB="/projappl/hvehkama/kubeckaj/Apps/XTB6.0/"
+PATH_GoodVibes="/projappl/hvehkama/kubeckaj/Apps/goodvibes/goodvibes/GoodVibes.py"
+PATH_ORCA="/projappl/hvehkama/kubeckaj/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
+PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
+
+WRKDIR="/scratch/hvehkama/kubeckaj/"
 
 ###################################
 ### Default supercomputer setup ###
@@ -42,9 +45,9 @@ function echo_SCpartition {
   echo """######################################################
 ## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
 ======================================================
-ABC  NoC     1    1   72:00:00   serial     4000
-XTB  NoC     1    1   72:00:00   serial     4000
-DFT  100     8    1   72:00:00   serial     4000
+ABC  NoC     1    1   72:00:00   small      4000
+XTB  NoC     1    1   72:00:00   small      4000
+DFT  100     8    1   72:00:00   small      4000
 CC   100     8    1   330:00:00  longrun    4000
 -loc 1       1    1   -          -          -
 ======================================================"""
@@ -66,7 +69,7 @@ function program_ABC {
   rigidmoloptimizer=$PATH_ABCluster
  
   #performing the calculation 
-  module load gcc/8.2.0 2>/dev/null
+  module load gcc 2>/dev/null
   $rigidmoloptimizer $input > $output 
 }
 ##########################################################################################
@@ -75,13 +78,19 @@ function program_ABC {
 # xtb uses OMP parallelization. Use all available CPU, unless OMP_NUM_THREADS is specified.
 ##########################################################################################
 function program_XTB {
-  input=$1                     # file.xyz    
-  base=$(basename $input .xyz) # file
+  base="$(basename $1 .xyz)"   # file basename
+  input="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.xyz" # full path of file.xyz    
   output=$base.log             # file.log
   args=${@:2}                  # all arguments except the first one
 
-  export XTBHOME=$PATH_XTB
-  export PATH=$PATH:${XTBHOME}/bin:${XTBHOME}/scripts
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
+
+  export XTBPATH=$PATH_XTB
+  export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
   
   #CREATING WORKING DIRECTORY
   if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
@@ -93,19 +102,32 @@ function program_XTB {
     if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
     else test=1;fi     
   done
- 
+
+  #CHARGE AND MULTIPLICITY
+  if [[ "$method" != *"-c "* ]] && [[ "$method" == *"-chrg "* ]] && [[ "$args" == *"-c "* ]] && [[ "$args" == *"-chrg "* ]];
+  then
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    args+=" --chrg $CHARGE "
+  fi
+  if [[ "$method" != *"-u "* ]] && [[ "$method" == *"-uhf "* ]] && [[ "$args" == *"-u "* ]] && [[ "$args" == *"-uhf "* ]];
+  then
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    unpaired=`echo $MULTIPLICITY-1|bc` 
+    args+=" --uhf $unpaired "
+  fi
+
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   mkdir $CALC_NAME
-  cp $input $CALC_NAME
+  cp $input $CALC_NAME/
   cd $CALC_NAME
-  $XTBHOME/bin/xtb $input $method $args > $output
+  $XTBPATH/bin/xtb $input $method $args > $output 2>&1
 
   #COPYING RESULTS BACK
-  cp $output $DIR/
-  if [ -e $base.xyz ]					      
+  cp $output $DIR/$output
+  if [ -e xtbopt.xyz ]					      
   then								 
-   cp $base.xyz $DIR/$base.xyz				     
+   cp xtbopt.xyz $DIR/$base.xyz				     
   else							     
    cp $input $DIR/$base.xyz				      
   fi  
@@ -126,7 +148,7 @@ function program_G16 {
   output=$base.log             # file.log
   args=${@:2}                  # all arguments except the first one
 
-  export g16root=/appl/chem/G16RevA.03
+  export g16root=$PATH_G16
   source $g16root/g16/bsd/g16.login
   export OMP_NUM_THREADS=1
  
@@ -206,7 +228,7 @@ function program_ORCA {
 ##########################################################################################
 #use python2.X, numpy might be required (needed by JKCS1)
 function program_PYTHON2 {
-  python2.6 ${@}
+  python2.7 ${@}
 }
 #use python3.X (needed by GoodVibes)
 function program_PYTHON3 {
@@ -224,5 +246,5 @@ function program_GoodVibes {
 # sbatch
 # command: sbatch [some_parameters] $SBATCHuseradd script
 ##########################################################################################
-SBATCHuseradd=""
+SBATCHuseradd=" --account=hvehkama "
 ##########################################################################################

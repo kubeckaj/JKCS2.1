@@ -232,7 +232,7 @@ function JKloaddirs {
   done
   if [ ! -z "$folders" ]
   then
-    JKecho 1 "This script is done!"
+    JKecho 1 "I, this script, did all my job :-D"
     exit 
   fi
 }

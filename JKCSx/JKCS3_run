@@ -132,7 +132,7 @@ Qtestboth=0
 #TODO REPEAT=0
 
 ### METHOD 
-method="-opt vtight"
+method="--opt vtight"
 
 last=""
 # loop over all arguments
@@ -270,6 +270,18 @@ else
   JKecho 2 "Folder $folderNEW has been created."
 fi
 
+#save general arguments
+function JKarguments {
+echo """method=\"$method\"
+CHARGE=$CHARGE
+MULTIPLICITY=$MULTIPLICITY
+MEMORY=$SCmem
+PARTITION=$SCpar
+NODES=$SCnodes
+TIME=$SCtime
+CPU=$SCcpu""" > arguments.txt
+}
+
 #echo MOTHERDIR = $motherdir
 #subfoldering
 if [ $QfromfolderOLD -eq 1 ]
@@ -288,6 +300,9 @@ then
       cd $motherdir/$folderNEW
       mkdir $newsub
       mkdir $newsub/${name}-LM
+      cd $newsub 
+      JKarguments
+      cd ..
       for file in $files
       do
         #command="source ~/.JKCSusersetup.txt;\n program_$program $motherdir/$folderOLD/${name}-LM/$file"
@@ -304,19 +319,12 @@ then
     files=`ls *.xyz`
     cd $motherdir/$folderNEW
     mkdir ${name}-LM
+    JKarguments
     for file in $files
     do
       #command="source ~/.JKCSusersetup.txt;\n program_$program $motherdir/$folderOLD/${name}-LM/$file"
       #printf "$command" > run${scriptfilecommand}.sh
       commandTODO="cd $motherdir/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $motherdir/$folderOLD/${name}-LM/$file;"
-      echo """method=$method
-CHARGE=$CHARGE
-MULTIPLICITY=$MULTIPLICITY
-MEMORY=$SCmem
-PARTITION=$SCpar
-NODES=$SCnodes
-TIME=$SCtime
-CPU=$SCcpu""" > arguments.txt
       echo $commandTODO >> commands_TODO.txt
     done
     JKecho 3 "    Commands like "$commandTODO" written to commands_TODO.txt"
@@ -342,7 +350,7 @@ do
 done
 
 ###################################################################
-JKecho 1 "I, this script, did all my job :-D"
+#JKecho 1 "I, this script, did all my job :-D"
 exit
 
 
