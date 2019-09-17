@@ -49,7 +49,7 @@ ABC  NoC     1    1   72:00:00   small      4000
 XTB  NoC     1    1   72:00:00   small      4000
 DFT  100     8    1   72:00:00   small      4000
 CC   100     8    1   330:00:00  longrun    4000
--loc 1       1    1   -          -          -
+-loc 1       1    1   -          -          4000
 ======================================================"""
 }
 
@@ -148,8 +148,13 @@ function program_G16 {
   output=$base.log             # file.log
   args=${@:2}                  # all arguments except the first one
 
-  export g16root=$PATH_G16
-  source $g16root/g16/bsd/g16.login
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
+
+  #source $PATH_G16/g16/bsd/g16.login
   export OMP_NUM_THREADS=1
  
   #CREATING WORKING DIRECTORY
@@ -166,10 +171,11 @@ function program_G16 {
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   mkdir $CALC_NAME
-  
-  JKxyz2com $input -method $method -mem $MEMORY -cpu $SCcpu -char $CHARGE -mult $MULTIPLICITY  $args
+ 
+  #echo JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args 
+  JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
   exit
-  srun g16 < $inputCOM >& $output
+  srun $PATH_G16/g16 < $inputCOM >& $output
   JKlog2xyz $output
 
   #COPYING RESULTS BACK

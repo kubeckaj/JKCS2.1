@@ -34,45 +34,33 @@ function help {
   printf "$scriptfile HELP:\n"
   printf "Program for running 3rd party calculations\n"
   printf """
-  $scriptfile ${cfGRAY}[OPTIONS]${cfDEF}
+  $scriptfile ${cfCYAN}[OPTIONS(s)]${cfDEF}
 
-  ALL OPTIONS:
-    -help ............. print this help and exit
-   -f,-folder \"X\" ... name of folder [default=DFT]
-   -m,-method \"X\" ... calculation method used by quantum program (or XTB)
-   -r,-results \"X\" .. instead of resultsXTB.dat uses results\"X\".dat
-   -pm7 ............. instead of resultsXTB.dat uses resultsPM7.dat
-   -abc ............. instead of resultsXTB.dat uses resultsABC.dat   
-   -p,-program \"X\" .. quantum program you would like to use 
-   -d,-diff \"X\" ..... allowed energy difference
-   -o,-old \"X\" ...... (check also -r) name of old folder (you can use -pm7 or -xtb)
-     ( + OTHERS: -repeat \"X\",-feed \"X\",-maxjobs \"X\",-cpu \"X\"         ) 
-     ( max_amount_of_cpu = feed * maxjobs * cpu (+1 for this script) )
-     ( default: 400(401) =   1  *    50   *  8  (+1                ) )
-     ( ... -time1,-time2, (or both -time(-t))                        )
-     ( ... -par1, -par2,  (or both -partition(-par))                 )
-     ( -addbase \"ATOM\" )
+  ${cfMAGENTA}OPTIONS:${cfDEF}
+   -help ................ print this help
+   -nf,-newfolder \"X\" ... name of the new folder [def=XTB]
+   -of,-oldfolder \"X\" ... name of the olf folder containing XYZs [def=ABC]
+   -rf,-resultsfile \"X\" . uses 1. column of results\"X\"{_FILTERED}.dat
+   -m,-method \"X\" ....... method used by 3rd party quantum program
+   -p,-program \"X\" ...... 3rd party quantum program 
+                          (it has to be described in ~/.JKCSusersetup.txt)
+     OTHERS: -bs,-add,-addbase \"ATOM\" 
+
   
-  ADVANCED EXAMPLES:
-     JKCS5_runDFT
-     JKCS5_runDFT -pm7
-     JKCS5_runDFT -f \"DFT_SP\" -m \"\# wb97xd 6-31++g**\"
-     JKCS5_runDFT -o \"DFT_SP\" -f \"DFT_HIGH\" -m \"\# wb97xd 6-31++g** opt=verytight int=ultrafine freq gfinput IOP\(6\/7\=1\)\"
-     JKCS5_runDFT -p DLPNO -r DFT_HIGH_freq -f DLPNO -m \"-fast\"
-     JKCS5_runDFT -f DFT_OPT -r ABC -m \"\# wb97xd def2SVP opt int=ultrafine gfinput IOPi\(6\/7\=1\)\"
-     JKCS5_runDFT -p DLPNO -r DFT_HIGH_freq -f DLPNO    -m \"-large\"
-     JKCS5_runDFT -p DLPNO -r DFT_HIGH_freq -f DLPNO    -m \"-fast\"
-     JKCS5_runDFT -p XTB   -r XTB           -f XTB_freq -m \"-ohess\" -feed 20 -maxjobs 100
-     JKCS5_runDFT -results XTB -folder DFT -addbase I -m \"\#wb97xd GEN Pseudo=Read Opt Int=UltraFine Freq MaxDisk=32GB\" -mem 12GB -cpu 16
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
 
-  BASIC EXAMPLES:
-
-    OPTIMIZATION
-     JKCS5_runDFT -f DFT_HIGH      -r XTB            -m \"\# wb97xd 6-31++g** opt=verytight\"
-    FREQUENCIES
-     JKCS5_runDFT -f DFT_HIGH_freq -r DFT_HIGH       -m \"\# wb97xd 6-31++g** freq Temperature=298.15 gfinput IOP\(6\/7\=1\)\"
-    ELECTRONIC CORRECTIONS
-     JKCS5_runDFT -f DLPNO         -r  DFT_HIGH_freq -p DLPNO\n"""
+   ${cfYELLOW}XTB:${cfDEF}
+     $scriptfile    
+     $scriptfile -p XTB -nf XTB_freq -rf XTB -m \"-ohess\"
+   ${cfYELLOW}G16:${cfDEF}
+     $scriptfile -p G16 -rf XTB     -nf DFT_sp   -m \"# HF 6-31+g*\"
+     $scriptfile -p G16 -rf XTB     -nf DFT_opt  -m \"# wb97xd 6-31++g** opt=verytight\"
+     $scriptfile -p G16 -rf DFT_opt -nf DFT_freq -m \"# wb97xd 6-31++g** freq Temperature=298.15\"
+   ${cfYELLOW}ORCA:${cfDEF}
+     $scriptfile -p ORCA -rf XTB -nf OPT -m \"! PBE0 def2-TZVP TIGHTSCF Opt D3BJ\"
+   ${cfYELLOW}G16 ADVANCED:${cfDEF}
+     $scriptfile -p G16 -rf XTB -nf DFT -bc I -m \"#wb97xd GEN Pseudo=Read Opt Int=UltraFine Freq MaxDisk=32GB\" -mem 12GB -cpu 16
+     $scriptfile -p ORCA -rf DFT_freq -nf DLPNO -m \"! DLPNO-CCSD(T) aug-cc-pvtzaug-cc-pvtz/C GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS\"\n"""
   printf "#################################################################\n"
   exit
 }
@@ -101,6 +89,7 @@ JKloadprogram
 # check for folderbasename_something arguments and in case enter directories
 JKloaddirs
 currentdir=${PWD##*/}
+currentdirpath=$PWD
 
 # load charge and multiplicity
 JKloadCHARM
@@ -168,7 +157,7 @@ do
     next=1
     continue
   fi
-  ### -folder "X"
+  ### -newfolder "X"
   if [ "$last" == "-nf" ]
   then
     folderNEW="$iter"
@@ -182,7 +171,7 @@ do
     last="-nf"
     continue
   fi
-  ### -old "X"
+  ### -oldfolder "X"
   if [ "$last" == "-of" ]
   then
     folderOLD="$iter"
@@ -198,8 +187,8 @@ do
     last="-of"
     continue
   fi
-  ### -results "X"
-  if [ "$last" == "-resultsfile" ]
+  ### -resultsfile "X"
+  if [ "$last" == "-rf" ]
   then
     resultsaddition="$iter"
     QfromfolderOLD=0
@@ -208,13 +197,27 @@ do
     next=0
     continue
   fi
-  if [ "$i" == "-resultsfile" ] || [ "$i" == "-rf" ]
+  if [ "$iter" == "-resultsfile" ] || [ "$iter" == "-rf" ]
   then
     next=1
     last="-rf"
     continue
   fi
-  #
+  ### -method "X"
+  if [ "$last" == "-method" ]
+  then
+    method="$iter"
+    last=""
+    next=0
+    continue
+  fi
+  if [ "$iter" == "-method" ] || [ "$iter" == "-m" ]
+  then
+    next=1
+    last="-method"
+    continue
+  fi
+  ###
   arguments_help+=( "${arguments[i]}" )
 done
 arguments=("${arguments_help[@]}")
@@ -243,28 +246,34 @@ JKecho 1 "$program calculations will be performed."
 #checking old folder or results file
 if [ $QfromfolderOLD -eq 0 ]
 then
-  if [ -e results${resultsaddition}_FILTERED.dat ]
+  renamcheck="$(basename ${resultsaddition} .dat)_FILTERED.dat"
+  if [ -e $renamcheck ]
+  then
+    filetake=$renamcheck
+  elif [ -e ${resultsaddition} ]
+  then 
+    filetake=${resultsaddition}
+  elif [ -e results${resultsaddition}_FILTERED.dat ]
   then
     filetake=results${resultsaddition}_FILTERED.dat
+  elif [ -e results${resultsaddition}.dat ]
+  then
+    filetake=results${resultsaddition}.dat
   else
-    if [ -e results${resultsaddition}.dat ]
-    then
-      filetake=results${resultsaddition}.dat
-    else
-      JKecho 0 "File results${addition}.dat does not exist. [${cfYELLOW}SKIP${cfDEF}]"
-    fi
+    JKecho 0 "File results${addition}.dat does not exist. [${cfRED}EXIT${cfDEF}]"
+    exit
   fi
 else
   if [ ! -d ${folderOLD} ]
   then
-    JKecho 0 "Folder ${folderOLD} does not exist. [${cfYELLOW}SKIP${cfDEF}]"
+    JKecho 0 "Folder ${folderOLD} does not exist. [${cfRED}EXIT${cfDEF}]"
   fi
 fi
 
 #checking if the folder for new calculations already exist
 if [ -d $folderNEW ]; 
 then 
-  JKecho 0 "Folder $folderNEW already exists. [${cfYELLOW}SKIP${cfDEF}]"
+  JKecho 0 "Folder $folderNEW already exists. [${cfRED}EXIT${cfDEF}]"
   exit
 else
   mkdir $folderNEW
@@ -283,64 +292,80 @@ TIME=$SCtime
 CPU=$SCcpu""" > arguments.txt
 }
 
-#echo MOTHERDIR = $motherdir
+
 #subfoldering
 if [ $QfromfolderOLD -eq 1 ]
 then
   cd $folderOLD
   subfolders="`ls -d ${folderOLD}_* | xargs`"
-  if [ ! -z "$subfolders" ] 
-  then
-    JKecho 2 "Subfoldering from previous directory is used."
-    JKecho 3 "Subfolders: $subfolders"
-    for sub in $subfolders
-    do 
-      newsub=`sed "s/$folderOLD/$folderNEW/g" <<< $sub`
-      cd $motherdir/$folderOLD/${sub}/${name}-LM/
-      files=`ls *.xyz`
-      cd $motherdir/$folderNEW
-      mkdir $newsub
-      mkdir $newsub/${name}-LM
-      cd $newsub 
-      JKarguments
-      cd ..
-      for file in $files
-      do
-        #command="source ~/.JKCSusersetup.txt;\n program_$program $motherdir/$folderOLD/${name}-LM/$file"
-        #printf "$command" > run${scriptfilecommand}.sh
-        commandTODO="cd $motherdir/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $motherdir/$folderOLD/$sub/${name}-LM/$file;"
-        echo $commandTODO >> $newsub/commands_TODO.txt
-      done
-      JKecho 3 "    Commands like $commandTODO written to $newsub/commands_TODO.txt"
-      echo "LINK 0 cd $newsub; sh $toolspath/SCRIPTS/JKperform.sh; cd .." >> commands_TODO.txt
-    done
-  else
-    JKecho 2 "Calculations will be performed in directory ${cfYELLOW}$folderNEW/${name}-LM${cfDEF}"
-    cd ${name}-LM/
+  cd $currentdirpath 
+fi
+if [ ! -z "$subfolders" ] 
+then
+  JKecho 2 "Subfoldering from previous directory is used."
+  JKecho 3 "Subfolders: $subfolders"
+  for sub in $subfolders
+  do 
+    newsub=`sed "s/$folderOLD/$folderNEW/g" <<< $sub`
+    cd $currentdirpath/$folderOLD/${sub}/${name}-LM/
     files=`ls *.xyz`
-    cd $motherdir/$folderNEW
-    mkdir ${name}-LM
+    cd $currentdirpath/$folderNEW
+    mkdir $newsub
+    mkdir $newsub/${name}-LM
+    cd $newsub 
     JKarguments
+    cd ..
     for file in $files
     do
-      #command="source ~/.JKCSusersetup.txt;\n program_$program $motherdir/$folderOLD/${name}-LM/$file"
+      #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirpath/$folderOLD/${name}-LM/$file"
       #printf "$command" > run${scriptfilecommand}.sh
-      commandTODO="cd $motherdir/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $motherdir/$folderOLD/${name}-LM/$file;"
-      echo $commandTODO >> commands_TODO.txt
+      commandTODO="cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/$file;"
+      echo $commandTODO >> $newsub/commands_TODO.txt
     done
-    JKecho 3 "    Commands like "$commandTODO" written to commands_TODO.txt"
+    JKecho 3 "    Commands like $commandTODO written to $newsub/commands_TODO.txt"
+    echo "LINK 0 cd $newsub; sh $toolspath/SCRIPTS/JKperform.sh; cd .." >> commands_TODO.txt
+  done
+else
+  JKecho 2 "Calculations will be performed in directory ${cfYELLOW}$folderNEW/${name}-LM${cfDEF}"
+  if [ $QfromfolderOLD -eq 1 ]
+  then
+    cd $folderOLD
+    cd ${name}-LM/
+    files=`ls *.xyz`
+    files_help=""
+    for file in $files
+    do 
+      files_help+=" $currentdirpath/$folderOLD/${name}-LM/$file"
+    done
+    files=$files_help
+  else
+    files=`cat $filetake | awk '{print $1}'`
   fi
+  JKecho 2 "Files selected."
+  cd $currentdirpath/$folderNEW
+  mkdir ${name}-LM
+  JKarguments
+  for file in $files
+  do
+    #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file"
+    #printf "$command" > run${scriptfilecommand}.sh
+    commandTODO="cd $currentdirpath/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $file;"
+    echo $commandTODO >> commands_TODO.txt
+  done
+  JKecho 3 "    Commands like "$commandTODO" written to commands_TODO.txt"
 fi
 JKecho 2 "Subfolder $folderNEW has been created."
-cd $motherdir/$folderNEW
+cd $currentdirpath/$folderNEW
 
 ### Sending jobs ###
 if [ ! -e commands_TODO.txt ]; then touch commands_TODO.txt; fi
+#TODO might be dangerous if jobs already exist
 jobscount=`wc -l commands_TODO.txt | awk '{print $1}'`
+
 JKecho 2 "Counting amount of jobs: $jobscount"
 if [ $jobscount -lt $SCtasks ]
 then
-  SCtasks=$jobcount
+  SCtasks=$jobscount
 fi
 JKecho 2 "Tasks used: $SCtasks"
 for i in `seq 1 $SCtasks`
@@ -355,7 +380,7 @@ JKecho 1 "This subfolder is finished."
 exit
 
 
-##cd $motherdir
+##cd $currentdirpath
 ##JKecho 2 "Subfoldering parameter set to: $Qsubfoldering"
 ##
 ###TAKING LIST OF FILES 
@@ -363,20 +388,20 @@ exit
 ##if [ $QfromfolderOLD -eq 1 ]
 ##then
 ##  #taking from OLD folder
-##  checkdir=${motherdir}/${folderOLD}/${name}-LM
+##  checkdir=${currentdirpath}/${folderOLD}/${name}-LM
 ##  if [ -d $checkdir ]
 ##  then
 ##    files=`ls $checkdir/*.xyz`
 ##    #if [ -z "$files" ]
 ##    #then
 ##    #  JKecho 1 "No xyz files found in ${cfGREEN}${checkdir}${cfDEF}. [${cfRED}SKIP${cfDEF}]"
-##    #  cd ${motherdir}${folderOLD}/${name}-LM
+##    #  cd ${currentdirpath}${folderOLD}/${name}-LM
 ##    #  $toolspath/JKlog2xyz *.log
 ##    #  cd -
 ##    #  files=`ls ${PWD}/${folderOLD}/${name}-LM/*.xyz`
 ##    #fi
 ##  else
-##    checkdir=${motherdir}/${folderOLD}/*/${name}-LM/
+##    checkdir=${currentdirpath}/${folderOLD}/*/${name}-LM/
 ##    files=`ls ${checkdir}*.xyz`
 ##  fi
 ##  if [ -z "$files" ]

@@ -33,12 +33,12 @@ function help {
   printf "$scriptfile HELP:\n"
   printf "Program for preparing different cluster compositions\n"
   printf """
-  $scriptfile ${cfGRAY}[OPTIONS]${cfDEF}
+  $scriptfile ${cfCYAN}[OPTIONS(s)]${cfDEF}
   
-  OPTIONS:
+  ${cfMAGENTA}OPTIONS:${cfDEF}
     -help ............ print this help and exit
 
-  ${cfRED}EXAMPLES:${cfDEF}
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
 
         $scriptfile  \n"""
   printf "#################################################################\n"

@@ -89,6 +89,7 @@ method=XTB
 # check for folderbasename_something arguments and in case enter directories
 JKloaddirs
 currentdir=${PWD##*/}
+currentdirpath=$PWD
 
 # load amount of molecules
 M=`head -n 1 $inputfile | awk '{print $6}'`
@@ -225,7 +226,10 @@ do
     continue
   fi
   ###
-  method="${iter%/*}"  # It is checked later if some folder with name method exist. + "/" is removed immidiately
+  if [ ! -z  "$iter" ]
+  then
+    method="${iter%/*}"  # It is checked later if some folder with name method exist. + "/" is removed immidiately
+  fi
 done
 
 ###############################################################################
@@ -248,7 +252,7 @@ movie="$moviefile${method}.xyz"
 if [ ! -e $savefile ]; then touch $savefile;fi
 if [ -e $resultfile ]; then rm $resultfile;fi
 JKecho 2 "Output files checked ($savefile,$resultfile,$movie)"
-  
+
 ### IF DLPNO FIN #############################################
 if [ $Qdlpno -eq 1 ]
 then
@@ -288,7 +292,6 @@ else
   subfolders=`ls -d ${method}/${method}_*/calc-LM | xargs`
 fi
 #################################################
-tocontrol=""
 
 JKecho 1 "Collection from all ${method} subfolders."
 for subfolder in $subfolders
@@ -301,19 +304,18 @@ do
   command="$toolspath/SCRIPTS/JKcollect --- RUN $method $savefile $Qncc $Qncc2 $Qncc2a $Qncc2b $Qncc2c $Qncc2d"
   printf "$command" > run${scriptfilecommand}.sh
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
-  cd $motherdir
+  cd $currentdirpath
   echo $commandTODO >> $method/commands_TODO.txt
   JKecho 3 "    Command $commandTODO [$command] written to $method/commands_TODO.txt"
   ##
 done
 ###
-cd $motherdir/$method
+cd $currentdirpath/$method
 jobscount=`echo $subfolders | xargs -n 1 | wc -l `
-echo $subfolders
 JKecho 2 "Counting amount of jobs: $jobscount"
 
 JKecho 2 "+ Sending to CONTROL collection." 
-commandTODO="WAITING cd $motherdir; $toolspath/SCRIPTS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie"
+commandTODO="WAITING cd $currentdirpath; $toolspath/SCRIPTS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie"
 echo $commandTODO >> commands_TODO.txt
 
 ### Sending jobs ###
@@ -324,31 +326,10 @@ fi
 JKecho 2 "Tasks used: $SCtasks"
 for i in `seq 1 $SCtasks`
 do
-  #echo "sendjob $currentdir-ABC" 
+  #echo "sendjob $workindir-ABC" 
   $SC_command sh $toolspath/SCRIPTS/JKperform.sh
   #echo "$SC_command"
 done
-cd $motherdir
+cd $currentdirpath
 JKecho 1 "Subfolder finished/submitted."
 
-exit
-######################
-# command
-# checking queue program
-if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
-then
-  parameters=""
-  touch collectqueuetocontrolfile$method
-  # calculate
-  sh -c "$command"
-else
-  # calculate ... send to queue
-  echo $tocontrol > collectqueuetocontrolfile$method
-  queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part "$command"`
-  echo "$scriptfile: $queue"
-  echo $queue | awk '{print $4}' >> $queuefile
-fi
-######################    
-
-cd ..
-echo "$scriptfile: Done :-D"

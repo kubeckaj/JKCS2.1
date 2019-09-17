@@ -36,13 +36,14 @@ function help {
   printf "$scriptfile HELP:\n"
   printf "  It copies input files for JKCS to your folder.\n"
   printf """
-  $scriptfile ${cfGRAY}[OPTION(s)] [STRUCTURE(s)]${cfDEF}
+  $scriptfile ${cfCYAN}[OPTION(s)] [STRUCTURE(s)]${cfDEF}
 
-  ${cfRED}OPTIONS:${cfDEF}
+  ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ........ print this help
 
-  ${cfRED}STRUCTURES:${cfDEF}
-   W ............ water
+  ${cfMAGENTA}STRUCTURES:${cfDEF}
+   W ............ water (H2O,OH-,H+)
+   AQ ........... water (H20)
    
    HNO3 ......... nitric acid
    SA ........... sulphuric acid
@@ -68,7 +69,7 @@ function help {
    HIO2 ......... iodous acid
    I2O5 ......... iodine pentoxide
 
-  ${cfRED}EXAMPLES:${cfDEF}
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
 
 	$scriptfile ${cfGREEN}SA GD ${cfDEF} \n"""
   printf "#################################################################\n"
@@ -192,6 +193,8 @@ function add {
        echo   "  W      0   $path2/aq.xyz"          >> $userinputfile
        echo   "  W      1   $path2/aqp.xyz"         >> $userinputfile
        ;;
+  "aq") echo  "  W      0   $path2/aq.xyz"          >> $userinputfile
+       ;;
   "msa") echo "  MSA    0   $path2/msa.xyz"         >> $userinputfile
          echo "  MSA   -1   $path2/msam.xyz"        >> $userinputfile
          ;;
@@ -257,7 +260,6 @@ do
     add "Ne"
     add "He"
 
-    add "H"
     add "Cl"
     add "Na"
 

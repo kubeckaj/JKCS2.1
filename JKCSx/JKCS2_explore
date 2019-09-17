@@ -32,33 +32,37 @@ source ~/.JKCSusersetup.txt
 function help {
   printf "#################################################################\n"
   printf "$scriptfile HELP:\n"
-  printf "Program for preparing different cluster compositions\n"
+  printf "This script explores PESes of clusters using ABC algorithm.\n"
   printf """
-  $scriptfile ${cfGRAY}[OPTIONS]${cfDEF}
+  $scriptfile ${cfCYAN}[OPTIONS(s)]${cfDEF}
 
-  ALL OPTIONS:
+  ${cfMAGENTA}OPTIONS:${cfDEF}
     -help ............. print this help and exit
-    -l,-lm \"X\" ........ X local minima will saved [def=]
-    -g,-gen \"X\" ....... amount of ABC generations [def=200]
-    -s,-sc \"X\" ........ amount of scout bees [def=4]
-    -pop,-i,-init \"X\" . amount of initial guesses [def=]
-    OTHERS: -box
-    OTHERS: -time(-t), -partition(-par), -programs, -short 
-    OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}
-    OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...}
+    -l,-lm \"X\" ........ X local minima will saved [def=300*M/NoC]
+    -g,-gen \"X\" ....... amount of ABC generations [def=100]
+    -s,-sc \"X\" ........ amount of scout bees      [def=4]
+    -pop,-i,-init \"X\" . amount of initial guesses [def=300*M]
+ 
+    OTHERS: -box [def=7+M]
+    OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
+    OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
+ 
+  ${cfMAGENTA}SYMBOLS:${cfDEF}
+    M .... number of molecules
+    NoC .. number of combinations to form cluster
+    use * or / or M or NoC and script will evaluate it
 
-  BASIC EXAMPLES:
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
     
-    JKCS2_runABC
+    ${cfRED}WRONG exploration (BAD = DO NOT USE):${cfDEF}
+            $scriptfile -pop 100 -lm 100 -gen 1     #too short (gen>=100)
+            $scriptfile -pop 1000 -gen 100 -lm 1    #few saved structures
+            $scriptfile -pop 100 -gen 100 -lm 300   #too small population
 
-  BASIC EXAMPES:
-    
-    Weak/fast configurational sampling:
-            JKCS1_prepare -lm 50 -gen 50 -i 500
-    Strong/slow configurational sampling:
-            JKCS1_prepare -lm 1000 -gen 100 -i 2000
-    Exhausting configurational sampling:
-            JKCS1_prepare -lm 15000 -gen 200 -sc 6 -i 4000\n""" 
+    ${cfGREEN}Correct exploration:${cfDEF}
+            $scriptfile -pop 1000 -gen 100 -lm 3000
+            $scriptfile -pop 1000*M -gen 100 -lm 4000/NoC
+            $scriptfile -wtc 3h -pop 2000*M/NoC\n""" 
   printf "#################################################################\n"
   exit
 }
@@ -84,6 +88,7 @@ JKloadhelp             # check if user asks for -help
 # check for folderbasename_something arguments and in case enter directories
 JKloaddirs
 currentdir=${PWD##*/}
+currentdirpath=$PWD
 
 # method and folder name
 folderNEW=ABC

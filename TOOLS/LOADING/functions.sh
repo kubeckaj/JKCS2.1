@@ -152,7 +152,7 @@ function JKloadsupercomputer {
     fi
     if [ "$last" == "-mem" ]; then
       SCmem="${arguments[i]}"
-      if [[ ${SCmem,,} == *"mb"* ]] || [[ ${SCmem,,} == *"gb"* ]] || [[ ${SCmem,,} == *"mw"* ]] || [[ ${SCmem,,} == *"w"* ]]
+      if [[ ${SCmem,,} == *"mb"* ]] || [[ ${SCmem,,} == *"gb"* ]] || [[ ${SCmem,,} == *"mw"* ]] || [[ ${SCmem,,} == *"w"* ]] || [[ ${SCmem,,} == *"MB"* ]] || [[ ${SCmem,,} == *"GB"* ]] || [[ ${SCmem,,} == *"MW"* ]] || [[ ${SCmem,,} == *"W"* ]]
       then
         if [[ ${SCmem,,} == *"*"* ]]
         then
@@ -204,22 +204,20 @@ function JKloaddirs {
   then
     if [ ! -e $inputfile ]
     then
-      folders=`ls -d ${folderbasename}_*`
+      motherdir=$PWD
+      folders=`ls -d ${folderbasename}_* | xargs`
+      JKecho 0 "  All subfolders = $folders"
       if [ -z "$folders" ]
       then
         JKecho 0 "File ${cfYELLOW}$inputfile${cfDEF} does not exist!"
         JKecho 0 "Also, no folder ${cfBLUE}${folderbasename}${cfDEF}_ does not exist! ${cfRED}[EXITING]${cfDEF}"
         exit
+      else
+        JKecho 1 "I, this script, will enter to all subfolders. :-D"
       fi
     fi
   fi
-  # Entering to all folders
-  if [ ! -z "$folders" ]
-  then
-    JKecho 1 "I, this script, will enter to all subfolders. :-D"
-    exit
-  fi
-  motherdir=$PWD
+  # folders
   for i in $folders
   do
     JKecho 1 "Entering directory ${cfGREEN}${i}${cfDEF}"
@@ -251,7 +249,7 @@ function JKloadprogram {
   for i in "${!arguments[@]}"
   do
     # this is just when -print is argument
-    if [ "$saveQprint" == "yes" ]
+    if [ "$saveQprogram" == "yes" ]
     then
       saveQprogram="no"
       arguments_help_pass+=( "${arguments[i]}" )
