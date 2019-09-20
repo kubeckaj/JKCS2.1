@@ -44,11 +44,11 @@ def printhelp():
   #print('   DataFilter.py resultsXTB.dat -r 0.05 -rg 15 -s 50') 
   #print('   DataFilter.py resultsDFT_HIGH_freq.dat -r 0.05 -s 5 -d 3') 
   #print(' or')
-  print('   JKCS7_filter resultsXTB.dat -u -u1 2 -u2 4 -u3 1 -sort 3') 
-  print('   JKCS7_filter resultsXTB.dat -rgm 4 -dm 4 -sm 20') 
-  print('   JKCS7_filter resultsXTB.dat -u3 1 -c3 4 -rgm 4 -dm 4 -s 100') 
-  print('   JKCS7_filter resultsDFT_HIGH.dat -s 10 -dm 1.2') 
-  print('   JKCS7_filter resultsDFT_HIGH_freq.dat -c2 4 -d 1') 
+  print('   JKCS5_filter resultsXTB.dat -u -u1 2 -u2 4 -u3 1 -sort 3') 
+  print('   JKCS5_filter resultsXTB.dat -rgm 4 -dm 4 -sm 20') 
+  print('   JKCS5_filter resultsXTB.dat -u3 1 -c3 4 -rgm 4 -dm 4 -s 100') 
+  print('   JKCS5_filter resultsDFT_HIGH.dat -s 10 -dm 1.2') 
+  print('   JKCS5_filter resultsDFT_HIGH_freq.dat -c2 4 -d 1') 
 
 #################################################################################################################
 #################################################################################################################

@@ -68,7 +68,7 @@ function help {
 ### PREPARING WHAT AND HOW
 
 # locate TOOLS path and load programs (GoodVibes)
-scriptpath=$(dirname $0)
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 if [ -e $scriptpath/JKgoodvibes ]
 then
   toolspath="$scriptpath"
@@ -81,6 +81,8 @@ then
   source $toolspath/../$Qprograms
 fi
 
+
+######
 Qerr=0
 Qfreqerr=0
 QT=0

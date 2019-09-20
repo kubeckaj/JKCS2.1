@@ -24,6 +24,8 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
+JKloadprint
+
 ###############################################################################
 ################################  USER INPUT  #################################
 ################################ DO NOT TOUCH #################################
@@ -41,7 +43,7 @@ for i in $*
 do
   ### GENERAL ###
   ## help
-  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then Qhelp=1;continue;fi
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then Qhelp=1;break;fi
   # partition
   if [ "$last" == '-par' ]
   then
@@ -183,15 +185,20 @@ then
   then
     folders="."
   else
-    source $toolspath/TOOLSextra/loadparameters.sh
+    if [ -e ~/.JKCSusersetup.txt ]
+    then 
+      source ~/.JKCSusersetup.txt
+    else
+      source $toolspath/TOOLSextra/loadparameters.sh
+    fi
   fi
 fi
 
 ###############################################################################
 # asking just for help?
 if [ $Qhelp -eq 1 ]
-then 
-  eval "$python2 $toolspath/SCRIPTS/DataFilter.py -help"
+then
+  eval "program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py -help"
   exit
 fi
 
@@ -200,7 +207,8 @@ fi
 ##################################
 for folder in $folders
 do
-  echo "$scriptfile: `echo "${PWD##*/}"`: Entering folder $folder"
+  fromwhere=`echo "${PWD##*/}"`
+  JKecho 2 "$fromwhere: Entering folder $folder"
   cd $folder
 
   ########################
@@ -260,7 +268,7 @@ do
     if [ -z "$u3" ]; then u3=-1; fi
     if [ -z "$Qs" ]; then Qs=3; fi
     # send for uniqueness
-    $toolspath/TOOLSextra/JKcollect $Qprograms "UNIQUENESS" $colfile $file $moviefile $Qs $u1 $u2 $u3
+    $toolspath/SCRIPTS/JKcollect --- "UNIQUENESS" $colfile $file $moviefile $Qs $u1 $u2 $u3
   fi
 
   ###############################
@@ -276,16 +284,16 @@ do
   # running the job
   if [ $testfile -eq 1 ]
   then
-    command="$python $toolspath/TOOLSextra/DataFilter.py $arguments"
+    command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments"
   else
     #this case: testfile=2 DISABLED NOW, SEE ABOVE
-    command="$toolspath/TOOLSextra/reselectfromfromfilter.sh $arguments"
+    command="$toolspath/SCRIPTS/reselectfromfromfilter.sh $arguments"
   fi
   # checking queue program
   #if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
   #then
     # calculate
-  sh -c "$command"
+  eval "$command"
   #else
     # calculate ... send to queue
   #  queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part "$command"`

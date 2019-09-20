@@ -247,16 +247,16 @@ JKecho 1 "$program calculations will be performed."
 if [ $QfromfolderOLD -eq 0 ]
 then
   renamcheck="$(basename ${resultsaddition} .dat)_FILTERED.dat"
-  if [ -e $renamcheck ]
+  if [ -f $renamcheck ]
   then
     filetake=$renamcheck
-  elif [ -e ${resultsaddition} ]
+  elif [ -f ${resultsaddition} ]
   then 
     filetake=${resultsaddition}
-  elif [ -e results${resultsaddition}_FILTERED.dat ]
+  elif [ -f results${resultsaddition}_FILTERED.dat ]
   then
     filetake=results${resultsaddition}_FILTERED.dat
-  elif [ -e results${resultsaddition}.dat ]
+  elif [ -f results${resultsaddition}.dat ]
   then
     filetake=results${resultsaddition}.dat
   else
