@@ -22,7 +22,8 @@ function writetobashrc {
   test=`grep -c "$command" ~/.bashrc`
   if [ $test -ne 0 ]
   then 
-    sed -i "\#$command#d" ~/.bashrc
+    sed  "\#$command#d" ~/.bashrc > ~/.bashrc_help
+    mv ~/.bashrc_help ~/.bashrc
   fi
   echo "$command" >> ~/.bashrc
 }
