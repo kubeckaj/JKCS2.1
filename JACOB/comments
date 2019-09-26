@@ -14,3 +14,6 @@ ORCA
 
 failure composition ?? I do not know what does this mean
 dir PROGRAM times ?????
+
+amount of molecules in system:
+echo var=0>o; ls -d */ |xargs -n 1 | sed 's/\//0\`/g' | sed 's/W/+/g' | sed 's/MSA/+/g' | sed 's/SA/+/g' |sed 's/_//g' |sed 's/SYS/var=\`\echo $var+/g' >> o; echo "echo \$var" >> o; sh o | bc -l

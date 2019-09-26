@@ -1,0 +1,156 @@
+#!/bin/bash
+
+inputfile=$1
+if [ -z "$inputfile" ]
+then
+  echo Missing input file. Use the file as argument 
+  exit
+fi 
+
+cat $inputfile | awk '{print $1}' > .help1
+monomers=`cat .help1 | awk '{gsub("[0-9]"," ",$0);print $0}' | xargs -n 1 | sort -u | xargs`
+monomers=`echo $monomers | xargs -n 1 | awk '{ print length(), $0 | "sort -nr" }' | awk '{print $2}' | xargs`
+for i in $monomers
+do 
+  if [ "$i" == "p" ] || [ "$i" == "P" ]
+  then
+    monomers_help2+=" $i"
+  else
+    monomers_help+=" $i"
+  fi
+done
+monomers="$monomers_help $monomers_help2"
+echo MONOMERS = $monomers
+
+maxlength=`cat .help1 | awk '{ if ( length > x ) { x = length; y = $0 } }END{ print x }'` 
+for i in $monomers 
+do
+  sed "s/$i/+/g" .help1 > .help2
+  mv .help2 .help1
+done
+
+lines=`wc -l .help1 | awk '{print $1}'`
+for i in `seq 1 $lines`
+do
+  VAR=`head -n $i .help1 | tail -n 1`
+  VARR=`echo $VAR | sed 's/+//g'`
+  if [[ $VARR =~ ^[0-9]+$ ]];
+  then
+    continue
+  else
+    echo "Input contains non numerical value: $VAR"
+    exit
+  fi
+done
+
+cat .help1 | awk '{print $1 0}' | bc > .help2
+
+paste -d "  " .help2 $inputfile > .help3
+
+cat .help3 | sort -nk 1 > .help4
+
+for i in $monomers
+do
+  if [ "$i" == "p" ] || [ "$i" == "P" ]
+  then
+    grep "$i" .help4 > .proton
+    protonlines=`wc -l .proton | awk '{print $1}'`
+    test=0
+    for j in `seq 1 $protonlines`
+    do
+      if [ $test -eq 1 ]; then continue; fi
+      line0=`head -n $j .proton | tail -n 1`
+      line=`echo $line0 | awk '{print $2}'`
+      line=" $line "
+      check=`echo $line | sed 's/1/ /g' | sed "s/$i/ /"`
+      for k in $monomers
+      do
+        #echo $k $check 
+        if [ $k == $check ]
+        then
+          selected=$k
+          echo SELECTED FOR $i = 1${k}1$i
+          #echo LINE = $line0
+          test=1
+        fi
+      done
+    done
+    numk=0
+    for k in $monomers
+    do   
+      numk=`echo $numk+1 | bc`
+      if [ $k == $selected ]
+      then
+        ADDMON=`echo $column2 | awk -v var=$numk '{print $var}'`
+        PROTON=`echo $line0 | awk '{print $3}'`
+        column2+=" `echo $PROTON-1.0*$ADDMON | bc -l` "
+        c3=`echo $line0 | awk '{print $4}'` 
+        if [ ! -z "$c3" ]
+        then
+          c3ADDMON=`echo $column3 | awk -v var=$numk '{print $var}'`
+          column3+=" `echo $c3-1.0*$c3ADDMON | bc -l` "
+        fi
+      fi
+    done
+    continue
+  fi 
+  MA=`grep -c " 1$i " .help4`
+  if [ $MA -ne 1 ]
+  then
+    echo "I am missing monomer of $i"
+    exit 
+  else
+    line=`grep " 1$i " .help4`
+    column2+=" `echo $line | awk '{print $3}'` "
+    c3=`echo $line | awk '{print $4}'`
+    if [ ! -z "$c3" ]
+    then
+      column3+=" $c3 "
+    fi
+  fi
+done
+
+#echo "########"
+#echo $monomers
+#echo $column2
+#echo $column3
+#echo "########"
+
+for line in `seq 1 $lines`
+do
+  VAR=`head -n $line .help4 | tail -n 1`
+  VARR=`echo $VAR | awk '{print $2}'`
+  VARn2=`echo $VAR | awk '{print $3}'`
+  VARn3=`echo $VAR | awk '{print $4}'`
+  VAR2=$VARR
+  VAR3=$VARR
+  #echo $VAR $VARR
+  numi=0
+  for i in $monomers
+  do 
+    numi=`echo $numi+1 | bc`
+    VC2=`echo $column2 | awk -v var=$numi '{print $var}'`
+    VAR2=`echo $VAR2 | sed "s/$i/*($VC2)+/"`
+    if [ ! -z "$column3" ]
+    then
+      VC3=`echo $column3 | awk -v var=$numi '{print $var}'`
+      VAR3=`echo $VAR3 | sed "s/$i/*($VC3)+/"`
+    fi
+  done
+  VARF2=`echo $VAR2 | awk '{print $1 0}' | bc -l`
+  VARF2=`echo $VARn2-1.0*$VARF2 | bc -l`
+  VARF2=`echo 627.509*$VARF2 | bc -l`
+  if [ ! -z "$column3" ]
+  then
+    VARF3=`echo $VAR3 | awk '{print $1 0}' | bc -l`
+    VARF3=`echo $VARn3-1.0*$VARF3 | bc -l`
+    printf "%-*s  % 8.4f  % 8.4f\n" $maxlength $VARR $VARF2 $VARF3
+  else
+    printf "%-*s  % 8.4f\n" $maxlength $VARR $VARF2
+  fi
+  
+  #echo $VARR $VARF2 $VARF3 
+done
+ 
+#cat $inputfile | awk '{print $1 $2 $3}' > .help1
+

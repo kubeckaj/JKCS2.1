@@ -62,17 +62,24 @@ then
 fi
 
 # locate TOOLS path and load programs (GoodVibes)
-scriptpath=$(dirname $0)
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../TOOLS"
-source ~/.JKCSusersetup.txt
-
+if [ -e ~/.JKCSusersetup.txt ]
+then
+  source ~/.JKCSusersetup.txt
+else
+  echo "I need python3.x!"
+  function program_GoodVibes {
+    python $scriptpath/goodvibes/goodvibes/GoodVibes.py $*
+  }
+fi
 
 ### MAIN PROGRAM
 if [ $Qloc -eq 0 ]
 then
   sbatch JKsend program_GoodVibes $what $ARGUMENTS
 else
-  program_GoodVibes $what $ARGUMENTS
+  eval "program_GoodVibes $what $ARGUMENTS"
 fi
 
 

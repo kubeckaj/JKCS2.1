@@ -43,8 +43,8 @@ function help {
    -rx,-ry,-rz .... print rotational constant in 1 axis
    -r2 ............ calculate squared rotational constant
 
-   -dx,-dy,-dz .... print dipole moment in 1 axis (dy=0,dx=0)
-   -d,-dtot ....... calculate total dipole moment = dz
+   -dx,-dy,-dz .... print dipole moment in 1 axis (dy=0,dx=0) [Debye]
+   -d,-dtot ....... calculate total dipole moment = dz [Debye]
    -pol ........... print total polarizability [Angstrom^3] 
  
    -T,-temp \"X\" ... asumming temperature X in Kelvin (GoodVibes is used for other
@@ -68,7 +68,7 @@ function help {
 ### PREPARING WHAT AND HOW
 
 # locate TOOLS path and load programs (GoodVibes)
-scriptpath=$(dirname $0)
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 if [ -e $scriptpath/JKgoodvibes ]
 then
   toolspath="$scriptpath"
@@ -81,6 +81,8 @@ then
   source $toolspath/../$Qprograms
 fi
 
+
+######
 Qerr=0
 Qfreqerr=0
 QT=0
@@ -493,36 +495,80 @@ do
     ######################
     if [ $j == "-pol" ]
     then 
-      # in Angstrom^3
-      var=`grep -C 4 "Dipole polarizability" $i | tail -n 1 | awk '{print $3}' | sed 's/D/E/' | awk '{print $1+0}'`
+      search="Dipole polarizability"
+      test0=`grep -c "$search" $i`
+      if [ $test0 -ge 1 ]
+      then
+        # in Angstrom^3
+        var=`grep -C 4 "$search" $i | tail -n 1 | awk '{print $3}' | sed 's/D/E/' | awk '{print $1+0}'`
+      else
+        search="Exact polarizability:"
+        line=`grep "$search" $i | tail -n 1`
+        a11=`echo $line | awk '{print $3}'`
+        a12=`echo $line | awk '{print $4}'`
+        a22=`echo $line | awk '{print $5}'`
+        a13=`echo $line | awk '{print $6}'`
+        a23=`echo $line | awk '{print $7}'`
+        a33=`echo $line | awk '{print $8}'`
+        a32=$a23
+        a31=$a13
+        a21=$a12
+        #echo $a11 $a12 $a22 $a13 $a23 $a33
+        var=`echo "-1.0*$a13*$a22*$a31+1.0*$a12*$a23*$a31+1.0*$a13*$a21*$a32-1.0*$a11*$a23*$a32-1.0*$a12*$a21*$a33+1.0*$a11*$a22*$a33" | bc -l` 
+	var=`echo "$var" | awk '{ print $1^(1/3) }' | bc -l`
+      fi
       output+="$var "
     fi
     ###################
     ### DX DY DZ D2 ###
     ###################
-    if [ $j == "-dx" ] || [ $j == "-dy" ] || [ $j == "-dz" ] || [ $j == "-dtot" ] || [ $j == "-d" ]
+    search="Dipole moment (field-independent basis, Debye):"
+    test0=`grep -c "$search" $i`
+    if [ $test0 -ge 1 ]
     then
+      if [ $j == "-dx" ]
+      then
+        var=`grep -C 1 "$search" $i | tail -n 1 | awk -v var=2 '{print $var}'`
+        output+="$var "
+      fi
+      if [ $j == "-dy" ]
+      then
+        var=`grep -C 1 "$search" $i | tail -n 1 | awk -v var=4 '{print $var}'`
+        output+="$var "
+      fi
+      if [ $j == "-dz" ]
+      then
+        var=`grep -C 1 "$search" $i | tail -n 1 | awk -v var=6 '{print $var}'`
+        output+="$var "
+      fi
+      if [ $j == "-dtot" ] || [ $j == "-d" ]
+      then
+        var=`grep -C 1 "$search" $i | tail -n 1 | awk -v var=8 '{print $var}' | sed 's/D/E/' | awk '{print $1+0}'`
+        output+="$var "
+      fi
+    else
       Dunits=3 # 2=au | 3=Debye | 4=10**-30 SI
-    fi
-    if [ $j == "-dx" ]
-    then
-      var=`grep -C 4 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
-      output+="$var "
-    fi
-    if [ $j == "-dy" ]
-    then
-      var=`grep -C 5 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
-      output+="$var "
-    fi
-    if [ $j == "-dz" ]
-    then
-      var=`grep -C 6 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
-      output+="$var "
-    fi
-    if [ $j == "-dtot" ] || [ $j == "-d" ]
-    then
-      var=`grep -C 3 "Electric dipole moment (dipole orientation)" $i | tail -n 1 | awk -v var=$Dunits '{print $var}' | sed 's/D/E/' | awk '{print $1+0}'`
-      output+="$var "
+      search="Electric dipole moment (dipole orientation)"
+      if [ $j == "-dx" ]
+      then
+        var=`grep -C 4 "$search" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
+        output+="$var "
+      fi
+      if [ $j == "-dy" ]
+      then
+        var=`grep -C 5 "$search" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
+        output+="$var "
+      fi
+      if [ $j == "-dz" ]
+      then
+        var=`grep -C 6 "$search" $i | tail -n 1 | awk -v var=$Dunits '{print $var}'`
+        output+="$var "
+      fi
+      if [ $j == "-dtot" ] || [ $j == "-d" ]
+      then
+        var=`grep -C 3 "$search" $i | tail -n 1 | awk -v var=$Dunits '{print $var}' | sed 's/D/E/' | awk '{print $1+0}'`
+        output+="$var "
+      fi
     fi
     ##########################
     ### Normal Termination ###

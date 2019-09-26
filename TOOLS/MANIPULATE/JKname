@@ -100,7 +100,12 @@ do
   hom=0
   if [ $Qhom -ge 1 ] && [ $C -ge 10 ]
   then
-    hom=1
+    if [ $C -ge 20 ]
+    then
+      hom=2
+    else
+      hom=1
+    fi
     C=`echo $C-10*$hom | bc`
     O=`echo $O-8*$hom | bc`
     H=`echo $H-16*$hom | bc`
@@ -113,6 +118,7 @@ do
   S=`echo $S-$sa | bc`
 
   # CO2 if just C and O are present
+  co2=0
   if [ $C -gt 0 ] && [ $O -gt 0 ] && [ $N -eq 0 ] && [ $H -eq 0 ]
   then
     co2=$C
