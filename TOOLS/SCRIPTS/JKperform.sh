@@ -24,8 +24,14 @@ function waitcheck {
       local value=`cat .wait`
       if [ "$value" == "0" ]
       then
-        echo 1 > .wait
-        waittest=1
+        echo "2 $MY_output" > .wait
+        sleep 1
+        local value=`cat .wait`
+        if [ "$value" == "2 $MY_output" ]
+        then
+          echo 1 > .wait
+          waittest=1
+        fi
       else
         sleep 3
       fi

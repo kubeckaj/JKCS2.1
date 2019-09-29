@@ -45,11 +45,12 @@ function echo_SCpartition {
   echo """######################################################
 ## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
 ======================================================
-ABC  NoC     1    1   72:00:00   small      4000
-XTB  NoC     1    1   72:00:00   small      4000
-G16  100     8    1   72:00:00   small      4000
-ORCA 100     8    1   330:00:00  longrun    4000
--loc 1       1    1   -          -          4000
+ABC   NoC     1    1   72:00:00   small      4000mb
+XTB   NoC     1    1   72:00:00   small      4000mb
+G16   100     8    1   72:00:00   small      4000mb
+ORCA  100     8    1   72:00:00   small      4000mb
+CC    100     8    1   330:00:00  longrun    4000mb
+-loc  1       1    1   -          -          4000mb
 ======================================================"""
 }
 
@@ -156,6 +157,7 @@ function program_G16 {
 
   #source $PATH_G16/g16/bsd/g16.login
   export OMP_NUM_THREADS=1
+  module load gaussian
  
   #CREATING WORKING DIRECTORY
   if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
@@ -170,17 +172,19 @@ function program_G16 {
 
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
-  mkdir $CALC_NAME
- 
-  #echo JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args 
   JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
-  exit
-  srun $PATH_G16/g16 < $inputCOM >& $output
+  mkdir $CALC_NAME
+  cp $inputCOM $CALC_NAME/
+  cd $CALC_NAME
+
+  #echo JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args 
+  $PATH_G16/g16/g16 < $inputCOM >& $output
   JKlog2xyz $output
 
   #COPYING RESULTS BACK
   cp $output $DIR/
   cp *.xyz $DIR/
+  cd $DIR
 
   #CLEANING
   rm -rf $CALC_NAME
@@ -198,7 +202,7 @@ function program_ORCA {
   args=${@:2}                  # all arguments except the first one
 
   export OMP_NUM_THREADS=1 
-  module load orca-env/4.0.1.2
+  module load orca-env/4.0.1.2 2> /dev/null
 
   #CREATING WORKING DIRECTORY
   if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi

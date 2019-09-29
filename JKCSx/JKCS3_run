@@ -376,7 +376,8 @@ do
 done
 
 ###################################################################
-JKecho 1 "This subfolder is finished."
+cd $currentdirpath
+JKecho 1 "This subfolder calculations/submisions are finished."
 exit
 
 
