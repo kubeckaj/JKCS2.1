@@ -513,8 +513,14 @@ do
         a32=$a23
         a31=$a13
         a21=$a12
+        echo "import numpy as np" > .JKgaussstat_help.py
+        echo "import numpy.linalg as LA" >> .JKgaussstat_help.py
+        echo "a=np.matrix('$a11 $a12 $a13; $a21 $a22 $a23; $a31 $a32  $a33')" >> .JKgaussstat_help.py
+        #echo "print(a)""" >> .JKgaussstat_help.py
+        echo "print(LA.norm(LA.eigh(a)[0]))""" >> .JKgaussstat_help.py
+        var=`python .JKgaussstat_help.py`
         #echo $a11 $a12 $a22 $a13 $a23 $a33
-        var=`echo "-1.0*$a13*$a22*$a31+1.0*$a12*$a23*$a31+1.0*$a13*$a21*$a32-1.0*$a11*$a23*$a32-1.0*$a12*$a21*$a33+1.0*$a11*$a22*$a33" | bc -l` 
+        #var=`echo "-1.0*$a13*$a22*$a31+1.0*$a12*$a23*$a31+1.0*$a13*$a21*$a32-1.0*$a11*$a23*$a32-1.0*$a12*$a21*$a33+1.0*$a11*$a22*$a33" | bc -l` 
 	var=`echo "$var" | awk '{ print $1^(1/3) }' | bc -l`
       fi
       output+="$var "
