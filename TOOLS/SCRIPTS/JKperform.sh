@@ -127,6 +127,14 @@ function getcommand {
               sed "${linkline}s/LINK 1/DONE/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
               waitcheck 0
             fi
+            linkteststatus=`grep -c "LINK 0 $MY_motherdir" commands_TODO.txt`
+            if [ $linkteststatus -eq 1 ]
+            then
+              waitcheck 1
+              linkline=`grep -n "LINK 1 $MY_motherdir" commands_TODO.txt | sed 's/:/ /' | awk '{print $1}'`
+              sed "${linkline}s/LINK 0/DONE/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+              waitcheck 0
+            fi
             cd $MY_motherdir
             echo "MY OLD MY_motherdirNEW = $MY_motherdirNEW" >> $MY_output
             MY_motherdirNEW=$newcurrentdir
