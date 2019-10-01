@@ -229,6 +229,8 @@ function JKloaddirs {
     #echo $command
     command=`echo $scriptpath/$scriptfilecommand $commandarguments1 $commandarguments2`
     JKecho 2 "Evaluating command ${cfYELLOW}$command${cfDEF}"
+    echo "LINK 1 $motherdir/$i" >> ../commands_TODO.txt
+    echo "LINK 1 $motherdir" >> commands_TODO.txt
     eval $command
     cd ..
     JKecho 1 "Leaving directory ${cfRED}${i}${cfDEF}"

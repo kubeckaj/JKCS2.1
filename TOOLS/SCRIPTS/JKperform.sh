@@ -55,7 +55,8 @@ function getcommand {
     fi
     local doingcount=0
     local linenumber=0
-    local test=0
+    local test=0             #did I found some job todo
+    local Qwaiting=0         #did I pass some waiting job?
     local linktest=0 #testing how many calc. are already linked 
     for i in `seq 1 $jobscount`
     do
@@ -71,37 +72,83 @@ function getcommand {
         continue
       elif [ "$firstword" == "WAITING" ]
       then
+        Qwaiting=1
         if [ $doingcount -eq 0 ]
         then
           test=1
           line=${line:8}
           sed "${linenumber}s/WAITING//" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
           sed "${linenumber}s/^/DOING $MY_ID /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+          ### OPEN LINKS ###
+          for j in `seq $i $jobscount`    
+          do
+            local WAITINGline=`head -n $j commands_TODO.txt | tail -n 1`
+            local WAITINGfirstword=`echo $WAITINGline | awk '{print $1}'`
+            if [ $WAITINGfirstword == "LINK" ]
+            then
+              WAITINGnewcurrentdir=`echo $WAITINGline | awk '{print $3}'`
+              cd $WAITINGnewcurrentdir
+              WAITINGlinkteststatus=`grep -c "LINK 0 $MY_motherdir" commands_TODO.txt`
+              if [ $WAITINGlinkteststatus -eq 1 ]
+              then
+                waitcheck 1
+                linkline=`grep -n "LINK 0 $MY_motherdir" commands_TODO.txt | sed 's/:/ /' | awk '{print $1}'`
+                sed "${linkline}s/LINK 0/LINK 1/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+                waitcheck 0
+              fi
+              cd $MY_motherdir
+            fi
+          done
+          ###     
           break
         else
-          waitcheck 0
-          exit
+          continue
         fi
       elif [ "$firstword" == "LINK" ]
       then
+        # LINK STATUS DIR
+        #STATUS: 0 closed, 1 open
         test=1
-        linkentered=`echo $line | awk '{print $2}'`
-        if [ "$linkentered" == "0" ]
+        linkstatus=`echo $line | awk '{print $2}'`
+        newcurrentdir=`echo $line | awk '{print $3}'`
+        if [ "$linkstatus" == "0" ]
         then
-          line=${line:7}
-          sed "${linenumber}s/LINK 0//" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
-          sed "${linenumber}s/^/LINK $MY_ID /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
-          break
-        elif [ "$linkentered" == "$MY_ID" ]
-        then
-          sed "${linenumber}s/LINK/DONE/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt           
-          waitcheck 0
-          exit
-        else
-          doingcount=`echo $doingcount+1 | bc`
           continue
+        else
+          if [ $doingcount -eq 0 ]
+          then
+            sed "${linenumber}s/LINK 1/DONE/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+            cd $newcurrentdir
+            linkteststatus=`grep -c "LINK 1 $MY_motherdir" commands_TODO.txt`
+            if [ $linkteststatus -eq 1 ]
+            then
+              waitcheck 1
+              linkline=`grep -n "LINK 1 $MY_motherdir" commands_TODO.txt | sed 's/:/ /' | awk '{print $1}'`
+              sed "${linkline}s/LINK 1/DONE/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+              waitcheck 0
+            fi
+            cd $MY_motherdir
+            echo "MY OLD MY_motherdirNEW = $MY_motherdirNEW" >> $MY_output
+            MY_motherdirNEW=$newcurrentdir
+          else
+            cd $newcurrentdir
+            linkteststatus=`grep -c "LINK 1 $MY_motherdir" commands_TODO.txt`
+            if [ $linkteststatus -eq 1 ]
+            then
+              waitcheck 1 
+              linkline=`grep -n "LINK 1 $MY_motherdir" commands_TODO.txt | sed 's/:/ /' | awk '{print $1}'`
+              sed "${linkline}s/LINK 1/LINK 0/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
+              waitcheck 0
+            fi
+            cd $MY_motherdir
+            MY_motherdirNEW=$newcurrentdir         
+          fi
+          line="echo Linking to $MY_motherdirNEW" >> $MY_output
+          test=1
+          break
         fi 
-      else
+      elif [ $Qwaiting -eq 0 ]
+      then
         test=1
         sed "${linenumber}s/^/DOING $MY_ID /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
         break
@@ -130,7 +177,6 @@ function getcommand {
 function fincommand { 
   waitcheck 1
   sed "${MY_LINENUMBER}s/DOING //" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
-  sed "${MY_LINENUMBER}s/LINK //" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
   sed "${MY_LINENUMBER}s/^/DONE /" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
   waitcheck 0 
 }
@@ -157,6 +203,18 @@ function timing {
       maxtime=$runtime
     fi
   fi
+}
+
+function timingTEST {
+  endtime=`date +%s`
+  totruntime=$((endtime-starttime))
+  if [ -e .maxtime ]
+  then 
+    maxtime=`cat .maxtime`
+  else
+    maxtime=0
+    echo "maxtime=0 (hopefully it is ok to assume then next job will not take so much time)" >> $MY_output
+  fi
 
   # runtime / req.time
   percentage=`echo "100*($totruntime+$maxtime)/($MY_reqtime*3600)" | bc -l`
@@ -164,7 +222,7 @@ function timing {
   #echo $percentage $percentagetest
   if [ $percentagetest -eq 0 ]
   then
-    echo "UPGRADE THIS PLS. OVER 90% OF REQUESTED TIME USED. [EXITING]"
+    echo "SORRY I HAVE TO TURN OF :-( OVER 90% OF REQUESTED TIME USED. [EXITING]"
     exit
   fi 
 }
@@ -173,8 +231,9 @@ function timing {
 # WHO AM I
 MY_ID=$SLURM_JOBID
 if [ -z "$MY_ID" ]; then MY_ID="LOC"; echo 1 local task is running; fi
-MY_output=output.$MY_ID
+MY_output=.output.$MY_ID
 MY_motherdir=$PWD
+MY_motherdirNEW=$PWD
 #TODO link hours to requesting time
 MY_reqtime=24 #in hours
 
@@ -190,19 +249,26 @@ do
   jobtime=`date +%s`
   MY_jobnumber=`echo $MY_jobnumber+1 | bc`
   echo "Job number: $MY_jobnumber" >> $MY_output
+  timingTEST #check if I have still energy to calculate
   # LOADING COMMAND
   getcommand #gives: MY_LINE, MY_LINENUMBER
   echo "Line to be done: $MY_LINE" >> $MY_output
   echo "Linenumber to be done: $MY_LINENUMBER" >> $MY_output
   # PERFORMING THE LINE
   eval $MY_LINE
-  # RETURN TO MOTHER DIR
-  cd $MY_motherdir
-  # UPDATING COMMANDS
-  fincommand 
+  if [ "$MY_motherdir" == "$MY_motherdirNEW" ]
+  then
+    # RETURN TO MOTHER DIR
+    cd $MY_motherdir
+    # UPDATING COMMANDS
+    fincommand 
+    timing
+    echo "################" >> $MY_output 
+  else
+    cd $MY_motherdirNEW
+    MY_motherdir=$MY_motherdirNEW
+  fi
   # CHECK IF I AM NOT OUT OF TIME
-  timing
-  echo "################" >> $MY_output 
 done
 
 
