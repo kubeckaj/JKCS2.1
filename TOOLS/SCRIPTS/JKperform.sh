@@ -108,13 +108,13 @@ function getcommand {
       then
         # LINK STATUS DIR
         #STATUS: 0 closed, 1 open
-        test=1
         linkstatus=`echo $line | awk '{print $2}'`
         newcurrentdir=`echo $line | awk '{print $3}'`
         if [ "$linkstatus" == "0" ]
         then
           continue
         else
+          test=1
           if [ $doingcount -eq 0 ]
           then
             sed "${linenumber}s/LINK 1/DONE/" commands_TODO.txt > .commands_TODO.txt_help; mv .commands_TODO.txt_help commands_TODO.txt
