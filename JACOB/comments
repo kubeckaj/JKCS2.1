@@ -4,7 +4,7 @@ try ABCluster TIP4 water
 
 JKCS2 name molecules in different name
 results colours after uniqueness //is it important??
-JKCS4 the same lengths
+JKCS4 the same lengthsa | column -t
 test file
 cp N file or different naming of files
 name in queue
@@ -17,3 +17,6 @@ dir PROGRAM times ?????
 
 amount of molecules in system:
 echo var=0>o; ls -d */ |xargs -n 1 | sed 's/\//0\`/g' | sed 's/W/+/g' | sed 's/MSA/+/g' | sed 's/SA/+/g' |sed 's/_//g' |sed 's/SYS/var=\`\echo $var+/g' >> o; echo "echo \$var" >> o; sh o | bc -l
+
+JKcheck
+rm .help; for i in `ls -d SYS_*/`; do  cd $i; cd DFT_low; v1=`wc -l commands_TODO.txt|awk '{print $1}'`; v2=`grep -c DONE commands_TODO.txt`; v3=`echo $v2/$v1*100 | bc -l`; echo $i $v2/$v1 $v3 >> ../../.help; cd ../../;done; cat .help | sort -nrk 3 | column -t
