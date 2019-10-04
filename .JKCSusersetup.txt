@@ -120,7 +120,6 @@ function program_XTB {
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   mkdir $CALC_NAME
-  cp $input $CALC_NAME/
   cd $CALC_NAME
   $XTBPATH/bin/xtb $input $method $args > $output 2>&1
 

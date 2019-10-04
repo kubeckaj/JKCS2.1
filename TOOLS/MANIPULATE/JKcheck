@@ -1,0 +1,29 @@
+subfolders="$*"
+
+if [ -e .help ];
+then
+  rm .help;
+fi 
+
+for i in `ls -d SYS_*/`; 
+do  
+  cd $i
+  if [ -z "$subfolders" ]
+  then
+    subsselected=`ls -d */`
+  else
+    subsselected=$subfolders
+  fi
+
+  for j in $subsselected
+  do
+    cd $j
+    v1=`wc -l commands_TODO.txt|awk '{print $1}'`; 
+    v2=`grep -c DONE commands_TODO.txt`; 
+    v3=`echo $v2/$v1*100 | bc -l`; 
+    echo $i $j $v2/$v1 $v3 >> ../../.help;  
+    cd ..
+  done
+  cd ..
+done
+cat .help | sort -nrk 4 | column -t
