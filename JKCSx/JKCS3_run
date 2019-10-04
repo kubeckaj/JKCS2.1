@@ -267,6 +267,7 @@ else
   if [ ! -d ${folderOLD} ]
   then
     JKecho 0 "Folder ${folderOLD} does not exist. [${cfRED}EXIT${cfDEF}]"
+    exit
   fi
 fi
 
