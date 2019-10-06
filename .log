@@ -1,0 +1,25 @@
+cp: /Users/jakub/WORKDIR/JKCS2.0/.test.xyz and /Users/jakub/WORKDIR/JKCS2.0/.test.xyz are identical (not copied).
+tory
+####################################
+JKlog2xyz: Wait a moment ...
+JKlog2xyz: Done :-D
+: command not found
+cp: .test.com.com: No such file or directory
+/Users/jakub/.JKCSusersetup.txt: line 180: .test.com.com: No such file or directory
+grep: .test.com.log: No such file or directory
+/Users/jakub/WORKDIR/JKCS2.0/TOOLS/MANIPULATE/JKlog2xyz: line 92: [: -eq: unary operator expected
+grep: .test.com.log: No such file or directory
+(standard_in) 1: parse error
+(standard_in) 1: parse error
+tail: option requires an argument -- n
+usage: tail [-F | -f | -r] [-q] [-b # | -c # | -n #] [file ...]
+grep: Invalid argument
+tail: option requires an argument -- n
+usage: tail [-F | -f | -r] [-q] [-b # | -c # | -n #] [file ...]
+grep: Invalid argument
+grep: .test.com.log: No such file or directory
+/Users/jakub/WORKDIR/JKCS2.0/TOOLS/MANIPULATE/JKlog2xyz: line 124: [: : integer expression expected
+grep: .test.com.log: No such file or directory
+cp: .test.com.log: No such file or directory
+cp: *.xyz: No such file or directory
+####################################
