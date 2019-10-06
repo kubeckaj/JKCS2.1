@@ -53,7 +53,6 @@ else
   echo "####################################" >> .log
   echo "   :: see .log for the error"
   echo "   :: open ~/.JKCSusersetup -> check program_PYTHON2 -> check the function/setup paths"
-  exit
 fi
 rm .help
 ##########
