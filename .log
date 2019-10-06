@@ -1,25 +1,27 @@
-cp: /Users/jakub/WORKDIR/JKCS2.0/.test.xyz and /Users/jakub/WORKDIR/JKCS2.0/.test.xyz are identical (not copied).
-tory
+Loading application python-2.7.13 environment with needed modules
+  Switching compiler intel to gcc/5.4.0
+  Switching MPI version intelmpi to intelmpi/5.1.3
+OMP_NUM_THREADS set to 1
+If you are using OpenMP threaded libraries you need to set this variable to the number of cores you are requesting per process
+
+The following have been reloaded with a version change:
+  1) intelmpi/5.1.1 => intelmpi/5.1.3  2) mkl/11.3.0 => mkl/11.3.2
+
+Python 2.7.13
 ####################################
-JKlog2xyz: Wait a moment ...
-JKlog2xyz: Done :-D
-: command not found
-cp: .test.com.com: No such file or directory
-/Users/jakub/.JKCSusersetup.txt: line 180: .test.com.com: No such file or directory
-grep: .test.com.log: No such file or directory
-/Users/jakub/WORKDIR/JKCS2.0/TOOLS/MANIPULATE/JKlog2xyz: line 92: [: -eq: unary operator expected
-grep: .test.com.log: No such file or directory
-(standard_in) 1: parse error
-(standard_in) 1: parse error
-tail: option requires an argument -- n
-usage: tail [-F | -f | -r] [-q] [-b # | -c # | -n #] [file ...]
-grep: Invalid argument
-tail: option requires an argument -- n
-usage: tail [-F | -f | -r] [-q] [-b # | -c # | -n #] [file ...]
-grep: Invalid argument
-grep: .test.com.log: No such file or directory
-/Users/jakub/WORKDIR/JKCS2.0/TOOLS/MANIPULATE/JKlog2xyz: line 124: [: : integer expression expected
-grep: .test.com.log: No such file or directory
-cp: .test.com.log: No such file or directory
-cp: *.xyz: No such file or directory
+/homeappl/home/kubeckaj/.JKCSusersetup.txt: line 246: python3.6: command not found
+####################################
+Write a method: (e.q. # wb97xd 6-31++g** opt)
+JKxyz2com: Wait a moment ...
+JKxyz2com:(standard_in) 1: syntax error
+(standardJKlog2xyz: Done :-D
+
+grep: tail: option requires an argument -- 'n'
+Symbolic Z-matrix:: invalid context length argumentTry `tail --help' for more information.
+
+tail: option requires an argument -- 'n'
+grep: Try `tail --help' for more information.
+ Center     Atomic      Atomic             Coordinates (Angstroms): invalid context length argument
+cp: cannot stat `*.xyz': No such file or directory
+####################################
 ####################################
