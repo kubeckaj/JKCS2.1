@@ -34,7 +34,7 @@ writetobashrc "$command1"
 command2="export PATH=$path2:\$PATH"
 writetobashrc "$command2"
 
-echo "Write followinng command: "
+echo "Write following command: "
 echo "          source ~/.bashrc"
 echo "-----------------------"
 

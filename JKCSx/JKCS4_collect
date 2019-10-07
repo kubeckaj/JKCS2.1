@@ -325,15 +325,19 @@ then
 fi
 JKecho 2 "Tasks used: $SCtasks"
 
-echo "LINK 1 $currentdirpath" >> commands_TODO.txt
-if [ -e ../commands_TODO.txt ]
+Qlinking=0
+if [ $Qlinking -eq 1 ]
 then
-  cp ../commands_TODO.txt ../commands_TODO.txt_help
-  echo "LINK 1 $currentdirpath/$method" > ../commands_TODO.txt
-  cat ../commands_TODO.txt_help >> ../commands_TODO.txt
-  rm ../commands_TODO.txt_help
-else
-  echo "LINK 1 $currentdirpath/$method" > ../commands_TODO.txt
+  echo "LINK 1 $currentdirpath" >> commands_TODO.txt
+  if [ -e ../commands_TODO.txt ]
+  then
+    cp ../commands_TODO.txt ../commands_TODO.txt_help
+    echo "LINK 1 $currentdirpath/$method" > ../commands_TODO.txt
+    cat ../commands_TODO.txt_help >> ../commands_TODO.txt
+    rm ../commands_TODO.txt_help
+  else
+    echo "LINK 1 $currentdirpath/$method" > ../commands_TODO.txt
+  fi
 fi
 
 for i in `seq 1 $SCtasks`
