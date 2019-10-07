@@ -9,6 +9,39 @@ function is_absolute() {
   esac
 }
 
+#return lowercased letters
+function lowercase() {
+	echo "$1" | sed "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
+}
+
+function JKos {
+  OS=`lowercase \`uname\``
+
+  if [ "$OS" == "darwin" ]; then
+    OS="osx"
+  elif [ "$OS" == "windowsnt" ] ; then
+    OS="vs"
+  elif [ "${OS:0:5}" == "mingw" -o "$OS" == "msys_nt-6.3" ]; then
+    OS="msys2"
+  elif [ "$OS" == "linux" ]; then
+    ARCH=`uname -m`
+    if [ "$ARCH" == "i386" -o "$ARCH" == "i686" ] ; then
+      OS="linux"
+    elif [ "$ARCH" == "x86_64" ] ; then
+      OS="linux64"
+    elif [ "$ARCH" == "armv6l" ] ; then
+      OS="linuxarmv6l"
+    elif [ "$ARCH" == "armv7l" ] ; then
+      OS="linuxarmv7l"
+    else
+    # We don't know this one, but we will try to make a reasonable guess.
+      OS="linux"$ARCH
+    fi
+  fi
+  
+  echo "$OS"
+}
+
 #need Qprint; evaluate as JKecho 1 "string"
 function JKecho {
   if [ $Qprint -ge $1 ]
@@ -19,7 +52,13 @@ function JKecho {
     else
       printf    "$scriptfile: ${@:2}\n"
     fi
-    printf "$scriptfile: ${@:2}\n" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" >> output
+    OSTYPE=`JKos`
+    if [ "$OSTYPE" == "osx" ]
+    then
+      printf "$scriptfile: ${@:2}\n" | sed -E "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" >> output
+    else
+      printf "$scriptfile: ${@:2}\n" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" >> output
+    fi
   fi
 }
 
