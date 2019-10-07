@@ -11,17 +11,3 @@ Python 2.7.13
 ####################################
 /homeappl/home/kubeckaj/.JKCSusersetup.txt: line 246: python3.6: command not found
 ####################################
-Write a method: (e.q. # wb97xd 6-31++g** opt)
-JKxyz2com: Wait a moment ...
-JKxyz2com:(standard_in) 1: syntax error
-(standardJKlog2xyz: Done :-D
-
-grep: tail: option requires an argument -- 'n'
-Symbolic Z-matrix:: invalid context length argumentTry `tail --help' for more information.
-
-tail: option requires an argument -- 'n'
-grep: Try `tail --help' for more information.
- Center     Atomic      Atomic             Coordinates (Angstroms): invalid context length argument
-cp: cannot stat `*.xyz': No such file or directory
-####################################
-####################################
