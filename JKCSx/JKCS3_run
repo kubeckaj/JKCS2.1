@@ -389,7 +389,7 @@ for i in `seq 1 $SCtasks`
 do
   #echo "sendjob $currentdir-ABC" 
   $SC_command sh $toolspath/SCRIPTS/JKperform.sh
-  #echo "$SC_command"
+  echo "$SC_command sh $toolspath/SCRIPTS/JKperform.sh" >> output
 done
 
 ###################################################################
