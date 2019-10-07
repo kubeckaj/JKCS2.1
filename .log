@@ -14,9 +14,9 @@ grep: .test.com.log: No such file or directory
 tail: option requires an argument -- n
 usage: tail [-F | -f | -r] [-q] [-b # | -c # | -n #] [file ...]
 grep: Invalid argument
+grep: Invalid argument
 tail: option requires an argument -- n
 usage: tail [-F | -f | -r] [-q] [-b # | -c # | -n #] [file ...]
-grep: Invalid argument
 grep: .test.com.log: No such file or directory
 /Users/jakub/WORKDIR/JKCS2.0/TOOLS/MANIPULATE/JKlog2xyz: line 124: [: : integer expression expected
 grep: .test.com.log: No such file or directory
