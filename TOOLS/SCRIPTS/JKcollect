@@ -217,11 +217,11 @@ then
   done
 
   # calculate Rg
-  $program_PYTHON2 $toolspath/SCRIPTS/JKrg.py
+  program_PYTHON2 $toolspath/SCRIPTS/JKrg.py
   # calculate NCC
   if [ $Qncc == 1 ]
   then
-    $program_PYTHON2 $toolspath/SCRIPTS/JKncc.py
+    program_PYTHON2 $toolspath/SCRIPTS/JKncc.py
   fi  
 
   #if old savefile exist, remove it

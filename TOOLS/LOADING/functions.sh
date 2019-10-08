@@ -226,13 +226,19 @@ function JKloaddirs {
     L4=`echo "${arguments[i]}" | cut -c1-4`
     if [ "$L4"  == "${folderbasename}_" ] 
     then
-      if [ -d "${arguments[i]}" ]
-      then
-        folders+=" ${arguments[i]}"
-      else
-        JKecho 0 "Folder ${cfGREEN}${arguments[i]}${cfDEF} does not exist. ${cfRED}[EXITING]${cfDEF}"
-        exit
-      fi
+      motherdir=$PWD
+      uploadfolder=`Cbrackets ${arguments[i]}`
+      uploadfolder=`Cdash $uploadfolder`
+      for j in $uploadfolder
+      do
+        if [ -d "$j" ]
+        then
+          folders+=" $j"
+        else
+          JKecho 0 "Folder ${cfGREEN}${j}${cfDEF} does not exist. ${cfRED}[EXITING]${cfDEF}"
+          exit
+        fi
+      done
     else
       arguments_help+=( "${arguments[i]}" )
     fi
