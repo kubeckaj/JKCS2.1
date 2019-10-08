@@ -83,7 +83,7 @@ function program_XTB {
   input="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.xyz" # full path of file.xyz    
   output=$base.log             # file.log
   args=${@:2}                  # all arguments except the first one
-
+  
   #load JKCS arguments
   if [ -e ../arguments.txt ]
   then
@@ -104,6 +104,23 @@ function program_XTB {
     else test=1;fi     
   done
 
+  #TEMPERATURE
+  next=0;method_help="";args_help="";
+  for i in $method
+  do 
+    if [ "$i" == "-temp" ]; then next=1;continue;fi
+    if [ "$next" == "1" ]; then next=2;TEMP=$i;continue;fi 
+    method_help+=" $i"
+  done
+  method=$method_help
+  for i in $args
+  do 
+    if [ "$i" == "-temp" ]; then next=1;continue;fi
+    if [ "$next" == "1" ]; then next=2;TEMP=$i;continue;fi 
+    args_help+=" $i"
+  done
+  args=$args_help
+
   #CHARGE AND MULTIPLICITY
   if [[ "$method" != *"-c "* ]] && [[ "$method" == *"-chrg "* ]] && [[ "$args" == *"-c "* ]] && [[ "$args" == *"-chrg "* ]];
   then
@@ -121,7 +138,10 @@ function program_XTB {
   DIR=$PWD
   mkdir $CALC_NAME
   cd $CALC_NAME
-  $XTBPATH/bin/xtb $input $method $args > $output 2>&1
+  cp $input calc.xyz
+  if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
+
+  $XTBPATH/bin/xtb calc.xyz $method $args > $output 2>&1
 
   #COPYING RESULTS BACK
   cp $output $DIR/$output
