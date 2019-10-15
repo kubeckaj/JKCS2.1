@@ -51,7 +51,7 @@ function help {
 
    ${cfYELLOW}XTB:${cfDEF}
      $scriptfile    
-     $scriptfile -p XTB -nf XTB_freq -rf XTB -m \"-ohess\"
+     $scriptfile -p XTB -nf XTB_freq -rf XTB -m \"-ohess -temp 298.15\"
    ${cfYELLOW}G16:${cfDEF}
      $scriptfile -p G16 -rf XTB     -nf DFT_sp   -m \"# HF 6-31+g*\"
      $scriptfile -p G16 -rf XTB     -nf DFT_opt  -m \"# wb97xd 6-31++g** opt=verytight\"

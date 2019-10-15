@@ -247,8 +247,10 @@ if [ ! -d ABC ]; then mkdir ABC; fi
 cd ABC 
 JKecho 2 "Creating ABC subfolders."
 #TODO here is the question: should be done in the jobs itself 
+const_iter=0
 for i in $constitutions
 do
+  const_iter=`echo $const_iter+1 |bc`
   JKecho 3 "  Combination - ${cfYELLOW}$i${cfDEF}"
   #####################
   ### CREATING PATH ###
@@ -282,8 +284,17 @@ $BOX #_size_of_sampling_box
 $name #_name_of_output_folder
 $LM #_amount_of_Local_Minima_to_be_saved""" | column -t >> $F2
   ######################
+  ### CREATE rename.sh
+  echo """cd $name-LM
+rm *.gjf *.cluster 2>/dev/null
+for i in \`ls *.xyz\`
+do
+  mv \$i ${const_iter}_\$i 
+done
+cd ..""" > rename.sh
+  ######################
   # command
-  command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp" 
+  command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 
   printf "$command" > run${scriptfilecommand}.sh
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
   echo $commandTODO >> ../commands_TODO.txt
