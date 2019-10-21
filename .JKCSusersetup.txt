@@ -36,7 +36,8 @@ PATH_GoodVibes="/projappl/hvehkama/kubeckaj/Apps/goodvibes/goodvibes/GoodVibes.p
 PATH_ORCA="/projappl/hvehkama/kubeckaj/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
 
-WRKDIR="/scratch/hvehkama/kubeckaj/"
+# YOU CAN CALCULATE AT THE SMAE PLACE YOU ARE (./), OR YOU HAVE SOMEWHERE ELSE A TMP DIR 
+WRKDIR="./"
 
 ###################################
 ### Default supercomputer setup ###
