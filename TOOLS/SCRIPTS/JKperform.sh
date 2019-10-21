@@ -251,15 +251,22 @@ echo mother dir = $MY_motherdir >> $MY_output
 source ~/.JKCSusersetup.txt
 
 MY_jobnumber=0
-while [ 1 -eq 1 ]
-do
+
+if [ ! -z "$1" ]
+then
+  COMMANDNUMBER="$1"
   echo "################" >> $MY_output 
   jobtime=`date +%s`
   MY_jobnumber=`echo $MY_jobnumber+1 | bc`
-  echo "Job number: $MY_jobnumber" >> $MY_output
-  timingTEST #check if I have still energy to calculate
-  # LOADING COMMAND
-  getcommand #gives: MY_LINE, MY_LINENUMBER
+  if [ -e .commands_TODO_${COMMANDNUMBER}.txt ]
+  then
+    MY_LINE=`cat .commands_TODO_${COMMANDNUMBER}.txt`
+    MY_LINENUMBER=$COMMANDNUMBER
+    rm .commands_TODO_${COMMANDNUMBER}.txt
+  else
+    MY_LINE="echo \"The file which should contain my command ($1) does not exist.\""
+    MY_LINENUMBER=$COMMANDNUMBER
+  fi
   echo "Line to be done: $MY_LINE" >> $MY_output
   echo "Linenumber to be done: $MY_LINENUMBER" >> $MY_output
   # PERFORMING THE LINE
@@ -276,7 +283,41 @@ do
     cd $MY_motherdirNEW
     MY_motherdir=$MY_motherdirNEW
   fi
-  # CHECK IF I AM NOT OUT OF TIME
+fi
+
+COMMANDNUMBER="0"
+while [ 1 -eq 1 ]
+do
+  NT1=`grep -c "DONE" commands_TODO.txt`
+  NT2=`wc -l commands_TODO.txt | awk '{print $1}'`
+  if [ $NT1 -ne $NT2 ] 
+  then
+    echo "################" >> $MY_output 
+    jobtime=`date +%s`
+    MY_jobnumber=`echo $MY_jobnumber+1 | bc`
+    echo "Job number: $MY_jobnumber" >> $MY_output
+    timingTEST #check if I have still energy to calculate
+    # LOADING COMMAND
+    getcommand #gives: MY_LINE, MY_LINENUMBER
+    echo "Line to be done: $MY_LINE" >> $MY_output
+    echo "Linenumber to be done: $MY_LINENUMBER" >> $MY_output
+    # PERFORMING THE LINE
+    eval $MY_LINE
+    if [ "$MY_motherdir" == "$MY_motherdirNEW" ]
+    then
+      # RETURN TO MOTHER DIR
+      cd $MY_motherdir
+      # UPDATING COMMANDS
+      fincommand 
+      timing
+      echo "################" >> $MY_output 
+    else
+      cd $MY_motherdirNEW
+      MY_motherdir=$MY_motherdirNEW
+    fi
+  else
+    exit
+  fi
 done
 
 

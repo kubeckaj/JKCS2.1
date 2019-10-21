@@ -236,7 +236,7 @@ file_out=file_in[:-4]+'_FILTERED.dat'
 ############### Introduce number for number of columns to be taken
 #colNum=3 # Maybe array with one element per column?
 #colNumArr=arange(3)  #Gives me array([0,1,2])
-numpy.set_printoptions(threshold=numpy.nan)
+#numpy.set_printoptions(threshold=numpy.nan)
 
 #read filei
 if Qbonds == 0:

@@ -178,6 +178,7 @@ do
     JKecho 0 "Folder ${cfGREEN}$folder${cfDEF} already exists. ${cfYELLOW}[CONTINUE to another folder]${cfDEF}";
     continue;
   fi
+  #$folderbasename ls | xargs -n 1 | grep "SYS" | wc -l
   #going to specific directory
   mkdir $folder
   cd $folder

@@ -17,12 +17,19 @@ do
 
   for j in $subsselected
   do
-    cd $j
-    v1=`wc -l commands_TODO.txt|awk '{print $1}'`; 
-    v2=`grep -c DONE commands_TODO.txt`; 
-    v3=`echo $v2/$v1*100 | bc -l`; 
-    echo $i $j $v2/$v1 $v3 >> ../../.help;  
-    cd ..
+    if [ -e $j ]
+    then
+      cd $j
+      v1=`wc -l commands_TODO.txt|awk '{print $1}'`; 
+      v2=`grep -c DONE commands_TODO.txt`; 
+      v3=`echo $v2/$v1*100 | bc -l`; 
+      cd ..
+    else 
+      v1="--XXX--"
+      v2="--XXX--"
+      v3="--XXX--"
+    fi
+    echo $i $j $v2/$v1 $v3 >> ../.help;  
   done
   cd ..
 done

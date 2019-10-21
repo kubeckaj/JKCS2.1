@@ -26,6 +26,7 @@ source ~/.JKCSusersetup.txt
 
 path1="$toolspath/STRUCTURES/ABC"
 path2="$toolspath/STRUCTURES/JACOB"
+path3="$toolspath/STRUCTURES/EXPERIMENTAL"
 
 ###############################################################################
 ###################################### HELP ###################################
@@ -175,13 +176,13 @@ function add {
   JKecho 2 "Adding link for $1 in the end of $userinputfile."
   what=`echo $1 | awk '{print tolower($0)}'`
   case ${what} in
-  "a"|"am") echo   "  A      0   $path1/nh3.xyz"         >> $userinputfile
+  "a"|"am") echo   "  A      0   $path1/nh3.xyz"    >> $userinputfile
        echo   "  A      1   $path1/nh4.xyz"         >> $userinputfile
        ;;
-  "hno3") echo   "  HNO3      0   $path1/hno3.xyz"         >> $userinputfile
-       echo   "  HNO3     -1   $path1/no3.xyz"         >> $userinputfile
+  "hno3") echo   "  HNO3      0   $path1/hno3.xyz"  >> $userinputfile
+       echo   "  HNO3     -1   $path1/no3.xyz"      >> $userinputfile
        ;;
-  "sa") echo  "  SA     0   $path1/h2so4.xyz"       >> $userinputfile
+  "sa") echo  "  SA     0   $path2/sa.xyz"          >> $userinputfile
         echo  "  SA     0   $path2/h2so4_cis.xyz"   >> $userinputfile
         echo  "  SA    -1   $path1/hso4.xyz"        >> $userinputfile
         echo  "  SA    -2   $path1/so4.xyz"         >> $userinputfile
@@ -222,12 +223,15 @@ function add {
   "tma") echo "  TMA    0   $path2/tma.xyz"         >> $userinputfile
          echo "  TMA    1   $path2/tmap.xyz"        >> $userinputfile
          ;;
-  "hio3") echo "  HIO3   0   $path2/hio3.xyz"         >> $userinputfile
-         echo "  HIO3  -1   $path2/io3.xyz"        >> $userinputfile
+  "hio3") echo "  HIO3   0   $path2/hio3.xyz"       >> $userinputfile
+         echo "  HIO3  -1   $path2/io3.xyz"         >> $userinputfile
          ;;
-  "hio2") echo "  HIO2   0   $path2/hio2.xyz"         >> $userinputfile
+  "hio2") echo "  HIO2   0   $path2/hio2.xyz"       >> $userinputfile
          ;;
-  "i2o5") echo "  I2O5   0   $path2/i2o5.xyz"         >> $userinputfile
+  "i2o5") echo "  I2O5   0   $path2/i2o5.xyz"       >> $userinputfile
+         ;;
+## EXPERIMENTAL
+  "hom") echo "  HOM    0   $path3/hom.xyz"         >> $userinputfile
          ;;
   *) JKecho 0 "${cfRED}ERROR${cfDEF}: argument ${cfYELLOW}${what}${cfDEF} does not exist! ${cfRED}[EXITING]${cfDEF}"
      exit

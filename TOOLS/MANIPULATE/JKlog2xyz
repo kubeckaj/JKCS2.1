@@ -99,7 +99,8 @@ do
   
       # this is better because of some symmetry shits:
       #N=`grep -C 2 "Distance matrix (angstroms):" $file | head -n 1 | awk '{print $1}'`
-      N=`grep -C 2 "Rotational constants" $file | tail -n 5 | head -n 1 | awk '{print $1}'`
+      #N=`grep -C 2 "Rotational constants" $file | tail -n 5 | head -n 1 | awk '{print $1}'`
+      N=`grep -C 4 "symmetry adapted cartesian basis functions" $file | tail -n 9 | head -n 1 | awk '{print $1}'`
     else 
       N=`grep 'NAtoms=' $file | head -n 1 | awk '{print $2}'`
     fi
