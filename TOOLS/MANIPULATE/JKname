@@ -7,12 +7,12 @@ function help {
   echo """
   JKname [file(s).xyz]
   BEHAVIOUR
-    - recognize: sa, sam, gd, am, dma, p, co2
+    - recognize: sa, sam, msa, gd, am, dma, p, co2, hom10, aq
     - if file.xyz exist, then create file-#.xyz, where # is increasing nnumber
 
   OPTIONS:
     -log ...... use .log instead if .xyz (convert first .log to .xyz)
-    OTHERS: -hom
+    OTHERS: -hom, -msa
 
   EXAMPLES:
     JKname 
@@ -22,7 +22,7 @@ function help {
   """
   exit
 }
-
+Qmsa=0
 Qhom=0
 FILES=""
 
@@ -37,6 +37,11 @@ do
     if [ "$i" == "-hom" ]
     then
       Qhom=1
+      continue
+    fi
+    if [ "$i" == "-msa" ]
+    then
+      Qmsa=1
       continue
     fi
     if [ "$i" == "-log" ]
@@ -110,6 +115,16 @@ do
     O=`echo $O-8*$hom | bc`
     H=`echo $H-16*$hom | bc`
   fi
+  # MSA ... no MSAm
+  msa=0
+  if [ $Qmsa -ge 1 ] && [ $C -ge 1 ] && [ $S -ge 1 ]
+  then
+    msa=`echo $C | bc` 
+    C=`echo $C-$msa | bc`
+    S=`echo $S-$msa | bc`
+    O=`echo $O-3*$msa | bc`
+    H=`echo $H-4*$msa | bc`
+  fi
   # H2SO4
   sam=0
   sa=$S
@@ -147,6 +162,10 @@ do
     am=$N
     H=`echo $H-3*$am | bc`
     N=`echo $N-1*$am | bc`
+  
+  # W = H2O
+    aq=$O
+    H=`echo $H-2*$aq | bc`
  
   # proton
     p=$H
@@ -163,11 +182,13 @@ do
   name=""
   if [ $co2 -gt 0 ]; then echo co2 = $co2;name+="${co2}coo"; fi
   if [ $hom -gt 0 ]; then echo hom = $hom;name+="${hom}hom"; fi
+  if [ $msa -gt 0 ]; then echo msa = $msa;name+="${msa}msa"; fi
   if [ $sa  -gt 0 ]; then echo sa  = $sa ;name+="${sa}sa"; fi
   if [ $sam -gt 0 ]; then echo sam = $sam;name+="${sam}sam"; fi
   if [ $gd  -gt 0 ]; then echo gd  = $gd ;name+="${gd}gd"; fi
   if [ $dma -gt 0 ]; then echo dma = $dma;name+="${dma}dma"; fi
   if [ $am  -gt 0 ]; then echo am  = $am ;name+="${am}am"; fi
+  if [ $aq  -gt 0 ]; then echo aq  = $aq ;name+="${aq}aq"; fi
   if [ $p   -gt 0 ]; then echo p   = $p  ;name+="${p}p"; fi
   
   if [ "$fileXYZ" != "$name.xyz" ]

@@ -29,6 +29,7 @@ Qsymbol=1
 ### Paths declaration ###
 #########################
 
+# DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
 PATH_ABCluster="/projappl/hvehkama/kubeckaj/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
 PATH_XTB="/projappl/hvehkama/kubeckaj/Apps/XTB6.0/"
 PATH_GoodVibes="/projappl/hvehkama/kubeckaj/Apps/goodvibes/goodvibes/GoodVibes.py"
@@ -70,8 +71,37 @@ function program_ABC {
   rigidmoloptimizer=$PATH_ABCluster
  
   #performing the calculation 
+  #module load gcc/8.2.0 2>/dev/null
   module load gcc 2>/dev/null
   $rigidmoloptimizer $input > $output 
+}
+##########################################################################################
+##########################################################################################
+# Python
+##########################################################################################
+#use python2.X, numpy might be required (needed by JKCS1)
+function program_PYTHON2 {
+  #module load python-env/2.7.13 > /dev/null 2>/dev/null
+  python2.7 ${@}
+}
+#use python3.X (needed by GoodVibes)
+function program_PYTHON3 {
+  #module load python-env/3.5.3 > /dev/null 2>/dev/null
+  python3.6 ${@}
+}
+##########################################################################################
+##########################################################################################
+# sbatch
+# command: sbatch [some_parameters] $SBATCHuseradd script
+##########################################################################################
+SBATCHuseradd=" --account=hvehkama "
+##########################################################################################
+##########################################################################################
+# GoodVibes
+# require python3.x
+##########################################################################################
+function program_GoodVibes {
+  program_PYTHON2 $PATH_GoodVibes ${@}
 }
 ##########################################################################################
 ##########################################################################################
@@ -149,10 +179,7 @@ function program_XTB {
   then								 
     cp xtbopt.xyz $DIR/$base.xyz				     
   else							     
-    if [ $input != $DIR/$base.xyz ] 
-    then
-      cp $input $DIR/$base.xyz				      
-    fi
+    cp calc.xyz $DIR/$base.xyz
   fi  
 
   #CLEANING
@@ -198,7 +225,12 @@ function program_G16 {
   test=`echo $input | rev | cut -c-4 | rev`
   if [ "$test" == ".xyz" ]
   then
-    JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
+    if [ -z "$method" ]
+    then 
+      JKxyz2com $input $args
+    else
+      JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
+    fi
   else
     inputtest="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.com"
     if [ $inputtest != $DIR/$inputCOM ]
@@ -215,6 +247,10 @@ function program_G16 {
   $PATH_G16/g16/g16 < $inputCOM >& $output
 
   #COPYING RESULTS BACK
+  if [ -e $DIR/$output ]
+  then
+    mv $DIR/$output $DIR/${base}O.log
+  fi
   cp $output $DIR/
   cd $DIR
   JKlog2xyz $output > /dev/null 2>/dev/null
@@ -230,10 +266,16 @@ function program_G16 {
 function program_ORCA {
   input=$1                     # file.xyz or .inp    
   base=$(basename $input .xyz) # file
-  base=$(basename $input .inp) # file
+  base=$(basename $base .inp) # file
   inputINP=$base.inp
   output=$base.out             # file.out
   args=${@:2}                  # all arguments except the first one
+
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
 
   export OMP_NUM_THREADS=1 
   module load orca-env/4.0.1.2 2> /dev/null
@@ -251,6 +293,7 @@ function program_ORCA {
 
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
+  mkdir $CALC_NAME
   #*.inp or *.xyz
   test=`echo $input | rev | cut -c-4 | rev`
   if [ "$test" == ".xyz" ]
@@ -258,16 +301,9 @@ function program_ORCA {
     if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
     MEMinsert=`echo 0.85*$MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
     JKxyz2inp $input -method "$method" -mem $MEMORYinsert -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
-  else
-    inputtest="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.inp"
-    if [ $inputtest != $DIR/$inputINP ]
-    then
-      cp $inputtest $DIR/$inputINP
-    fi
+    cp $inputINP $CALC_NAME/
   fi
-  #dirs
-  mkdir $CALC_NAME
-  cp $inputINP $CALC_NAME/
+  cp $input $CALC_NAME/
   cd $CALC_NAME  
  
   $PATH_ORCA $inputINP > $output 2> $output
@@ -284,29 +320,4 @@ function program_ORCA {
   #CLEANING
   rm -rf $CALC_NAME
 }
-##########################################################################################
-##########################################################################################
-# Python
-##########################################################################################
-#use python2.X, numpy might be required (needed by JKCS1)
-function program_PYTHON2 {
-  python2.7 ${@}
-}
-#use python3.X (needed by GoodVibes)
-function program_PYTHON3 {
-  python3.6 ${@}
-}
-##########################################################################################
-# GoodVibes
-# require python3.x
-##########################################################################################
-function program_GoodVibes {
-  program_PYTHON2 $PATH_GoodVibes ${@}
-}
-##########################################################################################
-##########################################################################################
-# sbatch
-# command: sbatch [some_parameters] $SBATCHuseradd script
-##########################################################################################
-SBATCHuseradd=" --account=hvehkama "
 ##########################################################################################

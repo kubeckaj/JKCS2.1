@@ -42,7 +42,7 @@ partition="serial"
 aika=72:00:00
 charge=+0
 multiplicity=1
-Qprograms=programs.txt
+
 #method="! DLPNO-CCSD(T) aug-cc-pvtz aug-cc-pvtz/C GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS"
 method="! DFT OPT FREQ PW91 6-31++g** GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS"
 next=0
@@ -185,9 +185,6 @@ fi
 scriptpath=$(dirname $0)
 toolspath="$scriptpath/../TOOLS"
 
-# load names
-source $toolspath/TOOLSextra/names.txt
-
 ###############################################################################
 
 ##################################
@@ -203,8 +200,6 @@ do
   * xyzfile $charge $multiplicity $(basename $i .xyz).xyz
   " > $(basename $i .xyz).inp
 done
-
-
 
 for i in $filesin;
 do 
