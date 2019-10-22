@@ -89,6 +89,10 @@ function JKloadCHARM {
 function JKloadsupercomputer {
   JKecho 2 "Loading default parameters for supercomputer."
   METHODsupercomputer=$program
+  if [ -z "$METHODsupercomputer" ]
+  then
+    METHODsupercomputer="XTB"
+  fi
   arguments_help=()
   # first search for -loc
   for i in "${!arguments[@]}"
@@ -103,22 +107,28 @@ function JKloadsupercomputer {
   done
   arguments=("${arguments_help[@]}")
   JKecho 2 "Type of method used: $METHODsupercomputer"
-  # extracting info from userinputfile/inputfile
-  lines=`grep -n "======================================================" $inputfile | sed "s/:/ /" | awk '{print $1}' | xargs`
-  line1=`echo $lines | awk '{print $1}'`
-  line2=`echo $lines | awk '{print $2}'`
-  line2m1=`echo $line2-$line1-1 | bc`
-  line2=`echo $line2-1 | bc`
-  head -n $line2 $inputfile | tail -n $line2m1 > .${inputfile}_supercomputer
-  # extracting SC=supercomputer variables
-  JKecho 2 "Extracting values from ${cfYELLOW}${inputfile}${cfDEF}"
-  supercomputerline=`grep "$METHODsupercomputer" .${inputfile}_supercomputer`
-  if [ -z "$supercomputerline" ]
+  if [ -e $inputfile ]
   then
-    JKecho 0 "Method $METHODsupercomputer does not exist in file ${cfYELLOW}${inputfile}${cfDEF}. ${cfRED}[EXITING]${cfDEF}"
-    exit
+    # extracting info from userinputfile/inputfile
+    lines=`grep -n "======================================================" $inputfile | sed "s/:/ /" | awk '{print $1}' | xargs`
+    line1=`echo $lines | awk '{print $1}'`
+    line2=`echo $lines | awk '{print $2}'`
+    line2m1=`echo $line2-$line1-1 | bc`
+    line2=`echo $line2-1 | bc`
+    head -n $line2 $inputfile | tail -n $line2m1 > .${inputfile}_supercomputer
+    # extracting SC=supercomputer variables
+    JKecho 2 "Extracting values from ${cfYELLOW}${inputfile}${cfDEF}"
+    supercomputerline=`grep "$METHODsupercomputer" .${inputfile}_supercomputer`
+    if [ -z "$supercomputerline" ]
+    then
+      JKecho 0 "Method $METHODsupercomputer does not exist in file ${cfYELLOW}${inputfile}${cfDEF}. ${cfRED}[EXITING]${cfDEF}"
+      exit
+    else
+      JKecho 2 "Default supercomputer parameters: `echo $supercomputerline | column -t`"
+    fi
+    NoC=`grep "## Number of Combinations" ${inputfile} | awk '{print $6}'`
   else
-    JKecho 2 "Default supercomputer parameters: `echo $supercomputerline | column -t`"
+    supercomputerline="$METHODsupercomputer 1 1 24:00:00 small 4000mb"
   fi
   ###
   SCtasks=`echo $supercomputerline | awk '{print $2}'`
@@ -129,7 +139,6 @@ function JKloadsupercomputer {
   SCmem=`echo $supercomputerline | awk '{print $7}'`
   # checking script arguments for change
   JKecho 2 "Loading parameters given by user"
-  NoC=`grep "## Number of Combinations" ${inputfile} | awk '{print $6}'`
   arguments_help=()
   last=''
   for i in "${!arguments[@]}"
@@ -256,7 +265,8 @@ function JKloaddirs {
       then
         JKecho 0 "File ${cfYELLOW}$inputfile${cfDEF} does not exist!"
         JKecho 0 "Also, no folder ${cfBLUE}${folderbasename}${cfDEF}_ does not exist! ${cfRED}[EXITING]${cfDEF}"
-        exit
+        JKecho 0 "Continuing anyway."
+        #exit
       else
         JKecho 1 "I, this script, will enter to all subfolders. :-D"
       fi

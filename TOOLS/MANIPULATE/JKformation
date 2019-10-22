@@ -7,7 +7,19 @@ then
   exit
 fi 
 
-cat $inputfile | awk '{print $1}' > .help1
+###### help0
+grep -v '\-\-\-\-\-\-\-\-\-\-\-' $inputfile > .help0a    # lines with some output
+cat .help0a | sed 's/-/ /' | awk '{print $1}' > .help0b1 # list of correct names
+cat .help0a | awk '{print $2,$3}' > .help0b2             # 2nd and 3rd column
+paste -d "  " .help0b1 .help0b2 > .help0c                # correct input with possible double appearing
+cat .help0c | sort -k 1 > oo
+echo TEST
+cat .help0c | sort -uk 1
+exit 
+####
+
+cat $inputfile | sed 's/-/ /' | awk '{print $1}' > .help1
+cp .help1 .help1c
 monomers=`cat .help1 | awk '{gsub("[0-9]"," ",$0);print $0}' | xargs -n 1 | sort -u | xargs`
 monomers=`echo $monomers | xargs -n 1 | awk '{ print length(), $0 | "sort -nr" }' | awk '{print $2}' | xargs`
 for i in $monomers
@@ -45,7 +57,9 @@ done
 
 cat .help1 | awk '{print $1 0}' | bc > .help2
 
-paste -d "  " .help2 $inputfile > .help3
+cat $inputfile | awk '{print $2,$3}' > .help1b
+paste -d "  " .help1c .help1b > .help2b
+paste -d "  " .help2 .help2b > .help3
 
 cat .help3 | sort -nk 1 > .help4
 

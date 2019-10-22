@@ -290,6 +290,10 @@ then
   subfolders="${method}/${name}-LM"
 else
   subfolders=`ls -d ${method}/${method}_*/calc-LM | xargs`
+  if [ -z "$subfolders" ]
+  then
+    subfolders="${method}"
+  fi
 fi
 #################################################
 
