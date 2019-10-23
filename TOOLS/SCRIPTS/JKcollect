@@ -125,9 +125,12 @@ then
   #fi
   ## for savefile
   if [ -e $savefile ]; then rm $savefile; fi
-  cat */$savefile     >> $savefile 2>/dev/null
-  cat */*/$savefile   >> $savefile 2>/dev/null
-  cat */*/*/$savefile >> $savefile 2>/dev/null
+  if [ -e .help$savefile ]; then rm .help$savefile; fi
+  cat */$savefile     >> .help$savefile 2>/dev/null
+  cat */*/$savefile   >> .help$savefile 2>/dev/null
+  cat */*/*/$savefile >> .help$savefile 2>/dev/null
+  cat .help$savefile | column -t > $savefile
+  rm .help$savefile
   #echo "TEST after savefile"
   ## are there 4 columns??
   test4=0

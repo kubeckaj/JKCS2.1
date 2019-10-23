@@ -261,7 +261,7 @@ then
   then
     filetake=results${resultsaddition}.dat
   else
-    JKecho 0 "File results${addition}.dat does not exist. [${cfRED}EXIT${cfDEF}]"
+    JKecho 0 "File results${resultsaddition}.dat does not exist. [${cfRED}EXIT${cfDEF}]"
     exit
   fi
 else

@@ -117,16 +117,22 @@ function JKloadsupercomputer {
     line2=`echo $line2-1 | bc`
     head -n $line2 $inputfile | tail -n $line2m1 > .${inputfile}_supercomputer
     # extracting SC=supercomputer variables
-    JKecho 2 "Extracting values from ${cfYELLOW}${inputfile}${cfDEF}"
-    supercomputerline=`grep "$METHODsupercomputer" .${inputfile}_supercomputer`
-    if [ -z "$supercomputerline" ]
+    methodtest=`grep -c "$METHODsupercomputer" .${inputfile}_supercomputer`
+    if [ $methodtest -gt 0 ]
     then
-      JKecho 0 "Method $METHODsupercomputer does not exist in file ${cfYELLOW}${inputfile}${cfDEF}. ${cfRED}[EXITING]${cfDEF}"
-      exit
+      JKecho 2 "Extracting values from ${cfYELLOW}${inputfile}${cfDEF}"
+      supercomputerline=`grep "$METHODsupercomputer" .${inputfile}_supercomputer`
+      if [ -z "$supercomputerline" ]
+      then
+        JKecho 0 "Method $METHODsupercomputer does not exist in file ${cfYELLOW}${inputfile}${cfDEF}. ${cfRED}[EXITING]${cfDEF}"
+        exit
+      else
+        JKecho 2 "Default supercomputer parameters: `echo $supercomputerline | column -t`"
+      fi
+      NoC=`grep "## Number of Combinations" ${inputfile} | awk '{print $6}'`
     else
-      JKecho 2 "Default supercomputer parameters: `echo $supercomputerline | column -t`"
+      supercomputerline="$METHODsupercomputer 1 1 24:00:00 small 4000mb"
     fi
-    NoC=`grep "## Number of Combinations" ${inputfile} | awk '{print $6}'`
   else
     supercomputerline="$METHODsupercomputer 1 1 24:00:00 small 4000mb"
   fi
