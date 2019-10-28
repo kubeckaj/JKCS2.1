@@ -18,13 +18,13 @@ function help {
   OPTIONS:
    -help .......... print this help and exit
  
-   -name .......... print name of the file
-   -p,-pwdname .... print full file path
-   -b,-basename ... print basename of the file (___.log)
+   -name .......... print name of the file *
+   -p,-pwdname .... print full file path *
+   -b,-basename ... print basename of the file (___.log) *
 
    -el,-elen ...... EL = (last) electronic energy (SCF Done)
    -zpe,-ZPE ...... ZPE = zero-point energy (correction)
-   -g,-gibbs ...... G = Gibbs Free Energy (293.15 K)
+   -g,-gibbs ...... G = Gibbs Free Energy (293.15 K) *
    -gh,-gibbsh .... Gh = Gibbs Free Energy (293.15 K) (GoodVibes)  
    -gc,-gcorr ..... dGcorr = Gibbs Free Energy (293.15 K) correction
    -gch,-gcorrh ... dGcorrh = Gibbs Free Energy (293.15 K) correction (GoodVibes)
@@ -55,6 +55,7 @@ function help {
    -t,-time ....... time in minutes # PRINT JUST LAST TIME 
    -err ........... do not print for missing \"Normal termination\"
    [OTHERS: -nt, -gibbscorr|-gcorr|-gc]
+   * = XTB compatible
   FILES:
    gaussian (G16) output is expected
   EXAMPLES:
@@ -215,8 +216,9 @@ do
     #############
     if [ $j == "-gibbs" ] || [ $j == "-g" ]
     then
-      count=`grep -c "Free Energies" $i` 
-      if [ $count -eq 1 ]
+      count1=`grep -c "Free Energies" $i` 
+      count2=`grep -c "TOTAL FREE ENERGY" $i` 
+      if [ $count1 -eq 1 ]
       then
         if [ $QT -eq 1 ]
         then
@@ -224,6 +226,9 @@ do
         else
           var=`grep "Free Energies" $i | awk '{print $8}'`
         fi
+      elif [ $count2 -eq 1 ]
+      then
+        var=`grep "TOTAL FREE ENERGY" $i | awk '{print $1}'`
       else
         var="-----------"
       fi
