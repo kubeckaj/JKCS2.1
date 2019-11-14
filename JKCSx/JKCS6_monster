@@ -1,0 +1,187 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## This program start the ABCluster bussiness             ##
+## To adjust program just change setup                    ##
+##       for help use arguement -help                     ##
+############################################################
+## "If I should show 1 equation, it would be:exp(iPi)-1=0 ##
+## Contains all magic numbers (0,1,-1,Pi,i)."Jakub Kubecka##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+# print inserted command
+echo "COMMAND: $scriptfile $@" >> output
+
+###############################################################################
+###################################### HELP ###################################
+###############################################################################
+
+### THIS IS HELP
+function help {
+  printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "This script perform set of JKCS commands specified in a file.\n"
+  printf """
+  $scriptfile ${cfCYAN}[FILE] [OPTIONS(s)]${cfDEF}
+
+  ${cfMAGENTA}FILE:${cfDEF}
+    -the text file containing all commands 1 by 1. Example:
+       ________________________________________________
+      | ## JKCS1_prepare has to be already performed   |
+      | #ABC                                           |
+      | JKCS2_explore -pop 300 -gen 100 -lm \"3000/NoC\" |
+      | #XTB                                           | 
+      | JKCS3_run                                      |
+      | JKCS4_collect XTB -dip                         |
+      |________________________________________________
+   
+  ${cfMAGENTA}OPTIONS:${cfDEF}
+    -help ............. print this help and exit
+    -el,-extralink .... when jobs are finished in 1 folder power might be 
+                        focused to other folders [otherwise just exit] 
+ 
+  ${cfMAGENTA}SYMBOLS:${cfDEF}
+    M .... number of molecules
+    NoC .. number of combinations to form cluster
+    use * or / or M or NoC and script will evaluate it
+
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
+    
+    $scriptfile commands.txt   #just 1 submit/task/job in each folder
+    $scriptfile commands.txt -maxtasks 10
+    $scriptfile commands.txt -maxtasks 3*M
+    $scriptfile commands.txt -maxtasks \"10*M/NoC\" -maxtasks 2 -el
+  """
+  printf "#################################################################\n"
+  exit
+}
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+arguments=( "-maxtasks" )
+arguments+=( "1" )
+arguments+=( "$@" )       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours           # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+# get the file
+# loop over all arguments
+arguments_help=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  # check for file and replace by full path
+  if [ -e "$iter" ]
+  then
+    usercommandfile_help="$( cd "$(dirname "$iter")" ; pwd -P )"/${iter##*/}
+    arguments_help+=( "$usercommandfile_help" )
+    continue
+  fi
+  arguments_help+=( "${arguments[i]}" )
+done
+arguments=("${arguments_help[@]}")
+if [ -z "$usercommandfile_help" ]
+then
+  JKecho 0 "Missing input file. [${cfRED}EXITING${cfDEF}]"
+  exit
+fi
+
+# check for folderbasename_something arguments and in case enter directories
+JKloaddirs
+currentdir=${PWD##*/}
+currentdirpath=$PWD
+
+# load amount of molecules
+if [ -e "$inputfile" ]
+then
+  M=`head -n 1 $inputfile | awk '{print $6}'`
+fi
+
+# -loc or load supercomputer parameters
+JKloadsupercomputer
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+Qel=0  # extralinking variable
+
+# loop over all arguments
+arguments_help=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  if [ "$iter" == "-el" ] || [ "$iter" == "-extralink" ]
+  then
+    Qel=1
+    continue
+  fi
+  # check for file
+  if [ -e "$iter" ]
+  then
+    usercommandfile="$( cd "$(dirname "$iter")" ; pwd -P )"/${iter##*/}
+    continue
+  fi 
+  arguments_help+=( "${arguments[i]}" )
+done
+arguments=("${arguments_help[@]}")
+
+JKecho 1 "The program $usercommandfile will be performed here."
+
+# there should not be more arguments
+therest="${arguments[@]}"
+if [ ! -z "$therest" ]
+then
+  JKecho 0 "Some argument(s) is/are not understood: ${therest}. [${cfRED}EXITING${cfDEF}]"
+  exit
+fi
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+cp $usercommandfile ".cbigTODO.txt"
+
+# add extra linking?
+if [ $Qel -eq 1 ]
+then
+  echo "1 $currentdir/" >> "../.link.txt"
+fi
+
+### Sending jobs ###
+JKecho 2 "Tasks used: $SCtasks"
+
+for i in `seq 1 $SCtasks`
+do
+  $SC_command sh $toolspath/SCRIPTS/JKperform2.sh 
+  #echo "$SC_command"
+done
+

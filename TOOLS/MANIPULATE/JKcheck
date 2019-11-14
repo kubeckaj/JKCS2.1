@@ -1,3 +1,4 @@
+#!/bin/bash
 subfolders="$*"
 
 if [ -e .help ];
@@ -5,7 +6,17 @@ then
   rm .help;
 fi 
 
-for i in `ls -d SYS_*/`; 
+folders=`ls -d SYS_*/ 2>/dev/null`
+if [ -z "$folders" ]
+then
+  folders="./"
+  if [ -e "../.help" ] 
+  then 
+    rm ../.help 
+  fi
+fi
+  
+for i in $folders; 
 do  
   cd $i
   if [ -z "$subfolders" ]
@@ -20,9 +31,29 @@ do
     if [ -e $j ]
     then
       cd $j
-      v1=`wc -l commands_TODO.txt|awk '{print $1}'`; 
-      v2=`grep -c DONE commands_TODO.txt`; 
-      v3=`echo $v2/$v1*100 | bc -l`; 
+      if [ -e .crealTODO.txt ] 
+      then
+        v1=`wc -l .crealTODO.txt | awk '{print $1}'`; 
+      else 
+        v1=0
+      fi
+      if [ -e .crealDONE.txt ]
+      then
+        v2=`wc -l .crealDONE.txt | awk '{print $1}'`;
+        if [ -e .link.txt ] 
+        then
+          v2m=`cat .link.txt | awk 'BEGIN{s=0}{s=s+$1}END{print s}'`
+          v2=`echo $v2-$v2m | bc -l`
+        fi
+      else
+        v2=0
+      fi
+      if [ $v1 -eq 0 ]
+      then
+        v3="--XXX--"
+      else 
+        v3="= "`echo $v2/$v1*100 | bc -l | awk '{printf "%.2f\n",$1}'`" %"; 
+      fi
       cd ..
     else 
       v1="--XXX--"
@@ -34,3 +65,4 @@ do
   cd ..
 done
 cat .help | sort -nrk 4 | column -t
+rm .help

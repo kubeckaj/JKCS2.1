@@ -22,6 +22,13 @@ for files in selectedfiles:
   except ValueError:
     print("JKrg.py: ERROR to read file "+files)
     continue
+
+  try:
+    length=len(data_raw)
+  except TypeError:
+    print("JKrg.py: ERROR to read file "+files)
+    continue
+
   
   data_with_mass = np.zeros(len(data_raw),dtype=[('Atom','|S10'),
   						 ('x','float'),

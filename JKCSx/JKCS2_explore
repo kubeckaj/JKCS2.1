@@ -24,6 +24,9 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
+# print inserted command
+echo "COMMAND: $scriptfile $@" >> output
+
 ###############################################################################
 ###################################### HELP ###################################
 ###############################################################################
@@ -298,11 +301,14 @@ cd ..""" > rename.sh
   command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 
   printf "$command" > run${scriptfilecommand}.sh
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
+  echo $commandTODO >> ../.crealTODO.txt
   echo $commandTODO >> ../commands_TODO.txt
   JKecho 3 "    Command $commandTODO [$command] written to ABC/commands_TODO.txt"
   cd ..
 done
 JKecho 2 "ABC subfolders created."
+#rm .* 2> /dev/null
+echo "1 ABC/" >> ../.link.txt
 
 ### Sending jobs ###
 jobscount=`wc -l commands_TODO.txt | awk '{print $1}'` 
@@ -313,26 +319,26 @@ then
 fi
 JKecho 2 "Tasks used: $SCtasks"
 
-Qlinking=0
-if [ $Qlinking -eq 1 ]
-then
-  echo "LINK 1 $currentdirpath" >> commands_TODO.txt
-  if [ -e ../commands_TODO.txt ]
-  then 
-    cp ../commands_TODO.txt ../commands_TODO.txt_help
-    echo "LINK 1 $currentdirpath/ABC" > ../commands_TODO.txt
-    cat ../commands_TODO.txt_help >> ../commands_TODO.txt
-    rm ../commands_TODO.txt_help
-  else
-    echo "LINK 1 $currentdirpath/ABC" > ../commands_TODO.txt
-  fi
-fi
+##Qlinking=0
+##if [ $Qlinking -eq 1 ]
+##then
+##  echo "LINK 1 $currentdirpath" >> commands_TODO.txt
+##  if [ -e ../commands_TODO.txt ]
+##  then 
+##    cp ../commands_TODO.txt ../commands_TODO.txt_help
+##    echo "LINK 1 $currentdirpath/ABC" > ../commands_TODO.txt
+##    cat ../commands_TODO.txt_help >> ../commands_TODO.txt
+##    rm ../commands_TODO.txt_help
+##  else
+##    echo "LINK 1 $currentdirpath/ABC" > ../commands_TODO.txt
+##  fi
+##fi
 
 
 for i in `seq 1 $SCtasks`
 do
   #echo "sendjob $currentdir-ABC" 
-  $SC_command sh $toolspath/SCRIPTS/JKperform.sh 
+  $SC_command sh $toolspath/SCRIPTS/JKperform2.sh 
   #echo "$SC_command"
 done
 

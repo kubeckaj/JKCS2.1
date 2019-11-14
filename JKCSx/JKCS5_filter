@@ -24,7 +24,41 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
+# print inserted command
+echo "COMMAND: $scriptfile $@" >> output
+
+###############################################################################
+###################################### HELP ###################################
+###############################################################################
+
+### THIS IS HELP
+function help {
+  eval "program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py -help"
+  exit
+}
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
 JKloadprint
+
+# load colours
+JKloadcolours           # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+# check for folderbasename_something arguments and in case enter directories
+JKloaddirs
+currentdir=${PWD##*/}
+currentdirpath=$PWD
 
 ###############################################################################
 ################################  USER INPUT  #################################
@@ -39,8 +73,9 @@ Quniq=0
 #Qs=3
 
 # loop over all arguments
-for i in $*
+for ii in "${!arguments[@]}"
 do
+  i="${arguments[$ii]}"
   ### GENERAL ###
   ## help
   if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then Qhelp=1;break;fi
@@ -168,7 +203,11 @@ do
   then
     if [ -e $i ]
     then
-    testfile=`echo $testfile+1 | bc`
+      testfile=`echo $testfile+1 | bc`
+      folders=./
+      break
+    else
+      folders=`ls -d SYS*/ 2>/dev/null`
     fi
   fi
 done
@@ -177,30 +216,6 @@ done
 ################################ MAIN PROGRAM #################################
 ################################ DO NOT TOUCH #################################
 ###############################################################################
-
-if [ $Qhelp -ne 1 ]
-then
-  # load parameters
-  if [  $testfile -gt 0 ]
-  then
-    folders="."
-  else
-    if [ -e ~/.JKCSusersetup.txt ]
-    then 
-      source ~/.JKCSusersetup.txt
-    else
-      source $toolspath/TOOLSextra/loadparameters.sh
-    fi
-  fi
-fi
-
-###############################################################################
-# asking just for help?
-if [ $Qhelp -eq 1 ]
-then
-  eval "program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py -help"
-  exit
-fi
 
 ##################################
 ## LOOP OVER ALL FOLDERS
@@ -275,20 +290,20 @@ do
   ### FILTERING AND SELECTING ###
   ###############################
   # no filtering or sampling
-  arg=`Felements $arguments`
-  if [ "$arg" -eq "$testfile" ]
-  then
-    cd ..
-    continue
-  fi 
+  #arg=`Felements $arguments`
+  #if [ "$arg" -eq "$testfile" ]
+  #then
+  #  cd ..
+  #  continue
+  #fi 
   # running the job
-  if [ $testfile -eq 1 ]
-  then
-    command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments"
-  else
-    #this case: testfile=2 DISABLED NOW, SEE ABOVE
-    command="$toolspath/SCRIPTS/reselectfromfromfilter.sh $arguments"
-  fi
+  #if [ $testfile -eq 1 ]
+  #then
+  command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments"
+  #else
+  #  #this case: testfile=2 DISABLED NOW, SEE ABOVE
+  #  command="$toolspath/SCRIPTS/reselectfromfromfilter.sh $arguments"
+  #fi
   # checking queue program
   #if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
   #then
@@ -304,4 +319,4 @@ do
   cd ..
 done
 
-echo "$scriptfile: Done."
+JKecho 2 "Done."
