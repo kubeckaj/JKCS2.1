@@ -14,7 +14,7 @@ function help {
   echo "THIS IS HELP:"
   echo "Program for analysis of gaussian output"
   echo """
-  JKgaussiangrep [OPTIONS] [FILES]
+  JKgaussstat [OPTIONS] [FILES]
   OPTIONS:
    -help .......... print this help and exit
  
@@ -149,10 +149,52 @@ done
 if [ -z "$what" ]; then what=`ls *.log`;fi
 if [ -z "$how"  ]; then how="-name -elen -gibbs";fi
 
+function JKgrep {
+  file=$1
+  text=$2
+  column=$3
+  if [ -e $file ]
+  then
+    test=`grep -c "$text" $file`
+  else 
+    echo ""
+  fi
+}
 
 ### LOOP OVER FILES
 for i in $what
 do
+  ### WHO AM I? ###
+  iEND=`echo $i | rev | cut -c-4 | rev`
+  iBASE=$(basename $i $iEND)
+  iXYZ=$iBASE.xyz 
+  iLOG=$iBASE.log
+  iOUT=$iBASE.out
+  if [ "$iEND" == ".xyz" ]
+  then 
+    ip="XYZ"
+  elif [ "$iEND" == ".out" ]
+  then
+    ip="ORCA"
+  elif [ "$iEND" == ".log" ]
+  then
+    test1=`grep -c "     |                           x T B                           |" $i`
+    test2=`grep -c " the Gaussian(R) 03 system (copyright 2003, Gaussian, Inc.)," $i` #Gaussians are based on this version
+    if [ $test1 -gt 0 ]
+    then
+      ip="XTB"
+    elif [ $test2 -gt 0 ]
+    then
+      ip="G16"
+    else 
+      echo ERROR to read $i
+      continue
+    fi   
+  else
+    echo ERROR to read $i
+    continue
+  fi
+  ###
   output=""
   ### CHECK ERRORS
   if [ $Qerr -eq 1 ]
@@ -171,6 +213,7 @@ do
   ### LOOP OVER HOW
   for j in $how
   do
+    var=""
     ############    
     ### NAME ###
     ############
@@ -178,29 +221,42 @@ do
     then 
       var=$i
       output+="$var    \t"
+      continue
     fi
     ################
     ### BASENAME ###
     ################
     if [ $j == "-basename" ] || [ $j == "-b" ]
     then
-      var=`basename $i .log`;
+      var=$iBASE;
       output+="$var    \t"
+      continue
     fi    
     ###############
     ### PWDNAME ###
     ###############
     if [ $j == "-pwdname" ] || [ $j == "-p" ]
     then
-      var=`readlink -f $i`;
+      var="$( cd "$(dirname "$i")" ; pwd -P )"/$i;
       output+="$var    \t"
+      continue
     fi
     ############
     ### ELEN ###
     ############
     if [ $j == "-elen" ] || [ $j == "-el" ] 
     then
-      var=`grep "SCF Done" $i | tail -n 1 | awk '{print $5}'`
+      if [ $ip == G16 ] || [ -e "$iLOG" ];
+      then
+        
+        var=`grep "SCF Done" $iLOG | tail -n 1 | awk '{print $5}'`
+      elif [ $ip == ORCA ]; 
+      then
+        var=`grep "FINAL SINGLE POINT ENERGY" $iOUT | tail -n 1 | awk '{print $5}'`
+      elif [ $ip == XTB ];
+      then
+        var=`grep "total E       :" $iLOG | tail -n 1 | awk '{print $4}'`
+      fi        
       output+="$var "
     fi
     ###########
@@ -208,7 +264,16 @@ do
     ###########
     if [ $j == "-zpe" ] || [ $j == "-ZPE" ]
     then
-      var=`grep "Zero-point correction=" $i | awk '{print $3}'`
+      if [ $ip  == G16 ]
+      then
+        var=`grep "Zero-point correction=" $i | awk '{print $3}'`
+      elif [ $ip == ORCA ]
+      then
+        var="MISSING" #TODO
+      elif [ $ip == XTB ]
+      then
+        var=`grep "ZPVE    " $iLOG | awk '{print $2}' | sed 's/E/*10^/' | bc -l`
+      fi
       output+="$var "
     fi
     #############
@@ -216,21 +281,32 @@ do
     #############
     if [ $j == "-gibbs" ] || [ $j == "-g" ]
     then
-      count1=`grep -c "Free Energies" $i` 
-      count2=`grep -c "TOTAL FREE ENERGY" $i` 
-      if [ $count1 -eq 1 ]
+      if [ $ip  == G16 ]
       then
-        if [ $QT -eq 1 ]
+        count1=`grep -c "Free Energies" $i` 
+        if [ $count1 -eq 1 ]
         then
-          var=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $8}'`
-        else
-          var=`grep "Free Energies" $i | awk '{print $8}'`
+          if [ $QT -eq 1 ]
+          then
+            var=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $8}'`
+          else
+            var=`grep "Free Energies" $i | awk '{print $8}'`
+          fi
+        else 
+          var="-----------"
         fi
-      elif [ $count2 -eq 1 ]
+      elif [ $ip == ORCA ] 
       then
-        var=`grep "TOTAL FREE ENERGY" $i | awk '{print $1}'`
-      else
-        var="-----------"
+        var="MISSING" #TODO
+      elif [ $ip == XTB ]
+      then
+        count1=`grep -c "TOTAL FREE ENERGY" $i` 
+        if [ $count1 -eq 1 ]
+        then
+          var=`grep "TOTAL FREE ENERGY" $i | awk '{print $1}'`
+        else
+          var="-----------"
+        fi
       fi
       output+="$var "
     fi
