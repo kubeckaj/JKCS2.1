@@ -150,12 +150,18 @@ if [ -z "$what" ]; then what=`ls *.log`;fi
 if [ -z "$how"  ]; then how="-name -elen -gibbs";fi
 
 function JKgrep {
-  file=$1
-  text=$2
+  file=$2
+  text=$1
   column=$3
   if [ -e $file ]
   then
     test=`grep -c "$text" $file`
+    if [ $test -gt 0 ]
+    then
+      grep "$text" $file | tail -n 1 | awk -v var=$column '{print $var}'
+    else  
+      echo ""
+    fi
   else 
     echo ""
   fi
@@ -246,16 +252,15 @@ do
     ############
     if [ $j == "-elen" ] || [ $j == "-el" ] 
     then
-      if [ $ip == G16 ] || [ -e "$iLOG" ];
+      if [ $ip == G16 ];
       then
-        
-        var=`grep "SCF Done" $iLOG | tail -n 1 | awk '{print $5}'`
+        var=`JKgrep "SCF Done" $iLOG 5`
       elif [ $ip == ORCA ]; 
       then
-        var=`grep "FINAL SINGLE POINT ENERGY" $iOUT | tail -n 1 | awk '{print $5}'`
+        var=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 5`
       elif [ $ip == XTB ];
       then
-        var=`grep "total E       :" $iLOG | tail -n 1 | awk '{print $4}'`
+        var=`JKgrep "total E       :" $iLOG 4`
       fi        
       output+="$var "
     fi
@@ -266,13 +271,13 @@ do
     then
       if [ $ip  == G16 ]
       then
-        var=`grep "Zero-point correction=" $i | awk '{print $3}'`
+        var=`JKgrep "Zero-point correction=" $iLOG 3`
       elif [ $ip == ORCA ]
       then
         var="MISSING" #TODO
       elif [ $ip == XTB ]
       then
-        var=`grep "ZPVE    " $iLOG | awk '{print $2}' | sed 's/E/*10^/' | bc -l`
+        var=`JKgrep "ZPVE    " $iLOG 2 | sed 's/E/*10^/' | bc -l`
       fi
       output+="$var "
     fi
