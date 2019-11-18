@@ -271,7 +271,7 @@ then
     f1=$Qdlpno1
     f2=$Qdlpno2
   fi
-  /#for all lines
+  #for all lines
   lines=`cat $file1 | wc -l`
   for i in `seq 1 $lines`
   do
@@ -309,6 +309,7 @@ then
   JKecho 0 "Not everything is finished in folder $method. [${cfRED}EXITING${cfDEF}]"
   JKecho 0 "You can write following command if you want to collect the data anyway:"
   JKecho 0 "            rm $method/.*"
+  JKecho 0 "POSSIBLE BUG: if you're sure everything is done, then just rm $METHOD"
   exit
 else 
   rm $method/.* 2>/dev/null

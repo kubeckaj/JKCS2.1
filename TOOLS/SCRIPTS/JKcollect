@@ -244,10 +244,20 @@ then
     if [ -e $filepathLOG ]
     then
       testXTB=`grep -c "  x T B  " $filepathLOG`
+      testG16=`grep -c " the Gaussian(R) 03 system (copyright 2003, Gaussian, Inc.)," $filepathLOG`
     else
       testXTB=0
+      testG16=0
+    fi
+    if [ -e $filepathOUT ] 
+    then
+      testORCA=`grep -c "This ORCA versions uses" $filepathOUT`
+    else
+      testORCA=0
     fi
     if [ $testXTB -gt 0 ]; then method="XTB"; fi
+    if [ $testG16 -gt 0 ]; then method="G16"; fi
+    if [ $testORCA -gt 0 ]; then method="ORCA"; fi
     ## ENERGY ##
     if [ $method == "XTB" ]
     then
@@ -263,6 +273,14 @@ then
     elif [ $method == "DLPNO" ]
     then
       energy=`grep 'FINAL SINGLE POINT ENERGY' $filepathOUT | awk '{print $5}'`
+    elif [ $method == "ORCA" ]
+    then
+      energy=`$toolspath/MANIPULATE/JKgaussstat -el $filepathOUT`
+      if [ $Qncc -eq 3 ] || [ $Qncc -eq 4 ]
+      then
+        gibbs=`$toolspath/MANIPULATE/JKgaussstat -g $filepathOUT`
+        ncc=$gibbs
+      fi
     else
       energy=`$toolspath/MANIPULATE/JKgaussstat -el $filepathLOG`
       if [ $Qncc -eq 3 ]
@@ -276,6 +294,7 @@ then
         ncc=$gibbs
       fi
     fi
+ 
     ## NCC ##
     row2=`head -n 2 $filepathXYZ | tail -n 1`
     #rg
@@ -297,16 +316,11 @@ then
     #dip
     if [ $Qncc -eq 2 ]
     then
-      dip=`grep -C 3 "molecular dipole:" $filepathLOG | tail -n 1 | awk '{print $5}'`
-      if [ -z "$dip" ]
+      if [ $method == ORCA ]
       then
-        dip=`grep -C 2 "dipole moment from electron density (au)" $filepathLOG | tail -n 1 | awk '{print $6}'`
-      fi
-      writedip=" Dipole_moment: $dip"
-      test=`grep -c "Dipole_moment:"  $filepathXYZ`
-      if [ $test -eq 0 ]
-      then
-        sed -i "2s/$/$writedip/" $filepathXYZ
+        dip=`JKgaussstat -d $filepathOUT`
+      else
+        dip=`JKgaussstat -d $filepathLOG`
       fi
       ncc=$dip
     fi
