@@ -15,50 +15,51 @@ function help {
   echo "Program for analysis of gaussian output"
   echo """
   JKgaussstat [OPTIONS] [FILES]
-  OPTIONS:
+  OPTIONS: {applicability G=G16,X=XTB,O=ORCA,C=XYZ  coord.}
    -help .......... print this help and exit
  
-   -name .......... print name of the file *
-   -p,-pwdname .... print full file path *
-   -b,-basename ... print basename of the file (___.log) *
+   -name .......... print name of the file {GXOC}
+   -p,-pwdname .... print full file path {GXOC}
+   -b,-basename ... print basename of the file (___.log) {GXOC}
 
-   -el,-elen ...... EL = (last) electronic energy (SCF Done)
-   -zpe,-ZPE ...... ZPE = zero-point energy (correction)
-   -g,-gibbs ...... G = Gibbs Free Energy (293.15 K) *
-   -gh,-gibbsh .... Gh = Gibbs Free Energy (293.15 K) (GoodVibes)  
-   -gc,-gcorr ..... dGcorr = Gibbs Free Energy (293.15 K) correction
-   -gch,-gcorrh ... dGcorrh = Gibbs Free Energy (293.15 K) correction (GoodVibes)
+   -el,-elen ...... EL = (last) electronic energy (SCF Done) {GXO }
+   -zpe,-ZPE ...... ZPE = zero-point energy (correction) {GXO }
+   -g,-gibbs ...... G = Gibbs Free Energy (293.15 K) {GXO }
+   -gh,-gibbsh .... Gh = Gibbs Free Energy (293.15 K) (GoodVibes) {G   }
+   -gc,-gcorr ..... dGcorr = Gibbs Free Energy (293.15 K) correction {GXO }
+   -gch,-gcorrh ... dGcorrh = Gibbs Free Energy (293.15 K) correction (GoodVibes) {GXO }
 
-   -dlpno ......... DLPNO = electronic energy from .out (orca output)
-   -GD ............ DLPNO-G = DLPNO + dGcorr
-   -GDh ........... DLPNO-Gh = DLPNO + dGcorrh (GoodVibes)
+   -dlpno ......... DLPNO = electronic energy from .out (orca output) {GXOC}
+   -GD ............ DLPNO-G = DLPNO + dGcorr {GXO }
+   -GDh ........... DLPNO-Gh = DLPNO + dGcorrh (GoodVibes) {G   }
 
-   -h,-enthalpy ... H = enthalpy energy
-   -HD, -hdlpno ... DLPNO-H = DLPNO - EL + H
-   -s,-entropy .... S = total entropy (hartree/K units)
-   -sh,-entropyh .. Sh = total entropy (hartree/K units) (GoodVibes)
-   -Us,-Uentropy .. S = total entropy (cal/(mol.K) units)
-   -Ush,-Uentropyh  Sh = total entropy (cal/(mol.K) units) (GoodVibes)
+   -h,-enthalpy ... H = enthalpy energy {GXO }
+   -HD, -hdlpno ... DLPNO-H = DLPNO - EL + H {GXO }-{O}
+   -s,-entropy .... S = total entropy (hartree/K units) {GXO }
+   -sh,-entropyh .. Sh = total entropy (hartree/K units) (GoodVibes) {G   }
+   -Us,-Uentropy .. S = total entropy (cal/(mol.K) units) {GXO }
+   -Ush,-Uentropyh  Sh = total entropy (cal/(mol.K) units) (GoodVibes) {G   }
 
-   -rx,-ry,-rz .... print rotational constant in 1 axis
-   -r2 ............ calculate squared rotational constant
+   -rx,-ry,-rz .... print rotational constant in 1 axis {G   }
+   -r2 ............ calculate squared rotational constant {G   }
 
-   -dx,-dy,-dz .... print dipole moment in 1 axis (dy=0,dx=0) [Debye]
-   -d,-dtot ....... calculate total dipole moment = dz [Debye]
-   -pol ........... print total polarizability [Angstrom^3] 
+   -dx,-dy,-dz .... print dipole moment in 1 axis (dy=0,dx=0) [Debye] {GXO }
+   -d,-dtot ....... calculate total dipole moment = dz [Debye] {GXO }
+   -pol ........... print total polarizability [Angstrom^3] {GX }
  
    -T,-temp \"X\" ... asumming temperature X in Kelvin (GoodVibes is used for other
-                                                    variables: -h,-s,-HD,-g ...)
+                                                    variables: -h,-s,-HD,-g ...) {G   }
    -v \"X\" ......... anharmonicity scaling factor (GoodVibes is used for other
-                                                    variables: -h,-s,-HD,-g ...)
+                                                    variables: -h,-s,-HD,-g ...) {G   }
 
-   -t,-time ....... time in minutes # PRINT JUST LAST/TOTAL TIME 
-   -ht,-htime ..... time in hours # PRINT JUST LAST/TOTAL TIME
-   -err ........... do not print for missing \"Normal termination\"
+   -t,-time ....... time in minutes # PRINT JUST LAST/TOTAL TIME {GXO }
+   -ht,-htime ..... time in hours # PRINT JUST LAST/TOTAL TIME {GXO }
+   -err ........... do not print for missing \"Normal termination\" {G   }
    [OTHERS: -nt, -gibbscorr|-gcorr|-gc]
-   * = XTB compatible
+  
   FILES:
-   gaussian (G16) output is expected
+   gaussian (G16) output or ORCA output or XTB output or XYZ coordinates
+
   EXAMPLES:
      JKgaussstat
      JKgaussstat -basename -rx -ry -rz -elen 1.log 2log
