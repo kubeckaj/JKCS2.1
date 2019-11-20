@@ -336,8 +336,10 @@ cd $currentdirpath/$method
 jobscount=`echo $subfolders | xargs -n 1 | wc -l `
 JKecho 2 "Counting amount of jobs: $jobscount"
 
+echo "1 $method/" >> ../.link.txt
+
 JKecho 2 "+ Sending to CONTROL collection." 
-commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method | awk '{print \$5}'\`;if [ \$testdone == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie; break; fi; done"
+commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method | awk '{print \$5}'\`;if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie; break; else sleep 1; fi; done"
 echo $commandTODO >> ../.crealTODO.txt
 
 ### Sending jobs ###

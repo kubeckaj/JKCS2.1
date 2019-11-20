@@ -114,6 +114,13 @@ then
 fi
 
 # check for folderbasename_something arguments and in case enter directories
+rmfiles=`ls -a ./.*.txt 2>/dev/null`
+if [ ! -z "$rmfiles" ]
+then
+  rm $rmfiles
+  JKecho 1 "Following files are removed: $rmfiles"
+fi
+
 JKloaddirs
 currentdir=${PWD##*/}
 currentdirpath=$PWD

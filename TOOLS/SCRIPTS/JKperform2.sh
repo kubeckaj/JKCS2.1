@@ -286,7 +286,7 @@ function perform_job {
 
 function Isleep {
   sleep $sleeptime
-  if [ $sleeptime -lt 60 ]
+  if [ $sleeptime -lt 5 ]
   then
     sleeptime=`echo $sleeptime+1 |bc`
   fi
@@ -297,20 +297,9 @@ function perform_command {
   then
     Isleep
   else
+    testjobs=`check_finished_jobs`
     # Check if jobs are all done
-    if [ -e .crealDONE.txt ]
-    then
-      N1=`wc -l .crealDONE.txt | awk '{print $1}'`
-    else
-      N1=0
-    fi
-    if [ -e .crealTODO.txt ]
-    then
-      N2=`wc -l .crealTODO.txt | awk '{print $1}'`
-    else
-      N2=0
-    fi   
-    if [ $N1 -lt $N2 ] 
+    if [ $testjobs -eq 0 ] 
     then     
       Isleep 
     else
@@ -326,9 +315,14 @@ function perform_command {
         N1=`wc -l .cbigTODO.txt | awk '{print $1}'`
         if [ $N1 -ge $jobline ]
         then
-          command=`head -n $jobline .cbigTODO.txt | tail -n 1`
           dir=$PWD
-          eval $command -maxtasks 0
+          command=`head -n $jobline .cbigTODO.txt | tail -n 1`
+          if [[ "$command" == *"JKCS"* ]]; 
+          then 
+            eval "$command -maxtasks 0"
+          else
+            eval "$command"
+          fi
           cd $dir
           echo $jobline >> .cbigDONE.txt
           rm .waitcommand
@@ -392,6 +386,30 @@ function finish_line {
   mv $mvfile $file 2> /dev/null
 }
 
+function check_finished_jobs {
+  if [ -e .crealDONE.txt ]
+  then
+    N3=`wc -l .crealDONE.txt | awk '{print $1}'`
+  else
+    N3=0
+  fi
+  if [ -e .crealTODO.txt ]
+  then
+    N4=`wc -l .crealTODO.txt | awk '{print $1}'`
+  else
+    N4=0
+  fi
+
+  ##
+  if [ $N3 -eq $N4 ]
+  then
+    rm .creal*.txt 2> /dev/null
+    echo 1
+  else
+    echo 0
+  fi
+}
+
 function check_finished_commands {
   if [ -e .cbigDONE.txt ]
   then
@@ -450,13 +468,23 @@ function close_above_link {
   if [ -e ../.link.txt ]
   then 
     thisdir=${PWD##*/}
-    count=`grep -c "1 ${thisdir}/" ../.link.txt`
+    count=`grep -c " ${thisdir}/" ../.link.txt`
     if [ $count -gt 0 ]
     then
       bcpfile=`newfile .linkbcp`
       mvfile=`newfile .linkmv`
       cp ../.link.txt $bcpfile
-      sed "s/1 ${thisdir}\//0 ${thisdir}\//g" ../.link.txt > $mvfile
+      testjobs=`check_finished_jobs`
+      if [ $testjobs -eq 1 ]
+      then
+        sleep 1
+        sed "s/1 ${thisdir}\//0 ${thisdir}\//g" ../.link.txt > ${mvfile}B
+        sed "s/2 ${thisdir}\//0 ${thisdir}\//g" ${mvfile}B > $mvfile
+        rm ${mvfile}B
+        rm .creal* .link.txt 2>/dev/null 
+      else
+        sed "s/1 ${thisdir}\//2 ${thisdir}\//g" ../.link.txt > $mvfile
+      fi
       mv $mvfile ../.link.txt 2> /dev/null
       check=`wc -l ../.link.txt | awk '{print $1}'`
       if [ $check -eq 0 ]
@@ -512,14 +540,6 @@ source ~/.JKCSusersetup.txt
 while [ 1 -eq 1 ]
 do
   cd $MY_dir
-  ### IS HERE A JOB? ###
-  test=`check_jobs_availability`
-  if [ $test -gt 0 ]
-  then
-    perform_job
-    sleeptime=1
-    continue
-  fi
 
   ### IS HERE A LINK? ###
   test=`check_link`
@@ -529,8 +549,17 @@ do
     MY_dir=$PWD
     sleeptime=1
     continue
-  fi 
- 
+  fi
+
+  ### IS HERE A JOB? ###
+  test=`check_jobs_availability`
+  if [ $test -gt 0 ]
+  then
+    perform_job
+    sleeptime=1
+    continue
+  fi
+
   ### IS HERE BIG COMMAND? ###  
   test=`check_finished_commands`
   if [ $test -eq 0 ] 

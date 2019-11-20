@@ -42,7 +42,7 @@ do
         v2=`wc -l .crealDONE.txt | awk '{print $1}'`;
         if [ -e .link.txt ] 
         then
-          v2m=`cat .link.txt | awk 'BEGIN{s=0}{s=s+$1}END{print s}'`
+          v2m=`cat .link.txt | sed 's/2/1/g' | awk 'BEGIN{s=0}{s=s+$1}END{print s}'`
           v2=`echo $v2-$v2m | bc -l`
         fi
       else
@@ -50,7 +50,15 @@ do
       fi
       if [ $v1 -eq 0 ]
       then
-        v3="--XXX--"
+        subsubfolders=`ls -d */ 2>/dev/null`
+        if [ -z "$subsubfolders" ]
+        then
+          v3="--XXX--"
+        else
+          v1=`echo $subsubfolders | xargs -n 1 | wc -l`
+          v2=$v1
+          v3="= 100.00"
+        fi
       else 
         v3="= "`echo $v2/$v1*100 | bc -l | awk '{printf "%.2f\n",$1}'`" %"; 
       fi
