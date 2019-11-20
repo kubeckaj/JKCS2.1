@@ -1,18 +1,19 @@
 #!/bin/bash
 subfolders="$*"
+helpfile=.help$RANDOM
 
-if [ -e .help ];
+if [ -e $helpfile ];
 then
-  rm .help;
+  rm $helpfile;
 fi 
 
 folders=`ls -d SYS_*/ 2>/dev/null`
 if [ -z "$folders" ]
 then
   folders="./"
-  if [ -e "../.help" ] 
+  if [ -e "../$helpfile" ] 
   then 
-    rm ../.help 
+    rm ../$helpfile 
   fi
 fi
   
@@ -68,9 +69,9 @@ do
       v2="--XXX--"
       v3="--XXX--"
     fi
-    echo $i $j $v2/$v1 $v3 >> ../.help;  
+    echo $i $j $v2/$v1 $v3 >> ../$helpfile;  
   done
   cd ..
 done
-cat .help | sort -nrk 4 | column -t
-rm .help
+cat $helpfile | sort -nrk 4 | column -t
+rm $helpfile
