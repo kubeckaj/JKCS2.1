@@ -286,11 +286,12 @@ do
   ## Do I need to select just specific amount of structure?
   if [ $Qselect -eq 1 ]
   then
+    QselectN=`echo $QselectN | sed "s/M/$numberofmolecules/g" | bc -l`
     constitutions_count=`echo $constitutions | xargs -n 1 | wc -l`
     if [ $constitutions_count -gt $QselectN ]
     then
-      newconstitutions=`echo $constitutions | xargs -n 1 | awk 'BEGIN{ srand( ); } { printf( "%.5f %s\n", rand(), $0); }' | sort -k 1n,1 | sed 's/^[^ ]* //'`
-      constitutions=`echo $newconstitutions | xargs -n 1 | head -n $QselectN | xargs`
+      newconstitutions=`echo $constitutions | xargs -n 1 | awk 'BEGIN{ srand( ); } { printf( "%.5f %s\n", rand(), $0); }' | sort -k 1n,1 | sed 's/^[^ ]* //' `
+      constitutions=`echo $newconstitutions | xargs -n 1 | tail -n +1 | head -n $QselectN | xargs 2>/dev/null`
       JKecho 2 "  New constitutions: $constitutions" 
     fi
   fi
