@@ -94,9 +94,9 @@ do
   for i in $atoms
   do
     case $i in 
-    "Na") N=`echo $Na + 1 | bc` 
+    "Na") Na=`echo $Na + 1 | bc` 
          ;;
-    "Cl") N=`echo $Cl + 1 | bc` 
+    "Cl") Cl=`echo $Cl + 1 | bc` 
          ;;
     "C") C=`echo $C + 1 | bc` 
          ;;
@@ -109,7 +109,7 @@ do
     esac
   done
   
-  echo C${C}N${N}O${O}S${S}H${H}
+  echo Na${Na}Cl${Cl}C${C}N${N}O${O}S${S}H${H}
 
   # NaCl seed
   seed=0
