@@ -408,7 +408,7 @@ function Felements {
 # JKCS1 - replace brackets by number in composition 
 function Cbrackets {
   outputTOT=""
-  for input in "$*"
+  for input in $*
   do
     if [[ "$input" == *"("*")"* ]];
     then
@@ -451,7 +451,7 @@ function Cbrackets {
 # JKCS1 - replace dash by serie
 function Cdash {
   outputTOT=""
-  for input in "$*"
+  for input in $*
   do
     if [[ "$input" == *"-"* ]];
     then
