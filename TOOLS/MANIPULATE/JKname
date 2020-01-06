@@ -12,7 +12,7 @@ function help {
 
   OPTIONS:
     -log ...... use .log instead if .xyz (convert first .log to .xyz)
-    OTHERS: -hom, -msa
+    OTHERS: -hom, -msa, -buoh
 
   EXAMPLES:
     JKname 
@@ -24,6 +24,7 @@ function help {
 }
 Qmsa=0
 Qhom=0
+Qbuoh=0
 FILES=""
 
 Qlog=0
@@ -42,6 +43,11 @@ do
     if [ "$i" == "-msa" ]
     then
       Qmsa=1
+      continue
+    fi
+    if [ "$i" == "-buoh" ]
+    then
+      Qbuoh=1
       continue
     fi
     if [ "$i" == "-log" ]
@@ -82,11 +88,15 @@ do
   O=0
   H=0
   N=0
+  Na=0
+  Cl=0
 
   for i in $atoms
   do
     case $i in 
-    "N") N=`echo $N + 1 | bc` 
+    "Na") Na=`echo $Na + 1 | bc` 
+         ;;
+    "Cl") Cl=`echo $Cl + 1 | bc` 
          ;;
     "C") C=`echo $C + 1 | bc` 
          ;;
@@ -99,8 +109,25 @@ do
     esac
   done
   
-  echo C${C}N${N}O${O}S${S}H${H}
- 
+  echo Na${Na}Cl${Cl}C${C}N${N}O${O}S${S}H${H}
+
+  # NaCl seed
+  seed=0
+  if [ $Na -ge 1 ] && [ $Cl -ge 1 ]
+  then
+    seed=1
+    Na=0
+    Cl=0
+  fi 
+  # BuOH
+  buoh=0
+  if [ $Qbuoh -ge 1 ] && [ $C -ge 1 ]
+  then
+    buoh=`echo $C/4 | bc`
+    C=0
+    O=`echo $O-1*$buoh | bc`
+    H=`echo $H-10*$buoh | bc`
+  fi
   # HOM
   hom=0
   if [ $Qhom -ge 1 ] && [ $C -ge 10 ]
@@ -180,16 +207,16 @@ do
  
   echo C${C}N${N}O${O}S${S}H${H}
   name=""
-  if [ $co2 -gt 0 ]; then echo co2 = $co2;name+="${co2}coo"; fi
-  if [ $hom -gt 0 ]; then echo hom = $hom;name+="${hom}hom"; fi
-  if [ $msa -gt 0 ]; then echo msa = $msa;name+="${msa}msa"; fi
-  if [ $sa  -gt 0 ]; then echo sa  = $sa ;name+="${sa}sa"; fi
-  if [ $sam -gt 0 ]; then echo sam = $sam;name+="${sam}sam"; fi
-  if [ $gd  -gt 0 ]; then echo gd  = $gd ;name+="${gd}gd"; fi
-  if [ $dma -gt 0 ]; then echo dma = $dma;name+="${dma}dma"; fi
-  if [ $am  -gt 0 ]; then echo am  = $am ;name+="${am}am"; fi
-  if [ $aq  -gt 0 ]; then echo aq  = $aq ;name+="${aq}aq"; fi
-  if [ $p   -gt 0 ]; then echo p   = $p  ;name+="${p}p"; fi
+  if [ $seed -gt 0 ]; then echo seed = $seed;name+="${seed}seed"; fi
+  if [ $buoh -gt 0 ]; then echo buoh = $buoh;name+="${buoh}buoh"; fi
+  if [ $msa  -gt 0 ]; then echo msa  = $msa ;name+="${msa}msa"; fi
+  if [ $sa   -gt 0 ]; then echo sa   = $sa  ;name+="${sa}sa"; fi
+  if [ $sam  -gt 0 ]; then echo sam  = $sam ;name+="${sam}sam"; fi
+  if [ $gd   -gt 0 ]; then echo gd   = $gd  ;name+="${gd}gd"; fi
+  if [ $dma  -gt 0 ]; then echo dma  = $dma ;name+="${dma}dma"; fi
+  if [ $am   -gt 0 ]; then echo am   = $am  ;name+="${am}am"; fi
+  if [ $aq   -gt 0 ]; then echo aq   = $aq  ;name+="${aq}aq"; fi
+  if [ $p    -gt 0 ]; then echo p    = $p   ;name+="${p}p"; fi
   
   if [ "$fileXYZ" != "$name.xyz" ]
   then

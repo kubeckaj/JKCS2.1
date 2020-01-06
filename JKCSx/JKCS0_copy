@@ -285,7 +285,7 @@ fi
 JKecho 2 "preparing $commandsfile"
 echo """#sequence of commands for JKCS (Jammy Key for Configuration Sampling) 
 #JKCS1_prepare has to be already finished
-JKCS2_explore                 
+JKCS2_explore -pop 1000 -gen 100 -lm 1000 
 JKCS3_run                 
 JKCS4_collect XTB -dip            
 JKCS5_filter resultsXTB.dat -c3 4 -rgm 3 -dm 3.5 -sm 80

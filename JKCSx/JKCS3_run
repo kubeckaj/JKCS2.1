@@ -24,6 +24,9 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
+# print inserted command
+echo "COMMAND: $scriptfile $@" >> output
+
 ###############################################################################
 ###################################### HELP ###################################
 ###############################################################################
@@ -61,7 +64,7 @@ function help {
      $scriptfile -p ORCA -rf XTB -nf OPT -m \"! PBE0 def2-TZVP TIGHTSCF Opt D3BJ\"
    ${cfYELLOW}G16 ADVANCED:${cfDEF}
      $scriptfile -p G16 -rf XTB -nf DFT -bc I -m \"#wb97xd GEN Pseudo=Read Opt Int=UltraFine Freq MaxDisk=32GB\" -mem 12GB -cpu 16
-     $scriptfile -p ORCA -rf DFT_freq -nf DLPNO -m \"! DLPNO-CCSD(T) aug-cc-pvtzaug-cc-pvtz/C GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS\"\n"""
+     $scriptfile -p ORCA -rf DFT_freq -nf DLPNO -m \"! DLPNO-CCSD(T) aug-cc-pvtz aug-cc-pvtz/C GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS\"\n"""
   printf "#################################################################\n"
   exit
 }
@@ -309,23 +312,27 @@ then
   for sub in $subfolders
   do 
     newsub=`sed "s/$folderOLD/$folderNEW/g" <<< $sub`
-    cd $currentdirpath/$folderOLD/${sub}/${name}-LM/
-    files=`ls *.xyz`
-    cd $currentdirpath/$folderNEW
-    mkdir $newsub
-    mkdir $newsub/${name}-LM
-    cd $newsub 
+    #cd $currentdirpath/$folderOLD/${sub}/${name}-LM/
+    #files=`ls *.xyz`
+    #cd $currentdirpath/$folderNEW
+    mkdir $currentdirpath/$folderNEW/$newsub
+    #mkdir $currentdirpath/$folderNEW/$newsub/${name}-LM
+    cd $currentdirpath/$folderNEW/$newsub 
     JKarguments
-    cd ..
-    for file in $files
-    do
-      #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirpath/$folderOLD/${name}-LM/$file"
-      #printf "$command" > run${scriptfilecommand}.sh
-      commandTODO="cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/$file;"
-      echo $commandTODO >> $newsub/commands_TODO.txt
-    done
-    JKecho 3 "    Commands like $commandTODO written to $newsub/commands_TODO.txt"
-    echo "cd $newsub; sh $toolspath/SCRIPTS/JKperform.sh; cd .." >> commands_TODO.txt
+    cd $currentdirpath
+    rm $newsub/.* 2> /dev/null
+    command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
+    echo "$command0" >> $currentdirpath/$folderNEW/commands_TODO.txt
+    cp $currentdirpath/$folderNEW/commands_TODO.txt $currentdirpath/$folderNEW/.crealTODO.txt
+    #for file in $files
+    #do
+    #  commandTODO="cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/$file;"
+    #  echo $commandTODO >> $newsub/commands_TODO.txt
+    #done
+    #cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt
+    JKecho 3 "    Commands like $command0 written to $newsub/commands_TODO.txt"
+    #echo "cd $newsub; sh $toolspath/SCRIPTS/JKperform2.sh; cd .." >> commands_TODO.txt
+    #echo "1 $newsub/" >> .link.txt
   done
 else
   JKecho 2 "Calculations will be performed in directory ${cfYELLOW}$folderNEW/${name}-LM${cfDEF}"
@@ -354,6 +361,8 @@ else
     commandTODO="cd $currentdirpath/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $file;"
     echo $commandTODO >> commands_TODO.txt
   done
+  rm .* 2> /dev/null
+  cp commands_TODO.txt .crealTODO.txt
   JKecho 3 "    Commands like "$commandTODO" written to commands_TODO.txt"
 fi
 JKecho 2 "Subfolder $folderNEW has been created."
@@ -361,41 +370,41 @@ cd $currentdirpath/$folderNEW
 
 ### Sending jobs ###
 if [ ! -e commands_TODO.txt ]; then touch commands_TODO.txt; fi
-#TODO might be dangerous if jobs already exist
-jobscount=`wc -l commands_TODO.txt | awk '{print $1}'`
+echo "1 $folderNEW/" >> ../.link.txt
 
+jobscount=`wc -l commands_TODO.txt | awk '{print $1}'`
 JKecho 2 "Counting amount of jobs: $jobscount"
 if [ $jobscount -lt $SCtasks ]
 then
   SCtasks=$jobscount
 fi
 JKecho 2 "Tasks used: $SCtasks"
-
-Qlinking=0
-if [ $Qlinking -eq 1 ]
-then
-  echo "LINK 1 $currentdirpath" >> commands_TODO.txt
-  if [ -e ../commands_TODO.txt ]
-  then
-    cp ../commands_TODO.txt ../commands_TODO.txt_help
-    echo "LINK 1 $currentdirpath/$folderNEW" > ../commands_TODO.txt
-    cat ../commands_TODO.txt_help >> ../commands_TODO.txt
-    rm ../commands_TODO.txt_help
-  else
-    echo "LINK 1 $currentdirpath/$folderNEW" > ../commands_TODO.txt
-  fi
-fi
+ 
+#Qlinking=0
+#if [ $Qlinking -eq 1 ]
+#then
+#  echo "LINK 1 $currentdirpath" >> commands_TODO.txt
+#  if [ -e ../commands_TODO.txt ]
+#  then
+#    cp ../commands_TODO.txt ../commands_TODO.txt_help
+#    echo "LINK 1 $currentdirpath/$folderNEW" > ../commands_TODO.txt
+#    cat ../commands_TODO.txt_help >> ../commands_TODO.txt
+#    rm ../commands_TODO.txt_help
+#  else
+#    echo "LINK 1 $currentdirpath/$folderNEW" > ../commands_TODO.txt
+#  fi
+#fi
 
 for i in `seq 1 $SCtasks`
 do
   #echo "sendjob $currentdir-ABC" 
-  $SC_command sh $toolspath/SCRIPTS/JKperform.sh
-  echo "$SC_command sh $toolspath/SCRIPTS/JKperform.sh" >> output
+  $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
+  echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
 done
 
 ###################################################################
 cd $currentdirpath
-JKecho 1 "This subfolder calculations/submisions are finished."
+JKecho 1 "Performing calculations/Calculations submitted."
 exit
 
 

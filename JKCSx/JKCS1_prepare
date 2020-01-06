@@ -37,10 +37,16 @@ function help {
   
   ${cfMAGENTA}OPTIONS:${cfDEF}
     -help ............ print this help and exit
+    -s,-select \"X\" ... select at maximum X number of combinations
+
+  ${cfMAGENTA}SYMBOLS:${cfDEF}
+    M .... number of molecules
+    use * or / or M and script will evaluate it
 
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
-        $scriptfile  \n"""
+        $scriptfile  
+        $scriptfile  -s 50*M\n"""
   printf "#################################################################\n"
   exit
 } 
@@ -61,6 +67,39 @@ JKloadcolours           # some coloured output
 
 # check -help option
 JKloadhelp             # check if user asks for -help
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+#reading arguments important for this script
+
+Qselect=0;  #Do you need to select just specific amount of combinations
+QselectN=0; #Max number of combinations 
+
+last=""
+# loop over all arguments
+arguments_help=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  # select
+  if [ "$iter" == "-select" ] || [ "$iter" == "-s" ]
+  then
+    last="-select"
+    continue
+  fi
+  if [ "$last" == "-select" ];
+  then
+    last=""
+    Qselect=1
+    QselectN=$iter
+    continue
+  fi
+  # 
+  arguments_help+=( "${arguments[i]}" )
+done
+arguments=("${arguments_help[@]}")
 
 # there should not be more arguments
 therest="${arguments[@]}"
@@ -244,6 +283,19 @@ do
   JKecho 3 "    program_PYTHON2 $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge"
   constitutions=`program_PYTHON2 $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge`  
   JKecho 2 "  Constitutions: `echo $constitutions | xargs`"
+  ## Do I need to select just specific amount of structure?
+  if [ $Qselect -eq 1 ]
+  then
+    QselectN=`echo $QselectN | sed "s/M/$numberofmolecules/g" | bc -l`
+    constitutions_count=`echo $constitutions | xargs -n 1 | wc -l`
+    if [ $constitutions_count -gt $QselectN ]
+    then
+      newconstitutions=`echo $constitutions | xargs -n 1 | awk 'BEGIN{ srand( ); } { printf( "%.5f %s\n", rand(), $0); }' | sort -k 1n,1 | sed 's/^[^ ]* //' `
+      constitutions=`echo $newconstitutions | xargs -n 1 | tail -n +1 | head -n $QselectN | xargs 2>/dev/null`
+      JKecho 2 "  New constitutions: $constitutions" 
+    fi
+  fi
+  ##
   echo $constitutions >> $inputfile
   constitutions_count=`echo $constitutions | xargs -n 1 | wc -l`
   constitutions_count=`printf "%-3s" $constitutions_count`

@@ -181,6 +181,8 @@ fi
 ################################ DO NOT TOUCH #################################
 ###############################################################################
 
+if [ -e ~/.JKCSusersetup.txt ]; then source ~/.JKCSusersetup.txt; fi
+if [ ! -z "$PATH_ORCA" ]; then orca=$PATH_ORCA;fi
 # locate TOOLS path
 scriptpath=$(dirname $0)
 toolspath="$scriptpath/../TOOLS"

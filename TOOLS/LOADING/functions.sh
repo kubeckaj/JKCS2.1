@@ -228,7 +228,7 @@ function JKloadsupercomputer {
   then
     SC_command=""
   else
-    SC_command="sbatch -p $SCpar --time $SCtime -N $SCnodes --mem $SCmem -c $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
+    SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime -N $SCnodes --mem-per-cpu $SCmem -n $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
   fi
 }
 
@@ -265,7 +265,8 @@ function JKloaddirs {
     if [ ! -e $inputfile ]
     then
       motherdir=$PWD
-      folders=`ls -d ${folderbasename}_* | xargs`
+      folders=`ls -d ${folderbasename}_* 2>/dev/null`
+      folders=`echo $folders | xargs`
       JKecho 0 "  All subfolders = $folders"
       if [ -z "$folders" ]
       then
@@ -290,8 +291,8 @@ function JKloaddirs {
     #echo $command
     command=`echo $scriptpath/$scriptfilecommand $commandarguments1 $commandarguments2`
     JKecho 2 "Evaluating command ${cfYELLOW}$command${cfDEF}"
-    echo "LINK 1 $motherdir/$i" >> ../commands_TODO.txt
-    echo "LINK 1 $motherdir" >> commands_TODO.txt
+    #echo "LINK 1 $motherdir/$i" >> ../commands_TODO.txt
+    #echo "LINK 1 $motherdir" >> commands_TODO.txt
     eval $command
     cd ..
     JKecho 1 "Leaving directory ${cfRED}${i}${cfDEF}"
