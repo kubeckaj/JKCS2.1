@@ -1,4 +1,4 @@
-#!/bin/bash
+#/bin/bash
 subfolders="$*"
 helpfile=.help$RANDOM
 
@@ -57,6 +57,7 @@ do
           v3="--XXX--"
         else
           v1=`echo $subsubfolders | xargs -n 1 | wc -l`
+          v1=`echo $v1 | bc -l`
           v2=$v1
           v3="= 100.00"
         fi
