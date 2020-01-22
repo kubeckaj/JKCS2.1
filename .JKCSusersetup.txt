@@ -153,12 +153,12 @@ function program_XTB {
   args=$args_help
 
   #CHARGE AND MULTIPLICITY
-  if [[ "$method" != *"-c "* ]] && [[ "$method" == *"-chrg "* ]] && [[ "$args" == *"-c "* ]] && [[ "$args" == *"-chrg "* ]];
+  if [[ "$method" != *"-c "* ]] && [[ "$method" != *"-chrg "* ]] && [[ "$args" != *"-c "* ]] && [[ "$args" != *"-chrg "* ]];
   then
     if [ -z "$CHARGE" ]; then CHARGE=0; fi
     args+=" --chrg $CHARGE "
   fi
-  if [[ "$method" != *"-u "* ]] && [[ "$method" == *"-uhf "* ]] && [[ "$args" == *"-u "* ]] && [[ "$args" == *"-uhf "* ]];
+  if [[ "$method" != *"-u "* ]] && [[ "$method" != *"-uhf "* ]] && [[ "$args" != *"-u "* ]] && [[ "$args" != *"-uhf "* ]];
   then
     if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
     unpaired=`echo $MULTIPLICITY-1|bc` 
