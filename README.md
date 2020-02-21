@@ -19,7 +19,7 @@ Jammy Key for Configurational Sampling
     # Gaussian: G16 path and module
     # Orca: Orca path and modules
     
-    test.sh                                        #test that all your paths#       are set correctly
+    sh test.sh                                        #test that all your paths#       are set correctly
    
   Simple TEST (on local computer):
    
