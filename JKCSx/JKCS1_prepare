@@ -38,6 +38,7 @@ function help {
   ${cfMAGENTA}OPTIONS:${cfDEF}
     -help ............ print this help and exit
     -s,-select \"X\" ... select at maximum X number of combinations
+    -o,-overwrite .... overwrite parameters.txt also in existing folders
 
   ${cfMAGENTA}SYMBOLS:${cfDEF}
     M .... number of molecules
@@ -74,8 +75,9 @@ JKloadhelp             # check if user asks for -help
 ###############################################################################
 #reading arguments important for this script
 
-Qselect=0;  #Do you need to select just specific amount of combinations
-QselectN=0; #Max number of combinations 
+Qselect=0;    #Do you need to select just specific amount of combinations
+QselectN=0;   #Max number of combinations 
+Qoverwrite=0; #Overwrite parameters.txt
 
 last=""
 # loop over all arguments
@@ -96,7 +98,13 @@ do
     QselectN=$iter
     continue
   fi
-  # 
+  # overwrite 
+  if [ "$iter" == "-overwrite" ] || [ "$iter" == "-o" ]
+  then
+    Qoverwrite=1
+    continue
+  fi
+  #
   arguments_help+=( "${arguments[i]}" )
 done
 arguments=("${arguments_help[@]}")
@@ -212,14 +220,20 @@ do
     fi
   done
   JKecho 2 "  Name of folder was created: ${cfGREEN}$folder${cfDEF}"
-  if [ -d $folder ]; 
-  then 
-    JKecho 0 "Folder ${cfGREEN}$folder${cfDEF} already exists. ${cfYELLOW}[CONTINUE to another folder]${cfDEF}";
-    continue;
+  if [ $Qoverwrite -eq 0 ]
+  then
+    if [ -d $folder ]; 
+    then 
+      JKecho 0 "Folder ${cfGREEN}$folder${cfDEF} already exists. ${cfYELLOW}[CONTINUE to another folder]${cfDEF}";
+      continue;
+    fi
   fi
   #$folderbasename ls | xargs -n 1 | grep "SYS" | wc -l
   #going to specific directory
-  mkdir $folder
+  if [ ! -d $folder ]
+  then  
+    mkdir $folder
+  fi
   cd $folder
   JKecho 2 "  Entering folder ${cfGREEN}$folder${cfDEF}."
   

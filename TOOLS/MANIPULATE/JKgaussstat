@@ -240,6 +240,10 @@ function JKel {
   elif [ $ip == XTB ];
   then
     var=`JKgrep "total E       :" $iLOG 4`
+    if [ "$var" == "" ]
+    then
+      var=`JKgrep "| TOTAL ENERGY" $iLOG 4`
+    fi
   else
     var="-----------"
   fi       

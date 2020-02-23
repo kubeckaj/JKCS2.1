@@ -35,6 +35,9 @@ PATH_XTB="/projappl/hvehkama/kubeckaj/Apps/XTB6.0/"
 PATH_GoodVibes="/projappl/hvehkama/kubeckaj/Apps/goodvibes/goodvibes/GoodVibes.py"
 PATH_ORCA="/projappl/hvehkama/kubeckaj/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
+#MODULES
+module_gcc="module load gcc"
+module_gaussian="module load gaussian/G16RevC.01"
 
 # YOU CAN CALCULATE AT THE SMAE PLACE YOU ARE (./), OR YOU HAVE SOMEWHERE ELSE A TMP DIR 
 WRKDIR="./"
@@ -73,7 +76,7 @@ function program_ABC {
  
   #performing the calculation 
   #module load gcc/8.2.0 2>/dev/null
-  module load gcc 2>/dev/null
+  $module_gcc 2>/dev/null
   $rigidmoloptimizer $input > $output 
 }
 ##########################################################################################
@@ -205,21 +208,6 @@ function program_G16 {
     source ../arguments.txt
   fi
 
-  #source $PATH_G16/g16/bsd/g16.login
-  export OMP_NUM_THREADS=1
-  module load gaussian 2>/dev/null
- 
-  #CREATING WORKING DIRECTORY
-  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
-  ADD=""
-  test=0
-  while [ $test -eq 0 ]
-  do
-    CALC_NAME=$WRKDIR/TMP/G16${SLURM_JOBID}${ADD}
-    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
-    else test=1;fi
-  done
-
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   #*.com or *.xyz
@@ -239,25 +227,47 @@ function program_G16 {
       cp $inputtest $DIR/$inputCOM
     fi
   fi
-  #dirs
-  mkdir $CALC_NAME
-  cp $inputCOM $CALC_NAME/
-  cd $CALC_NAME
 
-  #echo JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args 
-  $PATH_G16/g16/g16 < $inputCOM >& $output
+  echo """#!/bin/bash
 
-  #COPYING RESULTS BACK
-  if [ -e $DIR/$output ]
+#source \$PATH_G16/g16/bsd/g16.login
+export OMP_NUM_THREADS=1
+$module_gaussian 2>/dev/null  
+
+#CREATING WORKING DIRECTORY
+if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+ADD=\"\"
+test=0
+while [ \$test -eq 0 ]
+do
+  CALC_NAME=$WRKDIR/TMP/G16\${SLURM_JOBID}\${ADD}
+  if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
+  else test=1;fi
+done
+
+#dirs
+mkdir \$CALC_NAME
+cp $inputCOM \$CALC_NAME/
+cd \$CALC_NAME
+
+$PATH_G16/g16/g16 < $inputCOM >& $output
+
+#COPYING RESULTS BACK
+if [ -e $DIR/$output ]
+then
+  mv $DIR/$output $DIR/${base}O.log
+fi
+cp $output $DIR/
+cd $DIR
+JKlog2xyz $output > /dev/null 2>/dev/null
+
+#CLEANING
+rm -rf \$CALC_NAME""" > $base.cmd
+  if [ -e ../submit ]
   then
-    mv $DIR/$output $DIR/${base}O.log
-  fi
-  cp $output $DIR/
-  cd $DIR
-  JKlog2xyz $output > /dev/null 2>/dev/null
-
-  #CLEANING
-  rm -rf $CALC_NAME
+    sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh 
+  fi 
+  sh $base.cmd
 }
 ##########################################################################################
 ##########################################################################################
@@ -267,48 +277,43 @@ function program_G16 {
 function program_ORCA {
   input=$1                     # file.xyz or .inp    
   base=$(basename $input .xyz) # file
-  base=$(basename $base .inp) # file
-  inputINP=$base.inp
+  base=$(basename $base  .inp) # file 
+  inputINP=$base.inp           # file.inp 
   output=$base.out             # file.out
   args=${@:2}                  # all arguments except the first one
 
-  #load JKCS arguments
-  if [ -e ../arguments.txt ]
-  then
-    source ../arguments.txt
-  fi
-
+  #TODO ORCA ennvironment setup
   export OMP_NUM_THREADS=1 
   module load orca-env/4.0.1.2 2> /dev/null
 
   #CREATING WORKING DIRECTORY
-  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
-  ADD=""
-  test=0
-  while [ $test -eq 0 ]
-  do
-    CALC_NAME=$WRKDIR/TMP/ORCA${SLURM_JOBID}${ADD}
-    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
-    else test=1;fi
-  done
+  if [ -d $WRKDIR/ORCA_$base ]; then rm -r $WRKDIR/ORCA_$base; fi
+  mkdir $WRKDIR/ORCA_$base;
 
-  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  #ENTERING TO WORKING DIRECTORY
   DIR=$PWD
-  mkdir $CALC_NAME
-  #*.inp or *.xyz
+  #CREATING .inp IF NEEDED
   test=`echo $input | rev | cut -c-4 | rev`
   if [ "$test" == ".xyz" ]
   then
-    if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
-    MEMinsert=`echo 0.85*$MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
-    JKxyz2inp $input -method "$method" -mem $MEMORYinsert -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
-    cp $inputINP $CALC_NAME/
+    if [ -e ../arguments.txt ]; 
+    then
+      #load JKCS arguments
+      if [ -e ../arguments.txt ];then source ../arguments.txt;fi
+      if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
+      MEMinsert2=`echo $MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
+      MEMinsert1=`echo 0.85*$MEMinsert2 | bc`
+      JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args    
+    else
+      JKxyz2inp $input $args
+    fi
+    cp $inputINP ORCA_$base/
   fi
-  cp $input $CALC_NAME/
-  cd $CALC_NAME  
- 
+  cp $input ORCA_$base/
+  cd ORCA_$base/  
+
+  #CALCULATION 
   $PATH_ORCA $inputINP > $output 2> $output
-  #JKout2xyz $output
 
   #COPYING RESULTS BACK
   cp $output $DIR/
