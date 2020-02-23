@@ -80,8 +80,15 @@ function JKloadhelp {
 
 #load charge and multiplicity 
 function JKloadCHARM {
-  CHARGE=`grep "TotalCharge" $inputfile | awk '{print $2}'`
-  MULTIPLICITY=`grep "TotalMultiplicity" $inputfile | awk '{print $2}'`
+  if [ -e $inputfile ]
+  then
+    CHARGE=`grep "TotalCharge" $inputfile | awk '{print $2}'`
+    MULTIPLICITY=`grep "TotalMultiplicity" $inputfile | awk '{print $2}'`
+  else
+    JKecho 1 "Using charge 0 and multiplicity 1"
+    CHARGE=0
+    MULTIPLICITY=1
+  fi
   JKecho 2 "Loading charge ($CHARGE) and multiplicity ($MULTIPLICITY)"
 }
 
@@ -131,10 +138,10 @@ function JKloadsupercomputer {
       fi
       NoC=`grep "## Number of Combinations" ${inputfile} | awk '{print $6}'`
     else
-      supercomputerline="$METHODsupercomputer 1 1 24:00:00 small 4000mb"
+      supercomputerline="$METHODsupercomputer 1 1 1 24:00:00 small 4000mb"
     fi
   else
-    supercomputerline="$METHODsupercomputer 1 1 24:00:00 small 4000mb"
+    supercomputerline="$METHODsupercomputer 1 1 1 24:00:00 small 4000mb"
   fi
   ###
   SCtasks=`echo $supercomputerline | awk '{print $2}'`

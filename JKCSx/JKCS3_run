@@ -99,7 +99,10 @@ currentdirpath=$PWD
 JKloadCHARM
 
 # load amount of molecules
-M=`head -n 1 $inputfile | awk '{print $6}'`
+if [ -e $inputfile ]
+then
+  M=`head -n 1 $inputfile | awk '{print $6}'`
+fi
 
 # -loc or load supercomputer parameters
 JKloadsupercomputer
@@ -395,6 +398,7 @@ JKecho 2 "Tasks used: $SCtasks"
 #  fi
 #fi
 
+echo "$SC_command sh INPUTFILE" > submit
 for i in `seq 1 $SCtasks`
 do
   #echo "sendjob $currentdir-ABC" 

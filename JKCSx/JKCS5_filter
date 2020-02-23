@@ -71,6 +71,7 @@ Quniq=0
 #u2=3
 #u3=3
 #Qs=3
+arguments_help=""
 
 # loop over all arguments
 for ii in "${!arguments[@]}"
@@ -188,9 +189,10 @@ do
     continue
   fi
   ### SAMPLING AND FILTERING ###
-  arguments+=" $i" 
+  arguments_help+=" $i" 
   ###
 done
+arguments=$arguments_help
 
 # checking is input file is in this folder:
 # going through the argument
@@ -199,9 +201,9 @@ for i in $arguments
 do
   # one of the argument should be file.dat containing the values
   text=`echo "aaaa$i" | rev | cut -c-4 | rev`
-  if [ "$text" == ".dat" ]
+  if [ "$text" == ".dat" ] || [ "$text" == ".txt" ]
   then
-    if [ -e $i ]
+    if [ -e $i ] 
     then
       testfile=`echo $testfile+1 | bc`
       folders=./
@@ -211,6 +213,10 @@ do
     fi
   fi
 done
+if [ -z "$arguments" ]
+then
+  folders=./
+fi
 
 ###############################################################################
 ################################ MAIN PROGRAM #################################
@@ -238,22 +244,44 @@ do
     then
       if [ ! -e $i ] 
       then
-        echo "$scriptfile: error - $i does not exist. EXITING"
+        JKecho 0 "error - $i does not exist. EXITING"
         exit
       fi
       testfile=`echo $testfile+1 | bc`
       file+=" $i"
     fi
-  done 
+  done
+  # if no .dat file, I will check at least for .txt file
+  if [ $testfile -eq 0 ]
+  then
+    if [ $Quniq -eq 1 ]
+    then
+      for i in $arguments
+        do
+        # one of the argument should be file.dat containing the values
+        text=`echo "aaaa$i" | rev | cut -c-4 | rev`
+        if [ "$text" == ".txt" ]
+        then
+          if [ ! -e $i ]
+          then
+            JKecho 0 "error - $i does not exist. EXITING"
+            exit
+          fi
+          testfile=`echo $testfile+1 | bc`
+          file+=" $i"
+        fi
+      done
+    fi
+  fi
   # checking amount of input files
   if [ $testfile -eq 0 ]
   then
-    echo "$scriptfile: error - input file is missing (the one with .dat extension). EXITING"
+    JKecho 0 " error - input file is missing (the one with .dat extension). EXITING"
     exit
   fi 
   if [ $testfile -gt 2 ]
   then
-    echo "$scriptfile: error - too many input files ($testfile) (those with .dat extension) (RESELECT IS DISABLED NOW). EXITING"
+    JKecho 0 "error - too many input files ($testfile) (those with .dat extension) (RESELECT IS DISABLED NOW). EXITING"
     exit
   fi
   ##############
@@ -262,28 +290,32 @@ do
   if [ $Quniq -eq 1 ]
   then
     #file
-    foldername=`echo $file | cut -c8- | rev | cut -c5- | rev` 
+    file=`echo $(basename $(basename $file .txt) .dat).dat`
+    foldername=${file//".dat"/}
+    foldername=${foldername//"results"/}
+    foldername=${foldername//"collection"/}
+    #foldername=`echo $file | cut -c8- | rev | cut -c5- | rev` 
     colfile=collection${foldername}.txt
     movfile=movie${foldername}.xyz
-    if [ ! -e $colfile ]
+    if [ ! -e "$colfile" ]
     then
-      echo "$scriptfile: error - collection file ($colfile) does not exist. EXITING"
+      JKecho 0 "error - collection file ($colfile) does not exist. EXITING"
       exit
     fi
     search="UNIQUENESS: $file"
     if [ -e FILTER.txt ]
     then
-      if [ -z "$u1" ]; then u1=`grep $search FILTER.txt | tail -n 1 | awk '{print $8}'`; fi
-      if [ -z "$u2" ]; then u2=`grep $search FILTER.txt | tail -n 1 | awk '{print $10}'`; fi
-      if [ -z "$u3" ]; then u3=`grep $search FILTER.txt | tail -n 1 | awk '{print $12}'`; fi
-      if [ -z "$Qs" ]; then Qs=`grep $search FILTER.txt | tail -n 1 | awk '{print $14}'`; fi
+      if [ -z "$u1" ]; then u1=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $8}'`; fi
+      if [ -z "$u2" ]; then u2=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $10}'`; fi
+      if [ -z "$u3" ]; then u3=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $12}'`; fi
+      if [ -z "$Qs" ]; then Qs=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $14}'`; fi
     fi
     if [ -z "$u1" ]; then u1=2; fi
     if [ -z "$u2" ]; then u2=3; fi
     if [ -z "$u3" ]; then u3=-1; fi
     if [ -z "$Qs" ]; then Qs=3; fi
     # send for uniqueness
-    $toolspath/SCRIPTS/JKcollect --- "UNIQUENESS" $colfile $file $moviefile $Qs $u1 $u2 $u3
+    $toolspath/SCRIPTS/JKcollect --- "UNIQUENESS" $colfile $file $movfile $Qs $u1 $u2 $u3
   fi
 
   ###############################
