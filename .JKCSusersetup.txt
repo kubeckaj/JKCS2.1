@@ -30,8 +30,8 @@ Qsymbol=1
 #########################
 
 # DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
-PATH_ABCluster="/projappl/hvehkama/kubeckaj/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
-PATH_XTB="/projappl/hvehkama/kubeckaj/Apps/XTB6.0/"
+PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
+PATH_XTB="/users/kubeckaj/XTB6.0/"
 PATH_GoodVibes="/projappl/hvehkama/kubeckaj/Apps/goodvibes/goodvibes/GoodVibes.py"
 PATH_ORCA="/projappl/hvehkama/kubeckaj/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
