@@ -104,6 +104,7 @@ do
     else 
       N=`grep 'NAtoms=' $file | head -n 1 | awk '{print $2}'`
     fi
+    if [ -z $N ]; then echo "JKlog2xyz: File $file is not covertable!!!";continue;fi
     N1=`echo $N+1 |bc`
     N2=`echo $N+2 |bc`
     

@@ -25,7 +25,7 @@ source $toolspath/LOADING/functions.sh
 source ~/.JKCSusersetup.txt
 
 # print inserted command
-echo "COMMAND: $scriptfile $@" >> output
+echoCOMMAND COMMAND: $scriptfile "$@" >> output
 
 ###############################################################################
 ###################################### HELP ###################################
@@ -95,7 +95,13 @@ currentdir=${PWD##*/}
 currentdirpath=$PWD
 
 # load amount of molecules
-M=`head -n 1 $inputfile | awk '{print $6}'`
+if [ -e $inputfile ]
+then
+  M=`head -n 1 $inputfile | awk '{print $6}'`
+else
+  JKecho 0 "No ${cfYELLOW}${inputfile}${cfDEF} file. (${cfRED}Assuming M=1 if needed!!!${cfDEF})"
+  M=1;
+fi
 
 # -loc or load supercomputer parameters
 JKloadsupercomputer
@@ -240,10 +246,10 @@ done
 ################################ DO NOT TOUCH #################################
 ###############################################################################
 
-#Does method exist
+#DOES FOLDER EXIST??
 if [ ! -d ${method} ]
 then
-  JKecho 1 "Folder ${method} does not exist in this folder. ${cfYELLOW}SKIP${cfDEF}"
+  JKecho 1 "Folder ${cfBLUE}${method}${cfDEF} does not exist in this folder. ${cfYELLOW}SKIP${cfDEF}"
   exit
 fi
 
@@ -254,7 +260,7 @@ movie="$moviefile${method}.xyz"
 
 if [ ! -e $savefile ]; then touch $savefile;fi
 if [ -e $resultfile ]; then rm $resultfile;fi
-JKecho 2 "Output files checked ($savefile,$resultfile,$movie)"
+JKecho 2 "Output files checked (${cfYELLOW}$savefile${cfDEF},${cfYELLOW}$resultfile${cfDEF},${cfYELLOW}$movie${cfDEF})"
 
 ### IF DLPNO FIN #############################################
 if [ $Qdlpno -eq 1 ]

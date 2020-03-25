@@ -32,12 +32,13 @@ Qsymbol=1
 # DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
 PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
 PATH_XTB="/users/kubeckaj/XTB6.0/"
-PATH_GoodVibes="/projappl/hvehkama/kubeckaj/Apps/goodvibes/goodvibes/GoodVibes.py"
-PATH_ORCA="/projappl/hvehkama/kubeckaj/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
+PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
+PATH_ORCA="/users/kubeckaj/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
 #MODULES
 module_gcc="module load gcc"
 module_gaussian="module load gaussian/G16RevC.01"
+module_orca="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
 
 # YOU CAN CALCULATE AT THE SMAE PLACE YOU ARE (./), OR YOU HAVE SOMEWHERE ELSE A TMP DIR 
 WRKDIR="./"
@@ -228,6 +229,7 @@ function program_G16 {
     fi
   fi
 
+  #CHANGE: G16, inputCOM, .log, adjust copying back
   echo """#!/bin/bash
 
 #source \$PATH_G16/g16/bsd/g16.login
@@ -258,6 +260,8 @@ then
   mv $DIR/$output $DIR/${base}O.log
 fi
 cp $output $DIR/
+cp *.err $DIR/ 2>/dev/null
+cp *.out $DIR/ 2>/dev/null
 cd $DIR
 JKlog2xyz $output > /dev/null 2>/dev/null
 
@@ -279,51 +283,79 @@ function program_ORCA {
   base=$(basename $input .xyz) # file
   base=$(basename $base  .inp) # file 
   inputINP=$base.inp           # file.inp 
+  inputXYZ=$base.xyz           # file.xyz
   output=$base.out             # file.out
   args=${@:2}                  # all arguments except the first one
 
-  #TODO ORCA ennvironment setup
-  export OMP_NUM_THREADS=1 
-  module load orca-env/4.0.1.2 2> /dev/null
-
-  #CREATING WORKING DIRECTORY
-  if [ -d $WRKDIR/ORCA_$base ]; then rm -r $WRKDIR/ORCA_$base; fi
-  mkdir $WRKDIR/ORCA_$base;
-
-  #ENTERING TO WORKING DIRECTORY
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
+  
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
-  #CREATING .inp IF NEEDED
+  #*.inp or *.xyz
   test=`echo $input | rev | cut -c-4 | rev`
   if [ "$test" == ".xyz" ]
   then
-    if [ -e ../arguments.txt ]; 
-    then
-      #load JKCS arguments
-      if [ -e ../arguments.txt ];then source ../arguments.txt;fi
-      if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
-      MEMinsert2=`echo $MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
-      MEMinsert1=`echo 0.85*$MEMinsert2 | bc`
-      JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args    
+    if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
+    MEMinsert2=`echo $MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
+    MEMinsert1=`echo 0.75*$MEMinsert2 | bc` #it is said in ORCA manual
+    if [ -z "$CPU" ]; then CPU=1; fi
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    if [ -z "$method" ] # IF NO METHOD SPECIFIED ... THEN SOME TROUBLES MIGHT APPEAR 
+    then    
+      JKxyz2inp $input -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY $args
     else
-      JKxyz2inp $input $args
+      JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
     fi
-    cp $inputINP ORCA_$base/
   fi
-  cp $input ORCA_$base/
-  cd ORCA_$base/  
+  cp $input ./ #either .XYZ or .INP
 
-  #CALCULATION 
-  $PATH_ORCA $inputINP > $output 2> $output
+  #CHANGE: ORCA, inputINP, .out
+  echo """#!/bin/bash
+export OMP_NUM_THREADS=1 
+$module_orca 2>/dev/null
+#module load orca-env/4.0.1.2 2> /dev/null
 
-  #COPYING RESULTS BACK
-  cp $output $DIR/
-  if [ ! -z "`ls *.xyz 2> /dev/null`" ] 
+#CREATING WORKING DIRECTORY
+if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+ADD=\"\"
+test=0
+while [ \$test -eq 0 ]
+do
+  CALC_NAME=$WRKDIR/TMP/ORCA\${SLURM_JOBID}\${ADD}
+  if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
+  else test=1;fi
+done
+
+#dirs
+mkdir \$CALC_NAME
+
+if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
+cp $inputINP \$CALC_NAME/
+cd \$CALC_NAME
+
+$PATH_ORCA $inputINP > $output 2> $output
+
+#COPYING RESULTS BACK
+if [ -e $DIR/$output ]
+then
+  mv $DIR/$output $DIR/${base}O.out
+fi
+cp $output $DIR/
+cp *.xyz $DIR/ 2>/dev/null
+cp *.err $DIR/ 2>/dev/null
+cd $DIR
+
+#CLEANING
+rm -rf \$CALC_NAME""" > $base.cmd
+  if [ -e ../submit ]
   then
-    cp *.xyz $DIR/
+    sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh
   fi
-  cd $DIR
-
-  #CLEANING
-  rm -rf $CALC_NAME
+  sh $base.cmd
 }
 ##########################################################################################

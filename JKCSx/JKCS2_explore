@@ -25,7 +25,7 @@ source $toolspath/LOADING/functions.sh
 source ~/.JKCSusersetup.txt
 
 # print inserted command
-echo "COMMAND: $scriptfile $@" >> output
+echoCOMMAND COMMAND: $scriptfile "$@" >> output
 
 ###############################################################################
 ###################################### HELP ###################################
@@ -98,7 +98,13 @@ folderNEW=ABC
 program=ABC        # could be also DFT, XTB, DLPNO ...
 
 # load amount of molecules
-M=`head -n 1 $inputfile | awk '{print $6}'`
+if [ -e $inputfile ]
+then
+  M=`head -n 1 $inputfile | awk '{print $6}'`
+else
+  JKecho 0 "No ${cfYELLOW}${inputfile}${cfDEF} file. (${cfRED}Assuming M=1 if needed!!!${cfDEF})"
+  M=1;
+fi
 
 # -loc or load supercomputer parameters
 JKloadsupercomputer

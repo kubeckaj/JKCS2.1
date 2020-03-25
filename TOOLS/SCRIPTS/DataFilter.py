@@ -12,6 +12,7 @@
 ###              ###
 
 import sys
+import os.path
 
 def printhelp():
   print('THIS SCRIPT WAS MAINLY WRITTEN BY VITTUSAATANA :-D')
@@ -112,6 +113,7 @@ for i in range(1,Narg):
     last='-sm'
     continue
   if last == '-sm':
+    if not(os.path.isfile("parameters.txt")): print("File parameters.txt does not exist. Do not use argument ["+last+"]");exit();
     molecules=int(open("parameters.txt").readline().rstrip().split()[5])
     select=float(arg)*molecules
     last=''
@@ -140,6 +142,7 @@ for i in range(1,Narg):
     last='-dm'
     continue
   if last == '-dm':
+    if not(os.path.isfile("parameters.txt")): print("File parameters.txt does not exist. Do not use argument ["+last+"]");exit();
     molecules=int(open("parameters.txt").readline().rstrip().split()[5])
     delete=float(arg)*molecules
     last=''
@@ -177,6 +180,7 @@ for i in range(1,Narg):
     last='-rgm'
     continue
   if last == '-rgm':
+    if not(os.path.isfile("parameters.txt")): print("File parameters.txt does not exist. Do not use argument ["+last+"]");exit();
     molecules=int(open("parameters.txt").readline().rstrip().split()[5])
     deleteRG=float(arg)*molecules
     last=''

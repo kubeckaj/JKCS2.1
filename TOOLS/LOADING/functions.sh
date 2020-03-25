@@ -1,3 +1,19 @@
+#!/bin/bash
+
+#printing COMMAND also with comments
+function echoCOMMAND() {
+whitespace="[[:space:]]"
+  for i in "$@"
+  do
+    if [[ $i =~ $whitespace ]]
+    then
+        i=\"$i\"
+    fi
+    printf "%s" "$i "
+  done
+  printf "\n"
+}
+
 #checking if path is full or absolute
 function is_absolute() {
   case "$1" in
@@ -274,14 +290,14 @@ function JKloaddirs {
       motherdir=$PWD
       folders=`ls -d ${folderbasename}_* 2>/dev/null`
       folders=`echo $folders | xargs`
-      JKecho 0 "  All subfolders = $folders"
       if [ -z "$folders" ]
       then
         JKecho 0 "File ${cfYELLOW}$inputfile${cfDEF} does not exist!"
-        JKecho 0 "Also, no folder ${cfBLUE}${folderbasename}${cfDEF}_ does not exist! ${cfRED}[EXITING]${cfDEF}"
+        JKecho 0 "Also, no folder ${cfBLUE}${folderbasename}${cfDEF}_ does not exist! ${cfRED}[NO - EXITING]${cfDEF}"
         JKecho 0 "Continuing anyway."
         #exit
       else
+        JKecho 0 "  All subfolders = ${cfBLUE}$folders${cfDEF}"
         JKecho 1 "I, this script, will enter to all subfolders. :-D"
       fi
     fi

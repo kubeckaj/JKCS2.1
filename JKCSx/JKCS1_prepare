@@ -24,6 +24,9 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
+# print inserted command
+echoCOMMAND COMMAND: $scriptfile "$@" >> output
+
 ###############################################################################
 ###################################### HELP ###################################
 ###############################################################################
