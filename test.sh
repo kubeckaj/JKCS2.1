@@ -172,4 +172,7 @@ else
 fi
 rm .test.inp .test.out .test.xyz
 echo ___________________
+rm .*.cmd 2>/dev/null
+rm .*.out 2>/dev/null
+rm .*.log 2>/dev/null
 if [ -e TMP ]; then rm -r TMP; fi
