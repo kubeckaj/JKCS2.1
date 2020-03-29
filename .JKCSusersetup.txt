@@ -45,17 +45,17 @@ module_python3=""
 
 #### KALE ### setup for all Puhti CSC users
 ## DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
-#PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
-#PATH_XTB="/users/kubeckaj/XTB6.0/"
-#PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
-#PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
-#PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
+#PATH_ABCluster="/home/jakub/wrk/APPS/ABCluster-2.0-Linux/rigidmol-optimizer"
+#PATH_XTB="/home/jakub/wrk/APPS/XTB6.0/"
+#PATH_GoodVibes="/home/jakub/wrk/APPS/goodvibes/goodvibes/GoodVibes.py"
+#PATH_ORCA="/home/jakub/wrk/APPS/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
+#PATH_G16="/appl/opt/gaussian-16.C.01/"
 ##MODULES
 #module_gcc="module load gcc"
-#module_gaussian="module load gaussian/G16RevC.01"
-#module_orca="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+#module_gaussian="module load Gaussian"
+#module_orca="module load OpenMPI/3.1.3-GCC-8.2.0-2.31.1"
 #module_python2=""
-#module_python3=""
+#module_python3="module load Python/3.7.0-intel-2018b"
 
 
 
