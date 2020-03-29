@@ -12,7 +12,7 @@
 ### THIS IS HELP
 function help {
   echo "THIS IS HELP:"
-  echo "Program for analysis of gaussian output"
+  echo "Program mainly for analysis of gaussian output"
   echo """
   JKgaussstat [OPTIONS] [FILES]
   OPTIONS: {applicability G=G16,X=XTB,O=ORCA,C=XYZ  coord.}
@@ -21,6 +21,7 @@ function help {
    -name .......... print name of the file {GXOC}
    -p,-pwdname .... print full file path {GXOC}
    -b,-basename ... print basename of the file (___.log) {GXOC}
+   [OTHERS: -pXYZ, -pOUT, -pLOG]   
 
    -el,-elen ...... EL = (last) electronic energy (SCF Done) {GXO }
    -zpe,-ZPE ...... ZPE = zero-point energy (correction) {GXO }
@@ -56,6 +57,15 @@ function help {
    -ht,-htime ..... time in hours # PRINT JUST LAST/TOTAL TIME {GXO }
    -err ........... do not print for missing \"Normal termination\" {G   }
    [OTHERS: -nt, -gibbscorr|-gcorr|-gc]
+
+   -b1,-bonds1 [ATOM] [thresh] .................. number of bonds with spec. atom
+   -b2,-bonds2 [ATOM1] [ATOM2] [thresh] ......... number of bonds with spec. atoms
+   -b3,-bonds3 [ATOM1] [ATOM2] [ATOM3] [thresh] . number of bonds with spec. atoms
+ 
+   -script [SCRIPT PATH] \"ARGUMENTS\" ... return ouput of the script
+   SCRIPT EXPECTATIONS:
+       EXECUTABLE SCRIPT: script.ext arguments file.ext 
+       SCRIPT OUTPUT: value or row of values
   
   FILES:
    gaussian (G16) output or ORCA output or XTB output or XYZ coordinates
@@ -78,6 +88,21 @@ then
 else
   toolspath="$scriptpath/../PROGRAM_SCRIPTS"
 fi
+# LOADING FUNCTIONS
+if [ -e $scriptpath/../LOADING/functions.sh ]
+then
+  source $scriptpath/../LOADING/functions.sh
+fi
+# LOADING JKCSusersetup
+if [ -e ~/.JKCSusersetup.txt ]
+then
+  source ~/.JKCSusersetup.txt
+else
+  function program_PYTHON2 {
+    python ${@}
+  }
+fi
+# OLD Qprograms
 Qprograms=programs.txt
 if [ -e $toolspath/../$Qprograms ]
 then
@@ -86,6 +111,7 @@ fi
 
 
 ######
+Qbonds1="-";Qbonds2="-";Qbonds3="-";QbondsT=0; #Bonds arguments
 Qerr=0
 Qfreqerr=0
 QT=0
@@ -94,8 +120,9 @@ factor=1.0
 what=""
 how=""
 next=0
-input=`echo $*`
-for i in $input
+scripts=()
+scriptsARG=()
+for i in "$@"
 do
   if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;fi
   firstletter=`echo $i | cut -c 1`
@@ -136,6 +163,71 @@ do
       next=1
       continue
     fi
+    # BONDS
+    if [ "$last" == "-bondsT" ]
+    then
+      QbondsT="$i"
+      last=''
+      next=0
+      continue
+    fi
+    ### atom bonds3
+    if [ "$last" == "-bonds3c" ]; then
+      Qbonds3="$i"; last='-bondsT'; continue
+    fi
+    if [ "$last" == "-bonds3b" ]; then
+      Qbonds2="$i"; last='-bonds3c'; continue
+    fi
+    if [ "$last" == "-bonds3a" ]; then
+      Qbonds1="$i"; last='-bonds3b'; continue
+    fi
+    if [ "$i" == "-bonds3" ] || [ "$i" == "-b3" ]; then
+      last="-bonds3";next=1;
+    fi
+    ### atom bonds2
+    if [ "$last" == "-bonds2b" ]; then
+      Qbonds2="$i"; last='-bondsT'; continue
+    fi
+    if [ "$last" == "-bonds2a" ]; then
+      Qbonds1="$i"; last='-bonds2b'; continue
+    fi
+    if [ "$i" == "-bonds2" ] || [ "$i" == "-b2" ]; then
+      last="-bonds2a";next=1
+    fi
+    ### atom bonds
+    if [ "$last" == "-bonds1a" ]; then
+      Qbonds1="$i"; last="-bondsT"; continue
+    fi
+    if [ "$i" == "-bonds1" ] || [ "$i" == "-b1" ]; then
+      last="-bonds1a";next=1
+    fi
+    ###
+    # SCRIPT
+    if [ "$last" == "-scriptARG" ]
+    then
+      scriptsARG+=( "$i" )
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$last" == "-script" ]
+    then
+      if [ -e "$i" ]
+      then
+        scripts+=( "$( cd "$(dirname "$i")" ; pwd -P )"/"$(basename $i)" )
+      else
+        echo "Script $i does not exist"
+        exit
+      fi
+      last="-scriptARG"
+      next=1
+      continue 
+    fi
+    if [ "$i" == "-script" ]
+    then
+      last="-script"
+      next=1
+    fi
     ### NOTHING FROM ABOVE
     how+="$i "
     if [ "$i" == "-gibbs" ] || [ "$i" == "-g" ]
@@ -167,6 +259,22 @@ function JKgrep {
   else 
     echo ""
   fi
+}
+
+function JKgrepXYZ {
+  file=$2
+  text=$1
+  row2=`head -n 2 $file | tail -n 1`
+  pos=`strindex "$row2" "$text"`
+  if [ $pos -eq -1 ]
+  then
+    var=''
+  else
+    pos=`echo $pos+1 | bc`
+    var=`echo $row2 | awk -v var=$pos '{print $var}'`
+  fi
+  if [ -z "$var" ]; then var="-----------"; fi
+  echo $var
 }
 
 function JKgibbs {
@@ -244,21 +352,26 @@ function JKel {
     then
       var=`JKgrep "| TOTAL ENERGY" $iLOG 4`
     fi
+  elif [ $ip == XYZ ]
+  then
+    var=`JKgrepXYZ "Energy:" "$iXYZ"`    
   else
-    var="-----------"
-  fi       
+    var="-----------"       
+  fi
   echo $var
 }
  
 ### LOOP OVER FILES
 for i in $what
 do
+  scriptNUM=-1
   ### WHO AM I? ###
   iEND=`echo $i | rev | cut -c-4 | rev`
   iBASE=$(basename $i $iEND)
-  iXYZ=$iBASE.xyz 
-  iLOG=$iBASE.log
-  iOUT=$iBASE.out
+  iPATH=$( cd "$(dirname "$i")" ; pwd -P )
+  iXYZ=$iPATH/$iBASE.xyz 
+  iLOG=$iPATH/$iBASE.log
+  iOUT=$iPATH/$iBASE.out
   if [ "$iEND" == ".xyz" ]
   then 
     ip="XYZ"
@@ -303,6 +416,17 @@ do
   for j in $how
   do
     var=""
+    ###############
+    ### SCRIPTS ###
+    ###############
+    if [ $j == "-script" ]
+    then
+      scriptNUM=`echo $scriptNUM+1|bc`
+      COMMAND="${scripts[$scriptNUM]} ${scriptsARG[$scriptNUM]} $i"  
+      var=`eval $COMMAND`
+      output+="$var "
+      continue
+    fi
     ##########    
     ### Rg ###
     ##########
@@ -310,10 +434,40 @@ do
     then
       if [ -e $iXYZ ]
       then
-        JKrg.py $iXYZ
-        var=`JKgrep "$iXYZ " DATA_Rg.txt 2`
+        if [ -e JKrg.py ]
+        then
+          program_PYTHON2 JKrg.py $iXYZ
+        elif [ -e $scriptpath/../SCRIPTS/JKrg.py ]
+        then
+          program_PYTHON2 $scriptpath/../SCRIPTS/JKrg.py $iXYZ
+        else
+          echo "Cannot find JKrg.py script!"
+        fi 
+        var=`JKgrepXYZ "Gyration_radius:" "$iXYZ"`
       else
         var="-----------"
+      fi
+      output+="$var "
+      continue
+    fi
+    #############
+    ### BONDS ###
+    #############
+    if [ $j == "-b1" ] || [ $j == "-b2" ] || [ $j == "-b3" ] || [ $j == "-bonds1" ] || [ $j == "-bonds2" ] || [ $j == "-bonds3" ]
+    then
+      if [ -e $iXYZ ]
+      then
+        if [ -e JKbonds.py ]
+        then
+          var=`program_PYTHON2 JKbonds $Qbonds1 $Qbonds2 $Qbonds3 $QbondsT $iXYZ`
+        elif [ -e $scriptpath/../SCRIPTS/JKbonds.py ]
+        then
+          var=`program_PYTHON2 $scriptpath/../SCRIPTS/JKbonds.py $Qbonds1 $Qbonds2 $Qbonds3 $QbondsT $iXYZ`
+        else
+          echo "Cannot find JKbonds.py script!"
+        fi
+      else
+        var="-----------"       
       fi
       output+="$var "
       continue
@@ -342,6 +496,25 @@ do
     if [ $j == "-pwdname" ] || [ $j == "-p" ]
     then
       var="$( cd "$(dirname "$i")" ; pwd -P )"/$i;
+      if [ ! -e "$var" ];then var="FIEdoesnotexist"; fi
+      output+="$var    \t"
+      continue
+    fi
+    if [ $j == "-pXYZ" ]
+    then
+      if [ -e "$iXYZ" ];then var=$iXYZ; else var="XYZdoesnotexist"; fi
+      output+="$var    \t"
+      continue    
+    fi
+    if [ $j == "-pLOG" ]
+    then
+      if [ -e "$iLOG" ];then var=$iLOG; else var="LOGdoesnotexist"; fi
+      output+="$var    \t"
+      continue
+    fi
+    if [ $j == "-pOUT" ]
+    then
+      if [ -e "$iOUT" ];then var=$iOUT; else var="OUTdoesnotexist"; fi
       output+="$var    \t"
       continue
     fi
@@ -867,7 +1040,7 @@ do
       output+="$var "
       continue
     fi
-    output+="UNKNOWNARGUMENT"
+    output+="UNKNOWNARGUMENT "
   done
   echo -e "$output"
 done

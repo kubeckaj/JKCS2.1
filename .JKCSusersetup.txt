@@ -29,16 +29,35 @@ Qsymbol=1
 ### Paths declaration ###
 #########################
 
+### PUHTI ### setup for all Puhti CSC users
 # DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
 PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
 PATH_XTB="/users/kubeckaj/XTB6.0/"
 PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
-PATH_ORCA="/users/kubeckaj/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
+PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
 #MODULES
 module_gcc="module load gcc"
 module_gaussian="module load gaussian/G16RevC.01"
 module_orca="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+module_python2=""
+module_python3=""
+
+#### KALE ### setup for all Puhti CSC users
+## DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
+#PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
+#PATH_XTB="/users/kubeckaj/XTB6.0/"
+#PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
+#PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
+#PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
+##MODULES
+#module_gcc="module load gcc"
+#module_gaussian="module load gaussian/G16RevC.01"
+#module_orca="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+#module_python2=""
+#module_python3=""
+
+
 
 # YOU CAN CALCULATE AT THE SMAE PLACE YOU ARE (./), OR YOU HAVE SOMEWHERE ELSE A TMP DIR 
 WRKDIR="./"
@@ -86,12 +105,12 @@ function program_ABC {
 ##########################################################################################
 #use python2.X, numpy might be required (needed by JKCS1)
 function program_PYTHON2 {
-  #module load python-env/2.7.13 > /dev/null 2>/dev/null
+  $module_pyhton2 2>/dev/null
   python2.7 ${@}
 }
 #use python3.X (needed by GoodVibes)
 function program_PYTHON3 {
-  #module load python-env/3.5.3 > /dev/null 2>/dev/null
+  $module_pyhton3 2>/dev/null
   python3.6 ${@}
 }
 ##########################################################################################
@@ -318,7 +337,7 @@ function program_ORCA {
   echo """#!/bin/bash
 export OMP_NUM_THREADS=1 
 $module_orca 2>/dev/null
-#module load orca-env/4.0.1.2 2> /dev/null
+export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
 
 #CREATING WORKING DIRECTORY
 if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
@@ -338,7 +357,7 @@ if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
 cp $inputINP \$CALC_NAME/
 cd \$CALC_NAME
 
-$PATH_ORCA $inputINP > $output 2> $output
+$PATH_ORCA/orca $inputINP > $output 2> $output
 
 #COPYING RESULTS BACK
 if [ -e $DIR/$output ]

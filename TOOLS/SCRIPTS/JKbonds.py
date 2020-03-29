@@ -4,9 +4,9 @@ import sys
 import glob, os
 
 # use either
-#     python JKbonds.py S O 1.5 0.xyz
+#     python JKbonds.py S O - 1.5 0.xyz
 # or
-#     python JKbonds.py S - 1.5 0.xyz
+#     python JKbonds.py S - - 1.5 0.xyz
 
 atom1=sys.argv[1]
 atom2=sys.argv[2]
