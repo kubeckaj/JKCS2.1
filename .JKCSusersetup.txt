@@ -42,6 +42,7 @@ module_gaussian="module load gaussian/G16RevC.01"
 module_orca="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
 module_python2=""
 module_python3=""
+module_sbatch="SBATCHuseradd=--account=hvehkama" #H.Vehkamaki group sbatch requirment
 
 #### KALE ### setup for all Puhti CSC users
 ## DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
@@ -69,7 +70,7 @@ module_python3=""
 #module_gaussian="module load gaussian/G16RevB.01"
 #module_orca="module load openmpi/1.10.2"
 #module_python2="module load python-env/2.7.13"
-#module_python3="module load python-env/intelpython3.6-2018.3"
+#module_python3="module load python-env/intelpython3.6-2018.2"
 
 # YOU CAN CALCULATE AT THE SMAE PLACE YOU ARE (./), OR YOU HAVE SOMEWHERE ELSE A TMP DIR 
 WRKDIR="./"
@@ -117,12 +118,12 @@ function program_ABC {
 ##########################################################################################
 #use python2.X, numpy might be required (needed by JKCS1)
 function program_PYTHON2 {
-  $module_pyhton2 2>/dev/null
+  $module_python2 2>/dev/null
   python2.7 ${@}
 }
 #use python3.X (needed by GoodVibes)
 function program_PYTHON3 {
-  $module_pyhton3 2>/dev/null
+  $module_python3 2>/dev/null
   python3.6 ${@}
 }
 ##########################################################################################
@@ -130,7 +131,7 @@ function program_PYTHON3 {
 # sbatch
 # command: sbatch [some_parameters] $SBATCHuseradd script
 ##########################################################################################
-SBATCHuseradd=" --account=hvehkama "
+eval $module_sbatch
 ##########################################################################################
 ##########################################################################################
 # GoodVibes
