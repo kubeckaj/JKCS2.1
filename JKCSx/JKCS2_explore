@@ -207,7 +207,7 @@ then
   INIT=1
 fi
 
-JKecho 1 "ABCluster parameters set: LM(${cfGREEN}$LM${cfDEF}),GEN(${cfGREEN}$GEN${cfDEF}),INIT(${cfGREEN}$INIT${cfDEF}),SC(${cfGREEN}$SC${cfDEF}),BOX(${cfGREEN}$BOX${cfDEF})."
+JKecho 1 "${cfGREEN}ABCluster${cfDEF} parameters set: LM(${cfGREEN}$LM${cfDEF}),GEN(${cfGREEN}$GEN${cfDEF}),INIT(${cfGREEN}$INIT${cfDEF}),SC(${cfGREEN}$SC${cfDEF}),BOX(${cfGREEN}$BOX${cfDEF})."
 
 # there should not be more arguments
 therest="${arguments[@]}"
@@ -246,7 +246,7 @@ JKecho 2 "Combinations read: ${cfYELLOW}$constitutions${cfDEF}"
 count=`Felements $constitutions`
 if [ $count -eq 0 ]; 
 then
-  JKecho 1 "No combination exist. [LEAVING]"
+  JKecho 1 "No combination exist. [${cfRED}LEAVING${cfDEF}]"
   exit
 fi
 
@@ -255,7 +255,7 @@ fi
 # creating ABC. if it exist, I will just enter it
 if [ ! -d ABC ]; then mkdir ABC; fi
 cd ABC 
-JKecho 2 "Creating ABC subfolders."
+JKecho 2 "Creating ${cfBLUE}ABC${cfDEF} subfolders."
 #TODO here is the question: should be done in the jobs itself 
 const_iter=0
 for i in $constitutions
@@ -268,7 +268,7 @@ do
   ## 
   if [ -d $folder ]; 
   then 
-    JKecho 1 "    ${cfGREEN}$folder${cfDEF} already exist"; 
+    JKecho 1 "    ${cfGREEN}$folder${cfDEF} already exist [${cfRED}CONTINUING${cfDEF}]"; 
     continue
   fi
   mkdir $folder
@@ -307,23 +307,37 @@ cd ..""" > rename.sh
   command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 
   printf "$command" > run${scriptfilecommand}.sh
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
-  echo $commandTODO >> ../.crealTODO.txt
+  if [ "$Qperform" == 2 ]
+  then 
+    echo $commandTODO >> ../.crealTODO.txt
+  fi
   echo $commandTODO >> ../commands_TODO.txt
-  JKecho 3 "    Command $commandTODO [$command] written to ABC/commands_TODO.txt"
+  JKecho 3 "    Command ${cfMAGENTA}$commandTODO${cfDEF} [${cfCYAN}$command${cfDEF}] written to ${cfBLUE}ABC/${cfYELLOW}commands_TODO.txt${cfDEF}"
   cd ..
 done
-JKecho 2 "ABC subfolders created."
+JKecho 2 "${cfBLUE}ABC${cfDEF} subfolders created."
 #rm .* 2> /dev/null
-echo "1 ABC/" >> ../.link.txt
+if  [ "$Qperform" == 2 ] 
+then
+  echo "1 ABC/" >> ../.link.txt
+fi
 
 ### Sending jobs ###
-jobscount=`wc -l commands_TODO.txt | awk '{print $1}'` 
-JKecho 2 "Counting amount of jobs: $jobscount"
-if [ $jobscount -lt $SCtasks ]
+#jobscount=`wc -l commands_TODO.txt | awk '{print $1}'` 
+jobscount=`echo $constitutions  | xargs -n 1 | wc -l`
+JKecho 2 "Counting amount of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
+if [ $jobscount -le $SCtasks ]
 then
-  SCtasks=$jobcount
+  SCtasks=$jobscount
+else
+  if [ "$Qperform" != 2 ]
+  then 
+    JKecho 0 "Max number of jobs to be send is less then needed."
+    JKecho 0 "Either change ${cfCYAN}-maxtasks${cfDEF} or use ${cCYAN}JKperform2${cfDEF} option."
+    exit
+  fi
 fi
-JKecho 2 "Tasks used: $SCtasks"
+JKecho 2 "Tasks used: ${cfBLUE}$SCtasks${cfDEF}"
 
 ##Qlinking=0
 ##if [ $Qlinking -eq 1 ]
@@ -341,16 +355,22 @@ JKecho 2 "Tasks used: $SCtasks"
 ##fi
 
 
-for i in `seq 1 $SCtasks`
+for i in `seq $SCtasks -1 1`
 do
-  #echo "sendjob $currentdir-ABC" 
-  $SC_command sh $toolspath/SCRIPTS/JKperform2.sh 
-  #echo "$SC_command"
+  if [ "$Qperform" == 2 ]
+  then
+    $SC_command sh $toolspath/SCRIPTS/JKperform2.sh 
+    echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output 
+  else
+    echo  $SC_command \"`head -n $i commands_TODO.txt | tail -n 1`\" >> output 
+    job=$(eval "$SC_command '`head -n $i commands_TODO.txt | tail -n 1`'") 
+    echo $job
+    echo $job | awk '{print $4}'  >> .jobs.txt
+  fi
 done
-
+JKecho 1 "Performing calculations/Calculations submitted."
 cd ..
-
-#exit
+exit
 #for i in `seq 1 $SCtasks`
 #do
 #  command=`head -n $i commands_TODO.txt | tail -n 1`

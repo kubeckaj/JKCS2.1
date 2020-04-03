@@ -816,11 +816,16 @@ do
       if [ $ip == G16 ] 
       then
         timeline=`grep "Elapsed time" $iLOG`
-        tD=`echo $timeline | awk '{print $3}'`
-        tH=`echo $timeline | awk '{print $5}'`
-        tM=`echo $timeline | awk '{print $7}'`
-        tS=`echo $timeline | awk '{print $9}'`
-        var=`echo $tD*24*60+$tH*60+$tM+$tS/60 |bc -l`
+        if [ ! -z "$timeline" ]
+        then
+          tD=`echo $timeline | awk '{print $3}'`
+          tH=`echo $timeline | awk '{print $5}'`
+          tM=`echo $timeline | awk '{print $7}'`
+          tS=`echo $timeline | awk '{print $9}'`
+          var=`echo $tD*24*60+$tH*60+$tM+$tS/60 |bc -l`
+        else
+          var="-----------"
+        fi
       elif [ $ip == ORCA ] 
       then 
         timeline=`grep "TOTAL RUN TIME:" $iOUT`
@@ -842,9 +847,12 @@ do
         var="-----------"
       fi
       #unit conversion
-      if [ $j == "-ht" ] || [ $j == "-htime" ]
+      if [ $var  != "-----------" ]
       then
-        var=`echo $var/60 | bc -l`
+        if [ $j == "-ht" ] || [ $j == "-htime" ]
+        then
+          var=`echo $var/60 | bc -l`
+        fi
       fi
       output+="$var "
       continue
