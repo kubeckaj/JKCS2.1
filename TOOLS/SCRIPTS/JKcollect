@@ -34,30 +34,44 @@ source ~/.JKCSusersetup.txt
 ## 3) RUN
 
 # load status
-stat=$2     # CONTROL or RUN
+stat=$1     # CONTROL or RUN
 
 if [ "$stat" == "UNIQUENESS" ]
 then
-  savefile=$3
-  resultfile=$4
-  movie=$5
-  Qs=$6
-  #u0= # 0th column is assumed to be -1 for now
-  u1=$7  
-  u2=$8
-  u3=$9
+  savefile=$2
+  resultfile=$3
+  movie=$4
+  Qs=$5
+  #UNIQUENNESS  
+  args=${@:6}  # all arguments except the first 5
   
   # remove if for whatever reason exist these files
   if [ -e .help1_$resultfile ]; then rm .help1_$resultfile; fi
   if [ -e .help2_$resultfile ]; then rm .help2_$resultfile; fi
-  # UNIQUENESS
-  if [ "$u3" == "-1" ]
-  then
-    sed '/^[ \t]*$/d' $savefile | awk -v var1=$u1 -v var2=$u2 '{printf("%s %.*f %.*f\n"),$1,var1,$2,var2,$3}' | sort -u -k 2 -k 3 > .help1_$resultfile
-  else
-    sed '/^[ \t]*$/d' $savefile | awk -v var1=$u1 -v var2=$u2 -v var3=$u3 '{printf("%s %.*f %.*f %.*f\n"),$1,var1,$2,var2,$3,var3,$4}' | sort -u -k 2 -k 3 -k 4 > .help1_$resultfile
-  fi
 
+  COMMAND="grep -v '\-----------' $savefile | sed '/^[ \t]*$/d' | awk "
+  COMMANDp="'{printf(\"%s"
+  COMMANDv="\n\"),\$1"
+  COMMANDs=" | sort -u"
+  column=1 #not filtering this one
+  for i in $args
+  do
+    column=`echo $column+1 | bc`
+    if [ "$i" != "-1" ]
+    then
+      COMMAND+=" -v var${column}=$i"
+      COMMANDp+=" %.*f"
+      COMMANDv+=",\$var${column},\$${column}"
+      COMMANDs+=" -k $column"
+    else
+      COMMANDp+=" %s"
+      COMMANDv+=",\$${column}"
+    fi
+  done
+  COMMAND+=" $COMMANDp""$COMMANDv""}'""$COMMANDs"" > .help1_$resultfile" 
+  #echo $COMMAND 
+  eval $COMMAND
+  
   # GREPING WHOLE LINES
   lines=`wc -l .help1_$resultfile | awk '{print $1}'`
   for i in `seq 1 $lines`
@@ -65,12 +79,23 @@ then
     text=`head -n $i .help1_$resultfile | tail -n 1 | awk '{print $1}'`
     grep $text $savefile >> .help2_$resultfile
   done
-  echo "UNIQUENESS: $resultfile - $lines files ( u1= $u1 ,u2= $u2 ,u3= $u3 ,sort= $Qs )"
-  echo "UNIQUENESS: $resultfile - $lines files ( u1= $u1 ,u2= $u2 ,u3= $u3 ,sort= $Qs )" >> FILTER.txt
- 
+  echo "UNIQUENESS: $resultfile - $lines files ( sort= $Qs, uniq= $args )" 
+  echo "UNIQUENESS: $resultfile - $lines files ( sort= $Qs, uniq= $args )" >> output
+  
   # SORTING
-  cat .help2_$resultfile | sort -nk $Qs > $resultfile
-  #RED='\033[0;31m';NC='\033[0m';printf "I ${RED}love${NC} Stack Overflow\n" > o
+  if [ -e .help2_$resultfile ] 
+  then
+    if [ $Qs -gt 0 ]
+    then
+      cat .help2_$resultfile | sort -nk $Qs > $resultfile
+    else
+      cat .help2_$resultfile > $resultfile
+      echo "No sorting."
+    fi
+  else
+    if [ -e $resultfile ];then rm $resultfile; fi; touch $resultfile
+    echo "OJOJOJ: no files have passed :-(  ... I guess something is wrong"
+  fi
   
   # MOVIE
   if [ -e $movie ]; then rm $movie; fi
@@ -81,86 +106,60 @@ then
   done
   
   # REMOVE
-  rm .help1_$resultfile .help2_$resultfile
+  if [ -e .help1_$resultfile ]; then rm .help1_$resultfile; fi
+  if [ -e .help2_$resultfile ]; then rm .help2_$resultfile; fi
 fi
 
 #################################################################################
 # CONTROL status
 if [ "$stat" == "CONTROL" ] 
 then
-  method=$3   # XTB, ABC, atd.
-  savefile=$4
-  Qncc=$5
-  resultfile=$6
-  movie=$7
-  #if [ -e collectqueuetocontrolfile$method ]; 
-  #then 
-  #  tocontrol=`cat collectqueuetocontrolfile$method`
-  #  rm collectqueuetocontrolfile$method; 
-  #fi
-  #if [ ! -z "$tocontrol" ]
-  #then
-  #  test=1
-  #  while [ $test -ne 0 ]
-  #  do
-  #    sleep $test;
-  #    testMEM=$test
-  #    test=0
-  #    for i in $tocontrol
-  #    do
-  #      state=`sacct -j $i  --format=State | tail -n 1`
-  #      if [ $state == "COMPLETED" ]
-  #      then
-  #        continue
-  #      else
-  #        test=1
-  #      fi
-  #    done
-  #    if [ $test -ne 0 ]
-  #    then
-  #      if [ $testMEM -ne 10 ]
-  #      then
-  #        test=`echo $testMEM+1 |bc`
-  #      else
-  #        test=$testMEM
-  #      fi
-  #    fi
-  #  done
-  #fi
+  savefile=$2
+  #I DO NOT NEED THE GUYS BELOW THEY GO TO UNIQUENESS
+  resultfile=$3                                    ##
+  movie=$4                                         ##
+  Qs=$5                                            ## 
+  #UNIQUENNESS                                     ##
+  args=${@:6}  # all arguments except the first 5  ##
+  ###################################################
+  
   ## for savefile
   if [ -e $savefile ]; then rm $savefile; fi
   if [ -e .help$savefile ]; then rm .help$savefile; fi
+  touch .help$savefile
   cat */$savefile     >> .help$savefile 2>/dev/null
   cat */*/$savefile   >> .help$savefile 2>/dev/null
   cat */*/*/$savefile >> .help$savefile 2>/dev/null
   cat .help$savefile | column -t > $savefile
   rm .help$savefile
+
   #echo "TEST after savefile"
   ## are there 4 columns??
-  test4=0
-  test4c=`head -n 1 $savefile | awk '{print $4}'`
-  if [ ! -z "$test4c" ]; then test4=1; fi
+  #test4=0
+  #test4c=`head -n 1 $savefile | awk '{print $4}'`
+  #if [ ! -z "$test4c" ]; then test4=1; fi
   
-  ## SORTING
-  u1=2
-  u2=3
-  u3=-1
-  SORT=3
-  if [ $Qncc -gt 0 ]
-  then
-    u3=3
-  fi
-  if [ $Qncc -eq 2 ]
-  then
-    u3=1
-  fi 
-  if [ $Qncc -eq 3 ] || [ $Qncc -eq 4 ]
-  then
-    SORT=4
-    u3=3
-  fi
+  ### SORTING
+  #u1=2
+  #u2=3
+  #u3=-1
+  #SORT=3
+  #if [ $Qncc -gt 0 ]
+  #then
+  #  u3=3
+  #fi
+  #if [ $Qncc -eq 2 ]
+  #then
+  #  u3=1
+  #fi 
+  #if [ $Qncc -eq 3 ] || [ $Qncc -eq 4 ]
+  #then
+  #  SORT=4
+  #  u3=3
+  #fi
+
   # send for uniqueness
-  $scriptpath/$scriptfile "---" "UNIQUENESS" $savefile $resultfile $movie $SORT $u1 $u2 $u3
+  $scriptpath/$scriptfile "UNIQUENESS" ${@:2}
 fi
 
 ###########################################################################
@@ -172,177 +171,33 @@ fi
 #3) calculate Rg
 if [ "$stat" == "RUN" ]
 then
-  method=$3   # XTB, ABC, atd.
-  savefile=$4
-  Qncc=$5
-  Qncc2=$6 #now just for #5
-  Qncc2a=$7 #now just for #5
-  Qncc2b=$8 #now just for #5
-  Qncc2c=$9 #now just for #5
-  Qncc2d=${10} #now just for #5
-  # QNC: 0 - nothing 
-  #      1 - ncc (some random coll coordinate based on hydrogen boding)
-  #      2 - dipole moment
-  #      3 - Gibbs free energy
-  #      4 - Gibss free energy with QH approx.
-  # QNC2: 5 - atom bonds a=atom b=threshold
-  # create XYZ where no XYZ exist 
-  #if [ ! $method == "XTB" ] && [ ! $method == 'ABC' ] && [ ! $method == 'DLPNO' ] 
-  #then
-    #if [ $Qncc -gt 0 ]
-    #then
-      #rm *.xyz
-      #$toolspath/JKlog2xyz 
-    #else
-      #countLOG=`ls -f *.log | wc -l`
-      #countXYZ=`ls -f *.xyz 2>/dev/null | wc -l`
-      #if [ ! $countLOG -eq $countXYZ ]
-      #then
-      #  echo "$scriptfile: Converting .log to .xyz in folder $folder"
-      #  $toolspath/JKlog2xyz
-      #fi
-    #fi
-  #fi
-  #MANIPULATE XYZ
-  #rm *X.xyz 2>/dev/null
-  #method3=`echo $method | cut -c-3`
-  #if [ $method3 != "ORC" ] && [ $method3 != "DLP" ] && [ $method3 != "XTB" ] && [ $method3 != "ABC" ]  
-  #then
-  #  #cXYZ=`ls *.xyz | wc -l`
-  #  #cLOG=`ls *.log | wc -l`
-  #  $toolspath/JKlog2xyz
-  #fi
+  savefile=$2
+  args="${@:3}"  # all arguments except the first 2
 
-  #check XYZ ... MAYBE NOT NECESSARY
+  #check XYZ ... MAYBE NOT NECESSARY = NOT INCLUDED, IF THEY ARE EMPTY
+  files=""
   for i in `ls *.xyz`
   do
-    info=`wc -c $i | awk '{print $1}'`
-    if [ $info -lt 24 ]
+    file=$i
+    info=`wc -c $file | awk '{print $1}'`
+    if [ $info -ge 24 ]
     then
-      rm $i
+      fileLOG=$(basename $file .xyz).log
+      fileOUT=$(basename $file .xyz).out
+      if [ -e $fileLOG ]
+      then
+        file=$fileLOG
+      elif [ -e $fileOUT ]
+      then
+        file=$fileOUT
+      fi
+      files+=" $file"
     fi
   done
-
-  # calculate Rg
-  program_PYTHON2 $toolspath/SCRIPTS/JKrg.py
-  # calculate NCC
-  if [ $Qncc == 1 ]
-  then
-    program_PYTHON2 $toolspath/SCRIPTS/JKncc.py
-  fi  
-
+  
   #if old savefile exist, remove it
   if [ -e $savefile ]; then rm $savefile; fi
-  
-  # copy to collection.txt
-  files=`ls *.xyz`
-  for j in $files
-  do
-    #(re-)DECLARATION
-    ncc=""
-    workingpath=`pwd`
-    filepathXYZ="$workingpath/$j"
-    filepathLOG=`echo $filepathXYZ | rev | cut -c5- | rev`.log
-    filepathOUT=`echo $filepathXYZ | rev | cut -c5- | rev`.out
-    ## CHECK METHOD TO BE SURE ##
-    if [ -e $filepathLOG ]
-    then
-      testXTB=`grep -c "  x T B  " $filepathLOG`
-      testG16=`grep -c " the Gaussian(R) 03 system (copyright 2003, Gaussian, Inc.)," $filepathLOG`
-    else
-      testXTB=0
-      testG16=0
-    fi
-    if [ -e $filepathOUT ] 
-    then
-      testORCA=`grep -c "This ORCA versions uses" $filepathOUT`
-    else
-      testORCA=0
-    fi
-    if [ $testXTB -gt 0 ]; then method="XTB"; fi
-    if [ $testG16 -gt 0 ]; then method="G16"; fi
-    if [ $testORCA -gt 0 ]; then method="ORCA"; fi
-    ## ENERGY ##
-    if [ $method == "XTB" ]
-    then
-      energy=`grep "total E" $filepathLOG | tail -n 1 | awk '{print $4}'`
-      if [ $Qncc -eq 3 ] || [ $Qncc -eq 4 ]
-      then
-        gibbs=`grep "TOTAL FREE ENERGY in Eh" $filepathLOG | awk '{print $1}'`
-        ncc=$gibbs
-      fi
-    elif [ $method == "ABC" ]
-    then
-      energy=`head -n 2 $filepathXYZ | tail -n 1 | awk '{print $2}'`
-    elif [ $method == "DLPNO" ]
-    then
-      energy=`grep 'FINAL SINGLE POINT ENERGY' $filepathOUT | awk '{print $5}'`
-    elif [ $method == "ORCA" ]
-    then
-      energy=`$toolspath/MANIPULATE/JKgaussstat -el $filepathOUT`
-      if [ $Qncc -eq 3 ] || [ $Qncc -eq 4 ]
-      then
-        gibbs=`$toolspath/MANIPULATE/JKgaussstat -g $filepathOUT`
-        ncc=$gibbs
-      fi
-    else
-      energy=`$toolspath/MANIPULATE/JKgaussstat -el $filepathLOG`
-      if [ $Qncc -eq 3 ]
-      then
-        gibbs=`$toolspath/MANIPULATE/JKgaussstat -g $filepathLOG`
-        ncc=$gibbs
-      fi
-      if [ $Qncc -eq 4 ]
-      then
-        gibbs=`$toolspath/MANIPULATE/JKgaussstat -gh $filepathLOG`
-        ncc=$gibbs
-      fi
-    fi
- 
-    ## NCC ##
-    row2=`head -n 2 $filepathXYZ | tail -n 1`
-    #rg
-    pos=`strindex "$row2" "Gyration_radius:"`
-    if [ $pos -eq -1 ] 
-    then
-      rg='-----'
-    else 
-      pos=`echo $pos+1 | bc`
-      rg=`echo $row2 | awk -v var=$pos '{print $var}'`
-    fi
-    #ncc (some of mine stupidly called ncc)
-    pos=`strindex "$row2" "NCC:"`
-    if [ $pos -ne -1 ] && [ $Qncc -eq 1 ]
-    then
-      pos=`echo $pos+1 | bc`
-      ncc=`echo $row2 | awk -v var=$pos '{print $var}'`
-    fi
-    #dip
-    if [ $Qncc -eq 2 ]
-    then
-      if [ $method == ORCA ]
-      then
-        dip=`JKgaussstat -d $filepathOUT`
-      else
-        dip=`JKgaussstat -d $filepathLOG`
-      fi
-      ncc=$dip
-    fi
-    #bonds
-    if [ $Qncc2 -eq 5 ]
-    then
-      ncc2=`$python $toolspath/SCRIPTS/JKbonds.py $Qncc2a $Qncc2b $Qncc2c $Qncc2d $filepathXYZ`
-    fi
-
-    #rg=`MOI.py $filepathXYZ | grep "Gyration_radius "  | awk '{print $4}'`
-    #dipole=`grep "total (Debye):" $filepathLOG | tail -n 1 | awk '{print $6}'`
-    # if Qncc=0 then ncc is empty
-    #echo "$filepathXYZ $rg $ncc $energy $gibbs "
-    if [ ! -z $filepathXYZ ] && [ ! -z $rg ] && [ ! -z $energy ]
-    then 
-      echo "$filepathXYZ $rg $energy $ncc $ncc2 " >> $savefile
-    fi
-  done
+  $toolspath/MANIPULATE/JKgaussstat "${@:3}" $files >> $savefile
 fi
 
 

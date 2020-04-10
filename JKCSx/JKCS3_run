@@ -400,12 +400,13 @@ if [ $jobscount -le $SCtasks ]
 then
   SCtasks=$jobscount
 else
-  if [ "$Qperform" != 2 ]
+  if [ "$Qperform" != 2 ] && [ "$METHODsupercomputer" != "loc" ]
   then
     JKecho 0 "Max number of jobs to be send is less then needed."
     JKecho 0 "Either change ${cfCYAN}-maxtasks${cfDEF} or use ${cfCYAN}JKperform2${cfDEF} option."
     exit
   fi
+  SCtasks=$jobscount
 fi
 JKecho 2 "Tasks used: ${cfBLUE}$SCtasks${cfDEF}"
  
@@ -426,16 +427,16 @@ JKecho 2 "Tasks used: ${cfBLUE}$SCtasks${cfDEF}"
 
 echo "$SC_command sh INPUTFILE" > submit
 
-for i in `seq 1 $SCtasks`
+for i in `seq $SCtasks -1 1`
 do
   if [ "$Qperform" == 2 ]
   then
     $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
     echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
   else
-    echo  $SC_command \"`head -n $i commands_TODO.txt | tail -n 1`\" >> output
-    job=$(eval "$SC_command '`head -n $i commands_TODO.txt | tail -n 1`'")
-    echo $job
+    echo  "$SC_command \"`tail -n $i commands_TODO.txt | head -n 1`\"" >> output
+    job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+    if [ ! -z "$job" ] ;then echo $job;fi
     echo $job | awk '{print $4}'  >> .jobs.txt
   fi
 done

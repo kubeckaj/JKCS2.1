@@ -64,13 +64,10 @@ currentdirpath=$PWD
 ################################  USER INPUT  #################################
 ################################ DO NOT TOUCH #################################
 ###############################################################################
+#reading arguments important for this script
 
 Qhelp=0
 Quniq=0
-#u1=2
-#u2=3
-#u3=3
-#Qs=3
 arguments_help=""
 
 # loop over all arguments
@@ -80,48 +77,6 @@ do
   ### GENERAL ###
   ## help
   if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then Qhelp=1;break;fi
-  # partition
-  if [ "$last" == '-par' ]
-  then
-    last=''
-    parameters+=" -p $i"
-    continue
-  fi
-  if [ "$i" == "-par" ] || [ "$i" == "-partition" ]
-  then
-    last="-par"
-    continue
-  fi
-  ## time
-  if [ "$last" == "-time" ]
-  then
-    last=""
-    parameters+=" --time $i"
-    continue
-  fi
-  if [ "$i" == "-time" ] || [ "$i" == "-t" ]
-  then
-    last="-time"
-    continue
-  fi
-  # programs
-  if [ "$last" == '-programs' ]
-  then
-    last=''
-    if [ "$i" == 2 ]
-    then
-      Qprograms="programs2.txt"
-    else
-      Qprograms="$i"
-    fi
-    continue
-  fi
-  if [ "$i" == "-programs" ]
-  then
-    last='-programs'
-    continue
-  fi
-  ##
   ### UNIQUENESS ###
   # uniqueness
   if [ "$i" == "-u" ] || [ "$i" == "-uniq" ]
@@ -194,161 +149,129 @@ do
 done
 arguments=$arguments_help
 
+##############################################################################
+################################ INPUT CHECK #################################
+##############################################################################
+
 # checking is input file is in this folder:
 # going through the argument
+if [ -z "$arguments" ]
+then
+  JKecho 0 "Missing input file. [${cfRED}EXITING${cfDEF}]"
+  exit
+fi
 testfile=0
+arguments_help=""
 for i in $arguments
 do
   # one of the argument should be file.dat containing the values
   text=`echo "aaaa$i" | rev | cut -c-4 | rev`
   if [ "$text" == ".dat" ] || [ "$text" == ".txt" ]
   then
-    if [ -e $i ] 
+    if [ -e "$i" ] 
     then
       testfile=`echo $testfile+1 | bc`
-      folders=./
-      break
-    else
-      folders=`ls -d SYS*/ 2>/dev/null`
+      analysedfile="$i"
+      continue
     fi
+  elif [ -e "results${i}.dat" ]
+  then
+    testfile=`echo $testfile+1 | bc`
+    analysedfile="results${i}.dat"
+    continue
+  elif [ -e "collection${i}.txt" ]
+  then
+    testfile=`echo $testfile+1 | bc`
+    analysedfile="collection${i}.txt"
+    continue
   fi
+  arguments_help+=" $i"
 done
-if [ -z "$arguments" ]
+if [ -z "$analysedfile" ] || [ $testfile -ne 1 ]
 then
-  folders=./
+  JKecho 0 "Either your input file does not exist or you are in wrong directory [${cfRED}EXITING${cfDEF}]."
+  if [ $testfile -gt 1 ]; 
+  then
+    JKecho 0 "It is actually too many input files problem."
+  fi 
+  exit
 fi
+arguments="$arguments_help"
 
 ###############################################################################
 ################################ MAIN PROGRAM #################################
 ################################ DO NOT TOUCH #################################
 ###############################################################################
 
-##################################
-## LOOP OVER ALL FOLDERS
-##################################
-for folder in $folders
-do
-  fromwhere=`echo "${PWD##*/}"`
-  JKecho 2 "$fromwhere: Entering folder $folder"
-  cd $folder
+##############
+# UNIQUENESS #
+##############
+if [ $Quniq -eq 1 ]
+then
+  ### file
+  file=`echo $(basename $(basename $analysedfile .txt) .dat).dat`
+  foldername=${file//".dat"/}
+  foldername=${foldername//"results"/}
+  foldername=${foldername//"collection"/}
+  ###
+  colfile=collection${foldername}.txt
+  movfile=movie${foldername}.xyz
+  ###
+  if [ ! -e "$colfile" ]
+  then
+    JKecho 0 "error - collection file ($colfile) does not exist. EXITING"
+    exit
+  fi
+  #search="UNIQUENESS: $file"
+  #if [ -e FILTER.txt ]
+  #then
+  #  if [ -z "$u1" ]; then u1=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $8}'`; fi
+  #  if [ -z "$u2" ]; then u2=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $10}'`; fi
+  #  if [ -z "$u3" ]; then u3=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $12}'`; fi
+  #  if [ -z "$Qs" ]; then Qs=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $14}'`; fi
+  #fi
+  if [ -z "$u1" ]; then u1=2; fi
+  if [ -z "$u2" ]; then u2=3; fi
+  if [ -z "$u3" ]; then u3=1; fi
+  if [ -z "$Qs" ]; then Qs=2; fi
+  # send for uniqueness
+  $toolspath/SCRIPTS/JKcollect "UNIQUENESS" $colfile $file $movfile $Qs $u1 $u2 $u3
 
-  ########################
-  # going through all arguments
-  testfile=0
-  file=""
-  for i in $arguments
-  do
-    # one of the argument should be file.dat containing the values
-    text=`echo "aaaa$i" | rev | cut -c-4 | rev`
-    if [ "$text" == ".dat" ]
-    then
-      if [ ! -e $i ] 
-      then
-        JKecho 0 "error - $i does not exist. EXITING"
-        exit
+  if [ "print" ==  "print" ]
+  then
+    lines=`wc -l $file | awk '{print $1}'`
+    if [ $lines -lt 3 ]
+    then 
+      max=$lines
+    else
+      max=3
+    fi 
+    echo -e "---- UNIQUENESS: first ${cfCYAN}$max${cfDEF} rows of file ${cfYELLOW}$file${cfDEF} ----"
+    N1=`echo $u1 $u2 $u3 | awk '{print $1+1}'`
+    N2=`echo $u1 $u2 $u3 | awk '{print $2+1}'`
+    N3=`echo $u1 $u2 $u3 | awk '{print $3+1}'`
+    for i in `seq 1 $max`
+    do
+      line=`head -n $i $file  | tail -n 1`
+      O1=`echo $line | awk '{print $1}'` 
+      O2=`echo $line | awk '{print $2}'` 
+      O3=`echo $line | awk '{print $3}'` 
+      O4=`echo $line | awk '{print $4}'`
+      U2=`echo $O2 | awk -v v=$N1 '{printf "%.*f",v,int($1*10**v)/10**v}'` 
+      U3=`echo $O3 | awk -v v=$N2 '{printf "%.*f",v,int($1*10**v)/10**v}'`
+      if [ ! -z "$O4" ]
+      then  
+        U4=`echo $O4 | awk -v v=$N3 '{printf "%.*f",v,int($1*10**v)/10**v}'` 
       fi
-      testfile=`echo $testfile+1 | bc`
-      file+=" $i"
-    fi
-  done
-  # if no .dat file, I will check at least for .txt file
-  if [ $testfile -eq 0 ]
-  then
-    if [ $Quniq -eq 1 ]
-    then
-      for i in $arguments
-        do
-        # one of the argument should be file.dat containing the values
-        text=`echo "aaaa$i" | rev | cut -c-4 | rev`
-        if [ "$text" == ".txt" ]
-        then
-          if [ ! -e $i ]
-          then
-            JKecho 0 "error - $i does not exist. EXITING"
-            exit
-          fi
-          testfile=`echo $testfile+1 | bc`
-          file+=" $i"
-        fi
-      done
-    fi
+      echo -e "$O1 ${cfGREEN}$U2${cfRED}${O2//$U2} ${cfGREEN}$U3${cfRED}${O3//$U3} ${cfGREEN}$U4${cfRED}${O4//$U4} ${cfDEF}"
+    done
   fi
-  # checking amount of input files
-  if [ $testfile -eq 0 ]
-  then
-    JKecho 0 " error - input file is missing (the one with .dat extension). EXITING"
-    exit
-  fi 
-  if [ $testfile -gt 2 ]
-  then
-    JKecho 0 "error - too many input files ($testfile) (those with .dat extension) (RESELECT IS DISABLED NOW). EXITING"
-    exit
-  fi
-  ##############
-  # UNIQUENESS #
-  ##############
-  if [ $Quniq -eq 1 ]
-  then
-    #file
-    file=`echo $(basename $(basename $file .txt) .dat).dat`
-    foldername=${file//".dat"/}
-    foldername=${foldername//"results"/}
-    foldername=${foldername//"collection"/}
-    #foldername=`echo $file | cut -c8- | rev | cut -c5- | rev` 
-    colfile=collection${foldername}.txt
-    movfile=movie${foldername}.xyz
-    if [ ! -e "$colfile" ]
-    then
-      JKecho 0 "error - collection file ($colfile) does not exist. EXITING"
-      exit
-    fi
-    search="UNIQUENESS: $file"
-    if [ -e FILTER.txt ]
-    then
-      if [ -z "$u1" ]; then u1=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $8}'`; fi
-      if [ -z "$u2" ]; then u2=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $10}'`; fi
-      if [ -z "$u3" ]; then u3=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $12}'`; fi
-      if [ -z "$Qs" ]; then Qs=`grep "$search" FILTER.txt | tail -n 1 | awk '{print $14}'`; fi
-    fi
-    if [ -z "$u1" ]; then u1=2; fi
-    if [ -z "$u2" ]; then u2=3; fi
-    if [ -z "$u3" ]; then u3=-1; fi
-    if [ -z "$Qs" ]; then Qs=3; fi
-    # send for uniqueness
-    $toolspath/SCRIPTS/JKcollect --- "UNIQUENESS" $colfile $file $movfile $Qs $u1 $u2 $u3
-  fi
+fi
 
-  ###############################
-  ### FILTERING AND SELECTING ###
-  ###############################
-  # no filtering or sampling
-  #arg=`Felements $arguments`
-  #if [ "$arg" -eq "$testfile" ]
-  #then
-  #  cd ..
-  #  continue
-  #fi 
-  # running the job
-  #if [ $testfile -eq 1 ]
-  #then
-  command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments"
-  #else
-  #  #this case: testfile=2 DISABLED NOW, SEE ABOVE
-  #  command="$toolspath/SCRIPTS/reselectfromfromfilter.sh $arguments"
-  #fi
-  # checking queue program
-  #if [ -z $programSendToQueue1part ] && [ -z $programSendToQueue2part ]
-  #then
-    # calculate
+if [ ! -z "$arguments" ]
+then
+  command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments $analysedfile"
   eval "$command"
-  #else
-    # calculate ... send to queue
-  #  queue=`eval $programSendToQueue1part $parameters $programSendToQueue2part "$command"`
-  #  echo "$scriptfile: $queue"
-  #  echo $queue | awk '{print $4}' >> $queuefile
-  #fi
-  ##################### 
-  cd ..
-done
+fi
 
 JKecho 2 "Done."

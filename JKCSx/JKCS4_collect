@@ -42,25 +42,28 @@ function help {
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ............ print this help and exit
-   
-  ${cfGREEN}New Colective Coordinates: (3rd column)${cfDEF}
-   -ncc ............. + something assuming hydrogen bond lengths
+  
+  ${cfMAGENTA}OUTPUTS:${cfDEF} 
+    -collection[${cfBLUE}FOLDER${cfDEF}].txt:
+      XYZ_full_path  Radius_Of_Gyration  Electronic_Energy  
+    -results[${cfBLUE}FOLDER${cfDEF}].dat:
+       =collection file with removed redundant structures
+       =sorted with respect to energy
+    -movie[${cfBLUE}FOLDER${cfDEF}].xyz:
+       =Molden usable file to visualize the structures
+
+  ${cfMAGENTA}ADITIONAL OPTIONS:${cfDEF}
    -dip ............. + dipoles
    -g,-gibbs ........ + Gibbs free energy
-   -gh,-gibbsh ...... + Gibbs free energy (GoodVibes)
-   -b,-bonds [ATOM] [thresh] .................... ++bonds with spec. atom
-   -b2,-bonds2 [ATOM1] [ATOM2] [thresh] ......... ++bonds with spec. atoms
-   -b3,-bonds3 [ATOM1] [ATOM2] [ATOM3] [thresh] . ++bonds with spec. atoms
+   -gh,-gibbsh ...... + Gibbs free energy (GoodVibes corrected)
+    ${cfRED}OR${cfDEF}
+   define by yourself using JKgaussstat commands: (see JKgaussstat --help)
  
-  ${cfRED}Some DLPNO corrected results [NOT TESTED]${cfDEF}
-   -dlpno ........... needs files from -dlpno1 & -dlpno2
-   -dlpno1 \"X\" ...... set dlpno file       [default: resultsDLPNO.dat]
-   -dlpno2 \"X\" ...... set free energy file [default: resultsDFT_HIGH_freq.dat]
-           
   ${cfMAGENTA}EXAMPLES:${cfDEF}
     
+    $scriptfile XTB 
     $scriptfile DFT_HIGH_freq -gibbs -loc
-    $scriptfile XTB -time 1:00:00
+    $scriptfile XTB -p -b -rg -el -dip 
     $scriptfile DFT_HIGH -loc\n"""
   printf "#################################################################\n"
   exit
@@ -111,191 +114,48 @@ JKloadsupercomputer
 ################################ DO NOT TOUCH #################################
 ###############################################################################
 #reading arguments important for this script
-
-QJKsend=0
-Qcheck=0                   
-Qprograms=programs.txt    # where to take script parameters
-Qncc=0                    # calculate and collect new collective variable
-Qncc2=0
-Qncc2a=""
-Qncc2b=""
-Qncc2c=""
-Qncc2d=""
-#collect all
-Qdlpno=0                         # values from resultsDLPNO.dat and resultsDFT_HIGH_freq.dat
-Qdlpno1=resultsDLPNO.dat         # values from resultsDLPNO.dat and resultsDFT_HIGH_freq.dat
-Qdlpno2=resultsDFT_HIGH_freq.dat # values from resultsDLPNO.dat and resultsDFT_HIGH_freq.dat
+#basically search just for the FOLDER.
 
 # loop over all arguments
+arguments_help=()
 for i in "${!arguments[@]}"
 do
   iter="${arguments[$i]}"
-  ###
-  if [ "$iter" == "-gibbs" ] || [ "$iter" == "-g" ]
+  firstletter=`echo $iter | cut -c 1`
+  if [ "$firstletter" == "-" ]
   then
-    Qncc=3
-    continue
-  fi
-  ###
-  if [ "$iter" == "-gibbsh" ] || [ "$iter" == "-gh" ]
-  then
-    Qncc=4
-    continue
-  fi
-  ###
-  if [ "$iter" == "-dlpno" ] 
-  then
-    Qdlpno=1
-    continue
-  fi
-  ###
-  if [ "$last" == "-dlpno1" ]
-  then
-    Qdlpno1=$iter
-    last=""
-    continue
-  fi
-  if [ "$iter" == "-dlpno1" ]
-  then
-    last="-dlpno1"
-    continue
-  fi
-  ### atom bonds3
-  if [ "$last" == "-bonds3" ]; then
-    Qncc2=5; Qncc2a="$iter"; last="-bonds3s"; continue
-  fi
-  if [ "$last" == "-bonds3s" ]; then
-    Qncc2b="$iter"; last='-bonds3ss'; continue
-  fi
-  if [ "$last" == "-bonds3ss" ]; then
-    Qncc2c="$iter"; last='-bonds3sss'; continue
-  fi
-  if [ "$last" == "-bonds3sss" ]; then
-    Qncc2d="$iter"; last=''; continue
-  fi
-  if [ "$iter" == "-bonds3" ] || [ "$iter" == "-b3" ]; then
-    last="-bonds3"; continue
-  fi
-  ### atom bonds2
-  if [ "$last" == "-bonds2" ]; then
-    Qncc2=5; Qncc2a="$iter"; last="-bonds2s"; continue
-  fi
-  if [ "$last" == "-bonds2s" ]; then
-    Qncc2b="$iter"; last='-bonds2ss'; continue
-  fi
-  if [ "$last" == "-bonds2ss" ]; then
-    Qncc2c="-"; Qncc2d="$iter"; last=''; continue
-  fi
-  if [ "$iter" == "-bonds2" ] || [ "$iter" == "-b2" ]; then
-    last="-bonds2"; continue
-  fi
-  ### atom bonds
-  if [ "$last" == "-bonds" ]
-  then
-    Qncc2=5
-    Qncc2a="$iter"
-    last="-bondss" 
-    continue
-  fi
-  if [ "$last" == "-bondss" ]
-  then
-    Qncc2d="$iter"
-    Qncc2c="-"
-    Qncc2b="-"
-    last=''
-    continue
-  fi
-  if [ "$iter" == "-bonds" ] || [ "$iter" == "-b" ]
-  then
-    last="-bonds"
-    continue
-  fi
-  ###
-  if [ "$last" == "-dlpno2" ]
-  then
-    Qdlpno2=$iter
-    last=""
-    continue
-  fi
-  if [ "$iter" == "-dlpno2" ]
-  then
-    last="-dlpno2"
-    continue
-  fi
-  ###
-  if [ "$iter" == "-ncc" ] 
-  then
-    Qncc=1
-    continue
-  fi
-  ###
-  if [ "$iter" == "-dip" ] 
-  then
-    Qncc=2
-    continue
-  fi
-  ###
-  if [ ! -z  "$iter" ]
-  then
-    method="${iter%/*}"  # It is checked later if some folder with name method exist. + "/" is removed immidiately
+    arguments_help+=( "${arguments[i]}" )
+  else
+    if [ -d "$iter" ]
+    then
+      method="${iter%/*}"
+    else
+      arguments_help+=( "${arguments[i]}" )
+    fi
   fi
 done
+arguments=("${arguments_help[@]}")
 
 ###############################################################################
 ################################ MAIN PROGRAM #################################
 ################################ DO NOT TOUCH #################################
 ###############################################################################
 
-#DOES FOLDER EXIST??
-if [ ! -d ${method} ]
-then
-  JKecho 1 "Folder ${cfBLUE}${method}${cfDEF} does not exist in this folder. ${cfYELLOW}SKIP${cfDEF}"
-  exit
-fi
-
+#FILES AND FOLDER NAMES DECLARATION
+JKecho 1 "Collecting data from ${cfBLUE}${method}${cfDEF} folder."
 #files
 savefile="$collectionfile${method}.txt"
 resultfile="$resultsfile${method}.dat"
 movie="$moviefile${method}.xyz"
-
-if [ ! -e $savefile ]; then touch $savefile;fi
+if [ -e $savefile ]; then rm $savefile; fi
+touch $savefile
 if [ -e $resultfile ]; then rm $resultfile;fi
+if [ -e $movie ]; then rm $movie;fi
 JKecho 2 "Output files checked (${cfYELLOW}$savefile${cfDEF},${cfYELLOW}$resultfile${cfDEF},${cfYELLOW}$movie${cfDEF})"
 
-### IF DLPNO FIN #############################################
-if [ $Qdlpno -eq 1 ]
-then
-  #test Qdlpno1 extension
-  ext=`echo $Qdlpno1 | rev | cut -c1-4 | rev`
-  if [ "$ext" == ".dat" ]
-  then
-    file1=$Qdlpno1
-    f1=collection`echo $(basename $Qdlpno1 .dat) | cut -c8-`.txt
-    f2=collection`echo $(basename $Qdlpno2 .dat) | cut -c8-`.txt
-  else
-    file1=$Qdlpno1
-    f1=$Qdlpno1
-    f2=$Qdlpno2
-  fi
-  #for all lines
-  lines=`cat $file1 | wc -l`
-  for i in `seq 1 $lines`
-  do
-    file=`head -n $i $f1 | tail -n 1 | awk '{print $1}'`
-    filename=`echo ${file#*calc-LM}`;
-    DFTel=`grep $filename $f2 | awk '{print $3}'`
-    DFTg=` grep $filename $f2 | awk '{print $4}'`
-    DLPNO=`head -n $i $f1 | tail -n 1 | awk '{print $3}'`
-    dG=`echo "$DLPNO+($DFTg-1.0*$DFTel)" | bc -l`
-    echo " $file || $DFTel $DFTg $DLPNO || $dG "
-  #
-  done
-  continue
-fi   
-#############################################################
-
+#SUBFOLDER DEFINITION
 if [ -d ${method}/${name}-LM ]
-then 
+then
   subfolders="${method}/${name}-LM"
 else
   subfolders=`ls -d ${method}/${method}_*/calc-LM | xargs`
@@ -304,56 +164,133 @@ else
     subfolders="${method}"
   fi
 fi
-#################################################
+JKecho 2 "Subfolder(s) storing the data: ${cfBLUE}${subfolders}${cfDEF}"
 
-JKecho 1 "Collection from all ${method} subfolders."
+#DID SUBFOLDER FINISHED CORRECTLY ???
 JKecho 2 "Is everything done there?"
 ###
 testdone=`JKcheck $method | awk '{print $5}'`
 if [ "$testdone" != "100.00" ] && [ "$testdone" != "" ]
 then
-  JKecho 0 "Not everything is finished in folder $method. [${cfRED}EXITING${cfDEF}]"
-  JKecho 0 "You can write following command if you want to collect the data anyway:"
-  JKecho 0 "            rm $method/.*"
-  JKecho 0 "POSSIBLE BUG: if you're sure everything is done, then just: rm $method/.*"
-  exit
-else 
+  JKecho 0 "Apparently the subfolder ${cfBLUE}${method}${cfDEF} is still running."
+  JKecho 0 "   some jobs or was not finished correctly. Do you want to shut down"
+  JKecho 0 "   Do not await these jobs and collect the data? [yes/no] "
+  read answer
+  if [ "$answer" == "y" ] || [ "$answer" == "yes" ] || [ "$answer" == "Y" ] || [ "$answer" == "YES" ] || [ "$answer" == "Yes" ]
+  then
+    JKecho 1 "Ok, I will continue."
+    rm $method/.* 2>/dev/null
+    #rm ./.* 2>/dev/null
+  else 
+    JKecho 0 "Collection will not be performed here! [${cfRED}EXITING${cfDEF}]"
+    exit
+  fi
+else
   rm $method/.* 2>/dev/null
-fi 
+fi
 ###
+
+######### CHECKING SOME ARGUMENTS:
+# loop over all arguments
+Qs=3
+Qu="2 3"
+arguments_hpass=()
+arguments_hcatch=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  if [ "$iter" == "-gibbs" ] || [ "$iter" == "-gibbsh" ] || [ "$iter" == "-g" ] || [ "$iter" == "-gh" ]
+  then
+    Qs=4
+    Qu+=" 3"
+    arguments_hcatch+=( "$iter" )
+    continue 
+  fi
+  if [ "$iter" == "-dip" ]
+  then
+    Qu+=" 1"
+    arguments_hcatch+=( "$iter" )
+    continue
+  fi
+  arguments_hpass+=( "$iter" )
+done
+#arguments=("${arguments_help[@]}")
+hpass="${arguments_hpass[@]}"
+hcatch="${arguments_hcatch[@]}"
+if [ -z "$hpass" ]
+then
+  arguments=( "-pXYZ" )
+  arguments+=( "-rg" )
+  arguments+=( "-el" )
+  arguments+=( "${arguments_hcatch[@]}" )
+else
+  Qs=-1
+  Qu=""
+fi
+
+### GOING THROUGH ALL SUBBFOLDERS
+JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 for subfolder in $subfolders
 do
   ## ENTERING FOLDER
-  JKecho 3 "    Analyzing subfolder $subfolder"
+  JKecho 3 "    Analyzing subfolder ${cfBLUE}$subfolder${cfDEF}."
   cd $subfolder
   #################################################################
-  # command
-  command="$toolspath/SCRIPTS/JKcollect --- RUN $method $savefile $Qncc $Qncc2 $Qncc2a $Qncc2b $Qncc2c $Qncc2d"
-  printf "$command" > run${scriptfilecommand}.sh
+  # command ... it looks crazy but it has to be done like this due to ""
+  #command="$toolspath/SCRIPTS/JKcollect RUN $savefile  "${arguments[@]}
+  #printf "$command" > run${scriptfilecommand}.sh
+  echoCOMMAND $toolspath/SCRIPTS/JKcollect RUN $savefile "${arguments[@]}">run${scriptfilecommand}.sh
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
   cd $currentdirpath
   echo $commandTODO >> $method/commands_TODO.txt
-  echo $commandTODO >> $method/.crealTODO.txt
-  JKecho 3 "    Command $commandTODO [$command] written to $method/commands_TODO.txt"
-  ##
+  if [ "$Qperform" == 2 ]
+  then
+    echo $commandTODO >> $method/.crealTODO.txt
+  fi
+  JKecho 3 "    Command ${cfMAGENTA}$commandTODO${cfDEF} [${cfCYAN}$command${cfDEF}] written to ${cfBLUE}$method${cfDEF}/${cfYELLOW}commands_TODO.txt${cfDEF}"
 done
 ###
+
+### PREPARING SUBMITTING FOR ALL JOBS IN METHOD FOLDER
 cd $currentdirpath/$method
-jobscount=`echo $subfolders | xargs -n 1 | wc -l `
-JKecho 2 "Counting amount of jobs: $jobscount"
+jobscount=`echo $subfolders | xargs -n 1 | wc -l`
+JKecho 2 "Counting number of jobs: ${cfGREEN}$jobscount${cfDEF}"
 
-echo "1 $method/" >> ../.link.txt
+if [ "$Qperform" == 2 ]
+then
+  echo "1 $method/" >> ../.link.txt
+fi
 
-JKecho 2 "+ Sending to CONTROL collection." 
-commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method | awk '{print \$5}'\`;if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect --- CONTROL $method $savefile $Qncc $resultfile $movie; break; else sleep 1; fi; done"
-echo $commandTODO >> ../.crealTODO.txt
+### PREPARING SUBMITTING FOR THE CONTROL JOB WHICH COLLECTS ALL SUBCOLLECTIONS
+#  savefile=$2
+#  #I DO NOT NEED THE GUYS BELOW THEY GO TO UNIQUENESS
+#  resultfile=$3                                    ##
+#  movie=$4                                         ##
+#  Qs=$5                                            ## 
+#  #UNIQUENNESS                                     ##
+#  args=${@:6}
+JKecho 2 " + Sending to CONTROL collection." 
+#
+commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method | awk '{print \$5}'\` ; if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; break; else sleep 1; fi; done "
+if [ "$Qperform" == 2 ]
+then
+  echo $commandTODO >> ../.crealTODO.txt
+fi
 
 ### Sending jobs ###
 if [ $jobscount -lt $SCtasks ]
 then
   SCtasks=$jobcount
+else
+  if [ "$Qperform" != 2 ]  && [ "$METHODsupercomputer" != "loc" ]
+  then
+    JKecho 0 "Max number of jobs to be send is less then needed."
+    JKecho 0 "Either change ${cfCYAN}-maxtasks${cfDEF} or use ${cfCYAN}JKperform2${cfDEF} option."
+    exit
+  fi
+  SCtasks=$jobscount
 fi
-JKecho 2 "Tasks used: $SCtasks"
+JKecho 2 "Tasks used: ${cfBLUE}$SCtasks${cfDEF}"
 
 ##Qlinking=0
 ##if [ $Qlinking -eq 1 ]
@@ -370,12 +307,40 @@ JKecho 2 "Tasks used: $SCtasks"
 ##  fi
 ##fi
 
-for i in `seq 1 $SCtasks`
+### THE SUBMITTING ITSELF
+for i in `seq $SCtasks -1 1`
 do
-  #echo "sendjob $workindir-ABC" 
-  $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
-  #echo "$SC_command"
+  if [ "$Qperform" == 2 ]
+  then
+    $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
+    echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
+  else
+    echo  "$SC_command \"`tail -n $i commands_TODO.txt | head -n 1`\"" >> output
+    job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+    if [ ! -z "$job" ]; then echo $job; fi
+    echo $job | awk '{print $4}'  >> .jobs.txt
+  fi
 done
 cd $currentdirpath
+
+if [ "$Qperform" != 2 ]
+then
+  JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
+  echo  "$SC_command \"$commandTODO\"" >> output
+  job=$(eval $SC_command "$commandTODO")
+  if [ ! -z "$job" ];then echo $job; fi
+  if [ "$METHODsupercomputer" != "loc" ]
+  then
+    echo $job | awk '{print $4}'  >> .jobs.txt  
+  fi
+fi
 JKecho 1 "Subfolder finished/submitted."
+
+
+
+
+
+
+
+
 
