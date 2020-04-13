@@ -215,8 +215,8 @@ do
   arguments_hpass+=( "$iter" )
 done
 #arguments=("${arguments_help[@]}")
-hpass="${arguments_hpass[@]}"
-hcatch="${arguments_hcatch[@]}"
+hpass=${arguments_hpass[@]}
+hcatch=${arguments_hcatch[@]}
 if [ -z "$hpass" ]
 then
   arguments=( "-pXYZ" )
