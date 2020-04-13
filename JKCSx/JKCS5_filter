@@ -271,6 +271,7 @@ fi
 if [ ! -z "$arguments" ]
 then
   command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments $analysedfile"
+  JKecho 2 "$command"
   eval "$command"
 fi
 

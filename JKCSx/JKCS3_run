@@ -434,8 +434,11 @@ do
     $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
     echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
   else
-    echo  "$SC_command \"`tail -n $i commands_TODO.txt | head -n 1`\"" >> output
-    job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
+    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
+    #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+    job=$(/bin/bash .run)
+    #job=$(eval `cat .run`)
     if [ ! -z "$job" ] ;then echo $job;fi
     echo $job | awk '{print $4}'  >> .jobs.txt
   fi
