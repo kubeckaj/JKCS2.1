@@ -404,9 +404,12 @@ do
   iEND=`echo $i | rev | cut -c-4 | rev`
   iBASE=$(basename $i $iEND)
   iPATH=$( cd "$(dirname "$i")" ; pwd -P )
-  iXYZ=$iPATH/$iBASE.xyz 
-  iLOG=$iPATH/$iBASE.log
-  iOUT=$iPATH/$iBASE.out
+  #iXYZ=$iPATH/$iBASE.xyz 
+  #iLOG=$iPATH/$iBASE.log
+  #iOUT=$iPATH/$iBASE.out
+  iXYZ=$iBASE.xyz 
+  iLOG=$iBASE.log
+  iOUT=$iBASE.out
   if [ "$iEND" == ".xyz" ]
   then 
     ip="XYZ"
@@ -543,21 +546,21 @@ do
     fi
     if [ $j == "-pXYZ" ]
     then
-      if [ -e "$iXYZ" ];then var=$iXYZ; else var="XYZdoesnotexist"; fi
+      if [ -e "$iPATH/$iXYZ" ];then var=$iPATH/$iXYZ; else var="XYZdoesnotexist"; fi
       revar
       output+="$var    \t"
       continue    
     fi
     if [ $j == "-pLOG" ]
     then
-      if [ -e "$iLOG" ];then var=$iLOG; else var="LOGdoesnotexist"; fi
+      if [ -e "$iPATH/$iLOG" ];then var=$iPATH/$iLOG; else var="LOGdoesnotexist"; fi
       revar
       output+="$var    \t"
       continue
     fi
     if [ $j == "-pOUT" ]
     then
-      if [ -e "$iOUT" ];then var=$iOUT; else var="OUTdoesnotexist"; fi
+      if [ -e "$iPATH/$iOUT" ];then var=$iPATH/$iOUT; else var="OUTdoesnotexist"; fi
       revar
       output+="$var    \t"
       continue
