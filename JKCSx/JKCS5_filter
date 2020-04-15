@@ -245,11 +245,12 @@ then
       max=$lines
     else
       max=3
-    fi 
-    echo -e "---- UNIQUENESS: first ${cfCYAN}$max${cfDEF} rows of file ${cfYELLOW}$file${cfDEF} ----"
+    fi
+    printf ":::---- UNIQUENESS: first ${cfCYAN}$max${cfDEF} rows of file ${cfYELLOW}$file${cfDEF} ----:::\n" 
     N1=`echo $u1 $u2 $u3 | awk '{print $1+1}'`
     N2=`echo $u1 $u2 $u3 | awk '{print $2+1}'`
     N3=`echo $u1 $u2 $u3 | awk '{print $3+1}'`
+    if [ -e .JKCS5help ]; then rm .JKCS5help; fi
     for i in `seq 1 $max`
     do
       line=`head -n $i $file  | tail -n 1`
@@ -263,8 +264,10 @@ then
       then  
         U4=`echo $O4 | awk -v v=$N3 '{printf "%.*f",v,int($1*10**v)/10**v}'` 
       fi
-      echo -e "$O1 ${cfGREEN}$U2${cfRED}${O2//$U2} ${cfGREEN}$U3${cfRED}${O3//$U3} ${cfGREEN}$U4${cfRED}${O4//$U4} ${cfDEF}"
+      printf    "$O1 ${cfGREEN}$U2${cfRED}${O2//$U2} ${cfGREEN}$U3${cfRED}${O3//$U3} ${cfGREEN}$U4${cfRED}${O4//$U4} ${cfDEF}\n" >> .JKCS5help
     done
+    cat .JKCS5help | column -t 
+    if [ -e .JKCS5help ]; then rm .JKCS5help; fi
   fi
 fi
 
