@@ -310,7 +310,7 @@ function JKgibbs {
     count1=`grep -c "Free Energies" $i` 
     if [ $count1 -eq 1 ]
     then
-      if [ $j == "-gibbs" ] || [ $j == "-g" ]
+      if [ $j == "-gibbs" ] || [ $j == "-g" ] || [ $j == "-GD" ]
       then
         if [ $QT -eq 1 ]
         then
