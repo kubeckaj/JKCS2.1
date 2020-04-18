@@ -34,7 +34,7 @@ Qsymbol=1
 PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
 PATH_XTB="/users/kubeckaj/XTB6.0/"
 PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
-PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
+PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
 #MODULES
 module_gcc="module load gcc"
@@ -49,7 +49,7 @@ module_sbatch="SBATCHuseradd=--account=hvehkama" #H.Vehkamaki group sbatch requi
 #PATH_ABCluster="/home/jakub/wrk/APPS/ABCluster-2.0-Linux/rigidmol-optimizer"
 #PATH_XTB="/home/jakub/wrk/APPS/XTB6.0/"
 #PATH_GoodVibes="/home/jakub/wrk/APPS/goodvibes/goodvibes/GoodVibes.py"
-#PATH_ORCA="/home/jakub/wrk/APPS/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
+#PATH_ORCA="/home/jakub/wrk/APPS/ORCA/orca_4_1_2_linux_x86-64_shared_openmpi313/"
 #PATH_G16="/appl/opt/gaussian-16.C.01/"
 ##MODULES
 #module_gcc="module load GCC/8.2.0-2.31.1"
