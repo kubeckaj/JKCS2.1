@@ -281,7 +281,7 @@ fi
 JKecho 2 "Counting amount of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
 if [ $jobscount -le $SCtasks ]
 then
-  SCtasks=$jobcount
+  SCtasks=$jobscount
 else
   if [ "$Qperform" != 2 ]  && [ "$METHODsupercomputer" != "loc" ]
   then
