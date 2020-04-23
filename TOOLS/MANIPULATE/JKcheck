@@ -1,5 +1,16 @@
 #!/bin/bash
-subfolders="$*"
+Q_num=0;
+subfolders=""
+for i in $*
+do
+  if [ "$i" == "-num" ]
+  then
+    Q_num=1
+    continue
+  fi
+  subfolders+=" $i"
+done
+
 helpfile=.help$RANDOM
 
 if [ -e $helpfile ];
@@ -89,5 +100,10 @@ do
   done
   cd ..
 done
-cat $helpfile | sort -nrk 4 | column -t
+if [ $Q_num -eq 1 ]
+then
+  cat $helpfile | sort -nrk 4 | column -t | awk '{print $5}'
+else
+  cat $helpfile | sort -nrk 4 | column -t
+fi
 rm $helpfile

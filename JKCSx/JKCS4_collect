@@ -271,7 +271,7 @@ fi
 #  args=${@:6}
 JKecho 2 " + Sending to CONTROL collection." 
 #
-commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method | awk '{print \$5}'\` ; if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; break; else sleep 1; fi; done "
+commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; break; else sleep 1; fi; done "
 if [ "$Qperform" == 2 ]
 then
   echo $commandTODO >> ../.crealTODO.txt
@@ -331,11 +331,10 @@ cd $currentdirpath
 if [ "$Qperform" != 2 ]
 then
   JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
-  echo  "$SC_command \"\"\"$commandTODO\"\"\"" >> output
+  echo  "$SC_command '$commandTODO'" >> output
   JKecho 3 "Submitting CONTROL command"
-  echo  "$SC_command \"\"\"$commandTODO\"\"\"" > .run
-  #job=$(/bin/bash .run)
-  job=$(eval `cat .run`)
+  echo  "$SC_command '$commandTODO'" > .run
+  job=$(/bin/bash .run)
   #job=$(eval $SC_command "$commandTODO")
   if [ ! -z "$job" ];then echo $job; fi
   if [ "$METHODsupercomputer" != "loc" ]
