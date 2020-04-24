@@ -265,7 +265,7 @@ function program_G16 {
   echo """#!/bin/bash
 
 #source \$PATH_G16/g16/bsd/g16.login
-export OMP_NUM_THREADS=1
+export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
 $module_gaussian 2>/dev/null  
 
 #CREATING WORKING DIRECTORY
@@ -348,7 +348,7 @@ function program_ORCA {
 
   #CHANGE: ORCA, inputINP, .out
   echo """#!/bin/bash
-export OMP_NUM_THREADS=1 
+export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
 $module_orca 2>/dev/null
 export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
 
