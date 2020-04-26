@@ -170,7 +170,7 @@ else
   echo "   :: see .log for the error"
   echo "   :: open ~/.JKCSusersetup -> check program_ORCA or setup properly path PATH_ORCA"
 fi
-rm .test.inp .test.out .test.xyz
+rm .test.inp .test.out .test.xyz  2>/dev/null
 echo ___________________
 rm .*.cmd 2>/dev/null
 rm .*.out 2>/dev/null
