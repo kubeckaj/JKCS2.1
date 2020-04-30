@@ -310,7 +310,7 @@ function JKgibbs {
     count1=`grep -c "Free Energies" $i` 
     if [ $count1 -eq 1 ]
     then
-      if [ $j == "-gibbs" ] || [ $j == "-g" ] || [ $j == "-GD" ]
+      if [ $j == "-gibbs" ] || [ $j == "-g" ] || [ $j == "-GD" ]
       then
         if [ $QT -eq 1 ]
         then
@@ -375,7 +375,11 @@ function JKenthalpy {
 function JKel {
   if [ $ip == G16 ];
   then
-    var=`JKgrep "SCF Done" $iLOG 5`
+    var=`JKgrep "E(CORR)=" $iLOG 4`
+    if [ -z "$var" ]
+    then
+      var=`JKgrep "SCF Done" $iLOG 5`
+    fi
   elif [ $ip == ORCA ]; 
   then
     var=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 5`
