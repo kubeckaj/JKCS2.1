@@ -330,10 +330,11 @@ function JKgibbs {
     var=`JKgrep "Final Gibbs free enthalpy         ..." $iOUT 6 | awk -v temp=$var1 '{print temp*3.8088*10^-7*8.31441*log(3)+$1}'`
   elif [ $ip == XTB ]
   then
-    count1=`grep -c "TOTAL FREE ENERGY" $i` 
-    if [ $count1 -eq 1 ]
+    count0=`grep -c 'SCF not converged in optimization' $iLOG`
+    count1=`grep -c "TOTAL FREE ENERGY" $iLOG` 
+    if [ $count1 -eq 1 ] && [ $count0 -eq 0 ]
     then
-      var=`grep "TOTAL FREE ENERGY" $i | awk '{print $1}'`
+      var=`grep "TOTAL FREE ENERGY" $iLOG | awk '{print $1}'`
     else
       var="-----------"
     fi
