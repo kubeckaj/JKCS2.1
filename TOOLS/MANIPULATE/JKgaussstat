@@ -1069,19 +1069,25 @@ do
         fi
       elif [ $ip == XTB ]
       then
-        dipline=`grep -C 3 "molecular dipole:" $iLOG | tail -n 1`
-        if [ $j == "-dx" ]
+        test=`grep -c "Geometry optimization did not converge!" $iLOG`
+        if [ $test -gt 0 ]
         then
-          var=`echo $dipline | awk '{print $2}' | awk '{print $1/0.39342344556402064389}'`
-        elif [ $j == "-dy" ]
-        then
-          var=`echo $dipline | awk '{print $3}' | awk '{print $1/0.39342344556402064389}'`
-        elif [ $j == "-dz" ]
-        then
-          var=`echo $dipline | awk '{print $4}' | awk '{print $1/0.39342344556402064389}'`
-        elif [ $j == "-dtot" ] || [ $j == "-d" ] || [ $j == "-dip" ]
-        then
-          var=`echo $dipline | awk '{print $5}'`
+          var="-----------"
+        else    
+          dipline=`grep -C 3 "molecular dipole:" $iLOG | tail -n 1`
+          if [ $j == "-dx" ]
+          then
+            var=`echo $dipline | awk '{print $2}' | awk '{print $1/0.39342344556402064389}'`
+          elif [ $j == "-dy" ]
+          then
+            var=`echo $dipline | awk '{print $3}' | awk '{print $1/0.39342344556402064389}'`
+          elif [ $j == "-dz" ]
+          then
+            var=`echo $dipline | awk '{print $4}' | awk '{print $1/0.39342344556402064389}'`
+          elif [ $j == "-dtot" ] || [ $j == "-d" ] || [ $j == "-dip" ]
+          then
+            var=`echo $dipline | awk '{print $5}'`
+          fi
         fi
       else
         var="-----------"
