@@ -124,9 +124,9 @@ function JKloadsupercomputer {
     then
       METHODsupercomputer="loc"
       arguments_help_pass+=( "${arguments[i]}" )
-    else
-      arguments_help+=( "${arguments[i]}" )
+      continue
     fi
+    arguments_help+=( "${arguments[i]}" )
   done
   arguments=("${arguments_help[@]}")
   JKecho 2 "Type of method used: $METHODsupercomputer"

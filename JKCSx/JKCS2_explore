@@ -121,6 +121,7 @@ GEN=100
 INIT="300*M"
 SC=4
 BOX="7+M"
+Qjpt=1 #jobs per task
 
 last=""
 # loop over all arguments
@@ -182,6 +183,18 @@ do
     INITcheck=`echo $INIT | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
     INITcheck=`echo "($INITcheck+0.5)/1" | bc`
     if [ $INITcheck -gt $INITinp ]; then INIT="$time/NoC/0.0012/M/M/M/M"; fi
+    continue
+  fi
+  # Jobs per task
+  if [ "$iter" == "-jpt" ]
+  then
+    last="-jpt"
+    continue
+  fi
+  if [ "$last" == "-jpt" ];
+  then
+    last=""
+    Qjpt=$iter
     continue
   fi
   # 
@@ -258,8 +271,11 @@ cd ABC
 JKecho 2 "Creating ${cfBLUE}ABC${cfDEF} subfolders."
 #TODO here is the question: should be done in the jobs itself 
 const_iter=0
+Qjpt_iter=0
+jobscount=0
 for i in $constitutions
 do
+  Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
   const_iter=`echo $const_iter+1 |bc`
   JKecho 3 "  Combination - ${cfYELLOW}$i${cfDEF}"
   #####################
@@ -311,10 +327,23 @@ cd ..""" > rename.sh
   then 
     echo $commandTODO >> ../.crealTODO.txt
   fi
-  echo $commandTODO >> ../commands_TODO.txt
+  echo $commandTODO >> ../.Qjpt_commands_TODO.txt
+  if [ $Qjpt_iter -eq $Qjpt ]
+  then
+    cat ../.Qjpt_commands_TODO.txt | xargs -d$'\n' >> ../commands_TODO.txt
+    rm ../.Qjpt_commands_TODO.txt
+    Qjpt_iter=0
+    jobscount=`echo $jobscount+1|bc`
+  fi
   JKecho 3 "    Command ${cfMAGENTA}$commandTODO${cfDEF} [${cfCYAN}$command${cfDEF}] written to ${cfBLUE}ABC/${cfYELLOW}commands_TODO.txt${cfDEF}"
   cd ..
 done
+if [ -e .Qjpt_commands_TODO.txt ]
+then
+  cat .Qjpt_commands_TODO.txt | xargs -d$'\n' >> commands_TODO.txt
+  rm .Qjpt_commands_TODO.txt
+  jobscount=`echo $jobscount+1|bc`
+fi
 JKecho 2 "${cfBLUE}ABC${cfDEF} subfolders created."
 #rm .* 2> /dev/null
 if  [ "$Qperform" == 2 ] 
@@ -324,8 +353,8 @@ fi
 
 ### Sending jobs ###
 #jobscount=`wc -l commands_TODO.txt | awk '{print $1}'` 
-jobscount=`echo $constitutions  | xargs -n 1 | wc -l`
-JKecho 2 "Counting amount of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
+#jobscount=`echo $constitutions  | xargs -n 1 | wc -l`
+JKecho 2 "Counting number of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
 if [ $jobscount -le $SCtasks ]
 then
   SCtasks=$jobscount
@@ -364,22 +393,12 @@ do
   else
     echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output 
     echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
-    #eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`"
     job=$(/bin/bash .run)
-    #job=$(eval `cat .run`)
-    #cat .run
-    #rm .run
-    #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`") 
     if [ ! -z "$job" ];  then echo $job; fi
     echo $job | awk '{print $4}'  >> .jobs.txt
   fi
 done
-JKecho 1 "Performing calculations/Calculations submitted."
+JKecho 1 "Performing calculations/Calculations submitted or calculation done (-loc)."
 cd ..
 exit
-#for i in `seq 1 $SCtasks`
-#do
-#  command=`head -n $i commands_TODO.txt | tail -n 1`
-#  
-#done
 

@@ -115,15 +115,29 @@ JKloadsupercomputer
 ###############################################################################
 #reading arguments important for this script
 #basically search just for the FOLDER.
+Qjpt=1 #jobs per task
 
+last=""
 # loop over all arguments
 arguments_help=()
 for i in "${!arguments[@]}"
 do
   iter="${arguments[$i]}"
   firstletter=`echo $iter | cut -c 1`
-  if [ "$firstletter" == "-" ]
+  if [ "$firstletter" == "-" ] || [ ! -z "$last" ]
   then
+    # Jobs per task
+    if [ "$iter" == "-jpt" ]
+    then
+      last="-jpt"
+      continue
+    fi
+    if [ "$last" == "-jpt" ];
+    then
+      last=""
+      Qjpt=$iter
+      continue
+    fi
     arguments_help+=( "${arguments[i]}" )
   else
     if [ -d "$iter" ]
@@ -229,9 +243,12 @@ else
 fi
 
 ### GOING THROUGH ALL SUBBFOLDERS
+Qjpt_iter=0
+jobscount=0
 JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 for subfolder in $subfolders
 do
+  Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
   ## ENTERING FOLDER
   JKecho 3 "    Analyzing subfolder ${cfBLUE}$subfolder${cfDEF}."
   cd $subfolder
@@ -241,19 +258,34 @@ do
   #printf "$command" > run${scriptfilecommand}.sh
   echoCOMMAND $toolspath/SCRIPTS/JKcollect RUN $savefile "${arguments[@]}">run${scriptfilecommand}.sh
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
-  cd $currentdirpath
-  echo $commandTODO >> $method/commands_TODO.txt
+  cd $currentdirpath 
   if [ "$Qperform" == 2 ]
   then
     echo $commandTODO >> $method/.crealTODO.txt
+    echo $commandTODO >> $method/commands_TODO.txt
+  else
+    echo $commandTODO >> $method/.Qjpt_commands_TODO.txt
+    if [ $Qjpt_iter -eq $Qjpt ]
+    then
+      cat $method/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $method/commands_TODO.txt
+      rm $method/.Qjpt_commands_TODO.txt
+      Qjpt_iter=0
+      jobscount=`echo $jobscount+1|bc`
+    fi
   fi
   JKecho 3 "    Command ${cfMAGENTA}$commandTODO${cfDEF} [${cfCYAN}$command${cfDEF}] written to ${cfBLUE}$method${cfDEF}/${cfYELLOW}commands_TODO.txt${cfDEF}"
 done
+if [ -e $method/.Qjpt_commands_TODO.txt ]
+then
+  cat $method/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $method/commands_TODO.txt
+  rm $method/.Qjpt_commands_TODO.txt
+  jobscount=`echo $jobscount+1|bc`
+fi
 ###
 
 ### PREPARING SUBMITTING FOR ALL JOBS IN METHOD FOLDER
 cd $currentdirpath/$method
-jobscount=`echo $subfolders | xargs -n 1 | wc -l`
+if [ "$Qperform" == 2 ]; then jobscount=`echo $subfolders | xargs -n 1 | wc -l`; fi
 JKecho 2 "Counting number of jobs: ${cfGREEN}$jobscount${cfDEF}"
 
 if [ "$Qperform" == 2 ]
