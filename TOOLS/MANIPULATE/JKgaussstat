@@ -331,8 +331,9 @@ function JKgibbs {
   elif [ $ip == XTB ]
   then
     count0=`grep -c 'SCF not converged in optimization' $iLOG`
+    count00=`grep -c 'failed to converge geometry optimization' $iLOG`
     count1=`grep -c "TOTAL FREE ENERGY" $iLOG` 
-    if [ $count1 -eq 1 ] && [ $count0 -eq 0 ]
+    if [ $count1 -eq 1 ] && [ $count0 -eq 0 ] && [ $count00 -eq 0 ]
     then
       var=`grep "TOTAL FREE ENERGY" $iLOG | awk '{print $1}'`
     else
