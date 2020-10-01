@@ -247,9 +247,9 @@ then
       max=3
     fi
     printf ":::---- UNIQUENESS: first ${cfCYAN}$max${cfDEF} rows of file ${cfYELLOW}$file${cfDEF} ----:::\n" 
-    N1=`echo $u1 $u2 $u3 | awk '{print $1+1}'`
-    N2=`echo $u1 $u2 $u3 | awk '{print $2+1}'`
-    N3=`echo $u1 $u2 $u3 | awk '{print $3+1}'`
+    N1=`echo $u1 $u2 $u3 | awk '{print $1}'`
+    N2=`echo $u1 $u2 $u3 | awk '{print $2}'`
+    N3=`echo $u1 $u2 $u3 | awk '{print $3}'`
     if [ -e .JKCS5help ]; then rm .JKCS5help; fi
     for i in `seq 1 $max`
     do
