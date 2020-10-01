@@ -58,6 +58,8 @@ function help {
    -gh,-gibbsh ...... + Gibbs free energy (GoodVibes corrected)
     ${cfRED}OR${cfDEF}
    define by yourself using JKgaussstat commands: (see JKgaussstat --help)
+                 !! but then, you need to define also the path etc. !!
+		 e.g., $scriptfile DFT -p -rg -el -dip -pol 
  
   ${cfMAGENTA}EXAMPLES:${cfDEF}
     
