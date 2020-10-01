@@ -60,8 +60,8 @@ then
     if [ "$i" != "-1" ]
     then
       COMMAND+=" -v var${column}=$i"
-      COMMANDp+=" %.*f"
-      COMMANDv+=",\$var${column},\$${column}"
+      COMMANDp+=" %d"
+      COMMANDv+=",10^\$var${column}*\$${column}"
       COMMANDs+=" -k $column"
     else
       COMMANDp+=" %s"

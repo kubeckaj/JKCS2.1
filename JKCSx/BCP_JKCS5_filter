@@ -245,8 +245,8 @@ then
       max=$lines
     else
       max=3
-    fi
-    printf ":::---- UNIQUENESS: first ${cfCYAN}$max${cfDEF} rows of file ${cfYELLOW}$file${cfDEF} ----:::\n" 
+    fi 
+    printf ":::---- UNIQUENESS: first ${cfCYAN}$max${cfDEF} rows of file ${cfYELLOW}$file${cfDEF} ----:::\n"
     N1=`echo $u1 $u2 $u3 | awk '{print $1+1}'`
     N2=`echo $u1 $u2 $u3 | awk '{print $2+1}'`
     N3=`echo $u1 $u2 $u3 | awk '{print $3+1}'`
@@ -264,10 +264,8 @@ then
       then  
         U4=`echo $O4 | awk -v v=$N3 '{printf "%.*f",v,int($1*10**v)/10**v}'` 
       fi
-      if [ ${#U2} -gt ${#O2} ]; then U2=$O2; fi
-      if [ ${#U3} -gt ${#O3} ]; then U3=$O3; fi
-      if [ ${#U4} -gt ${#O4} ]; then U4=$O4; fi
       printf    "$O1 ${cfGREEN}$U2${cfRED}${O2//$U2} ${cfGREEN}$U3${cfRED}${O3//$U3} ${cfGREEN}$U4${cfRED}${O4//$U4} ${cfDEF}\n" >> .JKCS5help
+      #echo -e "$O1 ${cfGREEN}$U2${cfRED}${O2//$U2} ${cfGREEN}$U3${cfRED}${O3//$U3} ${cfGREEN}$U4${cfRED}${O4//$U4} ${cfDEF}"
     done
     cat .JKCS5help | column -t 
     if [ -e .JKCS5help ]; then rm .JKCS5help; fi
@@ -277,7 +275,6 @@ fi
 if [ ! -z "$arguments" ]
 then
   command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments $analysedfile"
-  JKecho 2 "$command"
   eval "$command"
 fi
 

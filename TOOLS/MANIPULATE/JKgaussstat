@@ -310,7 +310,7 @@ function JKgibbs {
     count1=`grep -c "Free Energies" $i` 
     if [ $count1 -eq 1 ]
     then
-      if [ $j == "-gibbs" ] || [ $j == "-g" ] || [ $j == "-GD" ]
+      if [ $j == "-gibbs" ] || [ $j == "-g" ] || [ $j == "-GD" ] 
       then
         if [ $QT -eq 1 ]
         then
@@ -320,6 +320,7 @@ function JKgibbs {
         fi
       else
         var=`MYgoodvibes | tail -n 2 | head -n 1  | awk '{print $9}'`
+        echo $var >>  test
       fi
       else 
       var="-----------"
@@ -331,9 +332,8 @@ function JKgibbs {
   elif [ $ip == XTB ]
   then
     count0=`grep -c 'SCF not converged in optimization' $iLOG`
-    count00=`grep -c 'failed to converge geometry optimization' $iLOG`
     count1=`grep -c "TOTAL FREE ENERGY" $iLOG` 
-    if [ $count1 -eq 1 ] && [ $count0 -eq 0 ] && [ $count00 -eq 0 ]
+    if [ $count1 -eq 1 ] && [ $count0 -eq 0 ]
     then
       var=`grep "TOTAL FREE ENERGY" $iLOG | awk '{print $1}'`
     else
@@ -409,8 +409,8 @@ do
   ### WHO AM I? ###
   iEND=`echo $i | rev | cut -c-4 | rev`
   iBASE=$(basename $i $iEND)
-  iPATH=$( cd "$(dirname "$i")" ; pwd -P )
   iBASEPATH=`echo $i | rev | cut -c5- | rev`
+  iPATH=$( cd "$(dirname "$i")" ; pwd -P )
   #iXYZ=$iPATH/$iBASE.xyz 
   #iLOG=$iPATH/$iBASE.log
   #iOUT=$iPATH/$iBASE.out
@@ -553,21 +553,21 @@ do
     fi
     if [ $j == "-pXYZ" ]
     then
-      if [ -e "$iPATH/$iBASE.xyz" ];then var=$iPATH/$iBASE.xyz; else var="XYZdoesnotexist"; fi
+      if [ -e "$iPATH/$iXYZ" ];then var=$iPATH/$iXYZ; else var="XYZdoesnotexist"; fi
       revar
       output+="$var    \t"
       continue    
     fi
     if [ $j == "-pLOG" ]
     then
-      if [ -e "$iPATH/$iBASE.log" ];then var=$iPATH/$iBASE.log; else var="LOGdoesnotexist"; fi
+      if [ -e "$iPATH/$iLOG" ];then var=$iPATH/$iLOG; else var="LOGdoesnotexist"; fi
       revar
       output+="$var    \t"
       continue
     fi
     if [ $j == "-pOUT" ]
     then
-      if [ -e "$iPATH/$iBASE.out" ];then var=$iPATH/$iBASE.out; else var="OUTdoesnotexist"; fi
+      if [ -e "$iPATH/$iOUT" ];then var=$iPATH/$iOUT; else var="OUTdoesnotexist"; fi
       revar
       output+="$var    \t"
       continue
@@ -1026,15 +1026,12 @@ do
           elif [ $j == "-dy" ]
           then
             var=`grep -C 1 "$search" $iLOG | tail -n 1 | awk -v var=4 '{print $var}'`
-            output+="$var "
           elif [ $j == "-dz" ]
           then
             var=`grep -C 1 "$search" $iLOG | tail -n 1 | awk -v var=6 '{print $var}'`
-            output+="$var "
           elif [ $j == "-dtot" ] || [ $j == "-d" ] || [ $j == "-dip" ]
           then
             var=`grep -C 1 "$search" $iLOG | tail -n 1 | awk -v var=8 '{print $var}' | sed 's/D/E/' | awk '{print $1+0}'`
-            output+="$var "
           fi
         else
           Dunits=3 # 2=au | 3=Debye | 4=10**-30 SI
@@ -1074,7 +1071,7 @@ do
         if [ $test -gt 0 ]
         then
           var="-----------"
-        else    
+        else
           dipline=`grep -C 3 "molecular dipole:" $iLOG | tail -n 1`
           if [ $j == "-dx" ]
           then
