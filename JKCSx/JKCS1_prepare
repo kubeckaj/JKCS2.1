@@ -205,8 +205,8 @@ do
       numberofmoleculartypes=`echo $numberofmoleculartypes+1 | bc`;
     fi
   done
-  JKecho 2 "  Total amount of molecules: $cfBLUE$numberofmolecules$cfDEF"
-  JKecho 2 "  Total amount of molecular types: $cfBLUE$numberofmoleculartypes$cfDEF"
+  JKecho 2 "  Total number of molecules: $cfBLUE$numberofmolecules$cfDEF"
+  JKecho 2 "  Total number of molecular types: $cfBLUE$numberofmoleculartypes$cfDEF"
   if [ $numberofmolecules -eq 0 ]; then 
     JKecho 1 "  No molecule in this composition ($cfGREEN$composition_iter$cfDEF). ${cfYELLOW}[CONTINUE]${cfDEF}"
     continue;
@@ -285,7 +285,7 @@ do
     states=`sed 1,${namerow}d ../$userinputfile | awk -v var="$molecule_i" '$1==var' | awk '{print $2}' | xargs`
     JKecho 2 "      All states = $states"
     states_amount=`echo $states | xargs -n 1 | wc -l | awk '{print $1}'`
-    JKecho 2 "      Amount of states = $states_amount"
+    JKecho 2 "      Number of states = $states_amount"
    
     #JK: hint: the first comma will be removed  
     for state_i in $states
@@ -316,7 +316,7 @@ do
   echo $constitutions >> $inputfile
   constitutions_count=`echo $constitutions | xargs -n 1 | wc -l`
   constitutions_count=`printf "%-3s" $constitutions_count`
-  JKecho 2 "  Amount of constitutions: $cfBLUE$constitutions_count$cfDEF"
+  JKecho 2 "  Number of constitutions: $cfBLUE$constitutions_count$cfDEF"
   #JK: hint: sed -i command does not work for Mac system
   sed "s/NoC/$constitutions_count/g" $inputfile > .${inputfile}_help; mv .${inputfile}_help $inputfile
   JKecho 2 "  Replacing NoC by $cfBLUE$constitutions_count$cfDEF in the file $cfYELLOW$inputfile${cfDEF}."
@@ -329,8 +329,8 @@ done
 # Reporting finish job
 JKecho 2 "----------------------------------------------------" 
 amountoffolders=`ls -d SYS_* | wc -l`
-JKecho 1 "DONE :-) --> Total amount of cluster types: ${cfBLUE}$amountoffolders${cfDEF}"
-JKecho 1 "DONE :-) --> Total amount of monomeric combinations: ${cfBLUE}$constitutions_count_tot${cfDEF}"
+JKecho 1 "DONE :-) --> Total number of cluster types: ${cfBLUE}$amountoffolders${cfDEF}"
+JKecho 1 "DONE :-) --> Total number of monomeric combinations: ${cfBLUE}$constitutions_count_tot${cfDEF}"
 nextscript=`ls $scriptpath/JKCS2*`
 nextscript="${cfRED}J${cfGREEN}K${cfYELLOW}C${cfBLUE}S${cfDEF}"`echo ${nextscript##*/} | cut -c5-`
 JKecho 1 "Now, just run ${nextscript}."
