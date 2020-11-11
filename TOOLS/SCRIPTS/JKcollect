@@ -61,7 +61,7 @@ then
     then
       COMMAND+=" -v var${column}=$i"
       COMMANDp+=" %d"
-      COMMANDv+=",10^\$var${column}*\$${column}"
+      COMMANDv+=",10^var${column}*\$${column}"
       COMMANDs+=" -k $column"
     else
       COMMANDp+=" %s"
