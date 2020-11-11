@@ -94,6 +94,7 @@ factor=1.0
 what=""
 how=""
 next=0
+freq=100
 input=`echo $*`
 for i in $input
 do
@@ -118,6 +119,21 @@ do
     if [ "$i" == "-T" ] || [ "$i" == "-temp" ] || [ "$i" == "-Temp" ] || [ "$i" == "-TEMP" ]
     then
       last="-temp"
+      next=1
+      continue
+    fi
+    # FACTOR
+    if [ "$last" == "-f" ]
+    then
+      QT=1
+      freq="$i"
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-f" ]
+    then
+      last="-f"
       next=1
       continue
     fi
@@ -177,7 +193,7 @@ function JKgibbs {
     then
       if [ $QT -eq 1 ]
       then
-        var=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $8}'`
+        var=`$toolspath/JKgoodvibes -loc -f $freq -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $8}'`
       else
         var=`grep "Free Energies" $i | awk '{print $8}'`
       fi
@@ -211,7 +227,7 @@ function JKenthalpy {
     then
       if [ $QT -eq 1 ]
       then
-        var=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $5}'`
+        var=`$toolspath/JKgoodvibes -loc -f $freq -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $5}'`
       else
         var=`grep "Sum of electronic and thermal Enthalpies" $i | awk '{print $7}'`
       fi
@@ -488,7 +504,7 @@ do
       then
         var1=`JKenthalpy`
         var2=`JKel`
-        var3=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 3`
+        var3=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 5`
         var=`echo $var1-1.0*$var2+$var3 | bc -l`
       else
         var="-----------"
@@ -588,7 +604,7 @@ do
       then
         var1=`JKgibbs`
         var2=`JKel`
-        var3=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 3`
+        var3=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 5`
         var=`echo $var1-1.0*$var2+$var3 | bc -l`
       else
         var="-----------"
@@ -604,11 +620,15 @@ do
       if [ $ip == G16 ]
       then
         if [ -e $iOUT ]
+        #if [ -e $iOUT ] || [ 1 -eq 1 ]
         then
           count=`grep -c "FINAL SING" $iOUT`
+          #count=`grep -c "FINAL SING" $iLOG` #$iOUT`
           if [ $count -eq 1 ]
+          #if [ $count -eq 1 ] || [ 1 -eq 1 ]
           then
             var1=`grep 'FINAL SIN' $iOUT |  awk '{print $5}'`
+            #var1=`grep "SCF Done" $iLOG | tail -n 1 | awk '{print $5}'`
             varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $iLOG | tail -n 2 | head -n 1`
             var2=`echo $varB  | awk '{print $3}'`
             var3=`echo $varB  | awk '{print $9}'`

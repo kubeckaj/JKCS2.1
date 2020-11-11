@@ -1,20 +1,67 @@
 #!/bin/bash
 
+function print_help(){
+  echo """
+  JKformation calculates formation free free energies
+  from file which consists of two columns:
+     1) clusture name (e.g.: 1SA2W-2, 1am, 3COO, but not 3CO2)
+     2) Gibbs free ennergy in [hartree]  
+
+  USE: JKformation [FILES] [OPTIONS]
+  
+  OPTIONS: 
+     XXX ...... tempearture in [K], assumes all local minima 
+
+  EXAMPLES:
+    JKformation globalminima.txt
+    JKformation Genergies.dat 293.15
+""" 
+}
+
 inputfile=$1
+alllocalminima=$2 #temperature in Kelvins
+if [ "$1" == "-help" ] || [ "$1" == "--help" ]
+then
+  print_help
+  exit
+fi
 if [ -z "$inputfile" ]
 then
   echo Missing input file. Use the file as argument 
   exit
 fi 
+if [ -z "$alllocalminima" ]
+then
+  alllocalminima=0
+fi
 
 ###### help0
 grep -v '\-\-\-\-\-\-\-\-\-\-\-' $inputfile > .help0a    # lines with some output
 cat .help0a | sed 's/-/ /' | awk '{print $1}' > .help0b1 # list of correct names
 cat .help0a | awk '{print $2,$3}' > .help0b2             # 2nd and 3rd column
 paste -d "  " .help0b1 .help0b2 > .help0c                # correct input with possible double appearing
-sort -nk 2 .help0c | awk '!seen[$1]++' > .help0          # the Gibbs free energy selection
+if [ -e ".help0" ]; then rm .help0; fi
+if [ $alllocalminima == 0 ]
+then
+  sort -nk 2 .help0c | awk '!seen[$1]++' > .help0          # the Gibbs free energy selection
+else
+  allmolecules=`cat .help0c | awk '{print $1}' | sort -u`
+  for molecule in $allmolecules
+  do
+    energies=`grep "^$molecule" .help0c | awk '{print $2}' | xargs`
+    en0=`echo $energies | xargs -n 1 | sort -n | head -n 1`
+    energy=0
+    for en in $energies
+    do
+      energy=`echo "$energy+e(-($en-1.0*$en0)*315774.792559/$alllocalminima)" | bc -l`
+    done
+    energy=`echo "$alllocalminima/315774.792559*l($energy)" | bc -l`
+    #echo $molecule $en0 $energy
+    energy=`echo "$en0-$energy" | bc -l`
+    echo "$molecule $energy" >> .help0
+  done
+fi
 ####
-
 cat .help0 | sed 's/-/ /' | awk '{print $1}' > .help1
 cp .help1 .help1c
 monomers=`cat .help1 | awk '{gsub("[0-9]"," ",$0);print $0}' | xargs -n 1 | sort -u | xargs`
@@ -59,7 +106,6 @@ paste -d "  " .help1c .help1b > .help2b
 paste -d "  " .help2 .help2b > .help3
 
 cat .help3 | sort -nk 1 > .help4
-
 for i in $monomers
 do
   if [ "$i" == "p" ] || [ "$i" == "P" ]
