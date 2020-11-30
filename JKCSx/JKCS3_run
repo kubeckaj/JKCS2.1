@@ -503,8 +503,8 @@ then
     SCnodes=1
     JKecho 2 "GREASY: nodes = $SCnodes, 1-node-tasks = $one_node_tasks, 1-node-utilized-cores = $one_node_cores"
   else
-    one_node_tasks=`echo $cores_in_node/$SCtasks | bc` 
-    one_node_cores=`echo $SCcpu*$SCtasks | bc`
+    one_node_tasks=`echo $cores_in_node/$SCcpu | bc` 
+    one_node_cores=`echo $SCcpu*$one_node_tasks | bc`
     nodes_required=`echo "($jobscount+$one_node_tasks-1)/$one_node_tasks" | bc`
     JKecho 2 "GREASY: nodes = $SCnodes, 1-node-tasks = $one_node_tasks, 1-node-utilized-cores = $one_node_cores"
     if [ $nodes_required -gt $SCnodes ]
