@@ -228,7 +228,10 @@ do
     fi
     if [ "$last" == "-script" ]
     then
-      if [ -e "$i" ]
+      if [ "$i" == "JKgaussstat" ]
+      then
+        scripts+=( "$scriptpath/JKgaussstat" )
+      elif [ -e "$i" ]
       then
         scripts+=( "$( cd "$(dirname "$i")" ; pwd -P )"/"$(basename $i)" )
       else
