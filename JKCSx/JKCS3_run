@@ -135,6 +135,9 @@ method="--opt vtight"
 
 Qjpt=1 #jobs per task
 
+#for GREASY:
+cores_in_node=40
+
 last=""
 # loop over all arguments
 arguments_help=()
@@ -240,6 +243,22 @@ do
     last=""
     Qjpt=$iter
     continue
+  fi
+  # greasy
+  if [ "$iter" == "-greasy" ]
+  then
+    Qgreasy=1
+    continue
+  fi
+  # cores on node
+  if [ "$iter" == "-cores_on_node" ] || [ "$iter" == "-con" ]
+  then
+    last="-cores_on_node"
+    continue
+  fi
+  if [ "$last" == "-cores_on_node" ];
+  then
+    cores_in_node=$i
   fi
   ###
   arguments_help+=( "${arguments[i]}" )
@@ -454,7 +473,7 @@ then
 fi
 
 #jobscount=`wc -l commands_TODO.txt | awk '{print $1}'`
-JKecho 2 "Counting amount of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
+JKecho 2 "Counting number of tasks: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
 if [ $jobscount -le $SCtasks ]
 then
   SCtasks=$jobscount
@@ -467,7 +486,45 @@ else
   fi
   SCtasks=$jobscount
 fi
-JKecho 2 "Tasks used: ${cfBLUE}$SCtasks${cfDEF}"
+JKecho 2 "Tasks to be submitted: ${cfBLUE}$SCtasks${cfDEF}"
+
+#IF greasy module should be used
+if [ "$Qgreasy" == "1" ]
+then
+  #number of nodes e.g. 1
+  #number of tasks = SCtasks e.g. 100 = nworkers = n_rows=jobscount
+  #number of threads (cores) per task e.g. 8
+  #memory of 1 task ?? BUT I KNOW mem_per_cpu (which is actually core, right?)
+  max_cores_used=`echo $jobscount*$SCcpu | bc`
+  if [ $cores_in_node -ge $max_cores_used ]
+  then
+    one_node_tasks=$SCtasks
+    one_node_cores=`echo $jobscount*$SCcpu | bc`
+    SCnodes=1
+    JKecho 2 "GREASY: nodes = $SCnodes, 1-node-tasks = $one_node_tasks, 1-node-utilized-cores = $one_node_cores"
+  else
+    one_node_tasks=`echo $cores_in_node/$SCcpu | bc` 
+    one_node_cores=`echo $SCcpu*$one_node_tasks | bc`
+    nodes_required=`echo "($jobscount+$one_node_tasks-1)/$one_node_tasks" | bc`
+    JKecho 2 "GREASY: nodes = $SCnodes, 1-node-tasks = $one_node_tasks, 1-node-utilized-cores = $one_node_cores"
+    if [ $nodes_required -gt $SCnodes ]
+    then
+      JKecho 0 "Sorry I need at least ${cfBLUE}$nodes_required${cfDEF} nodes, but you offered me just ${cfBLUE}$SCnodes${cfDEF} nodes. [${cfRED}EXIT${cfDEF}]"
+      exit
+    else
+      SCnodes=$nodes_required
+    fi
+  fi
+  #equivalently for each node
+  total_tasks=`echo $one_node_tasks*$SCnodes | bc`
+  
+  #--ntasks-per-core=1
+  #--ntasks-per-node=$one_node_tasks
+  #--cpus-per-task=$SCcpu  
+  SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime -N $SCnodes --mem-per-cpu $SCmem --ntasks-per-node=$one_node_tasks --cpus-per-task $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "  
+fi 
+
+
  
 #Qlinking=0
 #if [ $Qlinking -eq 1 ]
@@ -492,9 +549,13 @@ do
   then
     $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
     echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
+  elif [ "$Qgreasy" == "1" ]
+  then
+    echo  "GREASY: eval '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
+    echo  "$toolspath/SCRIPTS/JKsend '`tail -n $i commands_TODO.txt | head -n 1`'" >> .runLIST
   else
     echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
+    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> .run
     #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
     job=$(/bin/bash .run)
     #job=$(eval `cat .run`)
@@ -502,6 +563,15 @@ do
     echo $job | awk '{print $4}'  >> .jobs.txt
   fi
 done
+
+if [ "$Qgreasy" == "1" ]
+then
+  echo "$SC_command 'export OMP_NUM_THREADS=$SCcpu;export GREASY_NWORKERS=$total_tasks;export GREASY_NWORKERS_PER_NODE=$one_node_tasks;module load greasy; greasy .runLIST'" >> output
+  echo "$SC_command 'export OMP_NUM_THREADS=$SCcpu;export GREASY_NWORKERS=$total_tasks;export GREASY_NWORKERS_PER_NODE=$one_node_tasks;module load greasy; greasy .runLIST'" > .run
+  job=$(/bin/bash .run)
+  if [ ! -z "$job" ] ;then echo $job;fi
+  echo $job | awk '{print $4}'  >> .jobs.txt
+fi
 
 ###################################################################
 cd $currentdirpath

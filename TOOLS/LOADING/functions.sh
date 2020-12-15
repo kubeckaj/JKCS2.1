@@ -150,6 +150,7 @@ function JKloadsupercomputer {
         JKecho 0 "Method $METHODsupercomputer does not exist in file ${cfYELLOW}${inputfile}${cfDEF}. ${cfRED}[EXITING]${cfDEF}"
         exit
       else
+        JKecho 2 "Supercomputer parameters: PROGRAM SCtasks SCcpu SCnodes SCtime SCpar SCmem"
         JKecho 2 "Default supercomputer parameters: `echo $supercomputerline | column -t`"
       fi
       NoC=`grep "## Number of Combinations" ${inputfile} | awk '{print $6}'`

@@ -166,7 +166,7 @@ function program_XTB {
   test=0
   while [ $test -eq 0 ]
   do
-    CALC_NAME=$WRKDIR/TMP/XTB${SLURM_JOBID}${ADD}
+    CALC_NAME=$WRKDIR/TMP/XTB${SLURM_JOBID}_$base${ADD}
     if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
     else test=1;fi     
   done
@@ -274,7 +274,7 @@ ADD=\"\"
 test=0
 while [ \$test -eq 0 ]
 do
-  CALC_NAME=$WRKDIR/TMP/G16\${SLURM_JOBID}\${ADD}
+  CALC_NAME=$WRKDIR/TMP/G16\${SLURM_JOBID}_$base\${ADD}
   if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
   else test=1;fi
 done
@@ -358,7 +358,7 @@ ADD=\"\"
 test=0
 while [ \$test -eq 0 ]
 do
-  CALC_NAME=$WRKDIR/TMP/ORCA\${SLURM_JOBID}\${ADD}
+  CALC_NAME=$WRKDIR/TMP/ORCA\${SLURM_JOBID}_$base\${ADD}
   if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
   else test=1;fi
 done
