@@ -25,7 +25,7 @@ source $toolspath/LOADING/functions.sh
 source ~/.JKCSusersetup.txt
 
 # print inserted command
-echo "COMMAND: $scriptfile $@" >> output
+echoCOMMAND COMMAND: $scriptfile "$@" >> output
 
 ###############################################################################
 ###################################### HELP ###################################
@@ -99,7 +99,13 @@ currentdirpath=$PWD
 JKloadCHARM
 
 # load amount of molecules
-M=`head -n 1 $inputfile | awk '{print $6}'`
+if [ -e $inputfile ]
+then
+  M=`head -n 1 $inputfile | awk '{print $6}'`
+else
+  JKecho 0 "No ${cfYELLOW}${inputfile}${cfDEF} file. (${cfRED}Assuming M=1 if needed!!!${cfDEF})"
+  M=1;
+fi
 
 # -loc or load supercomputer parameters
 JKloadsupercomputer
@@ -126,6 +132,8 @@ Qtestboth=0
 
 ### METHOD 
 method="--opt vtight"
+
+Qjpt=1 #jobs per task
 
 last=""
 # loop over all arguments
@@ -221,6 +229,18 @@ do
     last="-method"
     continue
   fi
+  # Jobs per task
+  if [ "$iter" == "-jpt" ]
+  then
+    last="-jpt"
+    continue
+  fi
+  if [ "$last" == "-jpt" ];
+  then
+    last=""
+    Qjpt=$iter
+    continue
+  fi
   ###
   arguments_help+=( "${arguments[i]}" )
 done
@@ -245,7 +265,7 @@ fi
 ################################ MAIN PROGRAM #################################
 ################################ DO NOT TOUCH #################################
 ###############################################################################
-JKecho 1 "$program calculations will be performed."
+JKecho 1 "${cfGREEN}$program${cfDEF} calculations will be performed."
 
 #checking old folder or results file
 if [ $QfromfolderOLD -eq 0 ]
@@ -264,13 +284,13 @@ then
   then
     filetake=results${resultsaddition}.dat
   else
-    JKecho 0 "File results${resultsaddition}.dat does not exist. [${cfRED}EXIT${cfDEF}]"
+    JKecho 0 "File ${cfYELLOW}results${resultsaddition}.dat${cfDEF} does not exist. [${cfRED}EXIT${cfDEF}]"
     exit
   fi
 else
   if [ ! -d ${folderOLD} ]
   then
-    JKecho 0 "Folder ${folderOLD} does not exist. [${cfRED}EXIT${cfDEF}]"
+    JKecho 0 "Folder ${cfBLUE}${folderOLD}${cfDEF} does not exist. [${cfRED}EXIT${cfDEF}]"
     exit
   fi
 fi
@@ -278,11 +298,11 @@ fi
 #checking if the folder for new calculations already exist
 if [ -d $folderNEW ]; 
 then 
-  JKecho 0 "Folder $folderNEW already exists. [${cfRED}EXIT${cfDEF}]"
+  JKecho 0 "Folder ${cfBLUE}$folderNEW${cfDEF} already exists. [${cfRED}EXIT${cfDEF}]"
   exit
 else
   mkdir $folderNEW
-  JKecho 2 "Folder $folderNEW has been created."
+  JKecho 2 "Folder ${cfBLUE}$folderNEW${cfDEF} has been created."
 fi
 
 #save general arguments
@@ -305,12 +325,17 @@ then
   subfolders="`ls -d ${folderOLD}_* | xargs`"
   cd $currentdirpath 
 fi
+const_iter=0
+Qjpt_iter=0
+jobscount=0
 if [ ! -z "$subfolders" ] 
 then
   JKecho 2 "Subfoldering from previous directory is used."
-  JKecho 3 "Subfolders: $subfolders"
+  JKecho 3 "Subfolders: ${cfBLUE}$subfolders${cfDEF}"
   for sub in $subfolders
   do 
+    Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
+    const_iter=`echo $const_iter+1 |bc`
     newsub=`sed "s/$folderOLD/$folderNEW/g" <<< $sub`
     #cd $currentdirpath/$folderOLD/${sub}/${name}-LM/
     #files=`ls *.xyz`
@@ -321,21 +346,49 @@ then
     JKarguments
     cd $currentdirpath
     rm $newsub/.* 2> /dev/null
-    command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
-    echo "$command0" >> $currentdirpath/$folderNEW/commands_TODO.txt
-    cp $currentdirpath/$folderNEW/commands_TODO.txt $currentdirpath/$folderNEW/.crealTODO.txt
+    if [ "$Qperform" == 2 ]
+    then
+      command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
+    else
+      command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; eval \"\$commandTODO\"; done;" 
+    fi
+    if [ "$Qperform" == 2 ]
+    then 
+      echo "$command0" >> $currentdirpath/$folderNEW/commands_TODO.txt 
+    else
+      echo "$command0" >> $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      if [ $Qjpt_iter -eq $Qjpt ]
+      then
+        cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n'  >> $currentdirpath/$folderNEW/commands_TODO.txt
+        rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+        jobscount=`echo $jobscount+1|bc`
+      fi
+    fi
     #for file in $files
     #do
     #  commandTODO="cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/$file;"
     #  echo $commandTODO >> $newsub/commands_TODO.txt
     #done
     #cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt
-    JKecho 3 "    Commands like $command0 written to $newsub/commands_TODO.txt"
+    JKecho 3 "    Commands like ${cfMAGENTA}$command0${cfDEF} written to ${cfBLUE}$newsub/${cfYELLOW}commands_TODO.txt${cfDEF}"
     #echo "cd $newsub; sh $toolspath/SCRIPTS/JKperform2.sh; cd .." >> commands_TODO.txt
     #echo "1 $newsub/" >> .link.txt
   done
+  if [ "$Qperform" == 2 ]
+  then
+    cp $currentdirpath/$folderNEW/commands_TODO.txt $currentdirpath/$folderNEW/.crealTODO.txt
+    jobscount=`echo $subfolders | xargs -n 1 | wc -l`
+  else
+    if [ -e $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt ]
+    then
+      cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
+      rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      Qjpt_iter=0
+      jobscount=`echo $jobscount+1|bc`
+    fi
+  fi
 else
-  JKecho 2 "Calculations will be performed in directory ${cfYELLOW}$folderNEW/${name}-LM${cfDEF}"
+  JKecho 2 "Calculations will be performed in directory ${cfBLUE}$folderNEW/${name}-LM${cfDEF}"
   if [ $QfromfolderOLD -eq 1 ]
   then
     cd $folderOLD
@@ -356,29 +409,65 @@ else
   JKarguments
   for file in $files
   do
+    Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
+    const_iter=`echo $const_iter+1 |bc`
     #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file"
     #printf "$command" > run${scriptfilecommand}.sh
     commandTODO="cd $currentdirpath/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $file;"
-    echo $commandTODO >> commands_TODO.txt
+    if [ "$Qperform" == 2 ]
+    then
+      echo "$commandTODO" >> $currentdirpath/$folderNEW/commands_TODO.txt
+    else
+      echo "$commandTODO" >> $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      if [ $Qjpt_iter -eq $Qjpt ]
+      then
+        cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
+        rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+        Qjpt_iter=0
+        jobscount=`echo $jobscount+1|bc`
+      fi
+    fi
   done
-  rm .* 2> /dev/null
-  cp commands_TODO.txt .crealTODO.txt
-  JKecho 3 "    Commands like "$commandTODO" written to commands_TODO.txt"
+  if [ "$Qperform" == 2 ]
+  then
+    rm .* 2> /dev/null
+    cp commands_TODO.txt .crealTODO.txt
+    jobscount=`echo $files | xargs -n 1 | wc -l`
+  else
+    if [ -e $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt ]
+    then
+      cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
+      rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      jobscount=`echo $jobscount+1|bc`
+    fi
+  fi
+  JKecho 3 "    Commands like ${cfMAGENTA}$commandTODO${cfDEF} written to ${cfYELLOW}commands_TODO.txt${cfDEF}"
 fi
-JKecho 2 "Subfolder $folderNEW has been created."
+JKecho 2 "Subfolder ${cfBLUE}$folderNEW${cfDEF} has been created."
 cd $currentdirpath/$folderNEW
 
 ### Sending jobs ###
 if [ ! -e commands_TODO.txt ]; then touch commands_TODO.txt; fi
-echo "1 $folderNEW/" >> ../.link.txt
+if [ "$Qprograms" == 2 ]
+then
+  echo "1 $folderNEW/" >> ../.link.txt
+fi
 
-jobscount=`wc -l commands_TODO.txt | awk '{print $1}'`
-JKecho 2 "Counting amount of jobs: $jobscount"
-if [ $jobscount -lt $SCtasks ]
+#jobscount=`wc -l commands_TODO.txt | awk '{print $1}'`
+JKecho 2 "Counting amount of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
+if [ $jobscount -le $SCtasks ]
 then
   SCtasks=$jobscount
+else
+  if [ "$Qperform" != 2 ] && [ "$METHODsupercomputer" != "loc" ]
+  then
+    JKecho 0 "Max number of jobs to be sent is greater then allowed."
+    JKecho 0 "Either use [${cfCYAN}-maxtasks${cfDEF} ${cfBLUE}$jobscount${cfDEF}] option or use ${cfCYAN}JKperform2${cfDEF} option."
+    exit
+  fi
+  SCtasks=$jobscount
 fi
-JKecho 2 "Tasks used: $SCtasks"
+JKecho 2 "Tasks used: ${cfBLUE}$SCtasks${cfDEF}"
  
 #Qlinking=0
 #if [ $Qlinking -eq 1 ]
@@ -395,16 +484,28 @@ JKecho 2 "Tasks used: $SCtasks"
 #  fi
 #fi
 
-for i in `seq 1 $SCtasks`
+echo "$SC_command sh INPUTFILE" > submit
+
+for i in `seq $SCtasks -1 1`
 do
-  #echo "sendjob $currentdir-ABC" 
-  $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
-  echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
+  if [ "$Qperform" == 2 ]
+  then
+    $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
+    echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
+  else
+    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
+    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
+    #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+    job=$(/bin/bash .run)
+    #job=$(eval `cat .run`)
+    if [ ! -z "$job" ] ;then echo $job;fi
+    echo $job | awk '{print $4}'  >> .jobs.txt
+  fi
 done
 
 ###################################################################
 cd $currentdirpath
-JKecho 1 "Performing calculations/Calculations submitted."
+JKecho 1 "Performing calculations/Calculations submitted or calculation done (-loc)."
 exit
 
 

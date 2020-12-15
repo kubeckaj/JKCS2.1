@@ -24,6 +24,9 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
+# print inserted command
+echoCOMMAND COMMAND: $scriptfile "$@" >> output
+
 ###############################################################################
 ###################################### HELP ###################################
 ###############################################################################
@@ -38,6 +41,7 @@ function help {
   ${cfMAGENTA}OPTIONS:${cfDEF}
     -help ............ print this help and exit
     -s,-select \"X\" ... select at maximum X number of combinations
+    -o,-overwrite .... overwrite parameters.txt also in existing folders
 
   ${cfMAGENTA}SYMBOLS:${cfDEF}
     M .... number of molecules
@@ -74,8 +78,9 @@ JKloadhelp             # check if user asks for -help
 ###############################################################################
 #reading arguments important for this script
 
-Qselect=0;  #Do you need to select just specific amount of combinations
-QselectN=0; #Max number of combinations 
+Qselect=0;    #Do you need to select just specific amount of combinations
+QselectN=0;   #Max number of combinations 
+Qoverwrite=0; #Overwrite parameters.txt
 
 last=""
 # loop over all arguments
@@ -96,7 +101,13 @@ do
     QselectN=$iter
     continue
   fi
-  # 
+  # overwrite 
+  if [ "$iter" == "-overwrite" ] || [ "$iter" == "-o" ]
+  then
+    Qoverwrite=1
+    continue
+  fi
+  #
   arguments_help+=( "${arguments[i]}" )
 done
 arguments=("${arguments_help[@]}")
@@ -194,8 +205,8 @@ do
       numberofmoleculartypes=`echo $numberofmoleculartypes+1 | bc`;
     fi
   done
-  JKecho 2 "  Total amount of molecules: $cfBLUE$numberofmolecules$cfDEF"
-  JKecho 2 "  Total amount of molecular types: $cfBLUE$numberofmoleculartypes$cfDEF"
+  JKecho 2 "  Total number of molecules: $cfBLUE$numberofmolecules$cfDEF"
+  JKecho 2 "  Total number of molecular types: $cfBLUE$numberofmoleculartypes$cfDEF"
   if [ $numberofmolecules -eq 0 ]; then 
     JKecho 1 "  No molecule in this composition ($cfGREEN$composition_iter$cfDEF). ${cfYELLOW}[CONTINUE]${cfDEF}"
     continue;
@@ -212,14 +223,20 @@ do
     fi
   done
   JKecho 2 "  Name of folder was created: ${cfGREEN}$folder${cfDEF}"
-  if [ -d $folder ]; 
-  then 
-    JKecho 0 "Folder ${cfGREEN}$folder${cfDEF} already exists. ${cfYELLOW}[CONTINUE to another folder]${cfDEF}";
-    continue;
+  if [ $Qoverwrite -eq 0 ]
+  then
+    if [ -d $folder ]; 
+    then 
+      JKecho 0 "Folder ${cfGREEN}$folder${cfDEF} already exists. ${cfYELLOW}[CONTINUE to another folder]${cfDEF}";
+      continue;
+    fi
   fi
   #$folderbasename ls | xargs -n 1 | grep "SYS" | wc -l
   #going to specific directory
-  mkdir $folder
+  if [ ! -d $folder ]
+  then  
+    mkdir $folder
+  fi
   cd $folder
   JKecho 2 "  Entering folder ${cfGREEN}$folder${cfDEF}."
   
@@ -268,7 +285,7 @@ do
     states=`sed 1,${namerow}d ../$userinputfile | awk -v var="$molecule_i" '$1==var' | awk '{print $2}' | xargs`
     JKecho 2 "      All states = $states"
     states_amount=`echo $states | xargs -n 1 | wc -l | awk '{print $1}'`
-    JKecho 2 "      Amount of states = $states_amount"
+    JKecho 2 "      Number of states = $states_amount"
    
     #JK: hint: the first comma will be removed  
     for state_i in $states
@@ -299,7 +316,7 @@ do
   echo $constitutions >> $inputfile
   constitutions_count=`echo $constitutions | xargs -n 1 | wc -l`
   constitutions_count=`printf "%-3s" $constitutions_count`
-  JKecho 2 "  Amount of constitutions: $cfBLUE$constitutions_count$cfDEF"
+  JKecho 2 "  Number of constitutions: $cfBLUE$constitutions_count$cfDEF"
   #JK: hint: sed -i command does not work for Mac system
   sed "s/NoC/$constitutions_count/g" $inputfile > .${inputfile}_help; mv .${inputfile}_help $inputfile
   JKecho 2 "  Replacing NoC by $cfBLUE$constitutions_count$cfDEF in the file $cfYELLOW$inputfile${cfDEF}."
@@ -312,8 +329,8 @@ done
 # Reporting finish job
 JKecho 2 "----------------------------------------------------" 
 amountoffolders=`ls -d SYS_* | wc -l`
-JKecho 1 "DONE :-) --> Total amount of cluster types: ${cfBLUE}$amountoffolders${cfDEF}"
-JKecho 1 "DONE :-) --> Total amount of monomeric combinations: ${cfBLUE}$constitutions_count_tot${cfDEF}"
+JKecho 1 "DONE :-) --> Total number of cluster types: ${cfBLUE}$amountoffolders${cfDEF}"
+JKecho 1 "DONE :-) --> Total number of monomeric combinations: ${cfBLUE}$constitutions_count_tot${cfDEF}"
 nextscript=`ls $scriptpath/JKCS2*`
 nextscript="${cfRED}J${cfGREEN}K${cfYELLOW}C${cfBLUE}S${cfDEF}"`echo ${nextscript##*/} | cut -c5-`
 JKecho 1 "Now, just run ${nextscript}."

@@ -8,5 +8,16 @@
 #SBATCH -o output
 #SBATCH --open-mode=append
 
-eval "$@"
-
+##UNCOMMENT THIS PART IF YOU OBTAIN ERROR OF TYPE:
+##/var/spool/slurmd/job4726218/slurm_script: line 11: cd /wrk/users/ineefjes/DATABASE/SA_CLUSTERS/NEUTRAL/SYS_3SA/ABC/ABC_2_1_0_0; sh runJKCS2_explore.sh;: No such file or directory
+firstsymbol=`echo $* | cut -c-1`
+if [ "$firstsymbol" == '"' ]
+then
+ args=`echo $@`
+ args="${args%\"}"
+ args="${args#\"}"
+ eval "$args"
+else
+##AND COMMENT THIS GUY:
+ eval "$@"
+fi

@@ -97,7 +97,7 @@ for files in selectedfiles:
           mizi += data_with_mass[i][4]*data_with_mass[i][3]**2
   #print 'Gyration_radius [Angstrom] = ', math.sqrt((mixi+miyi+mizi)/M)
   ### np.savetxt('F_conf.dat',np.c_[F[:,0],F[:,1]])
-  
+ 
   f2 = open(files,'w')
   f2.write(l1)
   f2.write(l2.rstrip('\n')+'  Gyration_radius:  '+str(((mixi+miyi+mizi)/M)**0.5)+'\n ')

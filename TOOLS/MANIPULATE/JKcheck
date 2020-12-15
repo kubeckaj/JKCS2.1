@@ -1,5 +1,16 @@
-#/bin/bash
-subfolders="$*"
+#!/bin/bash
+Q_num=0;
+subfolders=""
+for i in $*
+do
+  if [ "$i" == "-num" ]
+  then
+    Q_num=1
+    continue
+  fi
+  subfolders+=" $i"
+done
+
 helpfile=.help$RANDOM
 
 if [ -e $helpfile ];
@@ -35,6 +46,9 @@ do
       if [ -e .crealTODO.txt ] 
       then
         v1=`wc -l .crealTODO.txt | awk '{print $1}'`; 
+      elif [ -e .jobs.txt ] 
+      then
+        v1=`wc -l .jobs.txt | awk '{print $1}'`
       else 
         v1=0
       fi
@@ -46,6 +60,18 @@ do
           v2m=`cat .link.txt | sed 's/2/1/g' | awk 'BEGIN{s=0}{s=s+$1}END{print s}'`
           v2=`echo $v2-$v2m | bc -l`
         fi
+      elif [ -e .jobs.txt ]
+      then
+        v2=0;
+        for job in `seq 1 $v1`
+        do
+          jobN=`head -n $job .jobs.txt | tail -n 1`
+          jobR=`squeue -o "%.18i %.2t" --j $jobN 2>/dev/null | grep "$jobN" | awk '{print $2}'` 
+          if [ "$jobR" == "" ] || [ "$jobR" == "C" ] || [ -z "$jobN" ]
+          then
+            v2=`echo $v2+1| bc`
+          fi
+        done
       else
         v2=0
       fi
@@ -59,7 +85,7 @@ do
           v1=`echo $subsubfolders | xargs -n 1 | wc -l`
           v1=`echo $v1 | bc -l`
           v2=$v1
-          v3="= 100.00"
+          v3="= 100.00 %"
         fi
       else 
         v3="= "`echo $v2/$v1*100 | bc -l | awk '{printf "%.2f\n",$1}'`" %"; 
@@ -74,5 +100,10 @@ do
   done
   cd ..
 done
-cat $helpfile | sort -nrk 4 | column -t
+if [ $Q_num -eq 1 ]
+then
+  cat $helpfile | sort -nrk 4 | column -t | awk '{print $5}'
+else
+  cat $helpfile | sort -nrk 4 | column -t
+fi
 rm $helpfile

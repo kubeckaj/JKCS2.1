@@ -30,7 +30,7 @@ function help {
 what=""
 next=0
 Qloc=1  ### NOT SURE IF THIS IS COMPATIBLE WITH ALL OTHER PROGRAMS
-for i in $*
+for i in ${@}
 do
   if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
   firstletter=`echo "$i" | cut -c 1`
@@ -70,7 +70,7 @@ then
 else
   echo "I need python3.x!"
   function program_GoodVibes {
-    python $scriptpath/goodvibes/goodvibes/GoodVibes.py $*
+    python $scriptpath/goodvibes/goodvibes/GoodVibes.py ${@}
   }
 fi
 

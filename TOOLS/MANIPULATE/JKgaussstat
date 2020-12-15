@@ -12,7 +12,7 @@
 ### THIS IS HELP
 function help {
   echo "THIS IS HELP:"
-  echo "Program for analysis of gaussian output"
+  echo "Program mainly for analysis of gaussian output"
   echo """
   JKgaussstat [OPTIONS] [FILES]
   OPTIONS: {applicability G=G16,X=XTB,O=ORCA,C=XYZ  coord.}
@@ -21,6 +21,7 @@ function help {
    -name .......... print name of the file {GXOC}
    -p,-pwdname .... print full file path {GXOC}
    -b,-basename ... print basename of the file (___.log) {GXOC}
+   [OTHERS: -pXYZ, -pOUT, -pLOG]   
 
    -el,-elen ...... EL = (last) electronic energy (SCF Done) {GXO }
    -zpe,-ZPE ...... ZPE = zero-point energy (correction) {GXO }
@@ -56,6 +57,15 @@ function help {
    -ht,-htime ..... time in hours # PRINT JUST LAST/TOTAL TIME {GXO }
    -err ........... do not print for missing \"Normal termination\" {G   }
    [OTHERS: -nt, -gibbscorr|-gcorr|-gc]
+
+   -b1,-bonds1 [ATOM] [thresh] .................. number of bonds with spec. atom
+   -b2,-bonds2 [ATOM1] [ATOM2] [thresh] ......... number of bonds with spec. atoms
+   -b3,-bonds3 [ATOM1] [ATOM2] [ATOM3] [thresh] . number of bonds with spec. atoms
+ 
+   -script [SCRIPT PATH] \"ARGUMENTS\" ... return ouput of the script
+   SCRIPT EXPECTATIONS:
+       EXECUTABLE SCRIPT: script.ext arguments file.ext 
+       SCRIPT OUTPUT: value or row of values
   
   FILES:
    gaussian (G16) output or ORCA output or XTB output or XYZ coordinates
@@ -78,6 +88,21 @@ then
 else
   toolspath="$scriptpath/../PROGRAM_SCRIPTS"
 fi
+# LOADING FUNCTIONS
+if [ -e $scriptpath/../LOADING/functions.sh ]
+then
+  source $scriptpath/../LOADING/functions.sh
+fi
+# LOADING JKCSusersetup
+if [ -e ~/.JKCSusersetup.txt ]
+then
+  source ~/.JKCSusersetup.txt
+else
+  function program_PYTHON2 {
+    python ${@}
+  }
+fi
+# OLD Qprograms
 Qprograms=programs.txt
 if [ -e $toolspath/../$Qprograms ]
 then
@@ -86,17 +111,25 @@ fi
 
 
 ######
+Qbonds1="-";Qbonds2="-";Qbonds3="-";QbondsT=0; #Bonds arguments
 Qerr=0
 Qfreqerr=0
 QT=0
 temp=298.15
 factor=1.0
+freq=100
 what=""
 how=""
 next=0
+<<<<<<< HEAD
 freq=100
 input=`echo $*`
 for i in $input
+=======
+scripts=()
+scriptsARG=()
+for i in "$@"
+>>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
 do
   if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;fi
   firstletter=`echo $i | cut -c 1`
@@ -119,6 +152,21 @@ do
     if [ "$i" == "-T" ] || [ "$i" == "-temp" ] || [ "$i" == "-Temp" ] || [ "$i" == "-TEMP" ]
     then
       last="-temp"
+      next=1
+      continue
+    fi
+    # FREQ  CUT OFF
+    if [ "$last" == "-f" ]
+    then
+      QT=1
+      freq="$i"
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-f" ]
+    then
+      last="-f"
       next=1
       continue
     fi
@@ -152,6 +200,71 @@ do
       next=1
       continue
     fi
+    # BONDS
+    if [ "$last" == "-bondsT" ]
+    then
+      QbondsT="$i"
+      last=''
+      next=0
+      continue
+    fi
+    ### atom bonds3
+    if [ "$last" == "-bonds3c" ]; then
+      Qbonds3="$i"; last='-bondsT'; continue
+    fi
+    if [ "$last" == "-bonds3b" ]; then
+      Qbonds2="$i"; last='-bonds3c'; continue
+    fi
+    if [ "$last" == "-bonds3a" ]; then
+      Qbonds1="$i"; last='-bonds3b'; continue
+    fi
+    if [ "$i" == "-bonds3" ] || [ "$i" == "-b3" ]; then
+      last="-bonds3";next=1;
+    fi
+    ### atom bonds2
+    if [ "$last" == "-bonds2b" ]; then
+      Qbonds2="$i"; last='-bondsT'; continue
+    fi
+    if [ "$last" == "-bonds2a" ]; then
+      Qbonds1="$i"; last='-bonds2b'; continue
+    fi
+    if [ "$i" == "-bonds2" ] || [ "$i" == "-b2" ]; then
+      last="-bonds2a";next=1
+    fi
+    ### atom bonds
+    if [ "$last" == "-bonds1a" ]; then
+      Qbonds1="$i"; last="-bondsT"; continue
+    fi
+    if [ "$i" == "-bonds1" ] || [ "$i" == "-b1" ]; then
+      last="-bonds1a";next=1
+    fi
+    ###
+    # SCRIPT
+    if [ "$last" == "-scriptARG" ]
+    then
+      scriptsARG+=( "$i" )
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$last" == "-script" ]
+    then
+      if [ -e "$i" ]
+      then
+        scripts+=( "$( cd "$(dirname "$i")" ; pwd -P )"/"$(basename $i)" )
+      else
+        echo "Script $i does not exist"
+        exit
+      fi
+      last="-scriptARG"
+      next=1
+      continue 
+    fi
+    if [ "$i" == "-script" ]
+    then
+      last="-script"
+      next=1
+    fi
     ### NOTHING FROM ABOVE
     how+="$i "
     if [ "$i" == "-gibbs" ] || [ "$i" == "-g" ]
@@ -166,6 +279,17 @@ done
 
 if [ -z "$what" ]; then what=`ls *.log`;fi
 if [ -z "$how"  ]; then how="-name -elen -gibbs";fi
+
+function revar {
+  if [ -z "$var" ]
+  then
+    var="-----------"
+  fi
+}
+
+function MYgoodvibes {
+  $toolspath/JKgoodvibes -loc -f $freq -v $factor -t $temp $iLOG
+}
 
 function JKgrep {
   file=$2
@@ -185,19 +309,45 @@ function JKgrep {
   fi
 }
 
+function JKgrepXYZ {
+  file=$2
+  text=$1
+  row2=`head -n 2 $file | tail -n 1`
+  pos=`strindex "$row2" "$text"`
+  if [ $pos -eq -1 ]
+  then
+    var=''
+  else
+    pos=`echo $pos+1 | bc`
+    var=`echo $row2 | awk -v var=$pos '{print $var}'`
+  fi
+  revar
+  echo $var
+}
+
 function JKgibbs {
   if [ $ip  == G16 ]
   then
     count1=`grep -c "Free Energies" $i` 
     if [ $count1 -eq 1 ]
     then
-      if [ $QT -eq 1 ]
+      if [ $j == "-gibbs" ] || [ $j == "-g" ] || [ $j == "-GD" ] 
       then
+<<<<<<< HEAD
         var=`$toolspath/JKgoodvibes -loc -f $freq -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $8}'`
+=======
+        if [ $QT -eq 1 ]
+        then
+          var=`MYgoodvibes | tail -n 2 | head -n 1 | awk '{print $8}'`
+        else
+          var=`grep "Free Energies" $i | awk '{print $8}'`
+        fi
+>>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
       else
-        var=`grep "Free Energies" $i | awk '{print $8}'`
+        var=`MYgoodvibes | tail -n 2 | head -n 1  | awk '{print $9}'`
+        echo $var >>  test
       fi
-    else 
+      else 
       var="-----------"
     fi
   elif [ $ip == ORCA ] 
@@ -206,16 +356,18 @@ function JKgibbs {
     var=`JKgrep "Final Gibbs free enthalpy         ..." $iOUT 6 | awk -v temp=$var1 '{print temp*3.8088*10^-7*8.31441*log(3)+$1}'`
   elif [ $ip == XTB ]
   then
-    count1=`grep -c "TOTAL FREE ENERGY" $i` 
-    if [ $count1 -eq 1 ]
+    count0=`grep -c 'SCF not converged in optimization' $iLOG`
+    count1=`grep -c "TOTAL FREE ENERGY" $iLOG` 
+    if [ $count1 -eq 1 ] && [ $count0 -eq 0 ]
     then
-      var=`grep "TOTAL FREE ENERGY" $i | awk '{print $1}'`
+      var=`grep "TOTAL FREE ENERGY" $iLOG | awk '{print $1}'`
     else
       var="-----------"
     fi
   else
     var="-----------"
   fi
+  revar
   echo $var
 }
 
@@ -227,7 +379,11 @@ function JKenthalpy {
     then
       if [ $QT -eq 1 ]
       then
+<<<<<<< HEAD
         var=`$toolspath/JKgoodvibes -loc -f $freq -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $5}'`
+=======
+        var=`MYgoodvibes | tail -n 2 | head -n 1 | awk '{print $5}'`
+>>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
       else
         var=`grep "Sum of electronic and thermal Enthalpies" $i | awk '{print $7}'`
       fi
@@ -243,34 +399,53 @@ function JKenthalpy {
   else
     var="-----------"
   fi
+  revar
   echo $var
 }
 
 function JKel {
   if [ $ip == G16 ];
   then
-    var=`JKgrep "SCF Done" $iLOG 5`
+    var=`JKgrep "E(CORR)=" $iLOG 4`
+    if [ -z "$var" ]
+    then
+      var=`JKgrep "SCF Done" $iLOG 5`
+    fi
   elif [ $ip == ORCA ]; 
   then
     var=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 5`
   elif [ $ip == XTB ];
   then
     var=`JKgrep "total E       :" $iLOG 4`
+    if [ "$var" == "" ]
+    then
+      var=`JKgrep "| TOTAL ENERGY" $iLOG 4`
+    fi
+  elif [ $ip == XYZ ]
+  then
+    var=`JKgrepXYZ "Energy:" "$iXYZ"`    
   else
-    var="-----------"
-  fi       
+    var="-----------"       
+  fi
+  revar
   echo $var
 }
  
 ### LOOP OVER FILES
 for i in $what
 do
+  scriptNUM=-1
   ### WHO AM I? ###
   iEND=`echo $i | rev | cut -c-4 | rev`
   iBASE=$(basename $i $iEND)
-  iXYZ=$iBASE.xyz 
-  iLOG=$iBASE.log
-  iOUT=$iBASE.out
+  iBASEPATH=`echo $i | rev | cut -c5- | rev`
+  iPATH=$( cd "$(dirname "$i")" ; pwd -P )
+  #iXYZ=$iPATH/$iBASE.xyz 
+  #iLOG=$iPATH/$iBASE.log
+  #iOUT=$iPATH/$iBASE.out
+  iXYZ=$iBASEPATH.xyz 
+  iLOG=$iBASEPATH.log
+  iOUT=$iBASEPATH.out
   if [ "$iEND" == ".xyz" ]
   then 
     ip="XYZ"
@@ -315,6 +490,18 @@ do
   for j in $how
   do
     var=""
+    ###############
+    ### SCRIPTS ###
+    ###############
+    if [ $j == "-script" ]
+    then
+      scriptNUM=`echo $scriptNUM+1|bc`
+      COMMAND="${scripts[$scriptNUM]} ${scriptsARG[$scriptNUM]} $i"  
+      var=`eval $COMMAND`
+      revar
+      output+="$var "
+      continue
+    fi
     ##########    
     ### Rg ###
     ##########
@@ -322,11 +509,43 @@ do
     then
       if [ -e $iXYZ ]
       then
-        JKrg.py $iXYZ
-        var=`JKgrep "$iXYZ " DATA_Rg.txt 2`
+        if [ -e JKrg.py ]
+        then
+          program_PYTHON2 JKrg.py $iXYZ
+        elif [ -e $scriptpath/../SCRIPTS/JKrg.py ]
+        then
+          program_PYTHON2 $scriptpath/../SCRIPTS/JKrg.py $iXYZ
+        else
+          echo "Cannot find JKrg.py script!"
+        fi 
+        var=`JKgrepXYZ "Gyration_radius:" "$iXYZ"`
       else
         var="-----------"
       fi
+      revar
+      output+="$var "
+      continue
+    fi
+    #############
+    ### BONDS ###
+    #############
+    if [ $j == "-b1" ] || [ $j == "-b2" ] || [ $j == "-b3" ] || [ $j == "-bonds1" ] || [ $j == "-bonds2" ] || [ $j == "-bonds3" ]
+    then
+      if [ -e $iXYZ ]
+      then
+        if [ -e JKbonds.py ]
+        then
+          var=`program_PYTHON2 JKbonds $Qbonds1 $Qbonds2 $Qbonds3 $QbondsT $iXYZ`
+        elif [ -e $scriptpath/../SCRIPTS/JKbonds.py ]
+        then
+          var=`program_PYTHON2 $scriptpath/../SCRIPTS/JKbonds.py $Qbonds1 $Qbonds2 $Qbonds3 $QbondsT $iXYZ`
+        else
+          echo "Cannot find JKbonds.py script!"
+        fi
+      else
+        var="-----------"       
+      fi
+      revar
       output+="$var "
       continue
     fi
@@ -336,6 +555,7 @@ do
     if [ $j == "-name" ] || [ $j == "-n" ]
     then 
       var=$i
+      revar
       output+="$var    \t"
       continue
     fi
@@ -345,6 +565,7 @@ do
     if [ $j == "-basename" ] || [ $j == "-b" ]
     then
       var=$iBASE;
+      revar
       output+="$var    \t"
       continue
     fi    
@@ -354,6 +575,29 @@ do
     if [ $j == "-pwdname" ] || [ $j == "-p" ]
     then
       var="$( cd "$(dirname "$i")" ; pwd -P )"/$i;
+      if [ ! -e "$var" ];then var="FIEdoesnotexist"; fi
+      revar
+      output+="$var    \t"
+      continue
+    fi
+    if [ $j == "-pXYZ" ]
+    then
+      if [ -e "$iPATH/$iXYZ" ];then var=$iPATH/$iXYZ; else var="XYZdoesnotexist"; fi
+      revar
+      output+="$var    \t"
+      continue    
+    fi
+    if [ $j == "-pLOG" ]
+    then
+      if [ -e "$iPATH/$iLOG" ];then var=$iPATH/$iLOG; else var="LOGdoesnotexist"; fi
+      revar
+      output+="$var    \t"
+      continue
+    fi
+    if [ $j == "-pOUT" ]
+    then
+      if [ -e "$iPATH/$iOUT" ];then var=$iPATH/$iOUT; else var="OUTdoesnotexist"; fi
+      revar
       output+="$var    \t"
       continue
     fi
@@ -363,6 +607,7 @@ do
     if [ $j == "-elen" ] || [ $j == "-el" ] 
     then
       var=`JKel`
+      revar
       output+="$var "
       continue
     fi
@@ -373,7 +618,12 @@ do
     then
       if [ $ip  == G16 ]
       then
-        var=`JKgrep "Zero-point correction=" $iLOG 3`
+        if [ $QT -eq 1 ]
+        then
+          var=`MYgoodvibes | tail -n 2 | head -n 1 | awk '{print $4}'`
+        else
+          var=`JKgrep "Zero-point correction=" $iLOG 3`
+        fi
       elif [ $ip == ORCA ]
       then
         var=`JKgrep "Zero point energy                ..." $iOUT 5`
@@ -383,6 +633,7 @@ do
       else 
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -392,6 +643,7 @@ do
     if [ $j == "-gibbs" ] || [ $j == "-g" ]
     then
       var=`JKgibbs`
+      revar
       output+="$var "
       continue
     fi
@@ -402,13 +654,7 @@ do
     then
       if [ $ip == G16 ]
       then 
-        count=`grep -c "Free Energies" $i`
-        if [ $count -eq 1 ]
-        then
-          var=`$toolspath/JKgoodvibes -loc $i -v $factor -t $temp | tail -n 2 | head -n 1  | awk '{print $9}'`
-        else
-          var="-----------"
-        fi
+        var=`JKgibbs`
       elif [ $ip == ORCA ] 
       then
         var="NOTPOSSIBLE"
@@ -418,6 +664,7 @@ do
       else
         var="-----------"
       fi 
+      revar
       output+="$var "
       continue
     fi
@@ -433,7 +680,7 @@ do
         then
           if [ $QT -eq 1 ] 
           then
-            varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1`
+            varB=`MYgoodvibes | tail -n 2 | head -n 1`
             var2=`echo $varB  | awk '{print $3}'`
             var3=`echo $varB  | awk '{print $8}'`
             var=`echo $var3-1.0*$var2 | bc -l`
@@ -454,6 +701,7 @@ do
       else 
         var="-----------" 
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -467,7 +715,7 @@ do
         count=`grep -c "Thermal correction to Gibbs Free Energy" $i`
         if [ $count -eq 1 ]
         then
-          varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $i | tail -n 2 | head -n 1`
+          varB=`MYgoodvibes | tail -n 2 | head -n 1`
           var2=`echo $varB | awk '{print $3}'`
           var3=`echo $varB | awk '{print $9}'`
           var=`echo $var3-1.0*$var2 | bc -l`
@@ -483,6 +731,7 @@ do
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -492,6 +741,7 @@ do
     if [ $j == "-enthalpy" ] || [ $j == "-h" ]
     then
       var=`JKenthalpy`
+      revar
       output+="$var "
       continue
     fi
@@ -509,6 +759,7 @@ do
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -524,7 +775,7 @@ do
         then
           if [ $QT -eq 1 ]
           then
-            var=`$toolspath/JKgoodvibes -loc $iLOG -v $factor -t $temp | tail -n 2 | head -n 1  | awk '{print $6}'`
+            var=`MYgoodvibes | tail -n 2 | head -n 1  | awk '{print $6}'`
             var=`echo $var/$temp | bc -l`
           else
             var=`grep -C 2 "E (Thermal)             CV                S" $iLOG | tail -n 1 | awk '{print $4}'`
@@ -552,6 +803,7 @@ do
           var=`echo "$var*627509" | bc -l`
         fi
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -565,7 +817,7 @@ do
         count=`grep -c "E (Thermal)             CV                S" $iLOG`
         if [ $count -eq 1 ]
         then
-          var=`$toolspath/JKgoodvibes -loc $iLOG -v $factor -t $temp | tail -n 2 | head -n 1  | awk '{print $7}'`
+          var=`MYgoodvibes  | tail -n 2 | head -n 1  | awk '{print $7}'`
           var=`echo $var/$temp | bc -l`
           if [ $j == "-Ush" ] || [ $j == "-Uentropyh" ]
           then
@@ -583,6 +835,7 @@ do
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -592,6 +845,7 @@ do
     if [ $j == "-dlpno" ]
     then
       var=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 5`
+      revar
       output+="$var "
       continue
     fi
@@ -609,6 +863,7 @@ do
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -628,8 +883,12 @@ do
           #if [ $count -eq 1 ] || [ 1 -eq 1 ]
           then
             var1=`grep 'FINAL SIN' $iOUT |  awk '{print $5}'`
+<<<<<<< HEAD
             #var1=`grep "SCF Done" $iLOG | tail -n 1 | awk '{print $5}'`
             varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $iLOG | tail -n 2 | head -n 1`
+=======
+            varB=`MYgoodvibes | tail -n 2 | head -n 1`
+>>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
             var2=`echo $varB  | awk '{print $3}'`
             var3=`echo $varB  | awk '{print $9}'`
             var=`echo $var1+$var3-1.0*$var2 | bc -l`
@@ -648,6 +907,7 @@ do
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -659,11 +919,16 @@ do
       if [ $ip == G16 ] 
       then
         timeline=`grep "Elapsed time" $iLOG`
-        tD=`echo $timeline | awk '{print $3}'`
-        tH=`echo $timeline | awk '{print $5}'`
-        tM=`echo $timeline | awk '{print $7}'`
-        tS=`echo $timeline | awk '{print $9}'`
-        var=`echo $tD*24*60+$tH*60+$tM+$tS/60 |bc -l`
+        if [ ! -z "$timeline" ]
+        then
+          tD=`echo $timeline | awk '{print $3}'`
+          tH=`echo $timeline | awk '{print $5}'`
+          tM=`echo $timeline | awk '{print $7}'`
+          tS=`echo $timeline | awk '{print $9}'`
+          var=`echo $tD*24*60+$tH*60+$tM+$tS/60 |bc -l`
+        else
+          var="-----------"
+        fi
       elif [ $ip == ORCA ] 
       then 
         timeline=`grep "TOTAL RUN TIME:" $iOUT`
@@ -685,10 +950,14 @@ do
         var="-----------"
       fi
       #unit conversion
-      if [ $j == "-ht" ] || [ $j == "-htime" ]
+      if [ $var  != "-----------" ]
       then
-        var=`echo $var/60 | bc -l`
+        if [ $j == "-ht" ] || [ $j == "-htime" ]
+        then
+          var=`echo $var/60 | bc -l`
+        fi
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -727,6 +996,7 @@ do
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -772,13 +1042,14 @@ do
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
     ###################
     ### DX DY DZ D2 ###
     ###################
-    if [ $j == "-dx" ] || [ $j == "-dy" ] || [ $j == "-dz" ] || [ $j == "-d" ] || [ $j == "-dtot" ]
+    if [ $j == "-dx" ] || [ $j == "-dy" ] || [ $j == "-dz" ] || [ $j == "-d" ] || [ $j == "-dtot" ] || [ $j == "-dip" ]
     then
       if [ $ip == G16 ]
       then      
@@ -792,15 +1063,12 @@ do
           elif [ $j == "-dy" ]
           then
             var=`grep -C 1 "$search" $iLOG | tail -n 1 | awk -v var=4 '{print $var}'`
-            output+="$var "
           elif [ $j == "-dz" ]
           then
             var=`grep -C 1 "$search" $iLOG | tail -n 1 | awk -v var=6 '{print $var}'`
-            output+="$var "
-          elif [ $j == "-dtot" ] || [ $j == "-d" ]
+          elif [ $j == "-dtot" ] || [ $j == "-d" ] || [ $j == "-dip" ]
           then
             var=`grep -C 1 "$search" $iLOG | tail -n 1 | awk -v var=8 '{print $var}' | sed 's/D/E/' | awk '{print $1+0}'`
-            output+="$var "
           fi
         else
           Dunits=3 # 2=au | 3=Debye | 4=10**-30 SI
@@ -814,7 +1082,7 @@ do
           elif [ $j == "-dz" ]
           then
             var=`grep -C 6 "$search" $iLOG | tail -n 1 | awk -v var=$Dunits '{print $var}'`
-          elif [ $j == "-dtot" ] || [ $j == "-d" ]
+          elif [ $j == "-dtot" ] || [ $j == "-d" ] || [ $j == "-dip" ]
           then
             var=`grep -C 3 "$search" $iLOG | tail -n 1 | awk -v var=$Dunits '{print $var}' | sed 's/D/E/' | awk '{print $1+0}'`
           fi
@@ -830,29 +1098,36 @@ do
         elif [ $j == "-dz" ]
         then
           var=`JKgrep "Total Dipole Moment    :" $iOUT 7 | awk '{print $1/0.39342344556402064389}'`
-        elif [ $j == "-dtot" ] || [ $j == "-d" ]
+        elif [ $j == "-dtot" ] || [ $j == "-d" ] || [ $j == "-dip" ]
         then
           var=`JKgrep "Magnitude (Debye)      :" $iOUT 4`
         fi
       elif [ $ip == XTB ]
       then
-        dipline=`grep -C 3 "molecular dipole:" $iLOG | tail -n 1`
-        if [ $j == "-dx" ]
+        test=`grep -c "Geometry optimization did not converge!" $iLOG`
+        if [ $test -gt 0 ]
         then
-          var=`echo $dipline | awk '{print $2}' | awk '{print $1/0.39342344556402064389}'`
-        elif [ $j == "-dy" ]
-        then
-          var=`echo $dipline | awk '{print $3}' | awk '{print $1/0.39342344556402064389}'`
-        elif [ $j == "-dz" ]
-        then
-          var=`echo $dipline | awk '{print $4}' | awk '{print $1/0.39342344556402064389}'`
-        elif [ $j == "-dtot" ] || [ $j == "-d" ]
-        then
-          var=`echo $dipline | awk '{print $5}'`
+          var="-----------"
+        else
+          dipline=`grep -C 3 "molecular dipole:" $iLOG | tail -n 1`
+          if [ $j == "-dx" ]
+          then
+            var=`echo $dipline | awk '{print $2}' | awk '{print $1/0.39342344556402064389}'`
+          elif [ $j == "-dy" ]
+          then
+            var=`echo $dipline | awk '{print $3}' | awk '{print $1/0.39342344556402064389}'`
+          elif [ $j == "-dz" ]
+          then
+            var=`echo $dipline | awk '{print $4}' | awk '{print $1/0.39342344556402064389}'`
+          elif [ $j == "-dtot" ] || [ $j == "-d" ] || [ $j == "-dip" ]
+          then
+            var=`echo $dipline | awk '{print $5}'`
+          fi
         fi
       else
         var="-----------"
       fi
+      revar
       output+="$var "
       continue
     fi
@@ -880,10 +1155,11 @@ do
       else
         var="MISSING"
       fi
+      revar
       output+="$var "
       continue
     fi
-    output+="UNKNOWNARGUMENT"
+    output+="UNKNOWNARGUMENT "
   done
   echo -e "$output"
 done

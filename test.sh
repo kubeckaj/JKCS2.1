@@ -64,14 +64,14 @@ result=`cat .help| tail -n 1 |cut -c-9`
 if [ "$result" == "Python 3." ]
 then
   printf " SUCCESFULL\n"
-  echo "import numpy" > .test.py
-  echo "a=numpy.matrix('1 2;3 4')" >> .test.py
-  echo "print(a*a)" >> .test.py
+  echo "a=30" > .test.py
+  #echo "a=numpy.matrix('1 2;3 4')" >> .test.py
+  echo "print(a)" >> .test.py
   program_PYTHON3 .test.py > .test.out 2> .test.out
-  result=`grep -c "[15 22]]" .test.out`
+  result=`grep -c "30" .test.out`
   if [ $result -eq 1 ]
   then
-    echo "   -- numpy: SUCCESFULL"
+    echo "   -- numpy: NOT TESTED (NOT NEEDED)"
   else
     echo "   -- numpy: UNSUCCESFULL"
     echo "   :: see .log for the error"
@@ -170,5 +170,9 @@ else
   echo "   :: see .log for the error"
   echo "   :: open ~/.JKCSusersetup -> check program_ORCA or setup properly path PATH_ORCA"
 fi
-rm .test.inp .test.out .test.xyz
+rm .test.inp .test.out .test.xyz  2>/dev/null
 echo ___________________
+rm .*.cmd 2>/dev/null
+rm .*.out 2>/dev/null
+rm .*.log 2>/dev/null
+if [ -e TMP ]; then rm -r TMP; fi

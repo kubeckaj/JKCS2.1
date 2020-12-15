@@ -29,12 +29,48 @@ Qsymbol=1
 ### Paths declaration ###
 #########################
 
+### PUHTI ### setup for all Puhti CSC users
 # DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
-PATH_ABCluster="/projappl/hvehkama/kubeckaj/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
-PATH_XTB="/projappl/hvehkama/kubeckaj/Apps/XTB6.0/"
-PATH_GoodVibes="/projappl/hvehkama/kubeckaj/Apps/goodvibes/goodvibes/GoodVibes.py"
-PATH_ORCA="/projappl/hvehkama/kubeckaj/Apps/ORCA/orca_4_0_1_2_linux_x86-64_openmpi202/orca"
+PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
+PATH_XTB="/users/kubeckaj/XTB6.0/"
+PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
+PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
+#MODULES
+module_gcc="module load gcc"
+module_gaussian="module load gaussian/G16RevC.01"
+module_orca="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+module_python2=""
+module_python3=""
+module_sbatch="SBATCHuseradd=--account=hvehkama" #H.Vehkamaki group sbatch requirment
+
+#### KALE ### setup for all Puhti CSC users
+## DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
+#PATH_ABCluster="/home/jakub/wrk/APPS/ABCluster-2.0-Linux/rigidmol-optimizer"
+#PATH_XTB="/home/jakub/wrk/APPS/XTB6.0/"
+#PATH_GoodVibes="/home/jakub/wrk/APPS/goodvibes/goodvibes/GoodVibes.py"
+#PATH_ORCA="/home/jakub/wrk/APPS/ORCA/orca_4_1_2_linux_x86-64_shared_openmpi313/"
+#PATH_G16="/appl/opt/gaussian-16.C.01/"
+##MODULES
+#module_gcc="module load GCC/8.2.0-2.31.1"
+#module_gaussian="module load Gaussian"
+#module_orca="module load OpenMPI/3.1.3-GCC-8.2.0-2.31.1"
+#module_python2=""
+#module_python3="module load Python/3.6.6-intel-2018b"
+
+#### TAITO ### setup for all Puhti CSC users
+## DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
+#PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
+#PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
+#PATH_GoodVibes="/wrk/kubeckaj/DONOTREMOVE/Apps/goodvibes/goodvibes/GoodVibes.py"
+#PATH_ORCA="/wrk/kubeckaj/DONOTREMOVE/Apps/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
+#PATH_G16="/appl/chem/G16RevB.01/"
+##MODULES
+#module_gcc="module load gcc/8.2.0"
+#module_gaussian="module load gaussian/G16RevB.01"
+#module_orca="module load openmpi/1.10.2"
+#module_python2="module load python-env/2.7.13"
+#module_python3="module load python-env/intelpython3.6-2018.2"
 
 # YOU CAN CALCULATE AT THE SMAE PLACE YOU ARE (./), OR YOU HAVE SOMEWHERE ELSE A TMP DIR 
 WRKDIR="./"
@@ -73,7 +109,7 @@ function program_ABC {
  
   #performing the calculation 
   #module load gcc/8.2.0 2>/dev/null
-  module load gcc 2>/dev/null
+  $module_gcc 2>/dev/null
   $rigidmoloptimizer $input > $output 
 }
 ##########################################################################################
@@ -82,12 +118,12 @@ function program_ABC {
 ##########################################################################################
 #use python2.X, numpy might be required (needed by JKCS1)
 function program_PYTHON2 {
-  #module load python-env/2.7.13 > /dev/null 2>/dev/null
+  $module_python2 2>/dev/null
   python2.7 ${@}
 }
 #use python3.X (needed by GoodVibes)
 function program_PYTHON3 {
-  #module load python-env/3.5.3 > /dev/null 2>/dev/null
+  $module_python3 2>/dev/null
   python3.6 ${@}
 }
 ##########################################################################################
@@ -95,7 +131,7 @@ function program_PYTHON3 {
 # sbatch
 # command: sbatch [some_parameters] $SBATCHuseradd script
 ##########################################################################################
-SBATCHuseradd=" --account=hvehkama "
+eval $module_sbatch
 ##########################################################################################
 ##########################################################################################
 # GoodVibes
@@ -153,12 +189,12 @@ function program_XTB {
   args=$args_help
 
   #CHARGE AND MULTIPLICITY
-  if [[ "$method" != *"-c "* ]] && [[ "$method" == *"-chrg "* ]] && [[ "$args" == *"-c "* ]] && [[ "$args" == *"-chrg "* ]];
+  if [[ "$method" != *"-c "* ]] && [[ "$method" != *"-chrg "* ]] && [[ "$args" != *"-c "* ]] && [[ "$args" != *"-chrg "* ]];
   then
     if [ -z "$CHARGE" ]; then CHARGE=0; fi
     args+=" --chrg $CHARGE "
   fi
-  if [[ "$method" != *"-u "* ]] && [[ "$method" == *"-uhf "* ]] && [[ "$args" == *"-u "* ]] && [[ "$args" == *"-uhf "* ]];
+  if [[ "$method" != *"-u "* ]] && [[ "$method" != *"-uhf "* ]] && [[ "$args" != *"-u "* ]] && [[ "$args" != *"-uhf "* ]];
   then
     if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
     unpaired=`echo $MULTIPLICITY-1|bc` 
@@ -205,21 +241,6 @@ function program_G16 {
     source ../arguments.txt
   fi
 
-  #source $PATH_G16/g16/bsd/g16.login
-  export OMP_NUM_THREADS=1
-  module load gaussian 2>/dev/null
- 
-  #CREATING WORKING DIRECTORY
-  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
-  ADD=""
-  test=0
-  while [ $test -eq 0 ]
-  do
-    CALC_NAME=$WRKDIR/TMP/G16${SLURM_JOBID}${ADD}
-    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
-    else test=1;fi
-  done
-
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   #*.com or *.xyz
@@ -239,25 +260,50 @@ function program_G16 {
       cp $inputtest $DIR/$inputCOM
     fi
   fi
-  #dirs
-  mkdir $CALC_NAME
-  cp $inputCOM $CALC_NAME/
-  cd $CALC_NAME
 
-  #echo JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args 
-  $PATH_G16/g16/g16 < $inputCOM >& $output
+  #CHANGE: G16, inputCOM, .log, adjust copying back
+  echo """#!/bin/bash
 
-  #COPYING RESULTS BACK
-  if [ -e $DIR/$output ]
+#source \$PATH_G16/g16/bsd/g16.login
+export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
+$module_gaussian 2>/dev/null  
+
+#CREATING WORKING DIRECTORY
+if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+ADD=\"\"
+test=0
+while [ \$test -eq 0 ]
+do
+  CALC_NAME=$WRKDIR/TMP/G16\${SLURM_JOBID}\${ADD}
+  if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
+  else test=1;fi
+done
+
+#dirs
+mkdir \$CALC_NAME
+cp $inputCOM \$CALC_NAME/
+cd \$CALC_NAME
+
+$PATH_G16/g16/g16 < $inputCOM >& $output
+
+#COPYING RESULTS BACK
+if [ -e $DIR/$output ]
+then
+  mv $DIR/$output $DIR/${base}O.log
+fi
+cp $output $DIR/
+cp *.err $DIR/ 2>/dev/null
+cp *.out $DIR/ 2>/dev/null
+cd $DIR
+JKlog2xyz $output > /dev/null 2>/dev/null
+
+#CLEANING
+rm -rf \$CALC_NAME""" > $base.cmd
+  if [ -e ../submit ]
   then
-    mv $DIR/$output $DIR/${base}O.log
-  fi
-  cp $output $DIR/
-  cd $DIR
-  JKlog2xyz $output > /dev/null 2>/dev/null
-
-  #CLEANING
-  rm -rf $CALC_NAME
+    sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh 
+  fi 
+  sh $base.cmd
 }
 ##########################################################################################
 ##########################################################################################
@@ -267,8 +313,9 @@ function program_G16 {
 function program_ORCA {
   input=$1                     # file.xyz or .inp    
   base=$(basename $input .xyz) # file
-  base=$(basename $base .inp) # file
-  inputINP=$base.inp
+  base=$(basename $base  .inp) # file 
+  inputINP=$base.inp           # file.inp 
+  inputXYZ=$base.xyz           # file.xyz
   output=$base.out             # file.out
   args=${@:2}                  # all arguments except the first one
 
@@ -277,48 +324,70 @@ function program_ORCA {
   then
     source ../arguments.txt
   fi
-
-  export OMP_NUM_THREADS=1 
-  module load orca-env/4.0.1.2 2> /dev/null
-
-  #CREATING WORKING DIRECTORY
-  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
-  ADD=""
-  test=0
-  while [ $test -eq 0 ]
-  do
-    CALC_NAME=$WRKDIR/TMP/ORCA${SLURM_JOBID}${ADD}
-    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
-    else test=1;fi
-  done
-
+  
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
-  mkdir $CALC_NAME
   #*.inp or *.xyz
   test=`echo $input | rev | cut -c-4 | rev`
   if [ "$test" == ".xyz" ]
   then
     if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
-    MEMinsert=`echo 0.85*$MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
-    JKxyz2inp $input -method "$method" -mem $MEMORYinsert -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
-    cp $inputINP $CALC_NAME/
+    MEMinsert2=`echo $MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
+    MEMinsert1=`echo 0.75*$MEMinsert2 | bc` #it is said in ORCA manual
+    if [ -z "$CPU" ]; then CPU=1; fi
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    if [ -z "$method" ] # IF NO METHOD SPECIFIED ... THEN SOME TROUBLES MIGHT APPEAR 
+    then    
+      JKxyz2inp $input -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY $args
+    else
+      JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
+    fi
   fi
-  cp $input $CALC_NAME/
-  cd $CALC_NAME  
- 
-  $PATH_ORCA $inputINP > $output 2> $output
-  #JKout2xyz $output
+  cp $input ./ #either .XYZ or .INP
 
-  #COPYING RESULTS BACK
-  cp $output $DIR/
-  if [ ! -z "`ls *.xyz 2> /dev/null`" ] 
+  #CHANGE: ORCA, inputINP, .out
+  echo """#!/bin/bash
+export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
+$module_orca 2>/dev/null
+export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
+
+#CREATING WORKING DIRECTORY
+if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+ADD=\"\"
+test=0
+while [ \$test -eq 0 ]
+do
+  CALC_NAME=$WRKDIR/TMP/ORCA\${SLURM_JOBID}\${ADD}
+  if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
+  else test=1;fi
+done
+
+#dirs
+mkdir \$CALC_NAME
+
+if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
+cp $inputINP \$CALC_NAME/
+cd \$CALC_NAME
+
+$PATH_ORCA/orca $inputINP > $output 2> $output
+
+#COPYING RESULTS BACK
+if [ -e $DIR/$output ]
+then
+  mv $DIR/$output $DIR/${base}O.out
+fi
+cp $output $DIR/
+cp *.xyz $DIR/ 2>/dev/null
+cp *.err $DIR/ 2>/dev/null
+cd $DIR
+
+#CLEANING
+rm -rf \$CALC_NAME""" > $base.cmd
+  if [ -e ../submit ]
   then
-    cp *.xyz $DIR/
+    sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh
   fi
-  cd $DIR
-
-  #CLEANING
-  rm -rf $CALC_NAME
+  sh $base.cmd
 }
 ##########################################################################################
