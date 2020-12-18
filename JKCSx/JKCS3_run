@@ -380,6 +380,7 @@ then
       then
         cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n'  >> $currentdirpath/$folderNEW/commands_TODO.txt
         rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+        Qjpt_iter=0
         jobscount=`echo $jobscount+1|bc`
       fi
     fi
