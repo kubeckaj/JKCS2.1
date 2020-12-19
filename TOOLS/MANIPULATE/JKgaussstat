@@ -121,15 +121,9 @@ freq=100
 what=""
 how=""
 next=0
-<<<<<<< HEAD
-freq=100
-input=`echo $*`
-for i in $input
-=======
 scripts=()
 scriptsARG=()
 for i in "$@"
->>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
 do
   if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;fi
   firstletter=`echo $i | cut -c 1`
@@ -336,16 +330,12 @@ function JKgibbs {
     then
       if [ $j == "-gibbs" ] || [ $j == "-g" ] || [ $j == "-GD" ] 
       then
-<<<<<<< HEAD
-        var=`$toolspath/JKgoodvibes -loc -f $freq -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $8}'`
-=======
         if [ $QT -eq 1 ]
         then
           var=`MYgoodvibes | tail -n 2 | head -n 1 | awk '{print $8}'`
         else
           var=`grep "Free Energies" $i | awk '{print $8}'`
         fi
->>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
       else
         var=`MYgoodvibes | tail -n 2 | head -n 1  | awk '{print $9}'`
         echo $var >>  test
@@ -382,11 +372,7 @@ function JKenthalpy {
     then
       if [ $QT -eq 1 ]
       then
-<<<<<<< HEAD
-        var=`$toolspath/JKgoodvibes -loc -f $freq -v $factor -t $temp $i | tail -n 2 | head -n 1 | awk '{print $5}'`
-=======
         var=`MYgoodvibes | tail -n 2 | head -n 1 | awk '{print $5}'`
->>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
       else
         var=`grep "Sum of electronic and thermal Enthalpies" $i | awk '{print $7}'`
       fi
@@ -886,12 +872,7 @@ do
           #if [ $count -eq 1 ] || [ 1 -eq 1 ]
           then
             var1=`grep 'FINAL SIN' $iOUT |  awk '{print $5}'`
-<<<<<<< HEAD
-            #var1=`grep "SCF Done" $iLOG | tail -n 1 | awk '{print $5}'`
-            varB=`$toolspath/JKgoodvibes -loc -v $factor -t $temp $iLOG | tail -n 2 | head -n 1`
-=======
             varB=`MYgoodvibes | tail -n 2 | head -n 1`
->>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
             var2=`echo $varB  | awk '{print $3}'`
             var3=`echo $varB  | awk '{print $9}'`
             var=`echo $var1+$var3-1.0*$var2 | bc -l`
