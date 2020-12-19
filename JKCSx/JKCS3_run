@@ -556,7 +556,7 @@ do
     echo  "$toolspath/SCRIPTS/JKsend '`tail -n $i commands_TODO.txt | head -n 1`'" >> .runLIST
   else
     echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> .run
+    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
     #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
     job=$(/bin/bash .run)
     #job=$(eval `cat .run`)

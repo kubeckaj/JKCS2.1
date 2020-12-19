@@ -2,21 +2,6 @@
 == testing Python3.x:
 == testing ABCluster:
 == testing XTB:
-cp: /Users/jakub/WORKDIR/JKCS2.0/.test.xyz and /Users/jakub/WORKDIR/JKCS2.0/.test.xyz are identical (not copied).
-tory
-####################################
 == testing Gaussian(G16):
-JKlog2xyz: Wait a moment ...
-File .test.com.log is not convertale.
-JKlog2xyz: Done :-D
- No such file or directory
-/Users/jakub/.JKCSusersetup.txt: line 180: .test.com.com: No such file or directory
-grep: .test.com.log: No such file or directory
-/Users/jakub/WORKDIR/JKCS2.1/TOOLS/MANIPULATE/JKlog2xyz: line 89: [: -eq: unary operator expected
-grep: .test.com.log: No such file or directory
-grep: .test.com.log: No such file or directory
-cp: .test.com.log: No such file or directory
-cp: *.xyz: No such file or directory
-####################################
 == testing GoodVibes:
 == testing ORCA:
