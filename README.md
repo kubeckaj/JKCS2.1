@@ -1,7 +1,8 @@
 # JKCS (=JKCS2.1) 
 Jammy Key for Configurational Sampling
 
-  HOW TO SETUP:\n
+  HOW TO SETUP:
+  
   (INSTALLATION: https://youtu.be/9mw45tbj1G4)
 
     git clone https://github.com/kubeckaj/JKCS2.1.git #copy JKCS (JKCS folder is created)
@@ -10,6 +11,7 @@ Jammy Key for Configurational Sampling
     source ~/.bashrc                                  #required after the first "setup"
     
  ADJUST USER SETUP:
+ 
  (H.Vehkamäki group: Puhti users do not have to adjust it)
  
     vim/nano/emacs ~/.JKCSusersetup.txt               #adjust user setup
@@ -23,7 +25,9 @@ Jammy Key for Configurational Sampling
     sh test.sh                                        #test that all your paths#       are set correctly
    
   Simple TEST (on local computer):
+  
   (VERY FAST SHOW OF JKCS: https://youtu.be/xKKWZrO-EmU)
+  
   (USING JKCS: https://youtu.be/C4dAkhU7O8E)
    
     cd $WRKDIR                 #go to your working directory
