@@ -1,7 +1,7 @@
 # JKCS (=JKCS2.1) 
 Jammy Key for Configurational Sampling
 
-  HOW TO SETUP:
+  HOW TO SETUP:\n
   (INSTALLATION: https://youtu.be/9mw45tbj1G4)
 
     git clone https://github.com/kubeckaj/JKCS2.1.git #copy JKCS (JKCS folder is created)
