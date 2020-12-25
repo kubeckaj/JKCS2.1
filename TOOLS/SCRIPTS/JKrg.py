@@ -9,6 +9,8 @@ else:
   selectedfiles=glob.glob("*.xyz")
 
 for files in selectedfiles:
+  if not(os.path.isfile(files)):
+    continue
   f1 = open(files,'r')
   l1 = f1.readline()
   l2 = f1.readline()
