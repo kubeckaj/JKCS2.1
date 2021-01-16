@@ -1,0 +1,17 @@
+#!/bin/bash
+INPUT=$*
+for i in $INPUT
+do
+  BEST=`grep "SCF Done" $i | sort -nrk 5 |  tail -n 1`
+  LINE=`grep -n "$BEST" $i | tail -n 1 | sed "s/:/ /" | awk '{print $1}'`
+  LINE2=`echo $LINE+2 | bc`
+  #echo HEAD
+  head -n $LINE2 $i > .JKtakebesthelp
+  #echo MV1
+  mv $i $i.old
+  #echo MV2
+  mv .JKtakebesthelp $i
+  #echo RM
+  #echo JKLOG2XYZ
+  JKlog2xyz $i
+done
