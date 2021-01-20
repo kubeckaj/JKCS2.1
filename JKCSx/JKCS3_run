@@ -522,7 +522,7 @@ then
   #--ntasks-per-core=1
   #--ntasks-per-node=$one_node_tasks
   #--cpus-per-task=$SCcpu  
-  SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime -N $SCnodes --mem-per-cpu $SCmem --ntasks-per-node=$one_node_tasks --cpus-per-task $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "  
+  SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime --ntasks $SCnodes -N $SCnodes --mem-per-cpu $SCmem --ntasks-per-node=$one_node_tasks --cpus-per-task $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "  
 fi 
 
 

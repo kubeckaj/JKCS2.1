@@ -267,6 +267,8 @@ function program_G16 {
 #source \$PATH_G16/g16/bsd/g16.login
 export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
 $module_gaussian 2>/dev/null  
+export GAUSS_EXEDIR=$PATH_G16/g16/
+export g16root=$PATH_G16
 
 #CREATING WORKING DIRECTORY
 if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
