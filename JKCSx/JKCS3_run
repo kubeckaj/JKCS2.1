@@ -510,7 +510,7 @@ then
     JKecho 2 "GREASY: nodes = $SCnodes, 1-node-tasks = $one_node_tasks, 1-node-utilized-cores = $one_node_cores"
     if [ $nodes_required -gt $SCnodes ]
     then
-      JKecho 0 "Sorry I need at least ${cfBLUE}$nodes_required${cfDEF} nodes, but you offered me just ${cfBLUE}$SCnodes${cfDEF} nodes. [${cfRED}EXIT${cfDEF}]"
+      JKecho 0 "Sorry I need at least ${cfBLUE}$nodes_required${cfDEF} nodes, but you offered me just ${cfBLUE}$SCnodes${cfDEF} node(s). [${cfRED}EXIT${cfDEF}]"
       exit
     else
       SCnodes=$nodes_required
