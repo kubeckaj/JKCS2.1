@@ -1,0 +1,22 @@
+#!/bin/bash
+input=$1
+
+atoms=`head -n 1 $input | awk '{print $1}'`
+atoms2=`echo $atoms+2 | bc`
+numberoflines=`wc -l $input | awk '{print $1}'`
+molecules=`echo $numberoflines/$atoms2 |bc`
+
+#TEST
+test=`echo $molecules*$atoms2-$numberoflines | bc`
+if [ "$test" != "0" ]
+then
+  echo "There is something weird with the $input input file. [EXITING]"
+  echo "If you copied the files from Windows, check also first: dos2unix $input"
+  exit
+fi
+
+for i in `seq 1 $molecules`
+do
+  endline=`echo $i*$atoms2 | bc -l`
+  head -n $endline $input | tail -n $atoms2 > str$i.xyz
+done
