@@ -52,6 +52,8 @@ function help {
                                                     variables: -h,-s,-HD,-g ...) {G   }
    -v \"X\" ......... anharmonicity scaling factor (GoodVibes is used for other
                                                     variables: -h,-s,-HD,-g ...) {G   }
+   -f \"X\" ......... frequency cutoff [def = 100 cm^-1] (GoodVibes is used for other
+                                                    variables: -h,-s,-HD,-g ...) {G   } 
 
    -t,-time ....... time in minutes # PRINT JUST LAST/TOTAL TIME {GXO }
    -ht,-htime ..... time in hours # PRINT JUST LAST/TOTAL TIME {GXO }

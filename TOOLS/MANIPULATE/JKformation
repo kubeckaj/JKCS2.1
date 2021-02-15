@@ -2,17 +2,10 @@
 
 function print_help(){
   echo """
-<<<<<<< HEAD
-  JKformation calculates formation free free energies
-  from file which consists of two columns:
-     1) clusture name (e.g.: 1SA2W-2, 1am, 3COO, but not 3CO2)
-     2) Gibbs free ennergy in [hartree]  
-=======
   JKformation calculates formation free energies
   from file which consists of two columns:
      1) clustur name (e.g.: 1SA2W-2, 1am, 3COO, but not 3CO2)
      2) Gibbs free energy in [hartree]  
->>>>>>> bea2410fc443518b691085af65a6f9f8972153a7
 
   USE: JKformation [FILES] [OPTIONS]
   

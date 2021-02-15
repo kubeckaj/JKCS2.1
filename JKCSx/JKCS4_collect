@@ -63,10 +63,11 @@ function help {
  
   ${cfMAGENTA}EXAMPLES:${cfDEF}
     
-    $scriptfile XTB 
-    $scriptfile DFT_HIGH_freq -gibbs -loc
-    $scriptfile XTB -p -b -rg -el -dip 
-    $scriptfile DFT_HIGH -loc\n"""
+    $scriptfile ABC                         || [xyz] [Angstrom] [kJ/mol]
+    $scriptfile XTB -dip                    || [xyz] [Angstrom] [hartree] [Debye]
+    $scriptfile DFT_HIGH -loc               || [xyz] [Angstrom] [hartree]
+    $scriptfile DFT_HIGH_freq -gibbs -loc   || [xyz] [Angstrom] [hartree] [hartree]
+    $scriptfile XTB -p -rg -el -dip         || [xyz] [Angstrom] [hartree] [Debye] \n"""
   printf "#################################################################\n"
   exit
 }

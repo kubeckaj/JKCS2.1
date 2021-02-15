@@ -297,8 +297,6 @@ if QdeletestupidRG == 0:
   data=data[0:kickout]
   l=len(data)
 
-if Qrg == 1 or Qen == 1 or Qdelete == 1 or Qfilter == 1:
-  print('DataFilter.py: FILTERING')
 
 ######################################
 ### Qen + Qrg / cutting out some energies and Rg
@@ -355,6 +353,8 @@ if Qdelete == 1:
   data=data[0:kickout]
   l=len(data)
 
+if Qrg == 1 or Qen == 1 or Qdelete == 1 or Qfilter == 1:
+  print("DataFilter.py: FILTERING - "+str(l)+" file(s)")
 ################################
 ### SAMPLING/SELECTION
 ################################
@@ -425,7 +425,7 @@ if Qfilter == 1:
   ###		    ###
   #print(all)
   if Qselect == 0:                #Is this case happening at all?
-    print('DataFilter.py: SAMPLING/SELECTING')
+    #print('DataFilter.py: SAMPLING/SELECTING')
     c=[10,10,10] #The 0,0,0 Element is removed in the end automatically by the formatting loop
     while (0 < len(all)):
       #print('new round')

@@ -16,10 +16,11 @@ function help {
   echo """
   JKlog2xyz [OPTIONS] [FILES]
   OPTIONS:
-   -help ....... print this help and exit
-   -abc ........ print structure in format of ABCluster
-   -new \"XX\" ... new name of file [e.q.: test]
-   -xtb ........ structure is from XTB output
+   -help ........ print this help and exit
+   -abc ......... print structure in format of ABCluster
+   -ma,-matchabc. uses MATCH from ~/.JKCSusersetup.txt to make -abc
+   -new \"XX\" .... new name of file [e.q.: test]
+   -xtb ......... structure is from XTB output
   FILES:
    gaussian (G16) output is expected
   EXAMPLES:
@@ -45,9 +46,13 @@ do
   if [ $firstletter == "-" ] || [ $next -eq 1 ]
   then
     ### CHECK IF ABC INPUT IS REQUIRED
-    if [ $i == "-abc" ]
+    if [ "$i" == "-abc" ]
     then 
       Qabc=1
+    fi
+    if [ "$i" == "-matchabc" ] || [ "$i" == "-ma" ]
+    then
+      Qabc=2
     fi
     ### -new XX
     if [ "$last" == "-new" ]
@@ -63,12 +68,12 @@ do
       last="-new"
     fi
     ###
-    if [ $i == "-dip" ]
+    if [ "$i" == "-dip" ]
     then
       QdipXTB=1
     fi
     ###
-    if [ $i == "-xtb" ]
+    if [ "$i" == "-xtb" ]
     then
       Qxtb=1
     fi
@@ -168,10 +173,21 @@ do
   then
     convertG16
     ### ABC input ###
-    if [ $Qabc -eq 1 ];
+    if [ $Qabc -gt 0 ];
     then 
       # add comment line line 
       echo "all32_cgenff q  epsilon (kJ/mol) sigma (AA)" >> $newfile 
+      if [ $Qabc -eq 2 ]
+      then
+        if [ -e ~/.JKCSusersetup.txt ]
+        then 
+          source ~/.JKCSusersetup.txt
+        else
+          echo "Sorr, the following file must exist: ~/.JKCSusersetup.txt [EXITING]"
+          exit
+        fi
+        program_MATCH $file
+      fi      
   
       ### START LOOP ###
       # loop over all atoms (you need to know amount of atoms N)
@@ -193,17 +209,23 @@ do
         q=`grep -C $N1new "$text" $file | tail -n $N | awk '{print $3}' | head -n $i | tail -n 1`
         # asking for element
         e=`grep -C $N1new "$text" $file | tail -n $N | awk -v var=$elem '{print $var}' | head -n $i | tail -n 1`
-        # giving some valeus (LJ parameters) to the element       !!!! these values are not set up properly !!!!!! 
-        text=""
-        if [ $e == "C" ] || [ $e == "c" ]; then text=" 0.30     3.6    # C 0.2-0.5 3.5-3.6 ";fi
-        if [ $e == "O" ] || [ $e == "o" ]; then text=" 1.05     3.15   # O 0.8-1 3.15";fi
-        if [ $e == "S" ] || [ $e == "s" ]; then text=" 1.05     3.55   # S ";fi
-        if [ $e == "Cl" ] || [ $e == "cl" ] || [ $e == "CL" ]; then text=" 0.6276     4.0447 # Cl";fi
-        if [ $e == "F" ] || [ $e == "f" ]; then text=" 0.56     2.90   # F ";fi
-        if [ $e == "N" ] || [ $e == "n" ]; then text=" 0.84     3.30   # N 0.7-0.9 3.1-3.3";fi
-        if [ $e == "H" ] || [ $e == "h" ]; then text=" 0.19     0.4    # H 0.1-0.2 0.4-3 | OH 0.16 0.4 | CH 0.12 2.4";fi
-        #if missing element then you have to upgrade this code
-        if [ -z "$text" ]; then echo "element potential coefficients are missing. Contact Jacob, he can fix it very easily.";fi
+        if [ $Qabc -eq 1 ]
+        then
+          # giving some valeus (LJ parameters) to the element       !!!! these values are not set up properly !!!!!! 
+          text=""
+          if [ $e == "C" ] || [ $e == "c" ]; then text=" 0.30     3.6    # C 0.2-0.5 3.5-3.6 ";fi
+          if [ $e == "O" ] || [ $e == "o" ]; then text=" 1.05     3.15   # O 0.8-1 3.15";fi
+          if [ $e == "S" ] || [ $e == "s" ]; then text=" 1.05     3.55   # S ";fi
+          if [ $e == "Cl" ] || [ $e == "cl" ] || [ $e == "CL" ]; then text=" 0.6276     4.0447 # Cl";fi
+          if [ $e == "F" ] || [ $e == "f" ]; then text=" 0.56     2.90   # F ";fi
+          if [ $e == "N" ] || [ $e == "n" ]; then text=" 0.84     3.30   # N 0.7-0.9 3.1-3.3";fi
+          if [ $e == "H" ] || [ $e == "h" ]; then text=" 0.19     0.4    # H 0.1-0.2 0.4-3 | OH 0.16 0.4 | CH 0.12 2.4";fi
+          #if missing element then you have to upgrade this code
+          if [ -z "$text" ]; then echo "element potential coefficients are missing. Contact Jacob, he can fix it very easily.";fi
+        else
+          TYPE=`head -n $i .matchHELP2 | tail -n1 | awk '{print $3}'`
+          text=`grep "^$TYPE " $PATH_MATCH/MATCH/resources/top_all36_cgenff/par_all36_cgenff.prm | tail -n 1 | awk '{print -4.184*$3 " " $4*2^(5/6)}'`
+        fi
         # put it in the end of the strABC.xyz
         echo "$q $text" >> $newfile
       done

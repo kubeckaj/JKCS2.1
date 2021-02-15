@@ -393,3 +393,15 @@ rm -rf \$CALC_NAME""" > $base.cmd
   sh $base.cmd
 }
 ##########################################################################################
+function program_MATCH {
+  input=$1 #.log
+  cp $input .matchHELP1.log
+  JKlog2xyz .matchHELP1.log
+  module load openbabel
+  obabel .matchHELP1.xyz -O .matchHELP1.mol
+  PATH_MATCH="/users/kubeckaj/MATCH_RELEASE/"
+  export PerlChemistry=${PATH_MATCH}PerlChemistry
+  export MATCH=${PATH_MATCH}MATCH
+  export PATH=$PATH:${PATH_MATCH}MATCH/scripts
+  MATCH.pl -Forcefield  top_all36_cgenff -CreatePdb .matchHELP .matchHELP1.mol > .matchHELP2 
+}

@@ -57,12 +57,12 @@ function help {
      $scriptfile -p XTB -nf XTB_freq -rf XTB -m \"-ohess -temp 298.15\"
    ${cfYELLOW}G16:${cfDEF}
      $scriptfile -p G16 -rf ABC     -nf PM6      -m \"# PM6 opt=(calcall,verytight)  freq\"
-     $scriptfile -p G16 -rf XTB     -nf DFT_sp   -m \"# HF 6-31+g*\"
+     $scriptfile -p G16 -rf XTB     -nf DFT_sp   -m \"# wb97xd 6-31++g**\"
      $scriptfile -p G16 -rf XTB     -nf DFT_opt  -m \"# wb97xd 6-31++g** opt=verytight\"
      $scriptfile -p G16 -rf DFT_opt -nf DFT_freq -m \"# wb97xd 6-31++g** freq Temperature=298.15\"
    ${cfYELLOW}ORCA:${cfDEF}
      $scriptfile -p ORCA -rf XTB -nf OPT -m \"! PBE0 def2-TZVP TIGHTSCF Opt D3BJ\"
-   ${cfYELLOW}G16 ADVANCED:${cfDEF}
+   ${cfYELLOW}ADVANCED:${cfDEF}
      $scriptfile -p G16 -rf XTB -nf DFT -bc I -m \"#wb97xd GEN Pseudo=Read Opt Int=UltraFine Freq MaxDisk=32GB\" -mem 12GB -cpu 16
      $scriptfile -p ORCA -rf DFT_freq -nf DLPNO -m \"! DLPNO-CCSD(T) aug-cc-pvtz aug-cc-pvtz/C GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS\"\n"""
   printf "#################################################################\n"

@@ -49,6 +49,10 @@ then
   if [ -e .help1_$resultfile ]; then rm .help1_$resultfile; fi
   if [ -e .help2_$resultfile ]; then rm .help2_$resultfile; fi
 
+  olines=`wc -l $savefile | awk '{print $1}'`
+  echo "ORIGINAL: $savefile - $olines files" 
+  echo "ORIGINAL: $savefile - $olines files" >> output
+
   COMMAND="grep -v '\-----------' $savefile | sed '/^[ \t]*$/d' | awk "
   COMMANDp="'{printf(\"%s"
   COMMANDv="\n\"),\$1"
@@ -102,6 +106,13 @@ then
   o=`cat $resultfile | awk '{print $1}'`;
   for i in $o;
   do
+   if [ ! -e ${i%.*}.xyz ]
+   then 
+     echo "OJOJOJ: the path to at least one file does not exist. Do not expect any movie file."
+     echo "FILE: "${i%.*}.xyz
+     echo "The rest of filtering should be alright."
+     break  
+   fi
    cat ${i%.*}.xyz >> $movie
   done
   
