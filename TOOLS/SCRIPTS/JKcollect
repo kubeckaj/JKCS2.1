@@ -208,7 +208,9 @@ then
   
   #if old savefile exist, remove it
   if [ -e $savefile ]; then rm $savefile; fi
-  $toolspath/MANIPULATE/JKgaussstat "${@:3}" $files >> $savefile
+  if [ -e .$savefile ]; then rm .$savefile; fi
+  $toolspath/MANIPULATE/JKgaussstat "${@:3}" $files >> .$savefile
+  sed '/JKrg.py: ERROR to read file/d' .$savefile > $savefile
 fi
 
 
