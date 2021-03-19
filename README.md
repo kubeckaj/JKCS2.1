@@ -60,7 +60,7 @@ Jammy Key for Configurational Sampling
     # adjust the rest of file ~/.JKCSusersetup.txt:
     # QUEING, QUANTUM CHEMISTRY PROGRAMS etc.
     
-  and the rest you have to consult with manual 
+  and the rest, you have to consult with manual 
     
     
    
