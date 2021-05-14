@@ -67,7 +67,11 @@ function help {
     $scriptfile XTB -dip                    || [xyz] [Angstrom] [hartree] [Debye]
     $scriptfile DFT_HIGH -loc               || [xyz] [Angstrom] [hartree]
     $scriptfile DFT_HIGH_freq -gibbs -loc   || [xyz] [Angstrom] [hartree] [hartree]
-    $scriptfile XTB -p -rg -el -dip         || [xyz] [Angstrom] [hartree] [Debye] \n"""
+    $scriptfile XTB -pXYZ -rg -el -dip      || [xyz] [Angstrom] [hartree] [Debye] 
+
+    FOR REMOVING WRONG BONDING: (number of C-C, C-O, and O-H bonds)
+    JKCS4_collect -pXYZ -rg -el -dip -script JKgaussstat \"-b2 C C 1.6\" -script JKgaussstat \"-b2 C O 1.6\" -script JKgaussstat \"-b2 O H 1.1\" \n"""
+
   printf "#################################################################\n"
   exit
 }

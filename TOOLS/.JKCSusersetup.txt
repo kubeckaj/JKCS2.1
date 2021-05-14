@@ -32,7 +32,7 @@ Qsymbol=1
 ### PUHTI ### setup for all Puhti CSC users
 # DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
 PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
-PATH_XTB="/users/kubeckaj/XTB6.0/"
+PATH_XTB="/users/kubeckaj/XTB6.4/"
 PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
 PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
@@ -158,7 +158,9 @@ function program_XTB {
   fi
 
   export XTBPATH=$PATH_XTB
-  export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
+  if [[ "$PATH" != *"$XTBBPATH"* ]]; then
+    export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
+  fi
   
   #CREATING WORKING DIRECTORY
   if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi

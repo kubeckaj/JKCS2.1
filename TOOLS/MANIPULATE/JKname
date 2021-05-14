@@ -18,8 +18,13 @@ function help {
   EXAMPLES:
     JKname 
     JKname -log -msa
-    JKname 123.xyz -mol C2H6O1 EtOH 
     JKname -log 123.log 234.log
+
+    ETHANOL CLUSTERS
+    JKname 123.xyz -mol C2H6O1 EtOH 
+
+    GUANIDINE(gd)-SULF.ACID(sa)-BISULFATE(b) CLUSTERS //the order is important
+    JKname -mol C1N3H5 gd -mol H2S1O4 sa -mol H1S1O4 b
   """
   exit
 }

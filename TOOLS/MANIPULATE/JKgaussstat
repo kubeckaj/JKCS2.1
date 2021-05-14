@@ -25,6 +25,7 @@ function help {
 
    -el,-elen ...... EL = (last) electronic energy (SCF Done) {GXO }
    -zpe,-ZPE ...... ZPE = zero-point energy (correction) {GXO }
+   -lf ............ the lowest vibrational frequency {G   }
    -g,-gibbs ...... G = Gibbs Free Energy (293.15 K) {GXO }
    -gh,-gibbsh .... Gh = Gibbs Free Energy (293.15 K) (GoodVibes) {G   }
    -gc,-gcorr ..... dGcorr = Gibbs Free Energy (293.15 K) correction {GXO }
@@ -983,6 +984,20 @@ do
         var="-----------"
       fi
       revar
+      output+="$var "
+      continue
+    fi
+    ########################
+    ### LOWEST FREQUENCY ###
+    ########################
+    if [ $j == "-lf" ]
+    then
+      if [ $ip == G16 ]
+      then 
+        var=`grep "Frequencies" $iLOG | head -n 1 | awk '{print $3}'`    
+      else
+        var="-----------"
+      fi
       output+="$var "
       continue
     fi
