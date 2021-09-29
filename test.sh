@@ -123,7 +123,7 @@ fi
 touch .test.xyz
 program_XTB .test.xyz > .test.log 2> .test.log
 cd $WRKDIR
-result=`grep -c "#ERROR! no atoms!" .test.log`
+result=`grep -c "abnormal termination of xtb" .test.log`
 if [ $result -eq 1 ]
 then
   printf " SUCCESFULL\n"
