@@ -58,6 +58,7 @@ function help {
    
    CO2 .......... carbon dioxide
    CH4 .......... methane
+   BuOH ......... butanol
    Ar ........... argone
    Ne ........... neone
    He ........... helium 
@@ -206,6 +207,11 @@ function add {
          ;;
   "ch4") echo "  CH4    0   $path1/ch4.xyz"         >> $userinputfile
          ;;
+  "buoh") echo "  BuOH   0   $path3/BUTANOL/n-Buthanol-optimized.xyz" >> $userinputfile
+          echo "  BuOH   0   $path3/BUTANOL/GGg.xyz"                  >> $userinputfile
+          echo "  BuOH   0   $path3/BUTANOL/GGpg.xyz"                 >> $userinputfile
+          echo "  BuOH   0   $path3/BUTANOL/GGt.xyz"                  >> $userinputfile
+          ;;
   "ar") echo  "  Ar     0   $path1/ar.xyz"          >> $userinputfile
         ;;
   "he") echo  "  He     0   $path1/he.xyz"          >> $userinputfile
@@ -260,6 +266,7 @@ do
 
     add "CO2"
     add "CH4"
+    add "buoh"
     add "Ar"
     add "Ne"
     add "He"
