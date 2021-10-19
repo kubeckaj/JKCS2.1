@@ -1,0 +1,21 @@
+== testing Python2.x:
+== testing Python3.x:
+== testing ABCluster:
+== testing XTB:
+/Users/jakub/.JKCSusersetup.txt: line 213: /users/kubeckaj/XTB6.4//bin/xtb: No such file or directory
+####################################
+== testing Gaussian(G16):
+.test.cmd: line 25: /appl/soft/chem/gaussian/G16RevC.01//g16/g16: No such file or directory
+####################################
+== testing GoodVibes:
+   GoodVibes v3.0.2 2021/09/10 14:26:31
+   Citation: Luchini, G.; Alegre-Requena, J. V.; Funes-Ardoiz, I.; Paton, R. S. F1000Research, 2020, 9, 291.
+   GoodVibes version 3.0.2 DOI: 10.12688/f1000research.22758.1
+
+o  Requested: 
+
+   Temperature = 298.15 Kelvin   Pressure = 1 atm
+   All energetic values below shown in Hartree unless otherwise specified.####################################
+== testing ORCA:
+.test.cmd: line 24: /users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314//orca: No such file or directory
+####################################
