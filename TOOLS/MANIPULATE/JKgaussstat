@@ -747,7 +747,12 @@ do
         var1=`JKenthalpy`
         var2=`JKel`
         var3=`JKgrep "FINAL SINGLE POINT ENERGY" $iOUT 5`
-        var=`echo $var1-1.0*$var2+$var3 | bc -l`
+        if [ -z "$var3" ]
+        then 
+          var="-----------"
+        else
+          var=`echo $var1-1.0*$var2+$var3 | bc -l`
+        fi
       else
         var="-----------"
       fi
