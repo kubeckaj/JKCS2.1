@@ -333,6 +333,7 @@ JKpython
 python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.xyz -noname
 rm *.xyz
 cd ..""" >> rename.sh
+  fi
   ######################
   # command
   command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 
