@@ -49,6 +49,7 @@ function help {
     OTHERS: -box [def=7+M]
     OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
     OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
+    OTHERS: -pickle,-JKQC [TESTING]
  
   ${cfMAGENTA}SYMBOLS:${cfDEF}
     M .... number of molecules
@@ -122,6 +123,7 @@ INIT="300*M"
 SC=4
 BOX="7+M"
 Qjpt=1 #jobs per task
+Qpickle=0 #Do I want to pickle afterwards?
 
 last=""
 # loop over all arguments
@@ -197,6 +199,12 @@ do
     Qjpt=$iter
     continue
   fi
+  # JKQC
+  if [ "$iter" == "-pickle" ] || [ "$iter" == "-JKQC" ]
+  then
+    Qpickle=1
+    continue
+  fi 
   # 
   arguments_help+=( "${arguments[i]}" )
 done
@@ -318,6 +326,13 @@ do
   mv \$i ${NAMEcomp}_${const_iter}_\$i 
 done
 cd ..""" > rename.sh
+  if [ $Qpickle -eq 1 ]
+  then
+    echo """cd $name-LM
+JKpython
+python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.xyz -noname
+rm *.xyz
+cd ..""" >> rename.sh
   ######################
   # command
   command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 

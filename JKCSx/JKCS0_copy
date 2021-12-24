@@ -51,9 +51,11 @@ function help {
    MSA .......... methanesulfonic acid
 
    A,AM ......... ammonia
+   MA ........... methylamine
+   DMA .......... dimethylamine
+   TMA .......... trimethylamine
+   EDA .......... ethylendiamine
    GD ........... guanidine
-   DMA .......... dimethyl ammine
-   TMA .......... trimethyl ammine
    urea ......... urea
    
    CO2 .......... carbon dioxide
@@ -200,8 +202,20 @@ function add {
   "msa") echo "  MSA    0   $path2/msa.xyz"         >> $userinputfile
          echo "  MSA   -1   $path2/msam.xyz"        >> $userinputfile
          ;;
+  "ma") echo  "  MA     0   $path2/ma.xyz"          >> $userinputfile
+        echo  "  MA     1   $path2/mah.xyz"         >> $userinputfile
+        ;;
   "dma") echo "  DMA    0   $path1/c2h6nh.xyz"      >> $userinputfile
          echo "  DMA    1   $path2/dmap.xyz"        >> $userinputfile
+         ;;
+  "eda") echo "  EDA    0   $path2/eda_anti.xyz"     >> $userinputfile
+         echo "  EDA    0   $path2/eda_gauch.xyz"    >> $userinputfile
+         echo "  EDA    1   $path2/eda_Ha_anti.xyz"  >> $userinputfile
+         echo "  EDA    1   $path2/eda_Hb_anti.xyz"  >> $userinputfile
+         echo "  EDA    1   $path2/eda_Ha_gauch.xyz" >> $userinputfile
+         echo "  EDA    1   $path2/eda_Hb_gauch.xyz" >> $userinputfile
+         echo "  EDA    2   $path2/eda_H2_anti.xyz"  >> $userinputfile
+         echo "  EDA    2   $path2/eda_H2_gauch.xyz" >> $userinputfile
          ;;
   "co2") echo "  CO2    0   $path1/co2.xyz"         >> $userinputfile
          ;;
