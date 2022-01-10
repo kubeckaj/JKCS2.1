@@ -215,6 +215,8 @@ then
   foldername=${foldername//"collection"/}
   ###
   colfile=collection${foldername}.txt
+  resfile=results${foldername}.dat
+  WRONGresfile=collection${foldername}.dat
   movfile=movie${foldername}.xyz
   ###
   if [ ! -e "$colfile" ]
@@ -235,11 +237,11 @@ then
   if [ -z "$u3" ]; then u3=1; fi
   if [ -z "$Qs" ]; then Qs=2; fi
   # send for uniqueness
-  $toolspath/SCRIPTS/JKcollect "UNIQUENESS" $colfile $file $movfile $Qs $u1 $u2 $u3
+  $toolspath/SCRIPTS/JKcollect "UNIQUENESS" $colfile $resfile $movfile $Qs $u1 $u2 $u3
 
   if [ "print" ==  "print" ]
   then
-    lines=`wc -l $file | awk '{print $1}'`
+    lines=`wc -l $resfile | awk '{print $1}'`
     if [ $lines -lt 3 ]
     then 
       max=$lines
@@ -253,7 +255,7 @@ then
     if [ -e .JKCS5help ]; then rm .JKCS5help; fi
     for i in `seq 1 $max`
     do
-      line=`head -n $i $file  | tail -n 1`
+      line=`head -n $i $resfile  | tail -n 1`
       O1=`echo $line | awk '{print $1}'` 
       O2=`echo $line | awk '{print $2}'` 
       O3=`echo $line | awk '{print $3}'` 

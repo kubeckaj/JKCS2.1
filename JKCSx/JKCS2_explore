@@ -329,7 +329,9 @@ cd ..""" > rename.sh
   if [ $Qpickle -eq 1 ]
   then
     echo """cd $name-LM
-JKpython
+module load python-data/3.9-1; 
+source /scratch/hvehkama/kubeckaj/JKQC/JKCS/bin/activate; 
+alias python=/appl/soft/ai/cont_conda/python-data-2021-06/bin/python3.9
 python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.xyz -noname
 rm *.xyz
 cd ..""" >> rename.sh

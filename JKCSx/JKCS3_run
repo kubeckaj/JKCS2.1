@@ -127,6 +127,8 @@ QfromfolderOLD=1
 # just testing user input for -rf and -of
 Qtestboth=0
 
+Qpickle=0 #Do I want to unpickle and pickle in the end?
+
 #how many times repeat in case of fail
 #TODO REPEAT=0
 
@@ -260,6 +262,12 @@ do
   then
     cores_in_node=$i
   fi
+  # JKQC
+  if [ "$iter" == "-pickle" ] || [ "$iter" == "-JKQC" ]
+  then
+    Qpickle=1
+    continue
+  fi
   ###
   arguments_help+=( "${arguments[i]}" )
 done
@@ -370,8 +378,13 @@ then
       #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
       command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program \$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
     else
-      #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; eval \"\$commandTODO\"; done;" 
-      command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file;\"; eval \"\$commandTODO\"; done;"
+      if [ $Qpickle -eq 1 ]
+      then
+        command0="module load python-data/3.9-1;source /scratch/hvehkama/kubeckaj/JKQC/JKCS/bin/activate;alias python=/appl/soft/ai/cont_conda/python-data-2021-06/bin/python3.9;cd $currentdirpath/$folderOLD/${sub}/${name}-LM/; python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.pkl -xyz; cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file;\"; eval \"\$commandTODO\"; done; rm $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz; python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.log -noname; rm *.log; rm *.xyz;"
+      else
+        #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; eval \"\$commandTODO\"; done;" 
+        command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file;\"; eval \"\$commandTODO\"; done;"
+      fi
     fi
     if [ "$Qperform" == 2 ]
     then 
