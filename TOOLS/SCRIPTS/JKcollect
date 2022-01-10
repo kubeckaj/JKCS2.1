@@ -81,7 +81,7 @@ then
   for i in `seq 1 $lines`
   do
     text=`head -n $i .help1_$resultfile | tail -n 1 | awk '{print $1}'`
-    grep $text $savefile >> .help2_$resultfile
+    grep "$text " $savefile >> .help2_$resultfile
   done
   echo "UNIQUENESS: $resultfile - $lines files ( sort= $Qs, uniq= $args )" 
   echo "UNIQUENESS: $resultfile - $lines files ( sort= $Qs, uniq= $args )" >> output

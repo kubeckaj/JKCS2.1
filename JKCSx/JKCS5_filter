@@ -238,6 +238,7 @@ then
   if [ -z "$Qs" ]; then Qs=2; fi
   # send for uniqueness
   $toolspath/SCRIPTS/JKcollect "UNIQUENESS" $colfile $resfile $movfile $Qs $u1 $u2 $u3
+  analysedfile=$resfile
 
   if [ "print" ==  "print" ]
   then
