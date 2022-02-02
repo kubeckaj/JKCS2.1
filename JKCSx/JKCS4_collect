@@ -42,6 +42,9 @@ function help {
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ............ print this help and exit
+   -JKQC ............ use JKQCpickle to collect the data
+   -JKQCclean ....... use JKQCpickle to collect the data and remove *.xyz,*.log,*.out,*.cmd,*.com,TMP
+   -JKQCcleanfull ... use JKQCpickle to collect the data and remove the whole folder
   
   ${cfMAGENTA}OUTPUTS:${cfDEF} 
     -collection[${cfBLUE}FOLDER${cfDEF}].txt:
@@ -123,6 +126,8 @@ JKloadsupercomputer
 #reading arguments important for this script
 #basically search just for the FOLDER.
 Qjpt=1 #jobs per task
+Qpickle=0 #Do I want to pickle afterwards?
+Qclean=0 #Do I want to clean after pickling?
 
 last=""
 # loop over all arguments
@@ -143,6 +148,26 @@ do
     then
       last=""
       Qjpt=$iter
+      continue
+    fi
+    # JKQC
+    if [ "$iter" == "-pickle" ] || [ "$iter" == "-JKQC" ] || [ "$iter" == "-JKQCpickle" ]
+    then
+      Qpickle=1
+      continue
+    fi
+    # JKQCclean
+    if [ "$iter" == "-clean" ] || [ "$iter" == "-JKQCclean" ]
+    then
+      Qpickle=1
+      Qclean=1
+      continue
+    fi
+    # JKQCcleanfull
+    if [ "$iter" == "-cleanfull" ] || [ "$iter" == "-JKQCcleanfull" ]
+    then
+      Qpickle=1
+      Qclean=2
       continue
     fi
     arguments_help+=( "${arguments[i]}" )
@@ -166,6 +191,7 @@ arguments=("${arguments_help[@]}")
 JKecho 1 "Collecting data from ${cfBLUE}${method}${cfDEF} folder."
 #files
 savefile="$collectionfile${method}.txt"
+savepklfile="$collectionfile${method}.pkl"
 resultfile="$resultsfile${method}.dat"
 movie="$moviefile${method}.xyz"
 if [ -e $savefile ]; then rm $savefile; fi
@@ -220,7 +246,7 @@ arguments_hcatch=()
 for i in "${!arguments[@]}"
 do
   iter="${arguments[$i]}"
-  if [ "$iter" == "-gibbs" ] || [ "$iter" == "-gibbsh" ] || [ "$iter" == "-g" ] || [ "$iter" == "-gh" ]
+  if [ "$iter" == "-gibbs" ] || [ "$iter" == "-gibbsh" ] || [ "$iter" == "-g" ] || [ "$iter" == "-gh" ] || [ "$iter" == "-freq" ] || [ "$iter" == "--freq" ]
   then
     Qs=4
     Qu+=" 3"
@@ -240,7 +266,12 @@ hpass=${arguments_hpass[@]}
 hcatch=${arguments_hcatch[@]}
 if [ -z "$hpass" ]
 then
-  arguments=( "-pXYZ" )
+  if [ $Qpickle -eq 1 ]
+  then
+    arguments=( "-ePKL" )
+  else
+    arguments=( "-pXYZ" )
+  fi
   arguments+=( "-rg" )
   arguments+=( "-el" )
   arguments+=( "${arguments_hcatch[@]}" )
@@ -252,7 +283,25 @@ fi
 ### GOING THROUGH ALL SUBBFOLDERS
 Qjpt_iter=0
 jobscount=0
-JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
+if [ $Qpickle -eq 0 ]
+then
+  JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
+else
+  PKLinsubfolders=`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs`
+  if [ ! -z "$PKLinsubfolders" ]
+  then
+    if [ $Qclean -eq 0 ]
+    then
+      subfolders=""
+      JKecho 2 "No need to enter any subfolder (.pkl files exist) ... straight to collecting."
+    else
+      JKecho 2 "No need to collect anything from folders (.pkl files exist)."
+      JKecho 2 "However, I will remove unnecessary files in all subfolders: ${cfBLUE}$subfolders${cfDEF}"
+    fi
+  else
+    JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
+  fi
+fi
 for subfolder in $subfolders
 do
   Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
@@ -263,7 +312,40 @@ do
   # command ... it looks crazy but it has to be done like this due to ""
   #command="$toolspath/SCRIPTS/JKcollect RUN $savefile  "${arguments[@]}
   #printf "$command" > run${scriptfilecommand}.sh
-  echoCOMMAND $toolspath/SCRIPTS/JKcollect RUN $savefile "${arguments[@]}">run${scriptfilecommand}.sh
+  if [ $Qpickle -eq 0 ]
+  then
+    echoCOMMAND $toolspath/SCRIPTS/JKcollect RUN $savefile "${arguments[@]}">run${scriptfilecommand}.sh
+  else
+    if [ -z "$PKLinsubfolders" ]
+    then
+      echo "source ~/.JKCSusersetup.txt;" > run${scriptfilecommand}.sh
+      if [ $method == "ABC" ]
+      then
+        test=`ls *.log 2>/dev/null | wc -l`
+        if [ $test -eq 0 ]
+        then
+          test=`ls *.xyz 2>/dev/null | wc -l`
+          if [ $test -ne 0 ]
+          then
+            for i in *.xyz
+            do
+              base=$(basename $i .xyz)
+              energy=`grep "Energy:" $i | awk '{print $2}'`
+              echo "ABC" > ${base}.log
+              echo "ABC energy: $energy" >> ${base}.log
+            done
+          fi
+        fi
+      fi
+      echo "program_JKQCpickle -noname -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh
+    else
+      echo "source ~/.JKCSusersetup.txt" > run${scriptfilecommand}.sh
+    fi
+    if [ $Qclean -gt 0 ]
+    then
+      echo "rm -r *.xyz *.log *.out *.cmd *.com TMP 2>/dev/null" >> run${scriptfilecommand}.sh   
+    fi
+  fi
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
   cd $currentdirpath 
   if [ "$Qperform" == 2 ]
@@ -310,7 +392,18 @@ fi
 #  args=${@:6}
 JKecho 2 " + Sending to CONTROL collection." 
 #
-commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; break; else sleep 1; fi; done "
+if [ $Qpickle -eq 0 ]
+then
+  commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; break; else sleep 1; fi; done "
+else
+  if [ $Qclean -eq 2 ]
+  then
+    removingcommand="rm -r $method;"
+  else
+    removingcommand=""
+  fi
+  commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; $toolspath/SCRIPTS/JKcollect CONTROL $savepklfile $resultfile $movie $Qs $Qu; $removingcommand break; else sleep 1; fi; done"
+fi
 if [ "$Qperform" == 2 ]
 then
   echo $commandTODO >> ../.crealTODO.txt

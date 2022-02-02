@@ -3,81 +3,50 @@
 ############################## USER SETUP ################################################
 ##########################################################################################
 
-# CONTENT:
-# USER SETUP
-#   - Output style setup
-#   - Paths declaration
-#   - Default supercomputer setup
-# ADVANCED USER SETUP
-#   - program_ABC
-#   - program_XTB
-#   - program_G16
-#   - program_PYTHON2 & program_PYTHON3
-#   - program_GoodVibes
-#   - SBATCHuseradd
-
 ##########################
 ### Output style setup ###			
 ##########################
-
-# Do you want colorful output? [1/0]
-Qcolours=1
-# Do you want the program symbol? [1/0]
-Qsymbol=1
+Qcolours=1 # Do you want JKCS colorful output? [1/0]
+Qsymbol=1  # Do you want JKCS smiling face? [1/0]
 
 #########################
-### Paths declaration ###
+### PATHS AND MODULES ###
 #########################
+# Please, define all paths and modules required for each individual program here:
+# NOTE1: Do not use tilde "~" symbol but use full paths
+# NOTE2: The default paths should work for people using CSC (Puhti)
 
-### PUHTI ### setup for all Puhti CSC users
-# DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
-PATH_ABCluster="/users/kubeckaj/ABCluster-2.0-Linux/rigidmol-optimizer"
-PATH_XTB="/users/kubeckaj/XTB6.4/"
-PATH_GoodVibes="/users/kubeckaj/goodvibes/goodvibes/GoodVibes.py"
-PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
+# ABC = ABCluster
+PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
+MODULE_ABC="module load gcc" #"module load gcc/8.2.0" || "module load GCC/8.2.0-2.31.1"
+
+# XTB
+PATH_XTB="/users/kubeckaj/XTB6.0/"
+MODULE_XTB=""
+
+# G16 = GAUSSIAN
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
-#MODULES
-module_gcc="module load gcc"
-module_gaussian="module load gaussian/G16RevC.01"
-module_orca="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
-module_python2=""
-module_python3=""
-module_sbatch="SBATCHuseradd=--account=hvehkama" #H.Vehkamaki group sbatch requirment
+MODULE_G16="module load gaussian/G16RevC.01" #"module load Gaussian"
 
-#### KALE ### setup for all Puhti CSC users
-## DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
-#PATH_ABCluster="/home/jakub/wrk/APPS/ABCluster-2.0-Linux/rigidmol-optimizer"
-#PATH_XTB="/home/jakub/wrk/APPS/XTB6.0/"
-#PATH_GoodVibes="/home/jakub/wrk/APPS/goodvibes/goodvibes/GoodVibes.py"
-#PATH_ORCA="/home/jakub/wrk/APPS/ORCA/orca_4_1_2_linux_x86-64_shared_openmpi313/"
-#PATH_G16="/appl/opt/gaussian-16.C.01/"
-##MODULES
-#module_gcc="module load GCC/8.2.0-2.31.1"
-#module_gaussian="module load Gaussian"
-#module_orca="module load OpenMPI/3.1.3-GCC-8.2.0-2.31.1"
-#module_python2="module load Python/2.7.15-intel-2018b"
-#module_python3="module load Python/3.6.6-intel-2018b"
+# ORCA
+PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
+MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4" #"module load OpenMPI/3.1.3-GCC-8.2.0-2.31.1" || "module load openmpi/1.10.2"
 
-#### TAITO ### setup for all Puhti CSC users
-## DO NOT USE ~/ SYMBOL. DEFINE FULL PATH. 
-#PATH_ABCluster="/wrk/kubeckaj/DONOTREMOVE/Apps/ABCluster-2.0-Linux/rigidmol-optimizer"
-#PATH_XTB="/wrk/kubeckaj/DONOTREMOVE/Apps/XTB6.0/"
-#PATH_GoodVibes="/wrk/kubeckaj/DONOTREMOVE/Apps/goodvibes/goodvibes/GoodVibes.py"
-#PATH_ORCA="/wrk/kubeckaj/DONOTREMOVE/Apps/ORCA/orca_4_2_1_linux_x86-64_shared_openmpi314/"
-#PATH_G16="/appl/chem/G16RevB.01/"
-##MODULES
-#module_gcc="module load gcc/8.2.0"
-#module_gaussian="module load gaussian/G16RevB.01"
-#module_orca="module load openmpi/1.10.2"
-#module_python2="module load python-env/2.7.13"
-#module_python3="module load python-env/intelpython3.6-2018.2"
+# SBATCH 
+SBATCH_PREFIX="SBATCHuseradd=--account=hvehkama " #H.Vehkamaki group sbatch requirment
 
-# YOU CAN CALCULATE AT THE SMAE PLACE YOU ARE (./), OR YOU HAVE SOMEWHERE ELSE A TMP DIR 
+
+#########################
+### WORKING DIRECTORY ###
+#########################
+#The calculation can be performed in the current subfolder: "./"  OR
+#you can perform the calculations somewhere else, e.g. on scratch: "/scratch/$USER/"  (This is strongly recommended, especially for G16 or Orca calcs.)
 WRKDIR="./"
 
-###################################
-### Default supercomputer setup ###
-###################################
+######################################
+### Default computer cluster setup ###
+######################################
+# Perhaps, if you are a beginner, modify only the partition names and required time (=walltime)
 
 function echo_SCpartition {
   echo """######################################################
@@ -95,59 +64,90 @@ CC    100     8    1   330:00:00  longrun    4000mb
 ##########################################################################################
 ########################## ADVANCED USER SETUP ###########################################
 ##########################################################################################
+###############   DO NOT MODIFY UNLESS YOU KNOW WHAT YOU ARE DOING   #####################
+##########################################################################################
+
+# ADVANCED USER SETUP
+#   - sbatch
+#   - program_PYTHON
+#   - program_JKQCpickle
+#   - program_ABC
+#   - program_XTB
+#   - program_G16
+#   - program_ORCA
+#   - program_MATCH //functional only on Puhti yet
 
 ##########################################################################################
-# ABCluster script paths: rigidmol-optimizer 
+# sbatch
+# modifies sbatch command: sbatch [some_parameter] $SBATCH_PREFIX submitted_script/job
+##########################################################################################
+eval $SBATCH_PREFIX
+##########################################################################################
+
+
+
+##########################################################################################
+# Python
+# it is important to load the JKCS python envirnment
+##########################################################################################
+function program_PYTHON {
+  REPLACE_module_python 2>/dev/null
+  source REPLACE_jkcs_path/JKQC/JKCS/bin/activate
+  REPLACE_python ${@}
+}
+##########################################################################################
+
+
+
+##########################################################################################
+# JKQCpickle
+# This is the file used for collecting and pickling file from QC outputs
+##########################################################################################
+function program_JKQCpickle {
+  program_PYTHON REPLACE_jkcs_path/JKQC/JKQCpickle.py ${@}
+}
+##########################################################################################
+
+
+
+##########################################################################################
+# ABCluster: rigidmol-optimizer 
 # abcluster uses OpenMP. Use all available CPU, unless OMP_NUM_THREADS is specified.
 ##########################################################################################
 function program_ABC {
   input=$1                             # $name.inp
   output=$(basename $input .inp).out   # $name.out
  
-  #path to the script
-  rigidmoloptimizer=$PATH_ABCluster
+  #script full path
+  rigidmoloptimizer=$PATH_ABC/rigidmol-optimizer
  
-  #performing the calculation 
-  #module load gcc/8.2.0 2>/dev/null
-  $module_gcc 2>/dev/null
+  #loading module
+  if [ "$module_abc_loaded" != "loaded" ]
+  then
+    $MODULE_ABC 2>/dev/null
+    module_abc_loaded="loaded"
+  fi
+  
+  #performing the calculation
   $rigidmoloptimizer $input > $output 
 }
 ##########################################################################################
+
+
+
 ##########################################################################################
-# Python
-##########################################################################################
-#use python2.X, numpy might be required (needed by JKCS1)
-function program_PYTHON2 {
-  $module_python2 2>/dev/null
-  python2.7 ${@}
-}
-#use python3.X (needed by GoodVibes)
-function program_PYTHON3 {
-  $module_python3 2>/dev/null
-  python3.6 ${@}
-}
-##########################################################################################
-##########################################################################################
-# sbatch
-# command: sbatch [some_parameters] $SBATCHuseradd script
-##########################################################################################
-eval $module_sbatch
-##########################################################################################
-##########################################################################################
-# GoodVibes
-# require python3.x
-##########################################################################################
-function program_GoodVibes {
-  program_PYTHON2 $PATH_GoodVibes ${@}
-}
-##########################################################################################
-##########################################################################################
-# GNF2-xTB script: xtb
+# XTB
 # xtb uses OMP parallelization. Use all available CPU, unless OMP_NUM_THREADS is specified.
 ##########################################################################################
 function program_XTB {
+  #input manipulation
   base="$(basename $1 .xyz)"   # file basename
-  input="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.xyz" # full path of file.xyz    
+  #if you need to extract the file from pickled database
+  testPKL=`echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
+  if [ "$testPKL" != ".pkl" ]
+  then
+    input="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.xyz" # full path of file.xyz    
+  fi
   output=$base.log             # file.log
   args=${@:2}                  # all arguments except the first one
   
@@ -156,12 +156,18 @@ function program_XTB {
   then
     source ../arguments.txt
   fi
-
+  
+  #loading module  
   export XTBPATH=$PATH_XTB
   if [[ "$PATH" != *"$XTBBPATH"* ]]; then
     export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
   fi
-  
+  if [ "$module_xtb_loaded" != "loaded" ]
+  then
+    $MODULE_XTB 2>/dev/null
+    module_xtb_loaded="loaded"
+  fi  
+
   #CREATING WORKING DIRECTORY
   if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
   ADD=""
@@ -207,11 +213,18 @@ function program_XTB {
   DIR=$PWD
   mkdir $CALC_NAME
   cd $CALC_NAME
-  cp $input calc.xyz
+  if [ "$testPKL" == ".pkl" ]
+  then
+    program_JKQCpickle `echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz; 
+    mv ${base}.xyz calc.xyz
+    echo "" >> calc.xyz
+  else 
+    cp $input calc.xyz
+  fi
   if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
 
   $XTBPATH/bin/xtb calc.xyz $method $args > $output 2>&1
-
+  
   #COPYING RESULTS BACK
   cp $output $DIR/$output
   if [ -e xtbopt.xyz ]					      
@@ -226,6 +239,9 @@ function program_XTB {
   rm -rf $CALC_NAME
 }
 ##########################################################################################
+
+
+
 ##########################################################################################
 # G16 script: gaussian
 # loadinng gaussian licence might be required
@@ -236,7 +252,7 @@ function program_G16 {
   inputCOM=$base.com
   output=$base.log             # file.log
   args=${@:2}                  # all arguments except the first one
-
+  
   #load JKCS arguments
   if [ -e ../arguments.txt ]
   then
@@ -246,15 +262,17 @@ function program_G16 {
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   #*.com or *.xyz
-  test=`echo $input | rev | cut -c-4 | rev`
-  if [ "$test" == ".xyz" ]
+  test=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
+  if [ "$test" == ".xyz" ] || [ "$test" == ".pkl" ]
   then
+    if [ "$test" == ".pkl" ]; then program_JKQCpickle `echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz; input=${base}.xyz; fi 
     if [ -z "$method" ]
     then 
       JKxyz2com $input $args
     else
       JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
     fi
+    if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
   else
     inputtest="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.com"
     if [ $inputtest != $DIR/$inputCOM ]
@@ -266,9 +284,12 @@ function program_G16 {
   #CHANGE: G16, inputCOM, .log, adjust copying back
   echo """#!/bin/bash
 
-#source \$PATH_G16/g16/bsd/g16.login
 export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
-$module_gaussian 2>/dev/null  
+if [ "\$module_g16_loaded" != "loaded" ]
+then
+  $MODULE_G16 2>/dev/null
+  module_g16_loaded="loaded"
+fi
 export GAUSS_EXEDIR=$PATH_G16/g16/
 export g16root=$PATH_G16
 
@@ -299,10 +320,12 @@ cp $output $DIR/
 cp *.err $DIR/ 2>/dev/null
 cp *.out $DIR/ 2>/dev/null
 cd $DIR
+wait
 JKlog2xyz $output > /dev/null 2>/dev/null
 
 #CLEANING
 rm -rf \$CALC_NAME""" > $base.cmd
+
   if [ -e ../submit ]
   then
     sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh 
@@ -310,6 +333,9 @@ rm -rf \$CALC_NAME""" > $base.cmd
   sh $base.cmd
 }
 ##########################################################################################
+
+
+
 ##########################################################################################
 # ORCA script: orca
 # 
@@ -353,7 +379,12 @@ function program_ORCA {
   #CHANGE: ORCA, inputINP, .out
   echo """#!/bin/bash
 export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
-$module_orca 2>/dev/null
+
+if [ "\$module_orca_loaded" != "loaded" ]
+then
+  $MODULE_ORCA 2>/dev/null
+  module_orca_loaded="loaded"
+fi
 export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
 
 #CREATING WORKING DIRECTORY
@@ -395,6 +426,14 @@ rm -rf \$CALC_NAME""" > $base.cmd
   sh $base.cmd
 }
 ##########################################################################################
+
+
+
+
+##########################################################################################
+# MATCH 
+# this program should match the atoms with some FF databases 
+##########################################################################################
 function program_MATCH {
   input=$1 #.log
   cp $input .matchHELP1.log
@@ -407,3 +446,4 @@ function program_MATCH {
   export PATH=$PATH:${PATH_MATCH}MATCH/scripts
   MATCH.pl -Forcefield  top_all36_cgenff -CreatePdb .matchHELP .matchHELP1.mol > .matchHELP2 
 }
+##########################################################################################

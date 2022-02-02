@@ -323,16 +323,14 @@ $LM #_amount_of_Local_Minima_to_be_saved""" | column -t >> $F2
 rm *.gjf *.cluster 2>/dev/null
 for i in \`ls *.xyz\`
 do
-  mv \$i ${NAMEcomp}_${const_iter}_\$i 
+  mv \$i `echo $currentdir | sed "s/SYS//" | sed "s/_//g"`-${NAMEcomp}_${const_iter}_\$i 
 done
 cd ..""" > rename.sh
   if [ $Qpickle -eq 1 ]
   then
     echo """cd $name-LM
-module load python-data/3.9-1; 
-source /scratch/hvehkama/kubeckaj/JKQC/JKCS/bin/activate; 
-alias python=/appl/soft/ai/cont_conda/python-data-2021-06/bin/python3.9
-python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.xyz -noname
+source ~/.JKCSusersetup.txt
+program_JKQCpickle *.xyz -noname
 rm *.xyz
 cd ..""" >> rename.sh
   fi

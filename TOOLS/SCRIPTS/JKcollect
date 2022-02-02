@@ -49,11 +49,21 @@ then
   if [ -e .help1_$resultfile ]; then rm .help1_$resultfile; fi
   if [ -e .help2_$resultfile ]; then rm .help2_$resultfile; fi
 
+  #JKQC
+  ending=`echo $savefile | rev | cut -c-4 | rev`
+  if [ "$ending" == ".pkl" ]
+  then
+    savefile=$(basename $savefile .pkl).txt
+    Qpickle=1
+  else
+    Qpickle=0
+  fi
+
   olines=`wc -l $savefile | awk '{print $1}'`
   echo "ORIGINAL: $savefile - $olines files" 
   echo "ORIGINAL: $savefile - $olines files" >> output
 
-  COMMAND="grep -v '\-----------' $savefile | sed '/^[ \t]*$/d' | awk "
+  COMMAND="grep -v '\-----------' $savefile | grep -v "NaN" | sed '/^[ \t]*$/d' | awk "
   COMMANDp="'{printf(\"%s"
   COMMANDv="\n\"),\$1"
   COMMANDs=" | sort -u"
@@ -102,19 +112,22 @@ then
   fi
   
   # MOVIE
-  if [ -e $movie ]; then rm $movie; fi
-  o=`cat $resultfile | awk '{print $1}'`;
-  for i in $o;
-  do
-   if [ ! -e ${i%.*}.xyz ]
-   then 
-     echo "OJOJOJ: the path to at least one file does not exist. Do not expect any movie file."
-     echo "FILE: "${i%.*}.xyz
-     echo "The rest of filtering should be alright."
-     break  
-   fi
-   cat ${i%.*}.xyz >> $movie
-  done
+  if [ $Qpickle -eq 0 ]
+  then
+    if [ -e $movie ]; then rm $movie; fi
+    o=`cat $resultfile | awk '{print $1}'`;
+    for i in $o;
+    do
+     if [ ! -e ${i%.*}.xyz ]
+     then 
+       echo "OJOJOJ: the path to at least one file does not exist. Do not expect any movie file."
+       echo "FILE: "${i%.*}.xyz
+       echo "The rest of filtering should be alright."
+       break  
+     fi
+     cat ${i%.*}.xyz >> $movie
+    done
+  fi
   
   # REMOVE
   if [ -e .help1_$resultfile ]; then rm .help1_$resultfile; fi
@@ -135,15 +148,19 @@ then
   ###################################################
   
   ## for savefile
-  if [ -e $savefile ]; then rm $savefile; fi
-  if [ -e .help$savefile ]; then rm .help$savefile; fi
-  touch .help$savefile
-  cat */$savefile     >> .help$savefile 2>/dev/null
-  cat */*/$savefile   >> .help$savefile 2>/dev/null
-  cat */*/*/$savefile >> .help$savefile 2>/dev/null
-  cat .help$savefile | column -t > $savefile
-  rm .help$savefile
-
+  ending=`echo $savefile | rev | cut -c-4 | rev`
+  if [ "$ending" != ".pkl" ]
+  then
+    if [ -e $savefile ]; then rm $savefile; fi
+    if [ -e .help$savefile ]; then rm .help$savefile; fi
+    touch .help$savefile
+    cat */$savefile     >> .help$savefile 2>/dev/null
+    cat */*/$savefile   >> .help$savefile 2>/dev/null
+    cat */*/*/$savefile >> .help$savefile 2>/dev/null
+    cat .help$savefile | column -t > $savefile
+    rm .help$savefile
+  fi 
+  
   #echo "TEST after savefile"
   ## are there 4 columns??
   #test4=0

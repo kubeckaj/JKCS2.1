@@ -380,7 +380,7 @@ then
     else
       if [ $Qpickle -eq 1 ]
       then
-        command0="module load python-data/3.9-1;source /scratch/hvehkama/kubeckaj/JKQC/JKCS/bin/activate;alias python=/appl/soft/ai/cont_conda/python-data-2021-06/bin/python3.9;cd $currentdirpath/$folderOLD/${sub}/${name}-LM/; python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.pkl -xyz; cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file;\"; eval \"\$commandTODO\"; done; rm $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz; python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.log -noname; rm *.log; rm *.xyz;"
+        command0="source ~/.JKCSusersetup.txt;cd $currentdirpath/$folderOLD/${sub}/${name}-LM/; program_JKQCpickle *.pkl -xyz; cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file;\"; eval \"\$commandTODO\"; done; rm $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz; python /scratch/hvehkama/kubeckaj/JKQC/JKQCpickle.py *.log -noname; rm *.log; rm *.xyz;"
       else
         #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; eval \"\$commandTODO\"; done;" 
         command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file;\"; eval \"\$commandTODO\"; done;"
@@ -390,13 +390,16 @@ then
     then 
       echo "$command0" >> $currentdirpath/$folderNEW/commands_TODO.txt 
     else
-      echo "$command0" >> $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      #echo "$command0" >> $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      command0over_iterations+=$command0
       if [ $Qjpt_iter -eq $Qjpt ]
       then
-        cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n'  >> $currentdirpath/$folderNEW/commands_TODO.txt
-        rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+        echo "$command0over_iterations" >> $currentdirpath/$folderNEW/commands_TODO.txt
+        #cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n'  >> $currentdirpath/$folderNEW/commands_TODO.txt
+        #rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
         Qjpt_iter=0
         jobscount=`echo $jobscount+1|bc`
+        command0over_iterations=""
       fi
     fi
     #for file in $files
@@ -414,12 +417,14 @@ then
     cp $currentdirpath/$folderNEW/commands_TODO.txt $currentdirpath/$folderNEW/.crealTODO.txt
     jobscount=`echo $subfolders | xargs -n 1 | wc -l`
   else
-    if [ -e $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt ]
+    if [ ! -z "$command0over_iterations" ] #[ -e $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt ]
     then
-      cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
-      rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      echo "$command0over_iterations" >> $currentdirpath/$folderNEW/commands_TODO.txt
+      #cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
+      #rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
       Qjpt_iter=0
       jobscount=`echo $jobscount+1|bc`
+      command0over_iterations=""
     fi
   fi
 else
@@ -444,22 +449,29 @@ else
   JKarguments
   for file in $files
   do
+    if [ $Qjpt_iter -eq 0 ]
+    then
+      commandTODO="source ~/.JKCSusersetup.txt;"
+    fi
     Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
     const_iter=`echo $const_iter+1 |bc`
     #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file"
     #printf "$command" > run${scriptfilecommand}.sh
-    commandTODO="cd $currentdirpath/$folderNEW/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $file;"
+    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM/; program_$program $file;"
     if [ "$Qperform" == 2 ]
     then
       echo "$commandTODO" >> $currentdirpath/$folderNEW/commands_TODO.txt
     else
-      echo "$commandTODO" >> $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      #echo "$commandTODO" >> $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      commandTODOover_iterations+=$commandTODO
       if [ $Qjpt_iter -eq $Qjpt ]
       then
-        cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
-        rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+        echo "$commandTODOover_iterations" >> $currentdirpath/$folderNEW/commands_TODO.txt
+        #cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
+        #rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
         Qjpt_iter=0
         jobscount=`echo $jobscount+1|bc`
+        commandTODOover_iterations=""
       fi
     fi
   done
@@ -469,11 +481,13 @@ else
     cp commands_TODO.txt .crealTODO.txt
     jobscount=`echo $files | xargs -n 1 | wc -l`
   else
-    if [ -e $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt ]
+    if [ ! -z "$commandTODOover_iterations" ] #[ -e $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt ]
     then
-      cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
-      rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
+      echo "$commandTODOover_iterations" >> $currentdirpath/$folderNEW/commands_TODO.txt
+      #cat $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt | xargs -d$'\n' >> $currentdirpath/$folderNEW/commands_TODO.txt
+      #rm $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
       jobscount=`echo $jobscount+1|bc`
+      commandTODOover_iterations=""
     fi
   fi
   JKecho 3 "    Commands like ${cfMAGENTA}$commandTODO${cfDEF} written to ${cfYELLOW}commands_TODO.txt${cfDEF}"
@@ -570,8 +584,9 @@ do
     echo  "GREASY: eval '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
     echo  "$toolspath/SCRIPTS/JKsend '`tail -n $i commands_TODO.txt | head -n 1`'" >> .runLIST
   else
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
+    echo "`tail -n $i commands_TODO.txt | head -n 1`" > .run$i
+    echo  "$SC_command sh .run$i" >> output
+    echo  "$SC_command sh .run$i" > .run
     #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
     job=$(/bin/bash .run)
     #job=$(eval `cat .run`)

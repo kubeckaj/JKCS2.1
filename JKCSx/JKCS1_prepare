@@ -297,8 +297,8 @@ do
   done
 
   JKecho 2 "  Running script for all combinatorical constitutions."
-  JKecho 3 "    program_PYTHON2 $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge"
-  constitutions=`program_PYTHON2 $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge`  
+  JKecho 3 "    program_PYTHON $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge"
+  constitutions=`program_PYTHON $toolspath/SCRIPTS/combinations.py $COMBINATIONSstructure $COMBINATIONSmaximum $COMBINATIONScharges $totcharge`  
   JKecho 2 "  Constitutions: `echo $constitutions | xargs`"
   ## Do I need to select just specific amount of structure?
   if [ $Qselect -eq 1 ]

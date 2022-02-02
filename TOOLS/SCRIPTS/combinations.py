@@ -6,7 +6,7 @@ import sys
 def product(*args, **kwds):
     # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
     # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
-    pools = map(tuple, args) * kwds.get('repeat', 1)
+    pools = list(map(tuple, args)) * kwds.get('repeat', 1)
     result = [[]]
     for pool in pools:
         result = [x+[y] for x in result for y in pool]
@@ -16,7 +16,7 @@ def product(*args, **kwds):
 def productJK(*args, **kwds):
     # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
     # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
-    pools = map(tuple, args) * kwds.get('repeat', 1)
+    pools = list(map(tuple, args)) * kwds.get('repeat', 1)
     result = [[]]
     for pool in pools:
         result = [x+[y] for x in result for y in pool if sum(x)+y<=max(max(args))]
@@ -24,9 +24,9 @@ def productJK(*args, **kwds):
         yield tuple(prod)
 
 #sys.argv(1)
-maximum=map(int,sys.argv[2].split(',')[1:])
-structures=map(int,sys.argv[1].split(',')[1:])
-charges=map(int,sys.argv[3].split(',')[1:])
+maximum=list(map(int,sys.argv[2].split(',')[1:]))
+structures=list(map(int,sys.argv[1].split(',')[1:]))
+charges=list(map(int,sys.argv[3].split(',')[1:]))
 totcharge=int(sys.argv[4])
 npcharges=numpy.array(charges)
 
