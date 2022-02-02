@@ -71,7 +71,7 @@ then
 else
   echo -e "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
   echo "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
-  echo -e "          ${cfYELLOW}sh setup.txt -r${cfDEF}"
+  echo -e "          ${cfYELLOW}sh setup.sh -r${cfDEF}"
 fi
 echo "-----------------------"
 echo "Anyway, you can check if everything is working by running:"

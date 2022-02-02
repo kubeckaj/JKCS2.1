@@ -49,6 +49,7 @@ else
 fi
 ##########
 
+### PYTHON
 if [ ! -d TEST ]; then mkdir TEST; fi
 cd TEST
 testdir=$PWD
@@ -123,6 +124,7 @@ else
   echo "   :: open ~/.JKCSusersetup -> check program_PYTHON -> check the function/setup paths"
 fi
 rm .help
+##############
 
 ### JKQCpickle
 cd $testdir
@@ -169,6 +171,7 @@ fi
 rm .calc.inp .calc.out
 ##########
 
+### XTB
 cd $testdir
 printf "== testing XTB:"
 printf "== testing XTB:\n" >> ../.log
@@ -196,6 +199,7 @@ fi
 rm .test.xyz .test.log
 ##########
 
+### GAUSSIAN
 cd $testdir
 printf "== testing Gaussian(G16):"
 printf "== testing Gaussian(G16):\n" >> ../.log
@@ -219,6 +223,7 @@ fi
 rm .test.log .test.com
 ##########
 
+### ORCA
 cd $testdir
 printf "== testing ORCA:"
 printf "== testing ORCA:\n" >> ../.log
