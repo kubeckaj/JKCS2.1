@@ -215,7 +215,7 @@ function program_XTB {
   cd $CALC_NAME
   if [ "$testPKL" == ".pkl" ]
   then
-    program_JKQCpickle `echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz; 
+    program_JKQCpickle `echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz -noname; 
     mv ${base}.xyz calc.xyz
     echo "" >> calc.xyz
   else 
@@ -265,7 +265,7 @@ function program_G16 {
   test=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
   if [ "$test" == ".xyz" ] || [ "$test" == ".pkl" ]
   then
-    if [ "$test" == ".pkl" ]; then program_JKQCpickle `echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz; input=${base}.xyz; fi 
+    if [ "$test" == ".pkl" ]; then program_JKQCpickle `echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz -noname; input=${base}.xyz; fi 
     if [ -z "$method" ]
     then 
       JKxyz2com $input $args

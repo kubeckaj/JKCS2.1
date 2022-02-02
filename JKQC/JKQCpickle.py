@@ -538,12 +538,16 @@ for file_i in files:
         break
     if testXTB == 1:
       out_electronic_energy = missing  #1
+      out_gibbs_free_energy = missing  #2
       for line in file:
         if re.search("TOTAL ENERGY", line): #1
           out_electronic_energy = float(line.split()[3])
         if re.search("total E", line): #1
           out_electronic_energy = float(line.split()[3])
+        if re.search("TOTAL FREE ENERGY", line): #2
+          out_gibbs_free_energy = float(line.split()[0])
       clusters_df = df_add_iter(clusters_df, "log", "electronic_energy", [str(cluster_id)], [out_electronic_energy])
+      clusters_df = df_add_iter(clusters_df, "log", "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy])
     file.close()
 
   ###############
@@ -837,35 +841,38 @@ if Qextract > 0:
     for separated_i in range(len(comma_separated)):
       Pextract_comma.append(comma_separated[separated_i])
   #print(Pextract_comma)    
-  Pextract_dash = []
-  for extract_i in Pextract_comma:
-    separated = seperate_string_number(extract_i)
-    dash_separated = dash(separated)
-    for separated_i in range(len(dash_separated)):
-      Pextract_dash.append(dash_separated[separated_i])
-  #print([listToString(i,"") for i in Pextract_dash])
-  Pextract_comma2 = []
-  for extract_i in Pextract_dash:
-    comma2_separated = comma2(extract_i)
-    for separated_i in range(len(comma2_separated)):
-      Pextract_comma2.append(comma2_separated[separated_i])
-  #print(Pextract_comma2)
-  Pextract_sorted = []
-  for extract_i in Pextract_comma2:
-    if len(extract_i) > 1:
-      array_sorted = sorted([extract_i[i:i + 2] for i in range(0, len(extract_i), 2)],key=lambda x: x[1])
-      Pextract_sorted.append([item for sublist in array_sorted for item in sublist])
-    else:
-      Pextract_sorted.append(extract_i)
-      Qclustername = 0
-  #print(Pextract_sorted)
-  Pextract_final = []
-  for extract_i in Pextract_sorted:
-    corrected = zeros(extract_i)
-    if len(corrected) > 0:
-      Pextract_final.append(corrected)
-  Pextract_ultimate = unique(Pextract_final)
-  #print(Pextract_ultimate)
+  if Qclustername == 0:
+    Pextract_ultimate = Pextract_comma
+  else:
+    Pextract_dash = []
+    for extract_i in Pextract_comma:
+      separated = seperate_string_number(extract_i)
+      dash_separated = dash(separated)
+      for separated_i in range(len(dash_separated)):
+        Pextract_dash.append(dash_separated[separated_i])
+    #print([listToString(i,"") for i in Pextract_dash])
+    Pextract_comma2 = []
+    for extract_i in Pextract_dash:
+      comma2_separated = comma2(extract_i)
+      for separated_i in range(len(comma2_separated)):
+        Pextract_comma2.append(comma2_separated[separated_i])
+    #print(Pextract_comma2)
+    Pextract_sorted = []
+    for extract_i in Pextract_comma2:
+      if len(extract_i) > 1:
+        array_sorted = sorted([extract_i[i:i + 2] for i in range(0, len(extract_i), 2)],key=lambda x: x[1])
+        Pextract_sorted.append([item for sublist in array_sorted for item in sublist])
+      else:
+        Pextract_sorted.append(extract_i)
+        Qclustername = 0
+    #print(Pextract_sorted)
+    Pextract_final = []
+    for extract_i in Pextract_sorted:
+      corrected = zeros(extract_i)
+      if len(corrected) > 0:
+        Pextract_final.append(corrected)
+    Pextract_ultimate = unique(Pextract_final)
+    #print(Pextract_ultimate)
   newclusters_df = pd.DataFrame()
   for extract_i in Pextract_ultimate:
     if Qclustername == 0:
