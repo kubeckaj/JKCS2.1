@@ -260,7 +260,7 @@ do
   fi
   if [ "$last" == "-cores_on_node" ];
   then
-    cores_in_node=$i
+    cores_in_node=$iter
     continue
   fi
   # JKQC
