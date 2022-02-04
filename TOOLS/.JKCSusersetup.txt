@@ -91,8 +91,12 @@ eval $SBATCH_PREFIX
 # it is important to load the JKCS python envirnment
 ##########################################################################################
 function program_PYTHON {
-  REPLACE_module_python 2>/dev/null
-  source REPLACE_jkcs_path/JKQC/JKCS/bin/activate
+  if [ "$module_python" != "loaded" ]
+  then
+    REPLACE_module_python 2>/dev/null
+    source REPLACE_jkcs_path/JKQC/JKCS/bin/activate
+    module_python="loaded"
+  fi
   REPLACE_python ${@}
 }
 ##########################################################################################
@@ -285,10 +289,10 @@ function program_G16 {
   echo """#!/bin/bash
 
 export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
-if [ "\$module_g16_loaded" != "loaded" ]
+if [ \"\$module_g16_loaded\" != \"loaded\" ]
 then
   $MODULE_G16 2>/dev/null
-  module_g16_loaded="loaded"
+  module_g16_loaded=\"loaded\"
 fi
 export GAUSS_EXEDIR=$PATH_G16/g16/
 export g16root=$PATH_G16
@@ -380,10 +384,10 @@ function program_ORCA {
   echo """#!/bin/bash
 export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
 
-if [ "\$module_orca_loaded" != "loaded" ]
+if [ \"\$module_orca_loaded\" != \"loaded\" ]
 then
   $MODULE_ORCA 2>/dev/null
-  module_orca_loaded="loaded"
+  module_orca_loaded=\"loaded\"
 fi
 export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
 

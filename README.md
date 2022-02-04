@@ -56,7 +56,7 @@ Jammy Key for Configurational Sampling
     molden movieXTB.xyz        #visualize molecules
      
     #######################
-    # If everything worked, continue, otherwise, contact Jakub Kubecka (jakub.kubecka@helsinki.fi).
+    # If everything worked, continue, otherwise, contact Jakub Kubecka (ja-kub-ecka@chem.au.dk).
     # adjust the rest of file ~/.JKCSusersetup.txt:
     # QUEING, QUANTUM CHEMISTRY PROGRAMS etc.
     

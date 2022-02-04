@@ -261,6 +261,7 @@ do
   if [ "$last" == "-cores_on_node" ];
   then
     cores_in_node=$i
+    continue
   fi
   # JKQC
   if [ "$iter" == "-pickle" ] || [ "$iter" == "-JKQC" ]

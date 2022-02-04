@@ -69,7 +69,7 @@ def print_help():
   print("FORMATION PROPERTIES:")
   print(" -glob OR -globout    prints only values for clusters with the lowest -g OR -gout")
   print(" -bavg OR -bavgout    prints a value that is Boltzmann average over each cluster using -g OR -gout")
-  print(" -formaition          print values as formation ")
+  print(" -formation           print values as formation ")
 
 folder = "./"	
 files = []  
@@ -657,8 +657,11 @@ for file_i in files:
             out_polarizability = 0.14818471147*sum(np.linalg.eigh(pol_mat)[0])/3.
             search+=1
             #+unit conversion
-            out_rotational_constants = [float(i) for i in out_rotational_constants]
-            out_rotational_constant = np.linalg.norm(out_rotational_constants)
+            try:
+              out_rotational_constants = [float(i) for i in out_rotational_constants]
+              out_rotational_constant = np.linalg.norm(out_rotational_constants)
+            except:
+              out_rotational_constant = missing
             out_electronic_energy = float(out_electronic_energy)
             out_mulliken_charges = [float(i) for i in out_mulliken_charges]
             out_dipole_moment = float(out_dipole_moment)
@@ -685,7 +688,9 @@ for file_i in files:
             search+=1
             continue
         #THERMOCHEMISTRY
-        if search==2:
+        if search==1 or search==2:
+          if search==1:
+            search=2
           if re.search("Rotational symmetry number", line): #T1
             out_rotational_symmetry_number = float(line.split()[3])
             continue
@@ -1053,7 +1058,10 @@ for i in Pout:
     output.append(QUenergy*clusters_df["log"]["sp_electronic_energy"].values)
     continue
   if i == "-el":
-    output.append(QUenergy*clusters_df["log"]["electronic_energy"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["electronic_energy"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-elout":
     output.append(QUenergy*clusters_df["out"]["electronic_energy"].values)
