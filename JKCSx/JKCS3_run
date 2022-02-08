@@ -47,13 +47,14 @@ function help {
    -m,-method \"X\" ....... method used by 3rd party quantum program
    -p,-program \"X\" ...... 3rd party quantum program 
                           (it has to be described in ~/.JKCSusersetup.txt)
-     OTHERS: -bs,-add,-addbase \"ATOM\" 
+     OTHERS: -bs,-add,-addbase \"ATOM\", (-greasy,-con X = cores on node) 
 
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
    ${cfYELLOW}XTB:${cfDEF}
      $scriptfile    
+     $scriptfile -p XTB -of ABC -m \"--opt --gfn 2\" 
      $scriptfile -p XTB -nf XTB_freq -rf XTB -m \"-ohess -temp 298.15\"
    ${cfYELLOW}G16:${cfDEF}
      $scriptfile -p G16 -rf ABC     -nf PM6      -m \"# PM6 opt=(calcall,verytight)  freq\"
@@ -553,7 +554,8 @@ then
   #--ntasks-per-node=$one_node_tasks
   #--cpus-per-task=$SCcpu  
   #SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime --ntasks $SCnodes -N $SCnodes --mem-per-cpu $SCmem --ntasks-per-node=$one_node_tasks --cpus-per-task $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "  
-  SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime --ntasks $SCnodes -N $SCnodes --ntasks-per-node=$one_node_tasks --cpus-per-task $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend " 
+  #SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime --ntasks $SCnodes -N $SCnodes --ntasks-per-node=$one_node_tasks --cpus-per-task $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
+  SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem`" --ntasks $SCnodes --ntasks-per-node=$one_node_tasks --cpus-per-task $SCcpu $toolspath/SCRIPTS/JKsend " 
 fi 
 
 

@@ -252,7 +252,8 @@ function JKloadsupercomputer {
   then
     SC_command="sh $toolspath/SCRIPTS/JKsend "
   else
-    SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime -N $SCnodes --mem-per-cpu $SCmem -n $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
+    SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem`" $toolspath/SCRIPTS/JKsend "
+    #SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime -N $SCnodes --mem-per-cpu $SCmem -n $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
   fi
 }
 
