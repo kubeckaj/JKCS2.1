@@ -519,9 +519,14 @@ f = open("FILTER.txt", "a")
 f.write(file_in + ' : radius = ' + str(radius) + ' xmin/dx/ymin/dy/zmin/dz ' + str(xmin[0]) + ' ' + str(dx[0]) + ' ' + str(ymin[0]) + ' ' + str(dy[0]) + ' ' + str(zmin[0]) + ' ' + str(dz[0]) + '\n')
 f.close()
 thefile = open(file_out, 'w')
-for item in cFormat:
-  print>>thefile, item
 
+original_stdout = sys.stdout
+sys.stdout = thefile
+for item in cFormat:
+  print(item)
+  #print>>thefile, item
+
+sys.stdout = original_stdout
 
 
 print('DataFilter.py: Done.')
