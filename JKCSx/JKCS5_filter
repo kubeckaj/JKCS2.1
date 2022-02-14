@@ -33,7 +33,7 @@ echoCOMMAND COMMAND: $scriptfile "$@" >> output
 
 ### THIS IS HELP
 function help {
-  eval "program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py -help"
+  eval "program_PYTHON $toolspath/SCRIPTS/DataFilter.py -help"
   exit
 }
 
@@ -279,7 +279,7 @@ fi
 
 if [ ! -z "$arguments" ]
 then
-  command="program_PYTHON2 $toolspath/SCRIPTS/DataFilter.py $arguments $analysedfile"
+  command="program_PYTHON $toolspath/SCRIPTS/DataFilter.py $arguments $analysedfile"
   JKecho 2 "$command"
   eval "$command"
 fi

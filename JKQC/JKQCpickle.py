@@ -56,7 +56,7 @@ def print_help():
   print(" -h        enthalpy energy H=el+hc [Eh]       -lf         the lowest vib. freq. [1/cm]")
   print(" -hout     Hout=elout+hc [Eh]                 -f          array of vibration freq. [1/cm]")
   print(" -s        entropy [Eh/K]                     -rsn        rotational symmetry number [-]")
-  print(" -gc       Gibbs free energy th. corr. [Eh]   -t,-time    total computational time [mins]")
+  print(" -gc       Gibbs free energy th. corr. [Eh]   -t,-time    total computational (elapsed) time [mins]")
   print(" -g        Gibbs free energy [Eh]             -rg         radius of gyration [Angstrom]")
   print(" -gout     G with el.en.corr.: Gout=G + elc   -ami        average moment of inertia")
   print(" -mull     Mulliken charges [-el.charge]      -mi         moments of inertia ")
@@ -67,9 +67,10 @@ def print_help():
   print(" -v,-as [value]       anharmonicity scaling factor")
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
   print("FORMATION PROPERTIES:")
-  print(" -glob OR -globout    prints only values for clusters with the lowest -g OR -gout")
-  print(" -bavg OR -bavgout    prints a value that is Boltzmann average over each cluster using -g OR -gout")
-  print(" -formation           print values as formation ")
+  print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
+  print(" -bavg OR -bavgout       prints a value that is Boltzmann average over each cluster using -g OR -gout")
+  print(" -formation              print values as formation ")
+  print(" <input_file> -formation print formations for the input file (no averaging though)")
 
 folder = "./"	
 files = []  
@@ -96,6 +97,7 @@ Qanh = 1
 Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
 Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
 Qformation = 0
+formation_input_file = ""
 
 last = ""
 for i in sys.argv[1:]:
@@ -363,6 +365,9 @@ for i in sys.argv[1:]:
   if i == "-formation" or i == "--formation":
     Qformation = 1
     continue
+  if os.path.exists(i):
+    formation_input_file = i
+    continue
   #UNKNOWN ARGUMENT   
   print("I am sorry but I do not understand the argument: "+i+" [EXITING]")
   exit()  
@@ -371,7 +376,7 @@ for i in sys.argv[1:]:
 # Checking for arguments
 
 if len(files) == 0:
-  if len(input_pkl) == 0:
+  if len(input_pkl) == 0 and len(formation_input_file) == 0:
     import glob
     files = glob.glob(folder+"/*.log")
     if len(files) == 0:
@@ -537,15 +542,35 @@ for file_i in files:
         testXTB = 1
         break
     if testXTB == 1:
+      out_dipole_moment = missing      #0
       out_electronic_energy = missing  #1
       out_gibbs_free_energy = missing  #2
       for line in file:
+        if re.search("Debye", line): #0
+          try:
+            out_dipole_moment = float(line.split()[5])
+          except:
+            out_dipole_moment = missing
+          continue
         if re.search("TOTAL ENERGY", line): #1
-          out_electronic_energy = float(line.split()[3])
+          try:
+            out_electronic_energy = float(line.split()[3])
+          except:
+            out_electronic_energy = missing
+          continue
         if re.search("total E", line): #1
-          out_electronic_energy = float(line.split()[3])
+          try:
+            out_electronic_energy = float(line.split()[3])
+          except:
+            out_electronic_energy = missing
+          continue
         if re.search("TOTAL FREE ENERGY", line): #2
-          out_gibbs_free_energy = float(line.split()[0])
+          try:
+            out_gibbs_free_energy = float(line.split()[0])
+          except:
+            out_gibbs_free_energy = missing
+          continue
+      clusters_df = df_add_iter(clusters_df, "log", "dipole_moment", [str(cluster_id)], [out_dipole_moment])
       clusters_df = df_add_iter(clusters_df, "log", "electronic_energy", [str(cluster_id)], [out_electronic_energy])
       clusters_df = df_add_iter(clusters_df, "log", "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy])
     file.close()
@@ -592,10 +617,14 @@ for file_i in files:
       save_something=""
       for line in file:
         #TIME
-        if re.search("Job cpu time:",line): 
+        if re.search("Elapsed time:",line): 
           if np.isnan(out_time):
             out_time = 0
-          out_time += float(line.split()[3])*24*60+float(line.split()[5])*60+float(line.split()[7])+float(line.split()[9])/60 
+          try:
+            out_time += float(line.split()[3])*24*60+float(line.split()[5])*60+float(line.split()[7])+float(line.split()[9])/60 
+          except:
+            out_time = missing
+          continue
         #INITIAL SEARCH
         if search==-1:
           if re.search(" Charge = ", line): #I1/I2
@@ -618,7 +647,10 @@ for file_i in files:
                 out_NAtoms = missing
               continue
           if re.search("Rotational constants ", line): #O1/O2
-            out_rotational_constants = [str(line.split()[3]),str(line.split()[4]),str(line.split()[5])]
+            try:
+              out_rotational_constants = [str(line.split()[3]),str(line.split()[4]),str(line.split()[5])]
+            except:
+              out_rotational_constants = missing
             continue
           if re.search("SCF Done", line): #O3
             try:
@@ -632,11 +664,17 @@ for file_i in files:
           if re.search(" Mulliken charges:", line): #O4
             save_mulliken_charges = out_NAtoms+1
             save_something = "mulliken_charges"
-            out_mulliken_charges = ["0"]*out_NAtoms
+            try:
+              out_mulliken_charges = ["0"]*out_NAtoms
+            except:
+              out_mulliken_charges = missing
             continue
           if save_something == "mulliken_charges":
-            if save_mulliken_charges<=out_NAtoms:
-              out_mulliken_charges[out_NAtoms-save_mulliken_charges] = str(line.split()[2])
+            try:
+              if save_mulliken_charges<=out_NAtoms:
+                out_mulliken_charges[out_NAtoms-save_mulliken_charges] = str(line.split()[2])
+            except:
+              out_mulliken_charges = missing
             save_mulliken_charges-=1
             if save_mulliken_charges == 0:
               save_something = ""
@@ -646,37 +684,59 @@ for file_i in files:
             save_something = "dipole_moment"
             continue
           if save_something == "dipole_moment":
-            out_dipole_moment = str(line.split()[7])
-            out_dipole_moments = [str(line.split()[1]), str(line.split()[3]), str(line.split()[5])]
+            try:
+              out_dipole_moment = str(line.split()[7])
+            except:
+              out_dipole_moment = missing
+            try:
+              out_dipole_moments = [str(line.split()[1]), str(line.split()[3]), str(line.split()[5])]
+            except:
+              out_dipole_moments = missing
             save_something = ""
             continue
           # POLARIZABILITY 
           if re.search("Exact polarizability", line): #O7
-            pol = [float(i) for i in line.split()[2:]]
-            pol_mat = np.matrix([[pol[0],pol[1],pol[3]],[pol[1],pol[2],pol[4]],[pol[3],pol[4],pol[5]]])
-            out_polarizability = 0.14818471147*sum(np.linalg.eigh(pol_mat)[0])/3.
+            try:
+              pol = [float(i) for i in line.split()[2:]]
+              pol_mat = np.matrix([[pol[0],pol[1],pol[3]],[pol[1],pol[2],pol[4]],[pol[3],pol[4],pol[5]]])
+              out_polarizability = 0.14818471147*sum(np.linalg.eigh(pol_mat)[0])/3.
+            except:
+              out_polarizability = missing
             search+=1
             #+unit conversion
             try:
               out_rotational_constants = [float(i) for i in out_rotational_constants]
-              out_rotational_constant = np.linalg.norm(out_rotational_constants)
             except:
-              out_rotational_constant = missing
+              out_rotational_constants = missing
+            out_rotational_constant = np.linalg.norm(out_rotational_constants)
             out_electronic_energy = float(out_electronic_energy)
-            out_mulliken_charges = [float(i) for i in out_mulliken_charges]
+            try:
+              out_mulliken_charges = [float(i) for i in out_mulliken_charges]
+            except:
+              out_mulliken_charges = missing
             out_dipole_moment = float(out_dipole_moment)
-            out_dipole_moments = [float(i) for i in out_dipole_moments]
+            try:
+              out_dipole_moments = [float(i) for i in out_dipole_moments]
+            except:
+              out_dipole_moments = missing
             continue       
         #VIBRATIONAL FREQUENCIES
         if search==1:
           if re.search("Frequencies", line): #V1
             if np.all(np.isnan(out_vibrational_frequencies)):
               out_vibrational_frequencies = []
-            out_vibrational_frequencies += [float(i) for i in line.split()[2:]]
+            try:
+              out_vibrational_frequencies += [float(i) for i in line.split()[2:]]
+            except:
+              out_vibrational_frequencies = missing
             continue
           if re.search("Kelvin.  Pressure", line): #V2/V3
-            out_temperature = float(line.split()[1])
-            out_pressure = float(line.split()[4])
+            try:
+              out_temperature = float(line.split()[1])
+              out_pressure = float(line.split()[4])
+            except:
+              out_temperature = missing
+              out_pressure = missing
             continue
           if re.search("Eigenvalues -- ", line): #V4
             if np.isnan(out_moments_of_inertia):
@@ -688,41 +748,69 @@ for file_i in files:
             search+=1
             continue
         #THERMOCHEMISTRY
-        if search==1 or search==2:
-          if search==1:
-            search=2
+        if search==2:
           if re.search("Rotational symmetry number", line): #T1
-            out_rotational_symmetry_number = float(line.split()[3])
+            try:
+              out_rotational_symmetry_number = float(line.split()[3])
+            except:
+              out_rotational_symmetry_number = missing
             continue
           if re.search("Zero-point correction=", line): #T2
-            out_zero_point_correction = float(line.split()[2])
+            try:
+              out_zero_point_correction = float(line.split()[2])
+            except:
+              out_zero_point_correction = missing
             continue
           if re.search("Thermal correction to Energy", line): #T3
-            out_energy_thermal_correction = float(line.split()[4])
+            try:
+              out_energy_thermal_correction = float(line.split()[4])
+            except:
+              out_energy_thermal_correction = missing
             continue
           if re.search("Thermal correction to Enthalpy", line): #T4
-            out_enthalpy_thermal_correction = float(line.split()[4])
+            try:
+              out_enthalpy_thermal_correction = float(line.split()[4])
+            except:
+              out_enthalpy_thermal_correction = missing
             continue
           if re.search("Thermal correction to Gibbs Free Energy", line): #T5
-            out_gibbs_free_energy_thermal_correction = float(line.split()[6])
+            try:
+              out_gibbs_free_energy_thermal_correction = float(line.split()[6])
+            except:
+              out_gibbs_free_energy_thermal_correction = missing
             continue
           if re.search("Sum of electronic and zero-point Energies", line): #T6
-            out_zero_point_energy = float(line.split()[6])
+            try:
+              out_zero_point_energy = float(line.split()[6])
+            except:
+              out_zero_point_energy = missing
             continue
           if re.search("Sum of electronic and thermal Energies", line): #T7
-            out_internal_energy = float(line.split()[6])
+            try:
+              out_internal_energy = float(line.split()[6])
+            except:
+              out_internal_energy = missing
             continue
           if re.search("Sum of electronic and thermal Enthalpies", line): #T8
-            out_enthalpy_energy = float(line.split()[6])
+            try:
+              out_enthalpy_energy = float(line.split()[6])
+            except:
+              out_enthalpy_energy = missing
             continue
           if re.search("Sum of electronic and thermal Free Energies", line): #T9
-            out_gibbs_free_energy = float(line.split()[7])
+            try:
+              out_gibbs_free_energy = float(line.split()[7])
+            except:
+              out_gibbs_free_energy = missing
             search += 1
             continue
         #ENTROPY
         if search==3:
           if re.search("Total", line): #E1
-            out_entropy = float(line.split()[3])
+            try:
+              out_entropy = float(line.split()[3])
+            except:
+              out_entropy = missing
             search += 1 
             continue
       #SAVE
@@ -758,10 +846,7 @@ for file_i in files:
   ### XYZ #######
   ###############
   if os.path.exists(file_i_XYZ):
-    try:
-      out = read(file_i_XYZ)
-    except:
-      out = missing
+    out = read(file_i_XYZ)
   else:
     out = missing
   clusters_df = df_add_iter(clusters_df, "xyz", "structure", [str(cluster_id)], [out])
@@ -792,6 +877,16 @@ def dash(input_array):
       for i in output_array_1:
         for j in dash(i): 
           output_array.append(j)
+      break
+  return output_array
+
+def dash_comment(input_array):
+  output_array = [input_array]
+  for element in range(len(input_array)):
+    if input_array[element] == "-":
+      output_array = []
+      partbefore = input_array[0:element]
+      output_array.append(partbefore)
       break
   return output_array
 
@@ -939,7 +1034,11 @@ if Qqha == 1:
     for i in range(len(clusters_df)):
       QtOLD = clusters_df["log","temperature"].values[i]
       if Qt != QtOLD:
-        if clusters_df["log"]["vibrational_frequencies"].values[i][0] <= -10:
+        try:
+          lf = clusters_df["log"]["vibrational_frequencies"].values[i][0]
+        except:
+          lf = -5
+        if lf <= -5:
           clusters_df["log","temperature"][i] = Qt
           clusters_df["log","entropy"][i] = missing
           clusters_df["log","enthalpy_energy"][i] = missing
@@ -963,7 +1062,11 @@ if Qqha == 1:
   # LOW VIBRATIONAL FREQUNECY TREATMENT (S // G,Gc)
   if Qfc > 0:
     for i in range(len(clusters_df)):
-      if clusters_df["log"]["vibrational_frequencies"].values[i][0] <= -10:
+      try:
+        lf = clusters_df["log"]["vibrational_frequencies"].values[i][0]
+      except:
+        lf = -5
+      if lf <= -5:
         clusters_df["log","entropy"][i] = missing
         continue
       Qt = clusters_df["log"]["temperature"].values[i]
@@ -1058,10 +1161,7 @@ for i in Pout:
     output.append(QUenergy*clusters_df["log"]["sp_electronic_energy"].values)
     continue
   if i == "-el":
-    try:
-      output.append(QUenergy*clusters_df["log"]["electronic_energy"].values)
-    except:
-      output.append([missing]*len(clusters_df))
+    output.append(QUenergy*clusters_df["log"]["electronic_energy"].values)
     continue
   if i == "-elout":
     output.append(QUenergy*clusters_df["out"]["electronic_energy"].values)
@@ -1226,5 +1326,91 @@ if not len(output) == 0:
   [f.write(" ".join(map(str,row))+"\n") for row in list(zip(*output))]
   f.close()
   #TODO can you make this working using only python?
+  os.system("cat .help.txt | column -t")
+  os.remove(".help.txt")
+
+if Qformation == 1:
+  print("#####################################")
+  print("##########  FORMATION  ##############")
+  print("#####################################")
+  if len(formation_input_file) > 0:
+    f = open(formation_input_file, "r")
+    output = []
+    for line in f.readlines():
+      output.append(line.split())
+    output = np.array(output).transpose()
+    f.close()
+  cluster_types = [dash_comment(seperate_string_number(i))[0] for i in output[0]]
+  ######## SOLVING PROTONATION
+  for i in range(len(cluster_types)):
+    chosen_cluster_type = cluster_types[i]
+    if "p" in chosen_cluster_type:
+      protonated_base = ""
+      if "gd" in chosen_cluster_type:
+        protonated_base = "gd"
+      elif "eda" in chosen_cluster_type:
+        protonated_base = "eda"
+      elif "tma" in chosen_cluster_type:
+        protonated_base = "tma"
+      elif "dma" in chosen_cluster_type:
+        protonated_base = "dma"
+      elif "am" in chosen_cluster_type:
+        protonated_base = "am"
+      elif "w" in chosen_cluster_type:
+        protonated_base = "w"
+      new_cluster_type = []
+      for j in range(1,len(chosen_cluster_type),2):
+        if chosen_cluster_type[j] == protonated_base:
+          subsctracted = int(chosen_cluster_type[j-1]) - 1
+          if subsctracted > 0:
+            new_cluster_type.append(str(subsctracted))
+            new_cluster_type.append(chosen_cluster_type[j])
+        elif chosen_cluster_type[j] == "p":
+          if int(chosen_cluster_type[j-1]) > 1:
+            new_cluster_type.append(str(int(chosen_cluster_type[j-1]) - 1))
+            new_cluster_type.append(chosen_cluster_type[j])
+          else:
+            continue
+        else:
+          new_cluster_type.append(chosen_cluster_type[j-1])
+          new_cluster_type.append(chosen_cluster_type[j])
+      new_cluster_type.append("1")
+      new_cluster_type.append("protonated_"+protonated_base)       
+      cluster_types[i] = new_cluster_type 
+  ########################        
+  #print(cluster_types)
+  cluster_types_sorted = [sorted([extract_i[i:i + 2] for i in range(0, len(extract_i), 2)],key=lambda x: x[1]) for extract_i in cluster_types]
+  #print(cluster_types_sorted)
+  monomers = np.array([np.sum([int(j) for j in np.array(i)[:,0]]) for i in cluster_types_sorted]) == 1
+  dt = np.dtype(object)
+  #print(np.array(cluster_types,dtype=dt)[monomers])
+  monomer_types = [i[1] for i in np.array(cluster_types,dtype=dt)[monomers]]
+  #print(monomer_types)
+  print("MONOMERS: " + " ".join(monomer_types))
+  f = open(".help.txt", "w")
+  for i in range(len(output[0])):
+    line = np.array(output)[:,i]
+    for j in range(len(cluster_types_sorted[i])):
+      cluster_molecule = cluster_types_sorted[i][j][1]
+      cluster_molecule_number = cluster_types_sorted[i][j][0]
+      #print(np.array(output)[:,monomers])
+      test_monomer = 0
+      for k in range(len(np.array(output)[:,monomers][0])):
+        #selected_monomer = seperate_string_number(np.array(output)[:,monomers][0,k])[1]
+        selected_monomer = np.array(cluster_types_sorted,dtype=dt)[monomers][k][0][1]
+        #print("--------------------------")
+        #print(selected_monomer)
+        #print(cluster_molecule)
+        if cluster_molecule == selected_monomer:
+          for line_i in range(1,len(line)):
+            try:
+              line[line_i] = float(line[line_i]) - float(cluster_molecule_number) * float(np.array(output)[:,monomers][line_i,k])
+            except:
+              line[line_i] = missing
+          test_monomer = 1
+      if test_monomer == 0:
+        line[1:] = missing 
+    f.write(" ".join(line)+"\n")
+  f.close()
   os.system("cat .help.txt | column -t")
   os.remove(".help.txt")
