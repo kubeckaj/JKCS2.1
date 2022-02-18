@@ -58,9 +58,9 @@ def print_help():
   print(" -s        entropy [Eh/K]                     -rsn        rotational symmetry number [-]")
   print(" -gc       Gibbs free energy th. corr. [Eh]   -t,-time    total computational (elapsed) time [mins]")
   print(" -g        Gibbs free energy [Eh]             -rg         radius of gyration [Angstrom]")
-  print(" -gout     G with el.en.corr.: Gout=G + elc   -ami        average moment of inertia")
-  print(" -mull     Mulliken charges [-el.charge]      -mi         moments of inertia ")
-  print(" -xyz      save all xyz files")
+  print(" -gout     G with el.en.corr.:Gout=G+elc [Eh] -radius     approx. radius of cluster size [Angstrom]")
+  print(" -mull     Mulliken charges [-el.charge]      -ami        average moment of inertia")
+  print(" -xyz      save all xyz files                 -mi         moments of inertia")
   print("POST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies")
   print(" -temp [value in K]   recalculate for different temperature")
@@ -69,6 +69,7 @@ def print_help():
   print("FORMATION PROPERTIES:")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
   print(" -bavg OR -bavgout       prints a value that is Boltzmann average over each cluster using -g OR -gout")
+  print("                         NOTE: -g/-gout is treated correctly + -s not treated (use (G - H)/T")
   print(" -formation              print values as formation ")
   print(" <input_file> -formation print formations for the input file (no averaging though)")
 
@@ -188,6 +189,9 @@ for i in sys.argv[1:]:
   # RG
   if i == "-rg" or i == "--rg" or i == "-Rg" or i == "--Rg":
     Pout.append("-rg")
+    continue
+  if i == "-radius" or i == "--radius":
+    Pout.append("-radius")
     continue
   # INFO
   if i == "-ct" or i == "-clustertype" or i == "--ct" or i == "--clustertype":
@@ -544,7 +548,9 @@ for file_i in files:
     if testXTB == 1:
       out_dipole_moment = missing      #0
       out_electronic_energy = missing  #1
+      out_enthalpy_energy = missing                      #T8
       out_gibbs_free_energy = missing  #2
+      out_entropy = missing                              #E1
       for line in file:
         if re.search("Debye", line): #0
           try:
@@ -564,6 +570,16 @@ for file_i in files:
           except:
             out_electronic_energy = missing
           continue
+        if re.search("^H\(T\)", line): #T8
+          try:
+            out_enthalpy_energy = out_electronic_energy + float(line.split()[1])
+          except:
+            out_enthalpy_energy = missing
+        if re.search("^T\*S ", line): #E1
+          try:
+            out_entropy = float(line.split()[1])*1000*627.503/298.15
+          except:
+            out_entropy = missing
         if re.search("TOTAL FREE ENERGY", line): #2
           try:
             out_gibbs_free_energy = float(line.split()[0])
@@ -573,6 +589,8 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "dipole_moment", [str(cluster_id)], [out_dipole_moment])
       clusters_df = df_add_iter(clusters_df, "log", "electronic_energy", [str(cluster_id)], [out_electronic_energy])
       clusters_df = df_add_iter(clusters_df, "log", "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy])
+      clusters_df = df_add_iter(clusters_df, "log", "enthalpy_energy", [str(cluster_id)], [out_enthalpy_energy])
+      clusters_df = df_add_iter(clusters_df, "log", "entropy", [str(cluster_id)], [out_entropy])
     file.close()
 
   ###############
@@ -1121,140 +1139,283 @@ for i in Pout:
       except:
         rg.append(missing)
     output.append(rg)
-    continue 
+    continue
+  if i == "-radius":
+    radius = []
+    for aseCL in clusters_df["xyz"]["structure"]:
+      try:
+        dist = lambda p1, p2: np.sqrt(np.sum((p1-p2)**2))
+        centered = aseCL.positions-aseCL.positions.mean(axis = 0)
+        ratios = np.sqrt(np.linalg.eigvalsh(np.dot(centered.transpose(),centered)/len(centered)))
+        ratios = ratios / np.max(ratios)
+        maxdist = np.max(np.asarray([[dist(p1, p2) for p2 in aseCL.positions] for p1 in aseCL.positions]))
+        radius.append((np.prod(maxdist*ratios))**(1/3))	
+      except:
+        radius.append(missing)
+    output.append(radius)
+    continue
   #INFO
-  if i == "-ct": 
-    output.append(clusters_df["info"]["cluster_type"].values)
+  if i == "-ct":
+    try: 
+      output.append(clusters_df["info"]["cluster_type"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-b": 
-    output.append(clusters_df["info"]["file_basename"].values)
+    try:
+      output.append(clusters_df["info"]["file_basename"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-nOUT":
-    output.append(clusters_df["info"]["file_basename"].values+".out")
+    try:
+      output.append(clusters_df["info"]["file_basename"].values+".out")
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-nLOG":
-    output.append(clusters_df["info"]["file_basename"].values+".log")
+    try:
+      output.append(clusters_df["info"]["file_basename"].values+".log")
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-nXYZ":
-    output.append(clusters_df["info"]["file_basename"].values+".xyz")
+    try:
+      output.append(clusters_df["info"]["file_basename"].values+".xyz")
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-pOUT":
-    output.append(clusters_df["info"]["folder_path"].values+clusters_df["info"]["file_basename"].values+".out")
+    try:
+      output.append(clusters_df["info"]["folder_path"].values+clusters_df["info"]["file_basename"].values+".out")
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-pLOG":
-    output.append(clusters_df["info"]["folder_path"].values+clusters_df["info"]["file_basename"].values+".log")
+    try:
+      output.append(clusters_df["info"]["folder_path"].values+clusters_df["info"]["file_basename"].values+".log")
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-pXYZ":
-    output.append(clusters_df["info"]["folder_path"].values+clusters_df["info"]["file_basename"].values+".xyz")
+    try:
+      output.append(clusters_df["info"]["folder_path"].values+clusters_df["info"]["file_basename"].values+".xyz")
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-ePKL":
     if Qout > 0 or len(input_pkl) == 1:
       if Qout > 0:
-        output.append(os.path.abspath(output_pkl)+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
+        try:
+          output.append(os.path.abspath(output_pkl)+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
+        except:
+          output.append([missing]*len(clusters_df))
       else:
-        output.append(os.path.abspath(input_pkl[0])+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
+        try:
+          output.append(os.path.abspath(input_pkl[0])+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
+        except:
+          output.append([missing]*len(clusters_df))
     else:
       print("Sorry but it seems to me that you are taking this from more file or no file is formed (yet)")
       exit()
     continue
   if i == "-elsp":
-    output.append(QUenergy*clusters_df["log"]["sp_electronic_energy"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["sp_electronic_energy"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-el":
-    output.append(QUenergy*clusters_df["log"]["electronic_energy"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["electronic_energy"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-elout":
-    output.append(QUenergy*clusters_df["out"]["electronic_energy"].values)
+    try:
+      output.append(QUenergy*clusters_df["out"]["electronic_energy"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-elc":
-    output.append(QUenergy*(clusters_df["out"]["electronic_energy"].values-clusters_df["log"]["electronic_energy"].values))
+    try:
+      output.append(QUenergy*(clusters_df["out"]["electronic_energy"].values-clusters_df["log"]["electronic_energy"].values))
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-uc":
-    output.append(QUenergy*clusters_df["log"]["energy_thermal_correction"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["energy_thermal_correction"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-u":
-    output.append(QUenergy*(clusters_df["log"]["electronic_energy"].values+clusters_df["log"]["energy_thermal_correction"].values))
+    try:
+      output.append(QUenergy*(clusters_df["log"]["electronic_energy"].values+clusters_df["log"]["energy_thermal_correction"].values))
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-uout":
-    output.append(QUenergy*(clusters_df["out"]["electronic_energy"].values+clusters_df["log"]["energy_thermal_correction"].values))
+    try:
+      output.append(QUenergy*(clusters_df["out"]["electronic_energy"].values+clusters_df["log"]["energy_thermal_correction"].values))
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-zpec": 
-    output.append(QUenergy*clusters_df["log"]["zero_point_correction"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["zero_point_correction"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-zpe":
-    output.append(QUenergy*(clusters_df["log"]["electronic_energy"].values+clusters_df["log"]["zero_point_correction"].values))
+    try:
+      output.append(QUenergy*(clusters_df["log"]["electronic_energy"].values+clusters_df["log"]["zero_point_correction"].values))
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-zpeout":
-    output.append(QUenergy*(clusters_df["out"]["electronic_energy"].values+clusters_df["log"]["zero_point_correction"].values))
+    try:
+      output.append(QUenergy*(clusters_df["out"]["electronic_energy"].values+clusters_df["log"]["zero_point_correction"].values))
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-g":
-    output.append(QUenergy*clusters_df["log"]["gibbs_free_energy"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["gibbs_free_energy"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-gc":
-    output.append(QUenergy*clusters_df["log"]["gibbs_free_energy_thermal_correction"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["gibbs_free_energy_thermal_correction"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-gout":
-    output.append(QUenergy*(clusters_df["log"]["gibbs_free_energy"].values+clusters_df["out"]["electronic_energy"].values-clusters_df["log"]["electronic_energy"].values))
+    try:
+      output.append(QUenergy*(clusters_df["log"]["gibbs_free_energy"].values+clusters_df["out"]["electronic_energy"].values-clusters_df["log"]["electronic_energy"].values))
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-h":
-    output.append(QUenergy*clusters_df["log"]["enthalpy_energy"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["enthalpy_energy"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-hc":
-    output.append(QUenergy*clusters_df["log"]["enthalpy_thermal_correction"].values)
+    try:
+      output.append(QUenergy*clusters_df["log"]["enthalpy_thermal_correction"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-hout":
-    output.append(QUenergy*(clusters_df["log"]["enthalpy_energy"].values+clusters_df["out"]["electronic_energy"].values-clusters_df["log"]["electronic_energy"].values))
+    try:
+      output.append(QUenergy*(clusters_df["log"]["enthalpy_energy"].values+clusters_df["out"]["electronic_energy"].values-clusters_df["log"]["electronic_energy"].values))
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-s":
-    output.append(QUentropy*clusters_df["log"]["entropy"].values/1000/627.503)
+    try:
+      output.append(QUentropy*clusters_df["log"]["entropy"].values/1000/627.503)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-lf": 
-    output.append([value[0] for value in clusters_df["log"]["vibrational_frequencies"].values])
+    try:
+      output.append([value[0] for value in clusters_df["log"]["vibrational_frequencies"].values])
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-f":
-    output.append(clusters_df["log"]["vibrational_frequencies"].values)
+    try:
+      output.append(clusters_df["log"]["vibrational_frequencies"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-rot":
-    output.append(clusters_df["log"]["rotational_constant"].values)
+    try:
+      output.append(clusters_df["log"]["rotational_constant"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-rots":
-    output.append(clusters_df["log"]["rotational_constants"].values)
+    try:
+      output.append(clusters_df["log"]["rotational_constants"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-mult":
-    output.append(clusters_df["log"]["multiplicity"].values)
+    try:
+      output.append(clusters_df["log"]["multiplicity"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-char":
-    output.append(clusters_df["log"]["charge"].values)
+    try:
+      output.append(clusters_df["log"]["charge"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-mull":
-    output.append(clusters_df["log"]["mulliken_charges"].values)
+    try:
+      output.append(clusters_df["log"]["mulliken_charges"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-dip":
-    output.append(clusters_df["log"]["dipole_moment"].values)
+    try:
+      output.append(clusters_df["log"]["dipole_moment"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-dips":
-    output.append(clusters_df["log"]["dipole_moments"].values)
+    try:
+      output.append(clusters_df["log"]["dipole_moments"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-pol":
-    output.append(clusters_df["log"]["polarizability"].values)
+    try:
+      output.append(clusters_df["log"]["polarizability"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-templog":
-    output.append(clusters_df["log"]["temperature"].values)
+    try:
+      output.append(clusters_df["log"]["temperature"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-preslog":
-    output.append(clusters_df["log"]["pressure"].values)
+    try:
+      output.append(clusters_df["log"]["pressure"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-mi":
-    output.append([structure.get_moments_of_inertia() for structure in clusters_df["xyz"]["structure"].values])
+    try:
+      output.append([structure.get_moments_of_inertia() for structure in clusters_df["xyz"]["structure"].values])
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-ami":
-    output.append([np.mean(structure.get_moments_of_inertia()) for structure in clusters_df["xyz"]["structure"].values])
+    try:
+      output.append([np.mean(structure.get_moments_of_inertia()) for structure in clusters_df["xyz"]["structure"].values])
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-rsn":
-    output.append(clusters_df["log"]["rotational_symmetry_number"].values)
+    try:
+      output.append(clusters_df["log"]["rotational_symmetry_number"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   if i == "-t":
-    output.append(clusters_df["log"]["time"].values)
+    try:
+      output.append(clusters_df["log"]["time"].values)
+    except:
+      output.append([missing]*len(clusters_df))
     continue
   output.append(["UNKNOWN_ARGUMENT"]*len(clusters_df))
 
@@ -1283,7 +1444,9 @@ if not len(output) == 0:
   if Qbavg == 1 or Qbavg == 2:
     k = 1.380662*10**-23 # [J/K]
     uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
-    portions = [] 
+    portions = []
+    freeenergies = [] 
+    entropies = []
     indexes = []
     for i in uniqueclusters:
       if Qbavg == 1:
@@ -1298,8 +1461,10 @@ if not len(output) == 0:
         exit()
       nonans = ~pd.isna(GFE)
       GFE = GFE[nonans]
-      GFE = GFE-np.min(GFE)
-      preportions = [np.exp(-GFE[i]*43.60*10**-19/k/temps[i]) for i in range(GFE.shape[0])]
+      minimum = np.min(GFE)
+      GFE = GFE-minimum
+      preportions = [np.exp(-GFE[i]*43.60*10**-19/k/temps[nonans][i]) for i in range(GFE.shape[0])]
+      freeenergies.append(QUenergy*(minimum - 1/43.60/10**-19*k*temps[nonans][0]*np.log(np.sum([np.exp(GFE[i]*43.60*10**-19/k/temps[nonans][i]) for i in range(GFE.shape[0])]))))
       sumpreportions = np.sum(preportions)
       portions.append(preportions/sumpreportions)
       indexes.append(np.array(range(len(clusters_df)))[clusters_df["info"]["cluster_type"] == i][nonans])
@@ -1320,7 +1485,16 @@ if not len(output) == 0:
         return input_array[0]
       else:
         return missing
-    output = [[np.sum([portions[i][j]*output[l,indexes[i][j]] for j in range(len(portions[i]))]) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]
+
+    def myif(cond,opt1,opt2,opt3):
+      if Pout[cond] == "-g" or Pout[cond] == "-gout":
+        return opt2
+      elif Pout[cond] == "-s":
+        return opt3
+      else:
+        return opt1
+    
+    output = [[myif(l,np.sum([portions[i][j]*output[l,indexes[i][j]] for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]
  
   f = open(".help.txt", "w")
   [f.write(" ".join(map(str,row))+"\n") for row in list(zip(*output))]
