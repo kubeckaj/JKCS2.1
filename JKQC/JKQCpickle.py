@@ -864,7 +864,10 @@ for file_i in files:
   ### XYZ #######
   ###############
   if os.path.exists(file_i_XYZ):
-    out = read(file_i_XYZ)
+    try:
+      out = read(file_i_XYZ)
+    except:
+      out = missing
   else:
     out = missing
   clusters_df = df_add_iter(clusters_df, "xyz", "structure", [str(cluster_id)], [out])
