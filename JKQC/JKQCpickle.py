@@ -37,6 +37,8 @@ def print_help():
   print(" -out X.pkl save data to XX.pkl (-noex = do not print example)")
   print(" -folder X  takes in all X/*.log files")
   print(" -noname    the file names are not analysed (e.g. 1000-10_1.xyz)\n")
+  print(" -extract X prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
+  print(" -reacted   removes (the minority of) reacted structures")
   print("PRINT:")
   print(" -ct                cluster type (e.g. 1sa,3sa2am-4)")
   print(" -b                 basename (e.g. 1sa-3, 3sa2am-4_508)")
@@ -81,6 +83,7 @@ output_pkl = "mydatabase.pkl"
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
 Pextract = []
+Qreacted = 0 #Remove reacted structures
 
 Qout = 0 #Do I want to save output.pkl? 0=NO,1=YES,2=YES but do not print example
 Pout = []
@@ -146,6 +149,10 @@ for i in sys.argv[1:]:
   #NONAME
   if i == "-noname":
     Qclustername = 0
+    continue
+  #REACTED
+  if i == "-reacted":
+    Qreacted = 1
     continue
   #NOEXAMPLE
   if i == "-noexample" or i == "-noex":
@@ -1011,6 +1018,60 @@ if Qextract > 0:
         newclusters_df = newclusters_df.append(extracted_df)
         #print(newclusters_df)
   clusters_df = newclusters_df
+
+if Qreacted > 0:
+  all_molecules = []
+  dt = np.dtype(object)
+  a = clusters_df
+  for k in range(len(clusters_df)):
+    b = a["xyz"]["structure"][k]
+    p = b.positions
+    symb = np.array(b.get_chemical_symbols())
+    ind = [i != 'H' for i in symb]
+  
+    dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
+    dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
+  
+    def bonded(x):
+      if x < 1.75:
+        return 1
+      else:
+        return 0
+  
+    bm = np.array([[bonded(j) for j in i] for i in dm])
+  
+    test = 0
+    choosing_list = range(len(bm))
+    molecules=[]
+    while test == 0:
+      selected = [choosing_list[0]]
+      test_chosen = 0
+      j = -1
+      while test_chosen == 0:
+        j += 1
+        #print(str(j)+"/"+str(len(bm)))
+        #print(selected)
+        chosen = selected[j]
+        for i in choosing_list:
+          if bm[choosing_list[j]][i] == 1 and choosing_list[j] != i and not (i in selected):
+            selected.append(i)
+        if len(selected)-1 == j:
+          test_chosen = 1
+      molecules.append(list(np.sort([symb[ind][i] for i in selected])))
+      choosing_list = [i for i in choosing_list if i not in selected]
+      if len(choosing_list) == 0:
+        test = 1
+    all_molecules.append(str(np.sort(np.array(molecules,dtype = dt))))
+
+  def most_frequent(List):
+      return max(set(List), key = List.count)
+  
+  #print(most_frequent(all_molecules))
+  mf = most_frequent(all_molecules)
+  #print(mf)
+  #print(all_molecules[0])
+  nind = [ i == mf for i in all_molecules]
+  clusters_df = clusters_df[nind]
 
 ## SAVE OUTPUT.pkl ##
 if Qout > 0:

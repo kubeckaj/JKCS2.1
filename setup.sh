@@ -1,6 +1,7 @@
 # USE
 # ./setup.sh
-# ./setup.sh -r //rewrite ~/.JKCSusersetup.txt
+# ./setup.sh -r  //rewrite ~/.JKCSusersetup.txt + run JKQC install
+# ./setup.sh -r2 //rewrite ~/.JKCSusersetup.txt
 
 ### MODIFY ###
 
@@ -59,7 +60,7 @@ echo -e "${cfRED}Write following command:${cfDEF} "
 echo -e "          ${cfYELLOW}source ~/.bashrc${cfDEF}"
 echo "-----------------------"
 
-if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ]
+if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ] || [ "$1" == "-r2" ]
 then
   if [ -e ~/.JKCSusersetup.txt ]; then cp ~/.JKCSusersetup.txt ~/.oldJKCSusersetup.txt; fi
   cp TOOLS/.JKCSusersetup.txt .help1

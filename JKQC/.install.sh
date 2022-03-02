@@ -1,6 +1,6 @@
 #!/bin/bash
 PYTHON=$1         #python3.9
-MODULE_PYTHON=$2  #"module load python-data/3.9-1"
+MODULE_PYTHON="$2;"  #"module load python-data/3.9-1"
 
 eval $MODULE_PYTHON
 ### MAKING OWN ENVIRONMENT
@@ -87,7 +87,7 @@ function writetobashrc {
 echo " - saving JKpython alias to ~/.bashrc"
 PyPATH=$(which $PYTHON)
 
-command="alias JKpython='$Module; source $PWD/JKCS/bin/activate; alias python=$PyPATH'"
+command="alias JKpython='$MODULE_PYTHON source $PWD/JKCS/bin/activate; alias python=$PyPATH'"
 writetobashrc "$command"
 
 #search=$(grep -c JKpython ~/.bashrc)
