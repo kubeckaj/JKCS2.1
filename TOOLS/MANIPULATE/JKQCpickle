@@ -1,3 +1,4 @@
 #!/bin/bash
-source ~/.JKCSusersetup.txt
-program_JKQCpickle ${@}
+#source ~/.JKCSusersetup.txt
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+python $scriptpath/../../JKQC/JKQCpickle.py ${@}

@@ -62,7 +62,8 @@ def print_help():
   print(" -g        Gibbs free energy [Eh]             -rg         radius of gyration [Angstrom]")
   print(" -gout     G with el.en.corr.:Gout=G+elc [Eh] -radius     approx. radius of cluster size [Angstrom]")
   print(" -mull     Mulliken charges [-el.charge]      -ami        average moment of inertia")
-  print(" -xyz      save all xyz files                 -mi         moments of inertia")
+  print(" -xyz      save all XYZ files                 -mi         moments of inertia")
+  print(" -movie    save all XYZs to movie.xyz         ")
   print("POST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies")
   print(" -temp [value in K]   recalculate for different temperature")
@@ -192,6 +193,10 @@ for i in sys.argv[1:]:
   # XYZ
   if i == "-xyz" or i == "--xyz" or i == "-XYZ" or i == "--XYZ":
     Pout.append("-xyz")
+    continue
+  # MOVIE
+  if i == "-movie" or i == "--movie":
+    Pout.append("-movie")
     continue
   # RG
   if i == "-rg" or i == "--rg" or i == "-Rg" or i == "--Rg":
@@ -1025,43 +1030,46 @@ if Qreacted > 0:
   a = clusters_df
   for k in range(len(clusters_df)):
     b = a["xyz"]["structure"][k]
-    p = b.positions
-    symb = np.array(b.get_chemical_symbols())
-    ind = [i != 'H' for i in symb]
+    if pd.isna(b):
+      all_molecules.append(str(missing))
+    else:
+      p = b.positions
+      symb = np.array(b.get_chemical_symbols())
+      ind = [i != 'H' for i in symb]
   
-    dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
-    dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
+      dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
+      dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
   
-    def bonded(x):
-      if x < 1.75:
-        return 1
-      else:
-        return 0
+      def bonded(x):
+        if x < 1.75:
+          return 1
+        else:
+          return 0
   
-    bm = np.array([[bonded(j) for j in i] for i in dm])
+      bm = np.array([[bonded(j) for j in i] for i in dm])
   
-    test = 0
-    choosing_list = range(len(bm))
-    molecules=[]
-    while test == 0:
-      selected = [choosing_list[0]]
-      test_chosen = 0
-      j = -1
-      while test_chosen == 0:
-        j += 1
-        #print(str(j)+"/"+str(len(bm)))
-        #print(selected)
-        chosen = selected[j]
-        for i in choosing_list:
-          if bm[choosing_list[j]][i] == 1 and choosing_list[j] != i and not (i in selected):
-            selected.append(i)
-        if len(selected)-1 == j:
-          test_chosen = 1
-      molecules.append(list(np.sort([symb[ind][i] for i in selected])))
-      choosing_list = [i for i in choosing_list if i not in selected]
-      if len(choosing_list) == 0:
-        test = 1
-    all_molecules.append(str(np.sort(np.array(molecules,dtype = dt))))
+      test = 0
+      choosing_list = range(len(bm))
+      molecules=[]
+      while test == 0:
+        selected = [choosing_list[0]]
+        test_chosen = 0
+        j = -1
+        while test_chosen == 0:
+          j += 1
+          #print(str(j)+"/"+str(len(bm)))
+          #print(selected)
+          chosen = selected[j]
+          for i in choosing_list:
+            if bm[choosing_list[j]][i] == 1 and choosing_list[j] != i and not (i in selected):
+              selected.append(i)
+          if len(selected)-1 == j:
+            test_chosen = 1
+        molecules.append(list(np.sort([symb[ind][i] for i in selected])))
+        choosing_list = [i for i in choosing_list if i not in selected]
+        if len(choosing_list) == 0:
+          test = 1
+      all_molecules.append(str(np.sort(np.array(molecules,dtype = dt))))
 
   def most_frequent(List):
       return max(set(List), key = List.count)
@@ -1145,18 +1153,23 @@ if Qqha == 1:
   if Qfc > 0:
     for i in range(len(clusters_df)):
       try:
-        lf = clusters_df["log"]["vibrational_frequencies"].values[i][0]
+        lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
       except:
-        lf = -5
-      if lf <= -5:
+        lf = 0
+      if lf <= 0:
         clusters_df["log","entropy"][i] = missing
         continue
       Qt = clusters_df["log"]["temperature"].values[i]
       vibs = clusters_df["log"]["vibrational_frequencies"].values[i]
       structure = clusters_df["xyz"]["structure"].values[i]
-      mu = [h/(8*np.pi**2*2.99793*10**10*vib) for vib in vibs]
+      
+      mu = [float(h/(8*np.pi**2*2.99793*10**10*vib)) for vib in vibs]
       mi = np.mean(structure.get_moments_of_inertia())
+      #print(mu)
+      #print(mi)
       Sr = [R*(0.5+np.log((8*np.pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K
+      #print(Sr,flush=True)
+      #print(vibs)
       Sv = [R*h*vib*2.99793*10**10/k/Qt/(np.exp(h*vib*2.99793*10**10/k/Qt)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/Qt)) for vib in vibs] #cal/mol/K
       w = [1/(1+(Qfc/vib)**4) for vib in vibs]
       Sv_corr = np.sum([w[j]*Sv[j]+(1-w[j])*Sr[j] for j in range(len(w))])
@@ -1183,8 +1196,18 @@ if Qqha == 1:
 #    ###
 
   ## CORRECTIONS FOR GIBBS FREE ENERGY
-  clusters_df["log","gibbs_free_energy"] = [clusters_df["log","enthalpy_energy"][i] - clusters_df["log","entropy"][i]/1000/627.503 * clusters_df["log","temperature"][i] for i in range(len(clusters_df))] 
-  clusters_df["log","gibbs_free_energy_thermal_correction"] = [clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i] for i in range(len(clusters_df))] 
+  for i in range(len(clusters_df)):
+    try:
+      clusters_df["log","gibbs_free_energy"][i] = clusters_df["log","enthalpy_energy"][i] - clusters_df["log","entropy"][i]/1000/627.503 * clusters_df["log","temperature"][i]
+    except:
+      clusters_df["log","gibbs_free_energy"][i] = missing
+    try:
+      clusters_df["log","gibbs_free_energy_thermal_correction"][i] = clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i]
+    except:
+      clusters_df["log","gibbs_free_energy_thermal_correction"][i] = missing
+
+  #  clusters_df["log","gibbs_free_energy"] = [clusters_df["log","enthalpy_energy"][i] - clusters_df["log","entropy"][i]/1000/627.503 * clusters_df["log","temperature"][i] for i in range(len(clusters_df))] 
+   #  clusters_df["log","gibbs_free_energy_thermal_correction"] = [clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i] for i in range(len(clusters_df))] 
 
 ## EXTRACT DATA ##
 output = []
@@ -1193,6 +1216,11 @@ for i in Pout:
   if i == "-xyz":
     for ind in clusters_df.index:
       write(clusters_df["info"]["file_basename"][ind]+".xyz",clusters_df["xyz"]["structure"][ind])
+    continue
+  #MOVIE
+  if i == "-movie":
+    for ind in clusters_df.index:
+      write("movie.xyz",clusters_df["xyz"]["structure"][ind])
     continue
   #Rg
   if i == "-rg":
