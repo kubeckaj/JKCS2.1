@@ -45,25 +45,25 @@ def print_help():
   print(" -nXYZ,-nLOG,-nOUT  name with its extension")
   print(" -pXYZ,-pLOG,-pOUT  full_path/name with its extension")
   print(" -ePKL              pkl_full_filepath/:EXTRACT:/basename")
-  print(" -el       electronic energy from .log [Eh]   -elSP       single-point el.en. (1. in .log) [Eh]")
-  print(" -elout    el. energy from .out [Eh]          -rot        RMSD of rotational constants [GHz]") 
-  print(" -elc      elc=elout-el [Eh]                  -rots       rotational constants [GHz]")
-  print(" -zpec     ZPE correction [Eh]                -mult       muliplicity [-]")
-  print(" -zpe      ZPE=el+zpec [Eh]                   -char,-chrg charge [-electron_charge]")
-  print(" -zpeout   ZPEout=elout+zpec [Eh]             -dip        dipole moment [Debye]")
-  print(" -uc       energy thermal correction [Eh]     -dips       dipole moments [Debye]")
-  print(" -u        internal energy U=el+uc [Eh]       -pol        polarizability [Angstrom^3]")
-  print(" -uout     Uout=elout+uc [Eh]                 -templog    temperature used in .log [K]")
-  print(" -hc       enthalpy th. corr. hc=uc+kT [Eh]   -preslog    pressure used in .log [atm]")
-  print(" -h        enthalpy energy H=el+hc [Eh]       -lf         the lowest vib. freq. [1/cm]")
-  print(" -hout     Hout=elout+hc [Eh]                 -f          array of vibration freq. [1/cm]")
-  print(" -s        entropy [Eh/K]                     -rsn        rotational symmetry number [-]")
-  print(" -gc       Gibbs free energy th. corr. [Eh]   -t,-time    total computational (elapsed) time [mins]")
-  print(" -g        Gibbs free energy [Eh]             -rg         radius of gyration [Angstrom]")
-  print(" -gout     G with el.en.corr.:Gout=G+elc [Eh] -radius     approx. radius of cluster size [Angstrom]")
-  print(" -mull     Mulliken charges [-el.charge]      -ami        average moment of inertia")
-  print(" -xyz      save all XYZ files                 -mi         moments of inertia")
-  print(" -movie    save all XYZs to movie.xyz         ")
+  print(" -el       electronic energy from .log [Eh]   -elSP        single-point el.en. (1. in .log) [Eh]")
+  print(" -elout    el. energy from .out [Eh]          -rot         RMSD of rotational constants [GHz]") 
+  print(" -elc      elc=elout-el [Eh]                  -rots        rotational constants [GHz]")
+  print(" -zpec     ZPE correction [Eh]                -mult        muliplicity [-]")
+  print(" -zpe      ZPE=el+zpec [Eh]                   -char,-chrg  charge [-electron_charge]")
+  print(" -zpeout   ZPEout=elout+zpec [Eh]             -dip         dipole moment [Debye]")
+  print(" -uc       energy thermal correction [Eh]     -dips        dipole moments [Debye]")
+  print(" -u        internal energy U=el+uc [Eh]       -pol         polarizability [Angstrom^3]")
+  print(" -uout     Uout=elout+uc [Eh]                 -templog     temperature used in .log [K]")
+  print(" -hc       enthalpy th. corr. hc=uc+kT [Eh]   -preslog     pressure used in .log [atm]")
+  print(" -h        enthalpy energy H=el+hc [Eh]       -lf          the lowest vib. freq. [1/cm]")
+  print(" -hout     Hout=elout+hc [Eh]                 -f           array of vibration freq. [1/cm]")
+  print(" -s        entropy [Eh/K]                     -rsn         rotational symmetry number [-]")
+  print(" -gc       Gibbs free energy th. corr. [Eh]   -t,-time     total computational (elapsed) time [mins]")
+  print(" -g        Gibbs free energy [Eh]             -termination count lines with \"Normal termination\" status")
+  print(" -gout     G with el.en.corr.:Gout=G+elc [Eh] -radius      approx. radius of cluster size [Angstrom]")
+  print(" -mull     Mulliken charges [-el.charge]      -ami         average moment of inertia")
+  print(" -xyz      save all XYZ files                 -mi          moments of inertia")
+  print(" -movie    save all XYZs to movie.xyz         -rg          radius of gyration [Angstrom]")
   print("POST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies")
   print(" -temp [value in K]   recalculate for different temperature")
@@ -335,6 +335,9 @@ for i in sys.argv[1:]:
     continue
   if i == "-t" or i == "--t" or i == "-time" or i == "--time":
     Pout.append("-t")
+    continue
+  if i == "-termination" or i == "--termination":
+    Pout.append("-termination")
     continue
   #PRE_EXTRACT_DATA MANIPULATION
   if i == "-fc" or i == "--fc":
@@ -617,6 +620,7 @@ for file_i in files:
         break
     if testG16 == 1:
       out_time = missing                                 #TIME
+      out_termination = 0                                #TERMINATION
       out_charge = missing                               #I1
       out_multiplicity = missing                         #I2
       out_NAtoms = missing                               #I3
@@ -654,6 +658,10 @@ for file_i in files:
             out_time += float(line.split()[3])*24*60+float(line.split()[5])*60+float(line.split()[7])+float(line.split()[9])/60 
           except:
             out_time = missing
+          continue
+        #TERMINATION
+        if re.search("Normal termination",line):
+          out_termination += 1
           continue
         #INITIAL SEARCH
         if search==-1:
@@ -845,6 +853,7 @@ for file_i in files:
             continue
       #SAVE
       clusters_df = df_add_iter(clusters_df, "log", "time", [str(cluster_id)], [out_time]) #TIME
+      clusters_df = df_add_iter(clusters_df, "log", "termination", [str(cluster_id)], [out_termination]) #TERMINATION
       clusters_df = df_add_iter(clusters_df, "log", "charge", [str(cluster_id)], [out_charge]) #I1
       clusters_df = df_add_iter(clusters_df, "log", "multiplicity", [str(cluster_id)], [out_multiplicity]) #I2
       clusters_df = df_add_iter(clusters_df, "log", "NAtoms", [str(cluster_id)], [out_NAtoms]) #I3
@@ -901,10 +910,15 @@ def dash(input_array):
   output_array = [input_array]
   for element in range(len(input_array)):
     if input_array[element] == "-":
-      output_array = []
       partbefore = input_array[0:element-1]
       partafter = input_array[element+2:]
       output_array_1 = []
+      try:
+        num1=int(input_array[element-1])
+        num2=int(input_array[element+1])+1
+        output_array = []
+      except:
+        break
       for thenumber in range(int(input_array[element-1]),int(input_array[element+1])+1):
         output_array_1.append(partbefore+[str(thenumber)]+partafter)
       for i in output_array_1:
@@ -980,12 +994,16 @@ if Qextract > 0:
   if Qclustername == 0:
     Pextract_ultimate = Pextract_comma
   else:
+    #print(Pextract_comma)    
     Pextract_dash = []
     for extract_i in Pextract_comma:
       separated = seperate_string_number(extract_i)
       dash_separated = dash(separated)
       for separated_i in range(len(dash_separated)):
         Pextract_dash.append(dash_separated[separated_i])
+    #print([listToString(i,"") for i in Pextract_dash])
+    Pextract_dash = [ dash_comment(i)[0] for i in Pextract_dash ]
+    #print(Pextract_dash)
     #print([listToString(i,"") for i in Pextract_dash])
     Pextract_comma2 = []
     for extract_i in Pextract_dash:
@@ -1414,10 +1432,13 @@ for i in Pout:
       output.append([missing]*len(clusters_df))
     continue
   if i == "-lf": 
-    try:
-      output.append([value[0] for value in clusters_df["log"]["vibrational_frequencies"].values])
-    except:
-      output.append([missing]*len(clusters_df))
+    lowestfreq = []
+    for aseCL in clusters_df["log"]["vibrational_frequencies"]:
+      try:
+        lowestfreq.append(aseCL[0])
+      except:
+        lowestfreq.append(missing)
+    output.append(lowestfreq)
     continue
   if i == "-f":
     try:
@@ -1506,6 +1527,12 @@ for i in Pout:
   if i == "-t":
     try:
       output.append(clusters_df["log"]["time"].values)
+    except:
+      output.append([missing]*len(clusters_df))
+    continue
+  if i == "-termination":
+    try: 
+      output.append(clusters_df["log"]["termination"].values)
     except:
       output.append([missing]*len(clusters_df))
     continue
