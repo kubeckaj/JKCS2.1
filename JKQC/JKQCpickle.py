@@ -651,11 +651,11 @@ for file_i in files:
       save_something=""
       for line in file:
         #TIME
-        if re.search("Elapsed time:",line): 
+        if re.search("Elapsed time",line): 
           if np.isnan(out_time):
             out_time = 0
           try:
-            out_time += float(line.split()[3])*24*60+float(line.split()[5])*60+float(line.split()[7])+float(line.split()[9])/60 
+            out_time += float(line.split()[2])*24*60+float(line.split()[4])*60+float(line.split()[6])+float(line.split()[8])/60 
           except:
             out_time = missing
           continue

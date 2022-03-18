@@ -5,8 +5,8 @@
 
 ### MODIFY ###
 
-PYTHON="python3.9"                             #Please modify this and use python version >3.8.0 but <4.0.0
-MODULE_PYTHON="module load python-data/3.9-1"  #Is there some module required to load python?
+PYTHON="/home/kubeckaj/.conda/envs/JKCS/bin/python3.9"    #Please modify this and use python version >3.8.0 but <4.0.0
+MODULE_PYTHON="module load anaconda3/5.0.1"  #Is there some module required to load python?
 
 ###########################################################################################################
 ## DO NOT MODIFY
@@ -18,6 +18,10 @@ if [ ! -e JKQC/JKCS ] || [ "$1" == "-r" ]
 then
   cd JKQC
   sh .install.sh "$PYTHON" "$MODULE_PYTHON"
+  if [ ! -e JKCS ]
+  then
+    exit
+  fi
   cd ..
 fi
 
