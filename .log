@@ -17,6 +17,3 @@
 == testing Gaussian(G16):
  SUCCESFULL
 == testing ORCA:
- UNSUCCESFULL
-.test.cmd: line 29: /users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314//orca: No such file or directory
-####################################
