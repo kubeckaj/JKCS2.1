@@ -48,7 +48,7 @@ function help {
    -p,-program \"X\" ...... 3rd party quantum program 
                           (it has to be described in ~/.JKCSusersetup.txt)
      OTHERS: -bs,-add,-addbase \"ATOM\", (-greasy,-con X = cores on node) 
-
+             -array = does submit array instead of single jobs
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
@@ -137,6 +137,7 @@ Qpickle=0 #Do I want to unpickle and pickle in the end?
 method="--opt vtight"
 
 Qjpt=1 #jobs per task
+Qarray=0 #submit jobs as array?
 
 #for GREASY:
 cores_in_node=40
@@ -233,6 +234,12 @@ do
   then
     next=1
     last="-method"
+    continue
+  fi
+  # Array submission
+  if [ "$iter" == "-array" ]
+  then
+    Qarray=1
     continue
   fi
   # Jobs per task
@@ -589,13 +596,27 @@ do
     echo  "$toolspath/SCRIPTS/JKsend '`tail -n $i commands_TODO.txt | head -n 1`'" >> .runLIST
   else
     echo "`tail -n $i commands_TODO.txt | head -n 1`" > .run$i
-    echo  "$SC_command sh .run$i" >> output
-    echo  "$SC_command sh .run$i" > .run
-    #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
-    job=$(/bin/bash .run)
-    #job=$(eval `cat .run`)
-    if [ ! -z "$job" ] ;then echo $job;fi
-    echo $job | awk '{print $4}'  >> .jobs.txt
+    if [ $Qarray -eq 1 ]
+    then
+      if [ $i -eq 1 ]
+      then
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks/"`
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
+        #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+        job=$(/bin/bash .run)
+        if [ ! -z "$job" ] ;then echo $job;fi
+        echo $job | awk '{print $4}'  >> .jobs.txt
+      fi
+    else
+      echo  "$SC_command sh .run$i" >> output
+      echo  "$SC_command sh .run$i" > .run
+      #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+      job=$(/bin/bash .run)
+      #job=$(eval `cat .run`)
+      if [ ! -z "$job" ] ;then echo $job;fi
+      echo $job | awk '{print $4}'  >> .jobs.txt
+    fi
   fi
 done
 

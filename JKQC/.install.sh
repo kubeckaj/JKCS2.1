@@ -11,6 +11,8 @@ eval $MODULE_PYTHON
 #  - defaults
 #""" > jkcs.yaml
 
+$PYTHON -V
+
 #####################################################################
 ### Just checking if python exists ##################################
 version=$($PYTHON -V 2>&1 | awk '{print $2}')                       #
@@ -20,7 +22,7 @@ if [[ -z "$version" ]]                                              #
 ### Just checking if appropriate version is used ####################
 parsedVersion=$(echo "${version//./}")                              #
 if [[ "$parsedVersion" -gt "400" || "$parsedVersion" -lt "380" ]]   #
-  then echo "Invalid Python version"; exit;fi                       #
+  then echo "Invalid Python version ($version)"; exit;fi                       #
 #####################################################################
 
 echo "- creating environment"
