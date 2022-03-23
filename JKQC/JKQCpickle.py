@@ -72,7 +72,7 @@ def print_help():
   print("FORMATION PROPERTIES:")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
   print(" -bavg OR -bavgout       prints a value that is Boltzmann average over each cluster using -g OR -gout")
-  print("                         NOTE: -g/-gout is treated correctly + -s not treated (use (G - H)/T")
+  print("                         NOTE: -g/-gout is treated correctly + -s not treated; use (G - H)/T")
   print(" -formation              print values as formation ")
   print(" <input_file> -formation print formations for the input file (no averaging though)")
 
@@ -651,11 +651,11 @@ for file_i in files:
       save_something=""
       for line in file:
         #TIME
-        if re.search("Elapsed time:",line): 
+        if re.search("Elapsed time",line): 
           if np.isnan(out_time):
             out_time = 0
           try:
-            out_time += float(line.split()[3])*24*60+float(line.split()[5])*60+float(line.split()[7])+float(line.split()[9])/60 
+            out_time += float(line.split()[2])*24*60+float(line.split()[4])*60+float(line.split()[6])+float(line.split()[8])/60 
           except:
             out_time = missing
           continue
@@ -1182,7 +1182,10 @@ if Qqha == 1:
       structure = clusters_df["xyz"]["structure"].values[i]
       
       mu = [float(h/(8*np.pi**2*2.99793*10**10*vib)) for vib in vibs]
-      mi = np.mean(structure.get_moments_of_inertia())
+      try:
+        mi = np.mean(structure.get_moments_of_inertia())
+      except:
+        mi = missing
       #print(mu)
       #print(mi)
       Sr = [R*(0.5+np.log((8*np.pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K
@@ -1623,9 +1626,9 @@ if not len(output) == 0:
   os.remove(".help.txt")
 
 if Qformation == 1:
-  print("#####################################")
-  print("##########  FORMATION  ##############")
-  print("#####################################")
+  print("#####################################",flush = True)
+  print("##########  FORMATION  ##############",flush = True)
+  print("#####################################",flush = True)
   if len(formation_input_file) > 0:
     f = open(formation_input_file, "r")
     output = []
@@ -1679,7 +1682,7 @@ if Qformation == 1:
   #print(np.array(cluster_types,dtype=dt)[monomers])
   monomer_types = [i[1] for i in np.array(cluster_types,dtype=dt)[monomers]]
   #print(monomer_types)
-  print("MONOMERS: " + " ".join(monomer_types))
+  print("MONOMERS: " + " ".join(monomer_types),flush = True)
   f = open(".help.txt", "w")
   for i in range(len(output[0])):
     line = np.array(output)[:,i]

@@ -18,6 +18,10 @@ if [ ! -e JKQC/JKCS ] || [ "$1" == "-r" ]
 then
   cd JKQC
   sh .install.sh "$PYTHON" "$MODULE_PYTHON"
+  if [ ! -e JKQC/JKCS ]
+  then
+    exit
+  fi
   cd ..
 fi
 
