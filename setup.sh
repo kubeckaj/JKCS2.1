@@ -6,7 +6,7 @@
 ### MODIFY ###
 
 PYTHON="python3.9"    #Please modify this and use python version >3.8.0 but <4.0.0
-MODULE_PYTHON="module load python-env/3.9-1"  #Is there some module required to load python?
+MODULE_PYTHON="module load python-data/3.9-1"  #Is there some module required to load python?
 
 ###########################################################################################################
 ## DO NOT MODIFY
