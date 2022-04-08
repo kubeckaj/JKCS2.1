@@ -66,7 +66,7 @@ do
         for job in `seq 1 $v1`
         do
           jobN=`head -n $job .jobs.txt | tail -n 1`
-          jobR=`squeue -o "%.18i %.2t" --j $jobN 2>/dev/null | grep "$jobN" | awk '{print $2}'` 
+          jobR=`squeue -o "%.18i %.2t" --job $jobN 2>/dev/null | grep "$jobN" | awk '{print $2}'` 
           if [ "$jobR" == "" ] || [ "$jobR" == "C" ] || [ -z "$jobN" ]
           then
             v2=`echo $v2+1| bc`
