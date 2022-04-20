@@ -38,6 +38,7 @@ def print_help():
   print(" -folder X  takes in all X/*.log files")
   print(" -noname    the file names are not analysed (e.g. 1000-10_1.xyz)\n")
   print(" -extract X prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
+  print(" -except X  prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -reacted   removes (the minority of) reacted structures")
   print("PRINT:")
   print(" -ct                cluster type (e.g. 1sa,3sa2am-4)")
@@ -166,6 +167,15 @@ for i in sys.argv[1:]:
   if last == "-extract":
     last = ""
     Qextract = 1
+    Pextract.append(i)
+    continue
+  #EXCEPT
+  if i == "-except":
+    last = "-except"
+    continue
+  if last == "-except":
+    last = ""
+    Qextract = 2
     Pextract.append(i)
     continue
   #INPUT FILES
@@ -366,7 +376,7 @@ for i in sys.argv[1:]:
     continue
   if i == "-unit" or i == "--unit":
     QUenergy = 627.503
-    QUentropy = 0.627503
+    QUentropy = 627503.0
     continue
   #FORMATION
   if i == "-glob" or i == "--glob":
@@ -1040,7 +1050,12 @@ if Qextract > 0:
         #print(newclusters_df)
         newclusters_df = newclusters_df.append(extracted_df)
         #print(newclusters_df)
-  clusters_df = newclusters_df
+  if Qextract == 2:
+    a1 = pd.Index(clusters_df.index)
+    a2 = pd.Index(newclusters_df.index)
+    clusters_df = clusters_df.iloc[a1.difference(a2, sort=False)]
+  else:
+    clusters_df = newclusters_df
 
 if Qreacted > 0:
   all_molecules = []
@@ -1143,10 +1158,10 @@ if Qqha == 1:
       QtOLD = clusters_df["log","temperature"].values[i]
       if Qt != QtOLD:
         try:
-          lf = clusters_df["log"]["vibrational_frequencies"].values[i][0]
+          lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
         except:
-          lf = -5
-        if lf <= -5:
+          lf = 0
+        if lf <= 0:
           clusters_df["log","temperature"][i] = Qt
           clusters_df["log","entropy"][i] = missing
           clusters_df["log","enthalpy_energy"][i] = missing
@@ -1412,7 +1427,9 @@ for i in Pout:
     continue
   if i == "-h":
     try:
-      output.append(QUenergy*clusters_df["log"]["enthalpy_energy"].values)
+      entalpies = clusters_df["log"]["enthalpy_energy"].values
+      entalpies[entalpies == "NaN"] = missing 
+      output.append(QUenergy*entalpies)
     except:
       output.append([missing]*len(clusters_df))
     continue
@@ -1430,7 +1447,9 @@ for i in Pout:
     continue
   if i == "-s":
     try:
-      output.append(QUentropy*clusters_df["log"]["entropy"].values/1000/627.503)
+      entropies = clusters_df["log"]["entropy"].values
+      entropies[entropies == "NaN"] = missing
+      output.append(QUentropy*entropies/1000/627.503)
     except:
       output.append([missing]*len(clusters_df))
     continue
@@ -1558,6 +1577,7 @@ if not len(output) == 0:
       else:
         print("Qglob error. [EXITING]")
         exit()
+      GFE[GFE == "NaN"] = missing
       globindex = clusters_df.index.values[clusters_df["info"]["cluster_type"] == i][GFE == np.min(GFE[~pd.isna(GFE)])][0]
       indexes.append(int(np.array(range(len(clusters_df)))[clusters_df.index.values == globindex][0]))
     output = [[output[j][i] for i in indexes] for j in range(output.shape[0])]
@@ -1706,7 +1726,7 @@ if Qformation == 1:
           test_monomer = 1
       if test_monomer == 0:
         line[1:] = missing 
-    f.write(" ".join(line)+"\n")
+    f.write(" ".join(map(str,line))+"\n")
   f.close()
   os.system("cat .help.txt | column -t")
   os.remove(".help.txt")

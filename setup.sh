@@ -13,8 +13,14 @@ MODULE_PYTHON="module load python-data/3.9-1"  #Is there some module required to
 
 cat TOOLS/label_big
 
+if [ "$1" == "grendel" ] || [ "$2" == "grendel" ]
+then
+  PYTHON="python3.9"
+  MODULE_PYTHON="module load anaconda3/5.0.1 2>/dev/null;source /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/bin/activate"
+fi
+
 # JKCS python environment
-if [ ! -e JKQC/JKCS ] || [ "$1" == "-r" ]
+if [ ! -e JKQC/JKCS ] || [ "$1" == "-r" ] || [ "$2" == "-r" ]
 then
   cd JKQC
   sh .install.sh "$PYTHON" "$MODULE_PYTHON"
@@ -26,8 +32,8 @@ then
 fi
 
 # START MODIFYING ~/.bashrc
-echo "-----------------------"
-echo 'Now, I will just test what is written in your ~/.bashrc file and modify it'
+printf "-----------------------"
+printf 'Now, I will just test what is written in your ~/.bashrc file and modify it'
 
 # PATH DECLARATION
 path=$PWD
@@ -48,7 +54,7 @@ function writetobashrc {
     sed  "\#$command#d" ~/.bashrc > ~/.bashrc_help
     mv ~/.bashrc_help ~/.bashrc
   fi
-  echo "$command" >> ~/.bashrc
+  printf "$command" >> ~/.bashrc
 }
 
 command1="export PATH=$path1:\$PATH"
@@ -60,11 +66,11 @@ writetobashrc "$command2"
 Qcolours=1
 source TOOLS/LOADING/colours.txt
 
-echo -e "${cfRED}Write following command:${cfDEF} "
-echo -e "          ${cfYELLOW}source ~/.bashrc${cfDEF}"
-echo "-----------------------"
+printf "${cfRED}Write following command:${cfDEF} "
+printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}"
+printf "-----------------------"
 
-if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ] || [ "$1" == "-r2" ]
+if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ] || [ "$1" == "-r2" ] || [ "$2" == "-r" ] || [ "$2" == "-r2" ]
 then
   if [ -e ~/.JKCSusersetup.txt ]; then cp ~/.JKCSusersetup.txt ~/.oldJKCSusersetup.txt; fi
   cp TOOLS/.JKCSusersetup.txt .help1
@@ -72,12 +78,12 @@ then
   sed 's,REPLACE_python,'"$PYTHON"',g' .help2 > .help3
   sed 's,REPLACE_module_python,'"$MODULE_PYTHON"',g' .help3 > ~/.JKCSusersetup.txt
   rm .help1 .help2 .help3
-  echo -e "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}"
+  printf "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}"
 else
-  echo -e "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
-  echo "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
-  echo -e "          ${cfYELLOW}sh setup.sh -r${cfDEF}"
+  printf "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
+  printf "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
+  printf "          ${cfYELLOW}sh setup.sh -r${cfDEF}"
 fi
-echo "-----------------------"
-echo "Anyway, you can check if everything is working by running:"
-echo -e "          ${cfYELLOW}sh test.sh${cfDEF}"
+printf "-----------------------"
+printf "Anyway, you can check if everything is working by running:"
+printf "          ${cfYELLOW}sh test.sh${cfDEF}"
