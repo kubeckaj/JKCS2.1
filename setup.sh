@@ -32,8 +32,8 @@ then
 fi
 
 # START MODIFYING ~/.bashrc
-printf "-----------------------"
-printf 'Now, I will just test what is written in your ~/.bashrc file and modify it'
+echo "-----------------------"
+echo 'Now, I will just test what is written in your ~/.bashrc file and modify it'
 
 # PATH DECLARATION
 path=$PWD
@@ -68,7 +68,7 @@ source TOOLS/LOADING/colours.txt
 
 printf "${cfRED}Write following command:${cfDEF} "
 printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}"
-printf "-----------------------"
+echo "-----------------------"
 
 if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ] || [ "$1" == "-r2" ] || [ "$2" == "-r" ] || [ "$2" == "-r2" ]
 then
@@ -84,6 +84,6 @@ else
   printf "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
   printf "          ${cfYELLOW}sh setup.sh -r${cfDEF}"
 fi
-printf "-----------------------"
-printf "Anyway, you can check if everything is working by running:"
+echo "-----------------------"
+echo "Anyway, you can check if everything is working by running:"
 printf "          ${cfYELLOW}sh test.sh${cfDEF}"
