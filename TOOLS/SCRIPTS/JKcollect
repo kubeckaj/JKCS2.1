@@ -112,9 +112,9 @@ then
   fi
   
   # MOVIE
+  if [ -e $movie ]; then rm $movie; fi
   if [ $Qpickle -eq 0 ]
   then
-    if [ -e $movie ]; then rm $movie; fi
     o=`cat $resultfile | awk '{print $1}'`;
     for i in $o;
     do
@@ -127,6 +127,10 @@ then
      fi
      cat ${i%.*}.xyz >> $movie
     done
+  else
+    o=`cat $resultfile | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $2}' | xargs | sed "s/ /,/g"`;
+    JKgaussstat $(basename $savefile .txt).pkl -extract $o -movie -noname
+    mv movie.xyz $movie
   fi
   
   # REMOVE

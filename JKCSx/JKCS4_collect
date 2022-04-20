@@ -62,7 +62,8 @@ function help {
     ${cfRED}OR${cfDEF}
    define by yourself using JKgaussstat commands: (see JKgaussstat --help)
                  !! but then, you need to define also the path etc. !!
-		 e.g., $scriptfile DFT -p -rg -el -dip -pol 
+		 e.g., $scriptfile DFT -pXYZ -rg -el -dip -pol 
+		 e.g., $scriptfile DFT -ePKL -rg -el -dip -pol -JKQC 
  
   ${cfMAGENTA}EXAMPLES:${cfDEF}
     
@@ -71,9 +72,9 @@ function help {
     $scriptfile DFT_HIGH -loc               || [xyz] [Angstrom] [hartree]
     $scriptfile DFT_HIGH_freq -gibbs -loc   || [xyz] [Angstrom] [hartree] [hartree]
     $scriptfile XTB -pXYZ -rg -el -dip      || [xyz] [Angstrom] [hartree] [Debye] 
-
-    FOR REMOVING WRONG BONDING: (number of C-C, C-O, and O-H bonds)
-    JKCS4_collect -pXYZ -rg -el -dip -script JKgaussstat \"-b2 C C 1.6\" -script JKgaussstat \"-b2 C O 1.6\" -script JKgaussstat \"-b2 O H 1.1\" \n"""
+"""
+   # FOR REMOVING WRONG BONDING: (number of C-C, C-O, and O-H bonds)
+   # JKCS4_collect -pXYZ -rg -el -dip -script JKgaussstat \"-b2 C C 1.6\" -script JKgaussstat \"-b2 C O 1.6\" -script JKgaussstat \"-b2 O H 1.1\" \n"""
 
   printf "#################################################################\n"
   exit
@@ -313,6 +314,32 @@ do
   # command ... it looks crazy but it has to be done like this due to ""
   #command="$toolspath/SCRIPTS/JKcollect RUN $savefile  "${arguments[@]}
   #printf "$command" > run${scriptfilecommand}.sh
+  #if [ $method == "ABC" ] || [ $method == "ABC-XTB" ] || [ $method == "ABC_XTB" ]
+  if [[ "$method" == *"ABC"* ]]
+  then
+    test=`ls *.log 2>/dev/null | wc -l`
+    if [ $test -eq 0 ]
+    then
+      test=`ls *.xyz 2>/dev/null | wc -l`
+      if [ $test -ne 0 ]
+      then
+        for i in *.xyz
+        do
+          base=$(basename $i .xyz)
+          test=`grep -c "Energy:" $i`
+          if [ $test -gt 0 ]
+          then
+            energy=`grep "Energy:" $i | awk '{print $2}'`
+          else
+            energy=`head -n 2 $i | tail -n 1`
+          fi
+          echo "ABC" > ${base}.log
+          echo "ABC energy: $energy" >> ${base}.log
+        done
+      fi
+    fi
+  fi
+  ######
   if [ $Qpickle -eq 0 ]
   then
     echoCOMMAND $toolspath/SCRIPTS/JKcollect RUN $savefile "${arguments[@]}">run${scriptfilecommand}.sh
@@ -320,25 +347,7 @@ do
     if [ -z "$PKLinsubfolders" ]
     then
       echo "source ~/.JKCSusersetup.txt;" > run${scriptfilecommand}.sh
-      if [ $method == "ABC" ]
-      then
-        test=`ls *.log 2>/dev/null | wc -l`
-        if [ $test -eq 0 ]
-        then
-          test=`ls *.xyz 2>/dev/null | wc -l`
-          if [ $test -ne 0 ]
-          then
-            for i in *.xyz
-            do
-              base=$(basename $i .xyz)
-              energy=`grep "Energy:" $i | awk '{print $2}'`
-              echo "ABC" > ${base}.log
-              echo "ABC energy: $energy" >> ${base}.log
-            done
-          fi
-        fi
-      fi
-      echo "program_JKQCpickle -noname -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh
+      echo "program_JKQCpickle -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh
     else
       echo "source ~/.JKCSusersetup.txt" > run${scriptfilecommand}.sh
     fi

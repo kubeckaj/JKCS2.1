@@ -27,20 +27,20 @@ if str(os.environ.get("VIRTUAL_ENV").split("/")[-1]) != "JKCS":
 
 def print_help():
   print("##################################################")
-  print("### python JKQC.py [FILES] [ARGUMENTS] [PRINT] ###\n")
-  print("FILES:")
+  print("### python JKQC.py [FILES] [ARGUMENTS] [PRINT] ###")
+  print("\nFILES:")
   print(" any .xyz .log .out files")
-  print(" any .pkl (you can also use -in/-out)\n")
-  print("ARGUMENTS:")
+  print(" any .pkl (you can also use -in/-out)")
+  print("\nARGUMENTS:")
   print(" -help      print this help")
   print(" -in X.pkl  read data from a database")
   print(" -out X.pkl save data to XX.pkl (-noex = do not print example)")
   print(" -folder X  takes in all X/*.log files")
-  print(" -noname    the file names are not analysed (e.g. 1000-10_1.xyz)\n")
+  print(" -noname    the file names are not analysed (e.g. 1000-10_1.xyz)")
   print(" -extract X prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -except X  prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -reacted   removes (the minority of) reacted structures")
-  print("PRINT:")
+  print("\nPRINT:")
   print(" -ct                cluster type (e.g. 1sa,3sa2am)")
   print(" -b                 basename (e.g. 1sa-3, 3sa2am-4_508)")
   print(" -nXYZ,-nLOG,-nOUT  name with its extension")
@@ -61,16 +61,17 @@ def print_help():
   print(" -s        entropy [Eh/K]                     -rsn         rotational symmetry number [-]")
   print(" -gc       Gibbs free energy th. corr. [Eh]   -t,-time     total computational (elapsed) time [mins]")
   print(" -g        Gibbs free energy [Eh]             -termination count lines with \"Normal termination\" status")
-  print(" -gout     G with el.en.corr.:Gout=G+elc [Eh] -radius      approx. radius of cluster size [Angstrom]")
+  print(" -gout     G with el.en.corr.:Gout=G+elc [Eh] -mi          moments of inertia")
   print(" -mull     Mulliken charges [-el.charge]      -ami         average moment of inertia")
-  print(" -xyz      save all XYZ files                 -mi          moments of inertia")
-  print(" -movie    save all XYZs to movie.xyz         -rg          radius of gyration [Angstrom]")
-  print("POST-CALCULATIONS:")
+  print(" -xyz      save all XYZ files                 -rg          radius of gyration [Angstrom]")
+  print(" -movie    save all XYZs to movie.xyz         -radius      approx. radius of cluster size [Angstrom]")
+  print("                                              -radius0.5   radius with +0.5 Angstrom correction")
+  print("\nPOST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies")
   print(" -temp [value in K]   recalculate for different temperature")
   print(" -v,-as [value]       anharmonicity scaling factor")
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
-  print("FORMATION PROPERTIES:")
+  print("\nFORMATION PROPERTIES:")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
   print(" -bavg OR -bavgout       prints a value that is Boltzmann average over each cluster using -g OR -gout")
   print("                         NOTE: -g/-gout is treated correctly + -s not treated; use (G - H)/T")
@@ -214,6 +215,9 @@ for i in sys.argv[1:]:
     continue
   if i == "-radius" or i == "--radius":
     Pout.append("-radius")
+    continue
+  if i == "-radius0.5" or i == "--radius0.5":
+    Pout.append("-radius0.5")
     continue
   # INFO
   if i == "-ct" or i == "-clustertype" or i == "--ct" or i == "--clustertype":
@@ -1255,8 +1259,13 @@ for i in Pout:
     continue
   #MOVIE
   if i == "-movie":
+    f = open("movie.xyz","w")
     for ind in clusters_df.index:
-      write("movie.xyz",clusters_df["xyz"]["structure"][ind])
+      write(".movie.xyz",clusters_df["xyz"]["structure"][ind])
+      f2 = open(".movie.xyz", 'r')
+      f.write(f2.read())
+      f2.close()
+    f.close()
     continue
   #Rg
   if i == "-rg":
@@ -1268,15 +1277,27 @@ for i in Pout:
         rg.append(missing)
     output.append(rg)
     continue
-  if i == "-radius":
+  if i == "-radius" or i == "-radius0.5":
     radius = []
     for aseCL in clusters_df["xyz"]["structure"]:
       try:
         dist = lambda p1, p2: np.sqrt(np.sum((p1-p2)**2))
         centered = aseCL.positions-aseCL.positions.mean(axis = 0)
         ratios = np.sqrt(np.linalg.eigvalsh(np.dot(centered.transpose(),centered)/len(centered)))
-        ratios = ratios / np.max(ratios)
         maxdist = np.max(np.asarray([[dist(p1, p2) for p2 in aseCL.positions] for p1 in aseCL.positions]))
+        if i == "-radius0.5":
+          if ratios[0] < 0.5:
+            ratios[0] = 0.5
+          if ratios[1] < 0.5:
+            ratios[1] = 0.5
+          if ratios[2] < 0.5:
+            ratios[2] = 0.5
+          if maxdist < 0.5:
+            maxdist = 0.5
+        if np.max(ratios) > 0:
+          ratios = ratios / np.max(ratios)
+        else:
+          ratios = missing
         radius.append((np.prod(maxdist*ratios))**(1/3))	
       except:
         radius.append(missing)
