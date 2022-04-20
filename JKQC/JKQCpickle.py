@@ -41,7 +41,7 @@ def print_help():
   print(" -except X  prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -reacted   removes (the minority of) reacted structures")
   print("PRINT:")
-  print(" -ct                cluster type (e.g. 1sa,3sa2am-4)")
+  print(" -ct                cluster type (e.g. 1sa,3sa2am)")
   print(" -b                 basename (e.g. 1sa-3, 3sa2am-4_508)")
   print(" -nXYZ,-nLOG,-nOUT  name with its extension")
   print(" -pXYZ,-pLOG,-pOUT  full_path/name with its extension")
