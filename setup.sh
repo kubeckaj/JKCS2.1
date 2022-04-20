@@ -54,7 +54,7 @@ function writetobashrc {
     sed  "\#$command#d" ~/.bashrc > ~/.bashrc_help
     mv ~/.bashrc_help ~/.bashrc
   fi
-  printf "$command" >> ~/.bashrc
+  echo "$command" >> ~/.bashrc
 }
 
 command1="export PATH=$path1:\$PATH"
@@ -66,8 +66,8 @@ writetobashrc "$command2"
 Qcolours=1
 source TOOLS/LOADING/colours.txt
 
-printf "${cfRED}Write following command:${cfDEF} "
-printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}"
+printf "${cfRED}Write following command:${cfDEF}\n"
+printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}\n"
 echo "-----------------------"
 
 if [ ! -e ~/.JKCSusersetup.txt ] || [ "$1" == "-r" ] || [ "$1" == "-r2" ] || [ "$2" == "-r" ] || [ "$2" == "-r2" ]
@@ -78,12 +78,12 @@ then
   sed 's,REPLACE_python,'"$PYTHON"',g' .help2 > .help3
   sed 's,REPLACE_module_python,'"$MODULE_PYTHON"',g' .help3 > ~/.JKCSusersetup.txt
   rm .help1 .help2 .help3
-  printf "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}"
+  printf "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
 else
-  printf "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
-  printf "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
-  printf "          ${cfYELLOW}sh setup.sh -r${cfDEF}"
+  echo "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
+  echo "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
+  printf "          ${cfYELLOW}sh setup.sh -r${cfDEF}\n"
 fi
 echo "-----------------------"
 echo "Anyway, you can check if everything is working by running:"
-printf "          ${cfYELLOW}sh test.sh${cfDEF}"
+printf "          ${cfYELLOW}sh test.sh${cfDEF}\n"
