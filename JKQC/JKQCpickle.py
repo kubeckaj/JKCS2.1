@@ -559,7 +559,10 @@ for file_i in files:
       out_electronic_energy = missing  #1
       for line in file:
         if re.search("ABC energy:", line): #1
-          out_electronic_energy = float(line.split()[2]) 
+          try:
+            out_electronic_energy = float(line.split()[2]) 
+          except:
+            out_electronic_energy = missing
       clusters_df = df_add_iter(clusters_df, "log", "electronic_energy", [str(cluster_id)], [out_electronic_energy])
     file.close()
       
