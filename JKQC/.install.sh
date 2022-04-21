@@ -1,8 +1,8 @@
 #!/bin/bash
 PYTHON=$1         #python3.9
-if [ ! -z "$MODULE_PYTHON" ]
+if [ ! -z "$2" ]
 then
-  last=`echo $MODULE_PYTHON | rev | -c-1`
+  last=`echo $2 | rev | cut -c-1`
   if [ "$last" == ";" ]
   then
     MODULE_PYTHON="$2"  #"module load python-data/3.9-1"

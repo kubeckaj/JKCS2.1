@@ -19,6 +19,7 @@ then
   MODULE_PYTHON="module load anaconda3/5.0.1 2>/dev/null;source /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/bin/activate"
 fi
 if [ "$1" == "mahti" ] || [ "$2" == "mahti" ]
+then
   PYTHON="python3.8"                             #Please modify this and use python version >3.8.0 but <4.0.0
   MODULE_PYTHON="module add python-env/3.8.6"    #Is there some module required to load python?
 fi
