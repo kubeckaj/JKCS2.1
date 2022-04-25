@@ -59,22 +59,24 @@ source JKCS/bin/activate
 #echo "- installing python 3.8"
 #echo y | conda install -c anaconda python=3.8
 
+ADD="--force-reinstall --upgrade"
+
 #echo y | conda install xtb-python
 #echo y | conda install numba
 PIP="$PYTHON -m pip"
 #$PIP --version
-$PIP install pip --force-reinstall --upgrade
+$PIP install $ADD
 $PIP install pathlib #Perhaps this one is not necessary
-$PIP install numexpr==2.7.0 --force-reinstall --upgrade
-$PIP install numpy==1.21.4 --force-reinstall --upgrade
-$PIP install pandas==1.3.4 --force-reinstall --upgrade
-$PIP install ase
+$PIP install numexpr==2.7.0 $ADD
+$PIP install numpy==1.21.4 $ADD
+$PIP install pandas==1.3.4 $ADD
+$PIP install ase 
 if [ "$3" == "-qml" ]
 then
- $PIP install sklearn
- $PIP install cffi
- $PIP install dscribe
- $PIP install install git+https://github.com/qmlcode/qml@develop --user -U --force-reinstall --upgrade
+ #$PIP install sklearn
+ #$PIP install cffi
+ #$PIP install dscribe
+ $PIP install install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 
 #echo "- exporting environment"
