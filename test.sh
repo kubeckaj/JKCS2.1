@@ -41,6 +41,7 @@ else
   then
     printf "${cfRED}UNSUCCESFULL${cfDEF} //There is no permission for creating file in the WRKDIR <== THIS MIGHT BE SOMETIMES OK\n"
     printf "UNSUCCESFULL //There is no permission for creating file in the WRKDIR <== THIS MIGHT BE SOMETIMES OK\n" >> .log
+    WRKDIR="./"
   else
     printf " ${cfGREEN}SUCCESFULL${cfDEF}\n"
     printf " SUCCESFULL\n" >> .log
@@ -121,7 +122,7 @@ else
   cat .help >> ../.log
   echo "####################################" >> ../.log
   echo "   :: see .log for the error"
-  echo "   :: open ~/.JKCSusersetup -> check program_PYTHON -> check the function/setup paths"
+  echo "   :: open ~/.JKCSusersetup.txt -> check program_PYTHON -> check the function/setup paths"
 fi
 rm .help
 ##############
@@ -143,7 +144,7 @@ else
   cat .test.out >> ../.log
   echo "####################################" >> ../.log
   echo "   :: see .log for the error"
-  echo "   :: open ~/.JKCSusersetup -> check program_JKQCpickle"
+  echo "   :: open ~/.JKCSusersetup.txt -> check program_JKQCpickle"
 fi
 rm .test.out
 ##########
@@ -166,7 +167,7 @@ else
   cat .calc.out >> ../.log
   echo "####################################" >> ../.log
   echo "   :: see .log for the error"
-  echo "   :: open ~/.JKCSusersetup -> check program_ABC or setup properly path PATH_ABCluster"
+  echo "   :: open ~/.JKCSusersetup.txt -> check program_ABC or setup properly path PATH_ABCluster"
 fi
 rm .calc.inp .calc.out
 ##########
@@ -194,7 +195,7 @@ else
   cat .test.log >> ../.log
   echo "####################################" >> ../.log
   echo "   :: see .log for the error"
-  echo "   :: open ~/.JKCSusersetup -> check program_XTB or setup properly path PATH_XTB"
+  echo "   :: open ~/.JKCSusersetup.txt -> check program_XTB or setup properly path PATH_XTB"
 fi
 rm .test.xyz .test.log
 ##########
@@ -218,7 +219,7 @@ else
   cat .test.log >> ../.log
   echo "####################################" >> ../.log
   echo "   :: see .log for the error"
-  echo "   :: open ~/.JKCSusersetup -> check program_G16 or setup properly path PATH_G16"
+  echo "   :: open ~/.JKCSusersetup.txt -> check program_G16 or setup properly path PATH_G16"
 fi
 rm .test.log .test.com
 ##########
@@ -242,7 +243,7 @@ else
   cat .test.out >> ../.log
   echo "####################################" >> ../.log
   echo "   :: see .log for the error"
-  echo "   :: open ~/.JKCSusersetup -> check program_ORCA or setup properly path PATH_ORCA"
+  echo "   :: open ~/.JKCSusersetup.txt -> check program_ORCA or setup properly path PATH_ORCA"
 fi
 rm .test.inp .test.inp.out .test.out .test.xyz  2>/dev/null
 
