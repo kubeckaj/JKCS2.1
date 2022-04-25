@@ -34,6 +34,7 @@ do
     PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.3/"
     MODULE_ORCA="module load orca"
     SBATCH_PREFIX=""
+    WRKDIR="/scratch/\\\$SLURM_JOB_ID/"
     continue
   fi
   if [ "$i" == "mahti" ]
