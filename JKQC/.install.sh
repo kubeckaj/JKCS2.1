@@ -76,6 +76,7 @@ then
  #$PIP install sklearn
  #$PIP install cffi
  #$PIP install dscribe
+ ADD="--force-reinstall --upgrade"
  $PIP install install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 

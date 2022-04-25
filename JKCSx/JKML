@@ -1,0 +1,85 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2018                                     ##
+## Program that runs QML on pickled databases             ## 
+## To understand program run help:                        ##
+##       for help use arguement -help                     ##
+############################################################
+## Clipping-Machine = Stapler (in Danish Klipsemaskine)   ##
+##                                          Jakub Kubecka ##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+function help {
+  program_PYTHON $scriptpath/../TOOLS/SCRIPTS/JKML.py -help
+  exit
+}
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours           # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+# method 
+#JKloadprogram
+
+# check for folderbasename_something arguments and in case enter directories
+JKloaddirs
+currentdir=${PWD##*/}
+currentdirpath=$PWD
+
+# load charge and multiplicity
+#JKloadCHARM
+
+# load amount of molecules
+if [ -e $inputfile ]
+then
+  M=`head -n 1 $inputfile | awk '{print $6}'`
+#else
+#  JKecho 0 "No ${cfYELLOW}${inputfile}${cfDEF} file. (${cfRED}Assuming M=1 if needed!!!${cfDEF})"
+#  M=1;
+fi
+
+# -loc or load supercomputer parameters
+JKloadsupercomputer
+
+therest=${arguments[@]}
+
+# print inserted command
+echoCOMMAND COMMAND: JKML "$@" >> output
+echo  "$SC_command \"source ~/.JKCSusersetup.txt;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest\"" >> output
+echo  "$SC_command \"source ~/.JKCSusersetup.txt;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest\"" > .run
+if [ $METHODsupercomputer == "loc" ]
+then
+  /bin/bash .run | tee -a output
+else
+  job=$(/bin/bash .run)
+  if [ ! -z "$job" ] ;then echo $job;fi
+  echo $job | awk '{print $4}'  >> .jobs.txt
+fi
+
+JKecho 1 "Calculations submitted or calculations done (-loc)."
+exit
+

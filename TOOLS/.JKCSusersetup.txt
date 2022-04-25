@@ -126,7 +126,51 @@ function program_JKQCpickle {
 }
 ##########################################################################################
 
-
+##########################################################################################
+# JKML
+# Running QML
+##########################################################################################
+function program_JKML {
+  if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+  then 
+    export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+  fi
+  currentdir=$PWD
+  cd $WRKDIR
+  mkdir -p TMP
+  cd TMP
+  mkdir JKML$SLURM_JOBID
+  cd JKML$SLURM_JOBID
+  files=`echo ${@} | xargs -n 1 | grep ".pkl" | xargs`
+  for i in $files
+  do
+    cp $currentdir/$i ./
+  done
+  time program_PYTHON ${@}
+  for i in `ls *.pkl`
+  do
+    test=0
+    for j in $files
+    do
+      if [ "$i" == "$j" ]
+      then
+        test=1
+        break
+      fi
+    done
+    if [ $test -eq 0 ]
+    then 
+      cp $i $currentdir/
+    fi
+  done
+  cd ../
+  rm -r JKML$SLURM_JOBID
+  if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+  then
+    echo JOBID = $SLURM_JOBID done
+  fi
+}
+##########################################################################################
 
 ##########################################################################################
 # ABCluster: rigidmol-optimizer 
