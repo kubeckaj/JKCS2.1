@@ -65,7 +65,7 @@ ADD="--force-reinstall --upgrade"
 #echo y | conda install numba
 PIP="$PYTHON -m pip"
 #$PIP --version
-$PIP install $ADD
+$PIP install --upgrade pip
 $PIP install pathlib #Perhaps this one is not necessary
 $PIP install numexpr==2.7.0 $ADD
 $PIP install numpy==1.21.4 $ADD
