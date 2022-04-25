@@ -41,6 +41,17 @@ do
   then
     PYTHON="python3.8"                             #Please modify this and use python version >3.8.0 but <4.0.0
     MODULE_PYTHON="module add python-env/3.8.6"    #Is there some module required to load python?
+    PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
+    MODULE_ABC="module load gcc"
+    PATH_XTB="/users/kubeckaj/XTB6.4/"
+    MODULE_XTB=""
+    PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
+    MODULE_G16="module load gaussian/G16RevC.01"
+    PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
+    MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+    project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
+    SBATCH_PREFIX="--account=$project "
+    WRKDIR="./"
     continue
   fi
   if [ "$i" == "puhti" ]
