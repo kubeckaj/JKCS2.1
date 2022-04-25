@@ -35,8 +35,8 @@ do
   if [ "$i" == "grendel" ]
   then
     PYTHON="python3.9"
-    MODULE_PYTHON="module load anaconda3/5.0.1 2>/dev/null;source /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/bin/activate"
-    PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
+    MODULE_PYTHON="module load anaconda3/5.0.1 2>/dev/null"
+    PATH_ABC="/home/kubeckaj/Applications/ABCluster-2.0-Linux/"
     MODULE_ABC="module load gcc"
     PATH_XTB="/home/kubeckaj/Applications/XTB6.4/"
     MODULE_XTB=""
