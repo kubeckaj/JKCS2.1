@@ -59,7 +59,7 @@ source JKCS/bin/activate
 #echo "- installing python 3.8"
 #echo y | conda install -c anaconda python=3.8
 
-ADD="--force-reinstall --upgrade"
+#ADD="--force-reinstall --upgrade"
 
 #echo y | conda install xtb-python
 #echo y | conda install numba
