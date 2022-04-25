@@ -73,10 +73,10 @@ then
   result=`grep -c "[15 22]]" .test.out`
   if [ $result -eq 1 ]
   then
-    printf "   -- numpy: ${cfGREEN}SUCCESFULL${cfDEF}"
+    printf "   -- numpy: ${cfGREEN}SUCCESFULL${cfDEF}\n"
     echo "   -- numpy: SUCCESFULL" >> ../.log
   else
-    printf "   -- numpy: ${cfRED}UNSUCCESFULL${cfGREEN}"
+    printf "   -- numpy: ${cfRED}UNSUCCESFULL${cfGREEN}\n"
     echo "   -- numpy: UNSUCCESFULL" >> ../.log
     cat .test.out >> ../.log
     echo "   :: see .log for the error"
@@ -90,10 +90,10 @@ then
   result=`wc -l .test.out | awk '{print $1}' `
   if [ $result -eq 0 ]
   then
-    printf "   -- pandas: ${cfGREEN}SUCCESFULL${cfDEF}"
+    printf "   -- pandas: ${cfGREEN}SUCCESFULL${cfDEF}\n"
     echo "   -- pandas: SUCCESFULL" >> ../.log 
   else
-    printf "   -- pandas: ${cfRED}UNSUCCESFULL${cfDEF}" 
+    printf "   -- pandas: ${cfRED}UNSUCCESFULL${cfDEF}\n" 
     echo "   -- pandas: UNSUCCESFULL" >> ../.log
     cat .test.out >> ../.log
     echo "   :: see .log for the error"
@@ -107,10 +107,10 @@ then
   result=`wc -l .test.out | awk '{print $1}' `
   if [ $result -eq 0 ]
   then
-    printf "   -- ase: ${cfGREEN}SUCCESFULL${cfDEF}"
+    printf "   -- ase: ${cfGREEN}SUCCESFULL${cfDEF}\n"
     echo "   -- ase: SUCCESFULL" >> ../.log
   else
-    printf "   -- ase: ${cfRED}UNSUCCESFULL${cfDEF}" 
+    printf "   -- ase: ${cfRED}UNSUCCESFULL${cfDEF}\n" 
     echo "   -- ase: UNSUCCESFULL" >> ../.log
     cat .test.out >> ../.log
     echo "   :: see .log for the error"
