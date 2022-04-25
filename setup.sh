@@ -159,7 +159,7 @@ then
   sed 's,REPLACE_module_orca,'"$MODULE_ORCA"',g' .help11 > .help12
   sed 's,REPLACE_sbatch_prefix,'"$SBATCH_PREFIX"',g' .help12 > .help13
   sed 's,REPLACE_wrkdir,'"$WRKDIR"',g' .help13 > .help14
-  mv .help13 ~/.JKCSusersetup.txt
+  mv .help14 ~/.JKCSusersetup.txt
   rm .help*
   printf "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
 else
