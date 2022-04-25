@@ -29,7 +29,11 @@ if [ ! -e JKQC/JKCS ] || [ "$1" == "-r" ] || [ "$2" == "-r" ]
 then
   cd JKQC
   rm -r JKCS 2>/dev/null 
-  sh .install.sh "$PYTHON" "$MODULE_PYTHON"
+  if [ "$1" == "-qml" ] || [ "$2" == "-qml" ] || [ "$3" == "-qml" ]
+  then
+    ADD="-qml"
+  fi
+  sh .install.sh "$PYTHON" "$MODULE_PYTHON" "$ADD"
   if [ ! -e JKCS ]
   then
     exit

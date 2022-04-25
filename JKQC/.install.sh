@@ -69,10 +69,13 @@ $PIP install numexpr==2.7.0 --force-reinstall --upgrade
 $PIP install numpy==1.21.4 --force-reinstall --upgrade
 $PIP install pandas==1.3.4 --force-reinstall --upgrade
 $PIP install ase
-#$PIP install sklearn
-#$PIP install cffi
-#$PIP install dscribe
-#$PIP install qml
+if [ "$3" == "-qml" ]
+then
+ $PIP install sklearn
+ $PIP install cffi
+ $PIP install dscribe
+ $PIP install install git+https://github.com/qmlcode/qml@develop --user -U --force-reinstall --upgrade
+fi
 
 #echo "- exporting environment"
 #conda env export > environment.yml
