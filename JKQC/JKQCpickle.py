@@ -106,6 +106,8 @@ Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
 Qformation = 0
 formation_input_file = ""
 
+orcaext = "out"
+
 last = ""
 for i in sys.argv[1:]:
   #HELP
@@ -149,6 +151,14 @@ for i in sys.argv[1:]:
       output_pkl = i
       Qout = 1
       continue
+  #ORCA EXTENSION
+  if i == "-orcaext":
+    last = "-orcaext"
+    continue
+  if last == "-orcaext":
+    last = ""
+    orcaext = str(i)
+    continue
   #NONAME
   if i == "-noname":
     Qclustername = 0
@@ -517,7 +527,7 @@ for file_i in files:
   file_i_XTB  = folder+file_i_BASE+".log"
   file_i_G16  = folder+file_i_BASE+".log"
   file_i_XYZ  = folder+file_i_BASE+".xyz"
-  file_i_ORCA = folder+file_i_BASE+".out"
+  file_i_ORCA = folder+file_i_BASE+"."+orcaext
   file_i_INFO = folder+"info.txt" 
  
   ###############
@@ -920,7 +930,7 @@ for file_i in files:
       if re.search("FINAL SINGLE POINT ENERGY", line):
         out = float(line.split()[4])
     file.close()
-    clusters_df = df_add_iter(clusters_df, "out", "electronic_energy", [str(cluster_id)], [out])
+    clusters_df = df_add_iter(clusters_df, orcaext, "electronic_energy", [str(cluster_id)], [out])
 
 ## EXTRACT
 def dash(input_array):
