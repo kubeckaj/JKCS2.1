@@ -435,7 +435,7 @@ function program_ORCA {
     else
       JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
     fi
-    if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
+    #if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
   fi
   cp $inputINP ./ # .INP
   cp $inputXYZ ./ # .XYZ
