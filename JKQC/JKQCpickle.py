@@ -40,6 +40,7 @@ def print_help():
   print(" -extract X prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -except X  prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -reacted   removes (the minority of) reacted structures")
+  print(" -noexample,-noex does not print an example")
   print("\nPRINT:")
   print(" -ct                cluster type (e.g. 1sa,3sa2am)")
   print(" -b                 basename (e.g. 1sa-3, 3sa2am-4_508)")
@@ -71,6 +72,10 @@ def print_help():
   print(" -temp [value in K]   recalculate for different temperature")
   print(" -v,-as [value]       anharmonicity scaling factor")
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
+  print("\nFILTERING:")
+  print(" -sort <str>          sort by: g,gout,el")
+  print(" -select <int>        selects <int> best structures from each cluster")
+  print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("\nFORMATION PROPERTIES:")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
   print(" -bavg OR -bavgout       prints a value that is Boltzmann average over each cluster using -g OR -gout")
@@ -104,6 +109,9 @@ Qanh = 1
 Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
 Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
 Qformation = 0
+Qsort = 0 # 0=no sorting, otherwise string
+Qselect = 0 # 0=nothing, otherwise the number of selected structures
+Quniq = 0 # uniqie based on given arguments
 formation_input_file = ""
 
 orcaext = "out"
@@ -210,6 +218,31 @@ for i in sys.argv[1:]:
         else:
           output_pkl = i
           continue
+  ########
+  # SORT 
+  if i == "-sort" or i == "--sort":
+    last = "-sort"
+    continue
+  if last == "-sort":
+    last = ""
+    Qsort = str(i)
+    continue
+  # SELECT
+  if i == "-select" or i == "--select":
+    last = "-select"
+    continue
+  if last == "-select":
+    last = ""
+    Qselect = int(i)
+    continue  
+  # UNIQUE
+  if i == "-unique" or i == "--unique" or i == "-uniq" or i == "--uniq":
+    last = "-uniq"
+    continue
+  if last == "-uniq":
+    last = ""
+    Quniq = str(i)
+    continue
   ########
   # XYZ
   if i == "-xyz" or i == "--xyz" or i == "-XYZ" or i == "--XYZ":
@@ -1261,6 +1294,44 @@ if Qqha == 1:
 
   #  clusters_df["log","gibbs_free_energy"] = [clusters_df["log","enthalpy_energy"][i] - clusters_df["log","entropy"][i]/1000/627.503 * clusters_df["log","temperature"][i] for i in range(len(clusters_df))] 
    #  clusters_df["log","gibbs_free_energy_thermal_correction"] = [clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i] for i in range(len(clusters_df))] 
+
+## FILTERING ##
+if Quniq != 0:
+  uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+  newclusters_df = []
+  myNaN = lambda x : missing if x == "NaN" else x
+  for i in uniqueclusters:
+     preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
+     tocompare = []
+     for j in ["electronic_energy","gibbs_free_energy"]:
+       values = [np.floor(myNaN(o)*1e4) for o in preselected_df["log"][j].values]
+       tocompare.append(values)
+     tocompare = np.transpose(tocompare)
+     uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
+     selected_df = preselected_df.iloc[uniqueindexes]
+     if len(newclusters_df) == 0:
+       newclusters_df = selected_df
+     else:
+       #print(newclusters_df)
+       newclusters_df = newclusters_df.append(selected_df)
+       #print(newclusters_df)
+  clusters_df = newclusters_df
+if str(Qselect) != "0" and str(Qsort) == "0":
+  Qsort = "g"
+if str(Qsort) != "0":
+  clusters_df = clusters_df.sort_values([("log","gibbs_free_energy")])
+if str(Qselect) != "0":
+  uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+  newclusters_df = []
+  for i in uniqueclusters:
+     selected_df = clusters_df[clusters_df["info"]["cluster_type"] == i][0:Qselect] 
+     if len(newclusters_df) == 0:
+       newclusters_df = selected_df
+     else:
+       #print(newclusters_df)
+       newclusters_df = newclusters_df.append(selected_df)
+       #print(newclusters_df)
+  clusters_df = newclusters_df
 
 ## EXTRACT DATA ##
 output = []
