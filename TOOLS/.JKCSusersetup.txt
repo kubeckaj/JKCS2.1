@@ -404,8 +404,7 @@ rm -rf \$CALC_NAME""" > $base.cmd
 ##########################################################################################
 function program_ORCA {
   input=$1                     # file.xyz or .inp    
-  base=$(basename $input .xyz) # file
-  base=$(basename $base  .inp) # file 
+  base=$(basename $(basename $input .xyz) .com)   # file
   inputINP=$base.inp           # file.inp 
   inputXYZ=$base.xyz           # file.xyz
   output=$base.out             # file.out
@@ -436,8 +435,10 @@ function program_ORCA {
     else
       JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
     fi
+    if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
   fi
-  cp $input ./ #either .XYZ or .INP
+  cp $inputINP ./ # .INP
+  cp $inputXYZ ./ # .XYZ
 
   #CHANGE: ORCA, inputINP, .out
   echo """#!/bin/bash
