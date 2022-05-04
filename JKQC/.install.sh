@@ -29,9 +29,9 @@ if [[ -z "$version" ]]                                              #
   then echo "No Python!"; exit; fi                                  #
 #####################################################################
 ### Just checking if appropriate version is used ####################
-parsedVersion=$(echo "${version//./}")                              #
+parsedVersion=$(echo "${version//./}" | cut -c-3)                   #
 if [[ "$parsedVersion" -gt "400" || "$parsedVersion" -lt "380" ]]   #
-  then echo "Invalid Python version ($version)"; exit;fi                       #
+  then echo "Invalid Python version ($version)"; exit;fi            #
 #####################################################################
 
 echo "- creating environment"
