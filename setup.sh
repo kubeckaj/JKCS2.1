@@ -50,8 +50,8 @@ do
   fi
   if [ "$i" == "mahti" ]
   then
-    PYTHON="python3.8"                             #Please modify this and use python version >3.8.0 but <4.0.0
-    MODULE_PYTHON="module add python-env/3.8.6"    #Is there some module required to load python?
+    PYTHON="python3.9"                             #Please modify this and use python version >3.8.0 but <4.0.0
+    MODULE_PYTHON="module load python-data/3.9-3"    #Is there some module required to load python?
     PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
     MODULE_ABC="module load gcc"
     PATH_XTB="/users/kubeckaj/XTB6.4/"
