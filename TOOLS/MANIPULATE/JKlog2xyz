@@ -32,6 +32,7 @@ function help {
 }
 ### PREPARING WHAT AND HOW
 what=""
+Qforce=0
 Qabc=0
 Qnewname=""
 Qnew=0
@@ -53,6 +54,12 @@ do
     if [ "$i" == "-matchabc" ] || [ "$i" == "-ma" ]
     then
       Qabc=2
+    fi
+    ### Qforce 
+    if [ "$i" == "-f" ] || [ "$i" == "-force" ]
+    then
+      Qforce=1
+      continue
     fi
     ### -new XX
     if [ "$last" == "-new" ]
@@ -119,6 +126,11 @@ function convertG16 {
     grep -C $N1 "Symbolic Z-matrix:" $file | tail -n $N | awk '{print $1}' > helpingfile1
     grep -C $N2 " Center     Atomic      Atomic             Coordinates (Angstroms)" $file | tail -n $N | awk '{print $4,$5,$6}' > helpingfile2
 
+    if [ $Qforce -eq 1 ]
+    then
+      grep -C $N2 " Center     Atomic                   Forces (Hartrees/Bohr)" $file | tail -n $N | awk '{print $3,$4,$5}' > helpingfile3
+    fi
+
     ### CREATING NEW FILE
     if [ $Qnew -eq 1 ]
     then
@@ -136,7 +148,12 @@ function convertG16 {
       energy=" Free_Energy: `grep "Free Energies" $file | awk '{print $8}'`"
       energy+=" Electronic_Energy: `grep "SCF Done" $file | tail -n 1 | awk '{print $5}'`"
     else
-      energy=" Electronic_Energy: `grep "SCF Done" $file | tail -n 1 | awk '{print $5}'`"
+      if [ $Qforce -ne 1 ]
+      then
+        energy=" Electronic_Energy: `grep "SCF Done" $file | tail -n 1 | awk '{print $5}'`"
+      else
+        energy=" `grep "SCF Done" $file | tail -n 1 | awk '{print $5}'`"
+      fi
     fi
     if [ $QdipXTB -eq 1 ]
     then
@@ -144,8 +161,12 @@ function convertG16 {
     fi
     echo "$energy" >> $newfile
 
-
-    paste helpingfile1 helpingfile2 >> $newfile
+    if [ $Qforce -ne 1 ]
+    then
+      paste helpingfile1 helpingfile2 >> $newfile
+    else
+      paste helpingfile1 helpingfile2 helpingfile3 >> $newfile
+    fi
 }
 
 function convertXTB {
@@ -239,5 +260,6 @@ done
 
 if [ -e helpingfile1 ]; then rm helpingfile1; fi
 if [ -e helpingfile2 ]; then rm helpingfile2; fi
+if [ -e helpingfile3 ]; then rm helpingfile3; fi
 
 echo "JKlog2xyz: Done :-D"
