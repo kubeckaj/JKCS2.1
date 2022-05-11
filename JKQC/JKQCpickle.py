@@ -459,10 +459,12 @@ if len(files) == 0:
       print("No inputs. No *.log files. [EXITING]")
       exit()
   if len(input_pkl) > 1:
-    Qout = 1
+    if Qout == 0:
+      Qout = 1
 else:
   if len(Pout) == 0:
-    Qout = 1
+    if Qout==0:
+      Qout = 1
     print("Number of files: "+str(len(files)))
   else:
     Qout = 2
@@ -1100,12 +1102,14 @@ if Qextract > 0:
         #print(newclusters_df)
         newclusters_df = newclusters_df.append(extracted_df)
         #print(newclusters_df)
+  prelen=len(clusters_df)
   if Qextract == 2:
     a1 = pd.Index(clusters_df.index)
     a2 = pd.Index(newclusters_df.index)
     clusters_df = clusters_df.iloc[a1.difference(a2, sort=False)]
   else:
     clusters_df = newclusters_df
+  print("Extracting: "+str(prelen)+" --> "+str(len(clusters_df)))
 
 if Qreacted > 0:
   all_molecules = []
@@ -1166,14 +1170,7 @@ if Qreacted > 0:
 
 ## SAVE OUTPUT.pkl ##
 if Qout > 0:
-  clusters_df.to_pickle(output_pkl)
-  if Qout == 1:
-    if len(clusters_df) == 0:
-      print(clusters_df)
-      print("No files in the input!")
-    else:
-      print(clusters_df.iloc[0])
-      print("Number of files in "+output_pkl+": "+str(len(clusters_df)))
+  original_clusters_df = clusters_df.copy()
 
 ## PRE_EXTRACT_DATA MANIPULATION ##
 if Qqha == 1:
@@ -1296,6 +1293,10 @@ if Qqha == 1:
    #  clusters_df["log","gibbs_free_energy_thermal_correction"] = [clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i] for i in range(len(clusters_df))] 
 
 ## FILTERING ##
+if ( str(Qselect) != "0" or str(Quniq) != "0" ) and str(Qsort) == "0":
+  Qsort = "g"
+if str(Qsort) != "0":
+  clusters_df = clusters_df.sort_values([("log","gibbs_free_energy")])
 if Quniq != 0:
   uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
   newclusters_df = []
@@ -1303,8 +1304,17 @@ if Quniq != 0:
   for i in uniqueclusters:
      preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
      tocompare = []
-     for j in ["electronic_energy","gibbs_free_energy"]:
-       values = [np.floor(myNaN(o)*1e4) for o in preselected_df["log"][j].values]
+     for j in ["rg","electronic_energy"]: #["electronic_energy","gibbs_free_energy"]:
+       if j == "rg":
+         rg = []
+         for aseCL in preselected_df["xyz"]["structure"]:
+           try:
+             rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
+           except:
+             rg.append(missing)
+         values = [np.floor(myNaN(o)*1e2) for o in rg]
+       else:  
+         values = [np.floor(myNaN(o)*1e4) for o in preselected_df["log"][j].values]
        tocompare.append(values)
      tocompare = np.transpose(tocompare)
      uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
@@ -1315,9 +1325,8 @@ if Quniq != 0:
        #print(newclusters_df)
        newclusters_df = newclusters_df.append(selected_df)
        #print(newclusters_df)
+  print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
-if str(Qselect) != "0" and str(Qsort) == "0":
-  Qsort = "g"
 if str(Qsort) != "0":
   clusters_df = clusters_df.sort_values([("log","gibbs_free_energy")])
 if str(Qselect) != "0":
@@ -1331,7 +1340,21 @@ if str(Qselect) != "0":
        #print(newclusters_df)
        newclusters_df = newclusters_df.append(selected_df)
        #print(newclusters_df)
+  print("Selecting/Sampling: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
+
+## SAVE OUTPUT.pkl ##
+if Qout > 0:
+  tosave = original_clusters_df.loc[clusters_df.index]
+  tosave.to_pickle(output_pkl)
+  if Qout == 1:
+    if len(tosave) == 0:
+      print(tosave)
+      print("No files in the input!")
+    else:
+      print("Example output:")
+      print(tosave.iloc[0])
+      print("Number of files in "+output_pkl+": "+str(len(tosave)))
 
 ## EXTRACT DATA ##
 output = []
