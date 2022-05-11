@@ -157,7 +157,8 @@ for i in sys.argv[1:]:
       exit()
     else:
       output_pkl = i
-      Qout = 1
+      if Qout == 0:
+        Qout = 1
       continue
   #ORCA EXTENSION
   if i == "-orcaext":
