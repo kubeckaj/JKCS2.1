@@ -1776,9 +1776,10 @@ if not len(output) == 0:
   os.remove(".help.txt")
 
 if Qformation == 1:
-  print("#####################################",flush = True)
-  print("##########  FORMATION  ##############",flush = True)
-  print("#####################################",flush = True)
+  if Qout != 2:
+    print("#####################################",flush = True)
+    print("##########  FORMATION  ##############",flush = True)
+    print("#####################################",flush = True)
   if len(formation_input_file) > 0:
     f = open(formation_input_file, "r")
     output = []
