@@ -1293,19 +1293,19 @@ if Qqha == 1:
   #  clusters_df["log","gibbs_free_energy"] = [clusters_df["log","enthalpy_energy"][i] - clusters_df["log","entropy"][i]/1000/627.503 * clusters_df["log","temperature"][i] for i in range(len(clusters_df))] 
    #  clusters_df["log","gibbs_free_energy_thermal_correction"] = [clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i] for i in range(len(clusters_df))] 
 
-## FILTERING ##
+###### FILTERING ######
 if ( str(Qselect) != "0" or str(Quniq) != "0" ) and str(Qsort) == "0":
   Qsort = "g"
 if str(Qsort) != "0":
   clusters_df = clusters_df.sort_values([("log","gibbs_free_energy")])
-if Quniq != 0:
+if str(Quniq) != "0":
   uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
   newclusters_df = []
   myNaN = lambda x : missing if x == "NaN" else x
   for i in uniqueclusters:
      preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
      tocompare = []
-     for j in ["rg","electronic_energy"]: #["electronic_energy","gibbs_free_energy"]:
+     for j in ["rg","electronic_energy"]:#,"gibbs_free_energy"]:
        if j == "rg":
          rg = []
          for aseCL in preselected_df["xyz"]["structure"]:
@@ -1771,7 +1771,8 @@ if not len(output) == 0:
   [f.write(" ".join(map(str,row))+"\n") for row in list(zip(*output))]
   f.close()
   #TODO can you make this working using only python?
-  os.system("cat .help.txt | column -t")
+  if Qout != 2 and Qformation == 0:
+    os.system("cat .help.txt | column -t")
   os.remove(".help.txt")
 
 if Qformation == 1:
@@ -1831,7 +1832,8 @@ if Qformation == 1:
   #print(np.array(cluster_types,dtype=dt)[monomers])
   monomer_types = [i[1] for i in np.array(cluster_types,dtype=dt)[monomers]]
   #print(monomer_types)
-  print("MONOMERS: " + " ".join(monomer_types),flush = True)
+  if Qout != 2:
+    print("MONOMERS: " + " ".join(monomer_types),flush = True)
   f = open(".help.txt", "w")
   for i in range(len(output[0])):
     line = np.array(output)[:,i]
