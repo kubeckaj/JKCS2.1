@@ -103,16 +103,20 @@ QUentropy = 1 #if you want to energy
 
 Qqha = 0 #Run the QHA
 Qt = missing
+Qp = missing
 Qfc = 0 #Run QHA with vib. frequency cutoff
 Qanh = 1
 
-Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
-Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
-Qformation = 0
 Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
 Quniq = 0 # uniqie based on given arguments
 formation_input_file = ""
+
+Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
+Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
+Qformation = 0
+Qconc = 0
+conc = []
 
 orcaext = "out"
 
@@ -441,6 +445,18 @@ for i in sys.argv[1:]:
     continue
   if i == "-formation" or i == "--formation":
     Qformation = 1
+    continue
+  if i == "-conc" or i == "--conc":
+    Qconc = 1
+    last = "-conc"
+    continue
+  if last == "-conc":
+    last = "-conc2"
+    remember = str(i)
+    continue
+  if last == "-conc2":
+    last = ""
+    conc.append(np.array([remember, float(i)]))
     continue
   if os.path.exists(i):
     formation_input_file = i
@@ -1182,6 +1198,19 @@ if Qqha == 1:
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
       QtOLD = clusters_df["log","temperature"].values[i]
+      try:
+        lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
+      except:
+        lf = 0
+      if lf <= 0:
+        clusters_df["log","entropy"][i] = missing
+        clusters_df["log","enthalpy_energy"][i] = missing
+        clusters_df["log","enthalpy_thermal_correction"][i] = missing
+        clusters_df["log","internal_energy"][i] = missing
+        clusters_df["log","energy_thermal_correction"][i] = missing
+        clusters_df["log","zero_point_correction"][i] = missing
+        clusters_df["log","zero_point_energy"][i] = missing
+        continue
       Sv_OLD = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K
       Ev_OLD = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
       #
@@ -1853,6 +1882,21 @@ if Qformation == 1:
           for line_i in range(1,len(line)):
             try:
               line[line_i] = float(line[line_i]) - float(cluster_molecule_number) * float(np.array(output)[:,monomers][line_i,k])
+              if Qconc > 0:
+                for conc_j in range(len(conc)):
+                  if conc[conc_j][0] == selected_monomer:         
+                    R = 1.987 #cal/mol/K #=8.31441
+                    if np.isnan(Qt):
+                      try:
+                        Qt = clusters_df["log","temperature"].values[i]
+                      except:
+                        Qt = 298.15
+                    if np.isnan(Qp):
+                      try:
+                        Qp = 101325.0*float(clusters_df["log","pressure"].values[i])
+                      except:
+                        Qp = 101325.0
+                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - 1) * R/1000/627.503 * Qt * np.log( float(conc[conc_j][1]) / Qp)
             except:
               line[line_i] = missing
           test_monomer = 1
