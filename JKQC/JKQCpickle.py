@@ -118,7 +118,11 @@ Qformation = 0
 Qconc = 0
 conc = []
 
+
 orcaext = "out"
+orcaextname = "out"
+turbomoleext = "out"
+turbomoleextname = "out"
 
 last = ""
 for i in sys.argv[1:]:
@@ -165,12 +169,22 @@ for i in sys.argv[1:]:
         Qout = 1
       continue
   #ORCA EXTENSION
-  if i == "-orcaext":
+  if i == "-orcaext" or i == "-orca":
     last = "-orcaext"
     continue
   if last == "-orcaext":
     last = ""
     orcaext = str(i)
+    orcaextname = "log"
+    continue
+  #TURBOMOLE EXTENSION
+  if i == "-turbomoleext" or i == "-turbomole":
+    last = "-turbomoleext"
+    continue
+  if last == "-turbomoleext":
+    last = ""
+    turbomoleext = str(i)
+    turbomoleextname = "log"
     continue
   #NONAME
   if i == "-noname":
@@ -580,6 +594,7 @@ for file_i in files:
   file_i_G16  = folder+file_i_BASE+".log"
   file_i_XYZ  = folder+file_i_BASE+".xyz"
   file_i_ORCA = folder+file_i_BASE+"."+orcaext
+  file_i_TURBOMOLE = folder+file_i_BASE+"."+turbomoleext
   file_i_INFO = folder+"info.txt" 
  
   ###############
@@ -982,7 +997,25 @@ for file_i in files:
       if re.search("FINAL SINGLE POINT ENERGY", line):
         out = float(line.split()[4])
     file.close()
-    clusters_df = df_add_iter(clusters_df, orcaext, "electronic_energy", [str(cluster_id)], [out])
+    clusters_df = df_add_iter(clusters_df, orcaextname, "electronic_energy", [str(cluster_id)], [out])
+
+  ###############
+  ### TURBOMOLE #
+  ###############
+  if os.path.exists(file_i_TURBOMOLE):
+    file = open(file_i_TURBOMOLE, "r")
+    testTURBOMOLE = 0
+    for i in range(5):
+      if re.search("TURBOMOLE", file.readline()):
+        testTURBOMOLE = 1
+        break
+    if testTURBOMOLE == 1:
+      out = missing
+      for line in file:
+        if re.search("Final CCSD\(F12\*\)\(T\) energy", line):
+          out = float(line.split()[5])
+      file.close()
+      clusters_df = df_add_iter(clusters_df, turbomoleextname, "electronic_energy", [str(cluster_id)], [out])
 
 ## EXTRACT
 def dash(input_array):
@@ -1736,8 +1769,10 @@ if not len(output) == 0:
         print("Qglob error. [EXITING]")
         exit()
       GFE[GFE == "NaN"] = missing
-      globindex = clusters_df.index.values[clusters_df["info"]["cluster_type"] == i][GFE == np.min(GFE[~pd.isna(GFE)])][0]
-      indexes.append(int(np.array(range(len(clusters_df)))[clusters_df.index.values == globindex][0]))
+      if len(GFE[~pd.isna(GFE)]) != 0:
+        globindex = clusters_df.index.values[clusters_df["info"]["cluster_type"] == i][GFE == np.min(GFE[~pd.isna(GFE)])][0]
+        indexes.append(int(np.array(range(len(clusters_df)))[clusters_df.index.values == globindex][0]))
+   
     output = [[output[j][i] for i in indexes] for j in range(output.shape[0])]
   
   #TAKING BOLTZMANN AVERAGE OVER ALL MINIMA 
