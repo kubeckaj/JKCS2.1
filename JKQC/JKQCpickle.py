@@ -1359,7 +1359,11 @@ if Qqha == 1:
 if ( str(Qselect) != "0" or str(Quniq) != "0" ) and str(Qsort) == "0":
   Qsort = "g"
 if str(Qsort) != "0":
-  clusters_df = clusters_df.sort_values([("log","gibbs_free_energy")])
+  if Qsort == "g":
+    Qsort = "gibbs_free_energy"
+  if Qsort == "el"
+    Qsort = "electronic_energy"
+  clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
   uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
   newclusters_df = []
@@ -1391,7 +1395,7 @@ if str(Quniq) != "0":
   print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
 if str(Qsort) != "0":
-  clusters_df = clusters_df.sort_values([("log","gibbs_free_energy")])
+  clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Qselect) != "0":
   uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
   newclusters_df = []
