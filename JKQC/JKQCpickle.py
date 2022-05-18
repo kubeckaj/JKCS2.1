@@ -1361,7 +1361,7 @@ if ( str(Qselect) != "0" or str(Quniq) != "0" ) and str(Qsort) == "0":
 if str(Qsort) != "0":
   if Qsort == "g":
     Qsort = "gibbs_free_energy"
-  if Qsort == "el"
+  if Qsort == "el":
     Qsort = "electronic_energy"
   clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
