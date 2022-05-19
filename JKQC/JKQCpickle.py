@@ -82,6 +82,7 @@ def print_help():
   print("                         NOTE: -g/-gout is treated correctly + -s not treated; use (G - H)/T")
   print(" -formation              print values as formation ")
   print(" <input_file> -formation print formations for the input file (no averaging though)")
+  print(" -conc sa 0.00001        dG at given conc. (use -cnt for self-consistent dG)")
 
 folder = "./"	
 files = []  
@@ -117,7 +118,7 @@ Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
 Qformation = 0
 Qconc = 0
 conc = []
-
+CNTfactor = 0 #see Wyslouzil
 
 orcaext = "out"
 orcaextname = "out"
@@ -474,6 +475,9 @@ for i in sys.argv[1:]:
     continue
   if os.path.exists(i):
     formation_input_file = i
+    continue
+  if i == "-cnt" or i == "--cnt":
+    CNTfactor = 1
     continue
   #UNKNOWN ARGUMENT   
   print("I am sorry but I do not understand the argument: "+i+" [EXITING]")
@@ -1839,7 +1843,7 @@ if not len(output) == 0:
   [f.write(" ".join(map(str,row))+"\n") for row in list(zip(*output))]
   f.close()
   #TODO can you make this working using only python?
-  if Qout != 2 and Qformation == 0:
+  if Qout != 2 or Qformation == 0:
     os.system("cat .help.txt | column -t")
   os.remove(".help.txt")
 
@@ -1906,6 +1910,7 @@ if Qformation == 1:
   f = open(".help.txt", "w")
   for i in range(len(output[0])):
     line = np.array(output)[:,i]
+    cluster_total_number = np.sum([int(sel[0]) for sel in cluster_types_sorted[i]])
     for j in range(len(cluster_types_sorted[i])):
       cluster_molecule = cluster_types_sorted[i][j][1]
       cluster_molecule_number = cluster_types_sorted[i][j][0]
@@ -1935,7 +1940,7 @@ if Qformation == 1:
                         Qp = 101325.0*float(clusters_df["log","pressure"].values[i])
                       except:
                         Qp = 101325.0
-                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - 1) * R/1000/627.503 * Qt * np.log( float(conc[conc_j][1]) / Qp)
+                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor/cluster_total_number) * R/1000/627.503 * Qt * np.log( float(conc[conc_j][1]) / Qp)
             except:
               line[line_i] = missing
           test_monomer = 1
