@@ -41,12 +41,15 @@ function help {
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
     -help ............. print this help and exit
+    -helpxtb .......... print the help for combined ABC and XTB (with geom)
+
     -l,-lm \"X\" ........ X local minima will saved [def=300*M/NoC]
     -g,-gen \"X\" ....... amount of ABC generations [def=100]
     -s,-sc \"X\" ........ amount of scout bees      [def=4]
     -pop,-i,-init \"X\" . amount of initial guesses [def=300*M]
+    -repeat \"X\" ....... each simulation is repeated X-times [def=1]
  
-    OTHERS: -box [def=7+M]
+    OTHERS: -box [def=7+M]a
     OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
     OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
     OTHERS: -pickle,-JKQC [TESTING]
@@ -71,6 +74,37 @@ function help {
   exit
 }
 
+function helpxtb {
+  printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "This script explores PESes of clusters using ABC algorithm.\n"
+  printf """
+  $scriptfile ${cfCYAN}[OPTIONS(s)]${cfDEF}
+
+  ${cfMAGENTA}OPTIONS:${cfDEF}
+    -help ............. print the original help and exit
+    -helpxtb .......... print this help and exit  
+
+    -abcxtb ........... run the coupled ABC and XTB version
+    -g,-gen \"X\" ....... number of ABC_XTB generations [def=100]
+    -box \"X\" .......... ranomly placed molecules from -X to X box [def=7+M]
+    -repeat \"X\" ....... each simulation is repeated X-times [def=1]
+ 
+    OTHERS: -gfn \"X\" .. defines GFN1-xTB or GFN2-xTB [def=1]
+
+  ${cfMAGENTA}SYMBOLS:${cfDEF}
+    M .... number of molecules
+    NoC .. number of combinations to form cluster
+    use * or / or M or NoC and script will evaluate it
+
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
+    
+            $scriptfile -abcxtb -gen 2000 -box 3
+            $scriptfile -abcxtb -gen 1000 -box 3+M -repeat 5\n"""
+  printf "#################################################################\n"
+  exit
+}
+
 ###############################################################################
 ################################  USER INPUT  #################################
 ################################ DO NOT TOUCH #################################
@@ -88,6 +122,7 @@ JKloadcolours           # some coloured output
 
 # check -help option
 JKloadhelp             # check if user asks for -help
+JKloadhelp xtb
 
 # check for folderbasename_something arguments and in case enter directories
 JKloaddirs
@@ -97,6 +132,9 @@ currentdirpath=$PWD
 # method and folder name
 folderNEW=ABC
 program=ABC        # could be also DFT, XTB, DLPNO ...
+
+# load charge and multiplicity
+JKloadCHARM
 
 # load amount of molecules
 if [ -e $inputfile ]
@@ -124,6 +162,9 @@ SC=4
 BOX="7+M"
 Qjpt=1 #jobs per task
 Qpickle=0 #Do I want to pickle afterwards?
+Qabcxtb=0 #Do I want to run ABC_XTB instead?
+GFN=1     #Use GFN1-xtb by default 
+Qrepeat=1 #How many times I want to repeat each simulation?
 
 last=""
 # loop over all arguments
@@ -204,7 +245,37 @@ do
   then
     Qpickle=1
     continue
+  fi
+  # ABC_XTB
+  if [ "$iter" == "-abcxtb" ]
+  then
+    Qabcxtb=1
+    continue
+  fi
+  # repeat
+  if [ "$iter" == "-repeat" ]
+  then
+    last="-repeat"
+    continue
   fi 
+  if [ "$last" == "-repeat" ]
+  then
+    Qrepeat="$iter"
+    last=""
+    continue
+  fi
+  # GFN
+  if [ "$iter" == "-gfn" ]
+  then
+    last="-gfn"
+    continue
+  fi
+  if [ "$last" == "-gfn" ]
+  then
+    GFN="$iter"
+    last=""
+    continue
+  fi
   # 
   arguments_help+=( "${arguments[i]}" )
 done
@@ -273,86 +344,141 @@ fi
 
 ### Going through all combinations
 
+if [ $Qabcxtb -eq 0 ]
+then
+  method=ABC
+else
+  method="ABC_XTB"
+fi
 # creating ABC. if it exist, I will just enter it
-if [ ! -d ABC ]; then mkdir ABC; fi
-cd ABC 
-JKecho 2 "Creating ${cfBLUE}ABC${cfDEF} subfolders."
+if [ ! -d $method ]; then mkdir $method; fi
+cd $method 
+JKecho 2 "Creating ${cfBLUE}$method${cfDEF} subfolders."
 #TODO here is the question: should be done in the jobs itself 
 const_iter=0
 Qjpt_iter=0
 jobscount=0
 for i in $constitutions
 do
-  Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
-  const_iter=`echo $const_iter+1 |bc`
-  JKecho 3 "  Combination - ${cfYELLOW}$i${cfDEF}"
-  #####################
-  ### CREATING PATH ###
-  folder=ABC_$i
-  ## 
-  if [ -d $folder ]; 
-  then 
-    JKecho 1 "    ${cfGREEN}$folder${cfDEF} already exist [${cfRED}CONTINUING${cfDEF}]"; 
-    continue
-  fi
-  mkdir $folder
-  cd $folder
-  ######################
-  ### CREATE name.CLUSTER
-  echo $Nfiles >> $F1
-  for var in `seq 1 $Nfiles`
+  for rep in `seq 1 $Qrepeat`
   do
-    num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
-    path=`echo $files | awk -v var0=$var '{print $var0}'` 
-    echo $path $num >> $F1
-  done
-  echo "* $BOX" >> $F1
-  JKecho 3 "    File $F1 has been created." 
-  ######################
-  ### CREATE name.INP
-  echo """$F1 #_file_containing_monomers 
+    Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
+    const_iter=`echo $const_iter+1 |bc`
+    JKecho 3 "  Combination - ${cfYELLOW}$i${cfDEF}"
+    #####################
+    ### CREATING PATH ###
+    if [ $Qabcxtb -eq 0 ]
+    then 
+      prefolder="ABC"
+    else
+      prefolder="ABC_XTB"
+    fi
+    if [ $Qrepeat -eq 1 ]
+    then
+      folder=${prefolder}_$i
+    else
+      folder=${prefolder}_${i}_$rep
+    fi
+    ## 
+    if [ -d $folder ]; 
+    then 
+      JKecho 1 "    ${cfGREEN}$folder${cfDEF} already exist [${cfRED}CONTINUING${cfDEF}]"; 
+      continue
+    fi
+    mkdir $folder
+    cd $folder
+    if [ $Qabcxtb -eq 0 ]
+    then
+      ######################
+      ### CREATE name.CLUSTER
+      echo $Nfiles >> $F1
+      for var in `seq 1 $Nfiles`
+      do
+        num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
+        path=`echo $files | awk -v var0=$var '{print $var0}'` 
+        echo $path $num >> $F1
+      done
+      echo "* $BOX" >> $F1
+      JKecho 3 "    File $F1 has been created." 
+      ######################
+      ### CREATE name.INP
+      echo """$F1 #_file_containing_monomers 
 $INIT #_initial_amount_of_random_configurations
 $GEN #_ammount_of_generations_(loops)
 $SC #_amount_of_scout_bees_(survival_value)
 $BOX #_size_of_sampling_box
 $name #_name_of_output_folder
 $LM #_amount_of_Local_Minima_to_be_saved""" | column -t >> $F2
-  ######################
-  ### CREATE rename.sh
-  echo """cd $name-LM
+    else #ABC_XTB
+      ### CREATE name.INP
+      echo """lm_dir $name-LM
+num_calcs $GEN
+do_coarse_opt yes
+min_energy_gap  1.E-5
+max_geom_iters  0
+
+components""" >> $F2
+      for var in `seq 1 $Nfiles`
+      do
+        num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
+        path=`echo $files | awk -v var0=$var '{print $var0}'`
+        echo "   $path $num" >> $F2
+        echo "   random -$BOX -$BOX -$BOX $BOX $BOX $BOX" >> $F2
+        echo "   * *" >> $F2
+        echo "   ****" >> $F2
+      done
+      echo """end
+
+xtb # charge, uhf, gfn
+  $CHARGE $MULTIPLICITY $GFN
+end
+
+commands
+    \$xtb\$
+end""" >> $F2     
+    fi
+    ######################
+    ### CREATE rename.sh
+    echo """cd $name-LM
 rm *.gjf *.cluster 2>/dev/null
 for i in \`ls *.xyz\`
 do
   mv \$i `echo $currentdir | sed "s/SYS//" | sed "s/_//g"`-${NAMEcomp}_${const_iter}_\$i 
 done
 cd ..""" > rename.sh
-  if [ $Qpickle -eq 1 ]
-  then
-    echo """cd $name-LM
+    if [ $Qpickle -eq 1 ]
+    then
+      echo """cd $name-LM
 source ~/.JKCSusersetup.txt
 program_JKQCpickle *.xyz -noname
 rm *.xyz
 cd ..""" >> rename.sh
-  fi
-  ######################
-  # command
-  command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 
-  printf "$command" > run${scriptfilecommand}.sh
-  commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
-  if [ "$Qperform" == 2 ]
-  then 
-    echo $commandTODO >> ../.crealTODO.txt
-  fi
-  echo $commandTODO >> ../.Qjpt_commands_TODO.txt
-  if [ $Qjpt_iter -eq $Qjpt ]
-  then
-    cat ../.Qjpt_commands_TODO.txt | xargs -d$'\n' >> ../commands_TODO.txt
-    rm ../.Qjpt_commands_TODO.txt
-    Qjpt_iter=0
-    jobscount=`echo $jobscount+1|bc`
-  fi
-  JKecho 3 "    Command ${cfMAGENTA}$commandTODO${cfDEF} [${cfCYAN}$command${cfDEF}] written to ${cfBLUE}ABC/${cfYELLOW}commands_TODO.txt${cfDEF}"
-  cd ..
+    fi
+    ######################
+    # command
+    if [ $Qabcxtb -eq 0 ]
+    then
+      command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 
+    else
+      command="source ~/.JKCSusersetup.txt;\n program_GEOM ${name}.inp;\n sh rename.sh"
+    fi
+    printf "$command" > run${scriptfilecommand}.sh
+    commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
+    if [ "$Qperform" == 2 ]
+    then 
+      echo $commandTODO >> ../.crealTODO.txt
+    fi
+    echo $commandTODO >> ../.Qjpt_commands_TODO.txt
+    if [ $Qjpt_iter -eq $Qjpt ]
+    then
+      cat ../.Qjpt_commands_TODO.txt | xargs -d$'\n' >> ../commands_TODO.txt
+      rm ../.Qjpt_commands_TODO.txt
+      Qjpt_iter=0
+      jobscount=`echo $jobscount+1|bc`
+    fi
+    JKecho 3 "    Command ${cfMAGENTA}$commandTODO${cfDEF} [${cfCYAN}$command${cfDEF}] written to ${cfBLUE}ABC/${cfYELLOW}commands_TODO.txt${cfDEF}"
+    cd ..
+  done
 done
 if [ -e .Qjpt_commands_TODO.txt ]
 then

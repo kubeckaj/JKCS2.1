@@ -82,11 +82,12 @@ function JKecho {
 function JKloadhelp {
   arguments_help=()
   # first search for -print
+  ADDITION=$1
   for i in "${!arguments[@]}"
   do
-    if [ "${arguments[i]}"  == "-help" ] || [ "${arguments[i]}"  == "--help" ];
+    if [ "${arguments[i]}"  == "-help$ADDITION" ] || [ "${arguments[i]}"  == "--help$ADDITION" ];
     then
-      help
+      help$ADDITION
     else
       arguments_help+=( "${arguments[i]}" )
     fi

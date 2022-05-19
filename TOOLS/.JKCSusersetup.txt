@@ -181,7 +181,12 @@ function program_ABC {
   output=$(basename $input .inp).out   # $name.out
  
   #script full path
-  rigidmoloptimizer=$PATH_ABC/rigidmol-optimizer
+  if [ -e $PATH_ABC/rigidmol-optimizer ]
+  then
+    rigidmoloptimizer=$PATH_ABC/rigidmol-optimizer
+  else
+    rigidmoloptimizer=$PATH_ABC/rigidmol
+  fi
  
   #loading module
   if [ "$module_abc_loaded" != "loaded" ]
@@ -192,6 +197,23 @@ function program_ABC {
   
   #performing the calculation
   $rigidmoloptimizer $input > $output 
+}
+function program_GEOM {
+  input=$1                             # $name.inp
+  output=$(basename $input .inp).out   # $name.out
+
+  #script full path
+  geom=$PATH_ABC/geom
+
+  #loading module
+  if [ "$module_abc_loaded" != "loaded" ]
+  then
+    $MODULE_ABC 2>/dev/null
+    module_abc_loaded="loaded"
+  fi
+
+  #performing the calculation
+  $geom $input > $output
 }
 ##########################################################################################
 

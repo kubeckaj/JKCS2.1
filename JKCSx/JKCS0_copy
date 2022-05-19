@@ -27,6 +27,7 @@ source ~/.JKCSusersetup.txt
 path1="$toolspath/STRUCTURES/ABC"
 path2="$toolspath/STRUCTURES/JACOB"
 path3="$toolspath/STRUCTURES/EXPERIMENTAL"
+path4="$toolspath/STRUCTURES/ABC_XTB"
 
 ###############################################################################
 ###################################### HELP ###################################
@@ -41,6 +42,7 @@ function help {
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ........ print this help
+   -helpxyz ..... print the ABC_XTB help
 
   ${cfMAGENTA}STRUCTURES:${cfDEF}
    w ............ water (H2O,OH-,H+)
@@ -75,7 +77,39 @@ function help {
 
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
-	$scriptfile ${cfGREEN}SA GD ${cfDEF} \n"""
+	$scriptfile ${cfGREEN}sa gd ${cfDEF} \n"""
+  printf "#################################################################\n"
+  exit
+}
+
+function helpxyz {
+    printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "  It copies input files for JKCS to your folder.\n"
+  printf """
+  $scriptfile ${cfCYAN}[OPTION(s)] [STRUCTURE(s)]${cfDEF}
+
+  ${cfMAGENTA}OPTIONS:${cfDEF}
+   -help ........ print the original help
+   -helpxyz ..... print this help
+
+  ${cfMAGENTA}STRUCTURES:${cfDEF}
+   XYZaq ........... water (H20)
+   XYZbuoh ......... butanol with bonding
+  
+   XYZh ............ proton (+)
+   XYZli ........... lithium (+)
+   XYZna ........... sodium (+)
+   XYZk ............ kalium (+)
+
+   XYZf ............ fluoride (-)
+   XYZcl ........... chloride (-)
+   XYZbr ........... bromide (-)
+   XYZi ............ iodide (-)
+
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
+
+        $scriptfile ${cfGREEN}XYZli XYZbuoh ${cfDEF} \n"""
   printf "#################################################################\n"
   exit
 }
@@ -96,6 +130,7 @@ JKloadcolours           # some coloured output
 
 # check -help option
 JKloadhelp             # check if user asks for -help
+JKloadhelp xyz
 
 ###############################################################################
 ################################ MAIN PROGRAM #################################
@@ -253,6 +288,25 @@ function add {
 ## EXPERIMENTAL
   "hom") echo "  hom    0   $path3/hom.xyz"         >> $userinputfile
          ;;
+## XYZ
+  "xyzbuoh") echo "  buoh   0   $path4/buoh-bonding.xyz" >> $userinputfile
+             ;;
+  "xyzh") echo "  h      1   $path4/h.xyz" >> $userinputfile
+          ;;
+  "xyzli") echo "  li     1   $path4/li.xyz" >> $userinputfile
+           ;;
+  "xyzna") echo "  na     1   $path4/na.xyz" >> $userinputfile
+           ;;
+  "xyzk") echo "  k      1   $path4/k.xyz" >> $userinputfile
+          ;;
+  "xyzf") echo "  f     -1   $path4/f.xyz" >> $userinputfile
+          ;;
+  "xyzcl") echo "  cl    -1   $path4/cl.xyz" >> $userinputfile
+           ;;
+  "xyzbr") echo "  br    -1   $path4/br.xyz" >> $userinputfile
+           ;;
+  "xyzi") echo "  i     -1   $path4/i.xyz" >> $userinputfile
+          ;;
   *) JKecho 0 "${cfRED}ERROR${cfDEF}: argument ${cfYELLOW}${what}${cfDEF} does not exist! ${cfRED}[EXITING]${cfDEF}"
      exit
      ;;
