@@ -430,7 +430,7 @@ components""" >> $F2
       echo """end
 
 xtb # charge, uhf, gfn
-  $CHARGE $MULTIPLICITY $GFN
+  $CHARGE `echo $MULTIPLICITY-1 | bc` $GFN
 end
 
 commands
