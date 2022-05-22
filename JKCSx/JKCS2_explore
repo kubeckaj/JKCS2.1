@@ -496,6 +496,10 @@ fi
 ### Sending jobs ###
 #jobscount=`wc -l commands_TODO.txt | awk '{print $1}'` 
 #jobscount=`echo $constitutions  | xargs -n 1 | wc -l`
+if [ $Qrepeat -ne 1 ]
+then
+  SCtasks=`echo SCtasks*$Qrepeat | bc`
+fi
 JKecho 2 "Counting number of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
 if [ $jobscount -le $SCtasks ]
 then
