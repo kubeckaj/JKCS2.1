@@ -218,7 +218,7 @@ function program_GEOM {
   fi
 
   #performing the calculation
-  $geom $input > $output
+  $geom $input >> $output
 }
 ##########################################################################################
 
