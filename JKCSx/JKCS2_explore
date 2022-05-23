@@ -450,6 +450,7 @@ cd ..""" > rename.sh
     then
       echo """cd $name-LM
 source ~/.JKCSusersetup.txt
+sleep `echo $Qrepeat*2 | bc`
 program_JKQCpickle *.xyz -noname
 rm *.xyz
 cd ..""" >> rename.sh
