@@ -499,7 +499,7 @@ fi
 #jobscount=`echo $constitutions  | xargs -n 1 | wc -l`
 if [ $Qrepeat -ne 1 ]
 then
-  SCtasks=`echo SCtasks*$Qrepeat | bc`
+  SCtasks=`echo $SCtasks*$Qrepeat | bc`
 fi
 JKecho 2 "Counting number of jobs: ${cfBLUE}$jobscount${cfDEF} (max possible ${cfBLUE}$SCtasks${cfDEF})"
 if [ $jobscount -le $SCtasks ]
