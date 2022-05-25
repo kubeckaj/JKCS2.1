@@ -450,7 +450,7 @@ function program_ORCA {
   
   if [ -e $input ]
   then
-    cp $input ./ 2>/dev/null# .INP .XYZ
+    cp $input ./  2>/dev/null # .INP .XYZ
   fi
   
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
