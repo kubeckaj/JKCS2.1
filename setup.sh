@@ -43,7 +43,7 @@ do
     PATH_G16="/comm/groupstacks/gaussian/gaussian/gaussian16/Rev.B.01/"
     MODULE_G16="source /comm/groupstacks/gaussian/bin/modules.sh --silent; module load gaussian16/Rev.B.01;"
     PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.3/"
-    MODULE_ORCA="module load orca"
+    MODULE_ORCA="source /comm/groupstacks/gaussian/bin/modules.sh --silent; module load orca/5.0.3"
     SBATCH_PREFIX=""
     WRKDIR="/scratch/\\\$SLURM_JOB_ID/"
     continue
