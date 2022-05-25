@@ -448,6 +448,11 @@ function program_ORCA {
     source ../arguments.txt
   fi
   
+  if [ -e $input ]
+  then
+    cp $input ./ 2>/dev/null# .INP .XYZ
+  fi
+  
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   #*.inp or *.xyz or *.pkl
@@ -469,8 +474,6 @@ function program_ORCA {
     fi
     #if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
   fi
-  cp $inputINP ./ # .INP
-  cp $inputXYZ ./ # .XYZ
 
   #CHANGE: ORCA, inputINP, .out
   echo """#!/bin/bash
