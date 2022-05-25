@@ -436,7 +436,7 @@ rm -rf \$CALC_NAME""" > $base.cmd
 ##########################################################################################
 function program_ORCA {
   input=$1                     # file.xyz or .inp    
-  base=$(basename $(basename $input .xyz) .com)   # file
+  base=$(basename $(basename $(basename $input .xyz) .com) .inp) # file
   inputINP=$base.inp           # file.inp 
   inputXYZ=$base.xyz           # file.xyz
   output=$base.out             # file.out
