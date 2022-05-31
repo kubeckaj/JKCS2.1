@@ -89,7 +89,7 @@ function program_SBATCH {
   SBATCH_command+="--time $3 "
   SBATCH_command+="-N $4 "
   SBATCH_command+="--mem-per-cpu $5 " #NOTE: This line must be commented out on Mahti
-  if [ ! -z "$6" ]                    #NOTE: And this should be changed to 5
+  if [ ! -z "$6" ]                    
   then
     SBATCH_command+="-n $6 "
   fi

@@ -1396,7 +1396,8 @@ if str(Quniq) != "0":
        #print(newclusters_df)
        newclusters_df = newclusters_df.append(selected_df)
        #print(newclusters_df)
-  print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
+  if Qout == 1:
+    print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
 if str(Qsort) != "0":
   clusters_df = clusters_df.sort_values([("log",Qsort)])
@@ -1411,7 +1412,8 @@ if str(Qselect) != "0":
        #print(newclusters_df)
        newclusters_df = newclusters_df.append(selected_df)
        #print(newclusters_df)
-  print("Selecting/Sampling: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
+  if Qout == 1:
+    print("Selecting/Sampling: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
 
 ## SAVE OUTPUT.pkl ##
