@@ -1192,6 +1192,8 @@ if Qreacted > 0:
       test = 0
       choosing_list = range(len(bm))
       molecules=[]
+      if len(choosing_list) == 0:
+          test = 1
       while test == 0:
         selected = [choosing_list[0]]
         test_chosen = 0
