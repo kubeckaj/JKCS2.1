@@ -452,7 +452,7 @@ else
   else
     files=`cat $filetake | awk '{print $1}'`
   fi
-  JKecho 2 "Files selected."
+  JKecho 2 "Files (${cfBLUE}`echo $files | wc -w`${cfDEF}) selected."
   cd $currentdirpath/$folderNEW
   mkdir ${name}-LM
   JKarguments
@@ -472,7 +472,7 @@ else
       echo "$commandTODO" >> $currentdirpath/$folderNEW/commands_TODO.txt
     else
       #echo "$commandTODO" >> $currentdirpath/$folderNEW/.Qjpt_commands_TODO.txt
-      commandTODOover_iterations+=$commandTODO
+      commandTODOover_iterations=$commandTODO
       if [ $Qjpt_iter -eq $Qjpt ]
       then
         echo "$commandTODOover_iterations" >> $currentdirpath/$folderNEW/commands_TODO.txt
