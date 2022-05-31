@@ -203,6 +203,11 @@ if [ -e $movie ]; then rm $movie;fi
 JKecho 2 "Output files checked (${cfYELLOW}$savefile${cfDEF},${cfYELLOW}$resultfile${cfDEF},${cfYELLOW}$movie${cfDEF})"
 
 #SUBFOLDER DEFINITION
+if [ -d ${method} ]
+then
+  JKecho 0 "Folder ${cfBLUE}${method}${cfDEF} does not exist.[${cfRED}EXITING${cfDEF}]"
+  exit
+fi
 if [ -d ${method}/${name}-LM ]
 then
   subfolders="${method}/${name}-LM"
