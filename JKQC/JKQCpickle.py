@@ -1018,6 +1018,8 @@ for file_i in files:
       for line in file:
         if re.search("Final CCSD\(F12\*\)\(T\) energy", line):
           out = float(line.split()[5])
+        if re.search("Final MP2 energy", line):
+          out = float(line.split()[5])
       file.close()
       clusters_df = df_add_iter(clusters_df, turbomoleextname, "electronic_energy", [str(cluster_id)], [out])
 
@@ -1193,7 +1195,7 @@ if Qreacted > 0:
       choosing_list = range(len(bm))
       molecules=[]
       if len(choosing_list) == 0:
-          test = 1
+        test = 1
       while test == 0:
         selected = [choosing_list[0]]
         test_chosen = 0
