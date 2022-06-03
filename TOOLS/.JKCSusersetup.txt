@@ -254,7 +254,11 @@ function program_XTB {
   if [ "$module_xtb_loaded" != "loaded" ]
   then
     $MODULE_XTB 2>/dev/null
-    export OMP_STACKSIZE=1G
+    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    then
+      export OMP_STACKSIZE=1G
+      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+    fi
     module_xtb_loaded="loaded"
   fi  
 

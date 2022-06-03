@@ -4,16 +4,3 @@
    testing permission to write:
  SUCCESFULL
 == testing Python:
- SUCCESFULL
-   -- numpy: SUCCESFULL
-   -- pandas: SUCCESFULL
-   -- ase: SUCCESFULL
-== testing JKQCpickle:
- SUCCESFULL
-== testing ABCluster:
- SUCCESFULL
-== testing XTB:
- SUCCESFULL
-== testing Gaussian(G16):
- SUCCESFULL
-== testing ORCA:
