@@ -254,6 +254,7 @@ function program_XTB {
   if [ "$module_xtb_loaded" != "loaded" ]
   then
     $MODULE_XTB 2>/dev/null
+    export OMP_STACKSIZE=1G
     module_xtb_loaded="loaded"
   fi  
 
