@@ -264,6 +264,14 @@ for i in sys.argv[1:]:
     Quniq = str(i)
     continue
   ########
+  # INFO
+  if i == "-info" or i == "--info":
+    Pout.append("-info")
+    continue
+  # CITE
+  if i == "-cite" or i == "--cite":
+    Pout.append("-cite")
+    continue
   # XYZ
   if i == "-xyz" or i == "--xyz" or i == "-XYZ" or i == "--XYZ":
     Pout.append("-xyz")
@@ -693,6 +701,11 @@ for file_i in files:
             out_entropy = float(line.split()[1])*1000*627.503/298.15
           except:
             out_entropy = missing
+        #if re.search("^G\(T\)", line): 
+        #  try:
+        #    out_gibbs_free_energy = out_electronic_energy + float(line.split()[1])
+        #  except:
+        #    out_gibbs_free_energy = missing
         if re.search("TOTAL FREE ENERGY", line): #2
           try:
             out_gibbs_free_energy = float(line.split()[0])
@@ -1165,7 +1178,8 @@ if Qextract > 0:
     clusters_df = clusters_df.iloc[a1.difference(a2, sort=False)]
   else:
     clusters_df = newclusters_df
-  print("Extracting: "+str(prelen)+" --> "+str(len(clusters_df)))
+  if Qout == 1:
+    print("Extracting: "+str(prelen)+" --> "+str(len(clusters_df)))
 
 if Qreacted > 0:
   all_molecules = []
@@ -1436,6 +1450,12 @@ if Qout > 0:
 ## EXTRACT DATA ##
 output = []
 for i in Pout:
+  if i == "-cite":
+    try:
+      output.append(clusters_df["info"]["citation"].values)
+    except:
+      output.append([missing]*len(clusters_df))
+    continue
   #XYZ
   if i == "-xyz":
     for ind in clusters_df.index:
@@ -1844,14 +1864,15 @@ if not len(output) == 0:
         return opt1
     
     output = [[myif(l,np.sum([portions[i][j]*output[l,indexes[i][j]] for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]
- 
-  f = open(".help.txt", "w")
+
+  fn = ".help"+str(np.random.randint(100000,size=1)[0])+".txt" 
+  f = open(fn, "w")
   [f.write(" ".join(map(str,row))+"\n") for row in list(zip(*output))]
   f.close()
   #TODO can you make this working using only python?
   if Qout != 2 or Qformation == 0:
-    os.system("cat .help.txt | column -t")
-  os.remove(".help.txt")
+    os.system("cat "+fn+" | column -t")
+    os.remove(fn)
 
 if Qformation == 1:
   if Qout != 2:

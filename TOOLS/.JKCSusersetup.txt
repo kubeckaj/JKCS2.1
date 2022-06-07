@@ -362,7 +362,11 @@ function program_G16 {
     if [ "$test" == ".pkl" ]; 
     then 
       pickledfile=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'`
-      CHARGE=`program_JKQCpickle $pickledfile -extract $base -xyz -noname -chrg`
+      preCHARGE=`program_JKQCpickle $pickledfile -extract $base -xyz -noname -chrg -noex`
+      if [ "$preCHARGE" != "nan" ]
+      then
+        CHARGE=$preCHARGE
+      fi
       input=${base}.xyz; 
     fi 
     if [ -z "$method" ]

@@ -49,7 +49,7 @@ function help {
     -pop,-i,-init \"X\" . amount of initial guesses [def=300*M]
     -repeat \"X\" ....... each simulation is repeated X-times [def=1]
  
-    OTHERS: -box [def=7+M]a
+    OTHERS: -box [def=7+M]
     OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
     OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
     OTHERS: -pickle,-JKQC [TESTING]
@@ -422,10 +422,13 @@ components""" >> $F2
       do
         num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
         path=`echo $files | awk -v var0=$var '{print $var0}'`
-        echo "   $path $num" >> $F2
-        echo "   random -$BOX -$BOX -$BOX $BOX $BOX $BOX" >> $F2
-        echo "   * *" >> $F2
-        echo "   ****" >> $F2
+        if [ "$num" != "0" ]
+        then
+          echo "   $path $num" >> $F2
+          echo "   random -$BOX -$BOX -$BOX $BOX $BOX $BOX" >> $F2
+          echo "   * *" >> $F2
+          echo "   ****" >> $F2
+        fi
       done
       echo """end
 
