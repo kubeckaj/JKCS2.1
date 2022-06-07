@@ -294,6 +294,8 @@ if [ $Qpickle -eq 0 ]
 then
   JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 else
+  #TODO Do I really want to recollect everytime?
+  rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null
   PKLinsubfolders=`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs`
   if [ ! -z "$PKLinsubfolders" ]
   then
