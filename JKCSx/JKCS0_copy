@@ -307,6 +307,8 @@ function add {
            ;;
   "xyzi") echo "  i     -1   $path4/i.xyz" >> $userinputfile
           ;;
+  "xyzaq") echo "  w     0   $path4/aq.xyz" >> $userinputfile
+          ;;
   *) JKecho 0 "${cfRED}ERROR${cfDEF}: argument ${cfYELLOW}${what}${cfDEF} does not exist! ${cfRED}[EXITING]${cfDEF}"
      exit
      ;;

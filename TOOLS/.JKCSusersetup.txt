@@ -363,7 +363,8 @@ function program_G16 {
     then 
       pickledfile=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'`
       preCHARGE=`program_JKQCpickle $pickledfile -extract $base -xyz -noname -chrg -noex`
-      if [ "$preCHARGE" != "nan" ]
+      re='^[0-9]+$'
+      if [[ "$preCHARGE" =~ $re ]] 
       then
         CHARGE=$preCHARGE
       fi

@@ -1874,6 +1874,14 @@ if not len(output) == 0:
     os.system("cat "+fn+" | column -t")
     os.remove(fn)
 
+def myFunc(e):
+  try:
+    numero = np.sum([int(i) for i in seperate_string_number(dash_comment(e[0])[0])[0::2]])
+  except:
+    numero = 0
+  return numero+len(e[0])/100.
+dt = np.dtype(object)
+
 if Qformation == 1:
   if Qout != 2:
     print("#####################################",flush = True)
@@ -1884,8 +1892,11 @@ if Qformation == 1:
     output = []
     for line in f.readlines():
       output.append(line.split())
-    output = np.array(output).transpose()
+    output = np.array(output,dtype=dt).transpose()
     f.close()
+  #SORT OUTPUT
+  output = np.transpose(np.transpose(output)[np.apply_along_axis(myFunc, axis=1, arr=np.transpose(output)).argsort()])
+  #
   cluster_types = [dash_comment(seperate_string_number(i))[0] for i in output[0]]
   ######## SOLVING PROTONATION
   for i in range(len(cluster_types)):
