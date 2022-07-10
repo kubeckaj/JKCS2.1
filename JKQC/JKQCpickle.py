@@ -1254,6 +1254,8 @@ if Qqha == 1:
   if Qanh != 1:
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
+      if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]):
+        continue
       QtOLD = clusters_df["log","temperature"].values[i]
       try:
         lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
@@ -1289,6 +1291,9 @@ if Qqha == 1:
   # NEW TEMPERATURE (T,S,H,Hc,U,Uc // G,Gc)
   if ~np.isnan(Qt):
     for i in range(len(clusters_df)):
+      if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]):
+        clusters_df["log","temperature"][i] = Qt
+        continue
       QtOLD = clusters_df["log","temperature"].values[i]
       if Qt != QtOLD:
         try:
@@ -1319,6 +1324,8 @@ if Qqha == 1:
   # LOW VIBRATIONAL FREQUNECY TREATMENT (S // G,Gc)
   if Qfc > 0:
     for i in range(len(clusters_df)):
+      if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]):
+        continue
       try:
         lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
       except:
