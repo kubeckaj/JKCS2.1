@@ -45,6 +45,7 @@ function help {
    -JKQC ............ use JKQCpickle to collect the data
    -JKQCclean ....... use JKQCpickle to collect the data and remove *.xyz,*.log,*.out,*.cmd,*.com,TMP
    -JKQCcleanfull ... use JKQCpickle to collect the data and remove the whole folder
+  (-JKQCrecollect ... recollect all pickles)
   
   ${cfMAGENTA}OUTPUTS:${cfDEF} 
     -collection[${cfBLUE}FOLDER${cfDEF}].txt:
@@ -129,6 +130,7 @@ JKloadsupercomputer
 Qjpt=1 #jobs per task
 Qpickle=0 #Do I want to pickle afterwards?
 Qclean=0 #Do I want to clean after pickling?
+Qrecollect=0
 
 last=""
 # loop over all arguments
@@ -169,6 +171,12 @@ do
     then
       Qpickle=1
       Qclean=2
+      continue
+    fi
+    # JKQCrecollect
+    if [ "$iter" == "-JKQCrecollect" ]
+    then
+      Qrecollect=1
       continue
     fi
     arguments_help+=( "${arguments[i]}" )
@@ -295,7 +303,10 @@ then
   JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 else
   #TODO Do I really want to recollect everytime?
-  rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null
+  if [ $Qrecollect -eq 1 ]
+  then
+    rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null
+  fi
   PKLinsubfolders=`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs`
   if [ ! -z "$PKLinsubfolders" ]
   then

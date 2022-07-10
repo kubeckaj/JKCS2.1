@@ -896,6 +896,8 @@ for file_i in files:
               out_moments_of_inertia = missing
             search+=1
             continue
+          if re.search("Zero-point correction=", line):
+            search+=1
         #THERMOCHEMISTRY
         if search==2:
           if re.search("Rotational symmetry number", line): #T1
