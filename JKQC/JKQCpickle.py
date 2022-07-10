@@ -1324,8 +1324,11 @@ if Qqha == 1:
   # LOW VIBRATIONAL FREQUNECY TREATMENT (S // G,Gc)
   if Qfc > 0:
     for i in range(len(clusters_df)):
-      if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]).any():
-        continue
+      try:
+        if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]):
+          continue
+      except:
+        lf = 0
       try:
         lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
       except:
