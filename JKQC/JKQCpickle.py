@@ -1255,6 +1255,7 @@ if Qqha == 1:
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
       try:
+        QtOLD = clusters_df["log","temperature"].values[i]
         if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]).any():
           continue
       except:
