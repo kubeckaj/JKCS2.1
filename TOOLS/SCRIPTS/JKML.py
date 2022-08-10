@@ -9,7 +9,8 @@ def help():
   print("-eval <file_STR>|<file_LOW>        evaluate energies of structures in pickled file(s)", flush = True)
   print("-test <file_HIGH> [<file_LOW>]     test ML on energies of structures in pickled file(s)", flush = True)
   print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
-
+  print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
+  
 #PREDEFINED ARGUMENTS
 method = "delta"
 size = "full"
@@ -20,7 +21,7 @@ TEST_LOW = ""
 TEST_HIGH = ""
 Qtrain = 0 #0=nothing (fails), 1=train, 2=trained
 Qeval = 0 #0=nothing (possible), 1=eval, 2=validate
-Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files
+Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 
 #PREDEFINED QML
 sigmas = [1.0]
@@ -134,8 +135,12 @@ for i in sys.argv[1:]:
     continue
   #MONOMER DATABASE(S)
   if last == "-monomers":
-    MONOMERS_HIGH = i
-    Qmonomers = 1
+    if i == "0" or i == "none" or i == "no":
+      Qmonomers=2
+      last = ""
+    else:
+      MONOMERS_HIGH = i
+      Qmonomers = 1
     last = "-monomers2"
     continue
   if last == "-monomers2":
@@ -236,45 +241,22 @@ if Qtrain == 1:
       exit()
 
   ### BINDING ENERGIES CALCULATION ###
-  #HIGH LEVEL
-  if Qmonomers == 1:
-    clusters_df0 = pd.read_pickle(MONOMERS_HIGH)
-    ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
-    monomers_df = clusters_df0[ins_monomers]
+  if Qmonomers == 2: #no difference from monomers at all
+    ens_correction = [0]*len(ens)
+    if method == "delta":
+      ens_correction2 = [0]*len(ens2)
   else:
-    ins_monomers = [np.sum(clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df))]
-    monomers_df = clusters_df[ins_monomers]
-  ens_correction = [0]*len(ens)
-  n = 0
-  for i in np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
-    nn = 0
-    for j in i[0]:
-      test = 0
-      for k in range(len(monomers_df)):
-        monomer_k = monomers_df.iloc[k]
-        monomer_k_name = monomer_k["info"]["components"]
-        if j == monomer_k_name[0]:
-          ens_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
-          test = 1
-          break
-      if test == 0:
-        print("OMG; monomer "+j+" was not found in:")
-        print(monomers_df["info"]["components"].values)
-        exit()
-      nn += 1
-    n += 1
-  #LOW LEVEL
-  if method == "delta":
+    #HIGH LEVEL
     if Qmonomers == 1:
-      clusters_df0 = pd.read_pickle(MONOMERS_LOW)
+      clusters_df0 = pd.read_pickle(MONOMERS_HIGH)
       ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
       monomers_df = clusters_df0[ins_monomers]
     else:
-      ins_monomers = [np.sum(clusters_df2["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df2))]
-      monomers_df = clusters_df2[ins_monomers]
-    ens2_correction = [0]*len(ens2)
+      ins_monomers = [np.sum(clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df))]
+      monomers_df = clusters_df[ins_monomers]
+    ens_correction = [0]*len(ens)
     n = 0
-    for i in np.transpose([clusters_df2["info"]["components"].values,clusters_df2["info"]["component_ratio"].values]):
+    for i in np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
       nn = 0
       for j in i[0]:
         test = 0
@@ -282,7 +264,7 @@ if Qtrain == 1:
           monomer_k = monomers_df.iloc[k]
           monomer_k_name = monomer_k["info"]["components"]
           if j == monomer_k_name[0]:
-            ens2_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+            ens_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
             test = 1
             break
         if test == 0:
@@ -291,6 +273,34 @@ if Qtrain == 1:
           exit()
         nn += 1
       n += 1
+    #LOW LEVEL
+    if method == "delta":
+      if Qmonomers == 1:
+        clusters_df0 = pd.read_pickle(MONOMERS_LOW)
+        ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
+        monomers_df = clusters_df0[ins_monomers]
+      else:
+        ins_monomers = [np.sum(clusters_df2["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df2))]
+        monomers_df = clusters_df2[ins_monomers]
+      ens2_correction = [0]*len(ens2)
+      n = 0
+      for i in np.transpose([clusters_df2["info"]["components"].values,clusters_df2["info"]["component_ratio"].values]):
+        nn = 0
+        for j in i[0]:
+          test = 0
+          for k in range(len(monomers_df)):
+            monomer_k = monomers_df.iloc[k]
+            monomer_k_name = monomer_k["info"]["components"]
+            if j == monomer_k_name[0]:
+              ens2_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+              test = 1
+              break
+          if test == 0:
+            print("OMG; monomer "+j+" was not found in:")
+            print(monomers_df["info"]["components"].values)
+            exit()
+          nn += 1
+        n += 1
   
   #The binding (formation) energy calculation
   form_ens = ens - ens_correction
@@ -399,45 +409,22 @@ if Qeval == 1 or Qeval == 2:
   #print(clustername)
   #print(clustername[0][0])
   #for i in clustername: #np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
-  #HIGH LEVEL
-  if Qmonomers == 1:
-    clusters_df0 = pd.read_pickle(MONOMERS_HIGH)
-    ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
-    monomers_df = clusters_df0[ins_monomers]
+  if Qmonomers == 2: #no difference from monomers at all
+    ens_correction = [0]*len(ens)
+    if method == "delta":
+      ens_correction2 = [0]*len(ens2)
   else:
-    ins_monomers = [np.sum(clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df))]
-    monomers_df = clusters_df[ins_monomers]
-  ens_correction = [0]*len(strs)
-  n = 0
-  for i in np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
-    nn = 0
-    for j in i[0]:
-      test = 0
-      for k in range(len(monomers_df)):
-        monomer_k = monomers_df.iloc[k]
-        monomer_k_name = monomer_k["info"]["components"]
-        if j == monomer_k_name[0]:
-          ens_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
-          test = 1
-          break
-      if test == 0:
-        print("OMG; monomer "+j+" was not found in:", flush = True)
-        print(monomers_df["info"]["components"].values, flush = True)
-        exit()
-      nn += 1
-    n += 1
-  #LOW LEVEL
-  if method == "delta":
+    #HIGH LEVEL
     if Qmonomers == 1:
-      clusters_df0 = pd.read_pickle(MONOMERS_LOW)
+      clusters_df0 = pd.read_pickle(MONOMERS_HIGH)
       ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
       monomers_df = clusters_df0[ins_monomers]
     else:
-      ins_monomers = [np.sum(clusters_df2["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df2))]
-      monomers_df = clusters_df2[ins_monomers]
-    ens2_correction = [0]*len(ens2)
+      ins_monomers = [np.sum(clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df))]
+      monomers_df = clusters_df[ins_monomers]
+    ens_correction = [0]*len(strs)
     n = 0
-    for i in np.transpose([clusters_df2["info"]["components"].values,clusters_df2["info"]["component_ratio"].values]):
+    for i in np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
       nn = 0
       for j in i[0]:
         test = 0
@@ -445,7 +432,7 @@ if Qeval == 1 or Qeval == 2:
           monomer_k = monomers_df.iloc[k]
           monomer_k_name = monomer_k["info"]["components"]
           if j == monomer_k_name[0]:
-            ens2_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+            ens_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
             test = 1
             break
         if test == 0:
@@ -454,7 +441,35 @@ if Qeval == 1 or Qeval == 2:
           exit()
         nn += 1
       n += 1
-    
+    #LOW LEVEL
+    if method == "delta":
+      if Qmonomers == 1:
+        clusters_df0 = pd.read_pickle(MONOMERS_LOW)
+        ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
+        monomers_df = clusters_df0[ins_monomers]
+      else:
+        ins_monomers = [np.sum(clusters_df2["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df2))]
+        monomers_df = clusters_df2[ins_monomers]
+      ens2_correction = [0]*len(ens2)
+      n = 0
+      for i in np.transpose([clusters_df2["info"]["components"].values,clusters_df2["info"]["component_ratio"].values]):
+        nn = 0
+        for j in i[0]:
+          test = 0
+          for k in range(len(monomers_df)):
+            monomer_k = monomers_df.iloc[k]
+            monomer_k_name = monomer_k["info"]["components"]
+            if j == monomer_k_name[0]:
+              ens2_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+              test = 1
+              break
+          if test == 0:
+            print("OMG; monomer "+j+" was not found in:", flush = True)
+            print(monomers_df["info"]["components"].values, flush = True)
+            exit()
+          nn += 1
+        n += 1
+      
   #The binding (formation) energy calculation
   if Qeval == 2:
     form_ens = ens - ens_correction
