@@ -6,10 +6,11 @@ def help():
   print("-size <int>                        random number of samples for training set", flush = True)
   print("-train <file_HIGH> [<file_LOW>]    train on given pikled files", flush = True)
   print("-trained <file_VARS-PKL>           take pre-trained ML", flush = True)
-  print("-eval <file_STR>|<file_LOW>        evaluate energies of structures in pickled file(s)", flush = True)
-  print("-test <file_HIGH> [<file_LOW>]     test ML on energies of structures in pickled file(s)", flush = True)
+  print("-test <file_STRS> [<file_LOW>]     evaluate energies of NEW structures in pickled file(s)", flush = True)
+  print("-test <file_HIGH> [<file_LOW>]     validate ML on energies of structures in pickled file(s)", flush = True)
   print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
   print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
+  print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
   
 #PREDEFINED ARGUMENTS
 method = "delta"
@@ -20,7 +21,7 @@ TEST_DATABASE = ""
 TEST_LOW = ""
 TEST_HIGH = ""
 Qtrain = 0 #0=nothing (fails), 1=train, 2=trained
-Qeval = 0 #0=nothing (possible), 1=eval, 2=validate
+Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 
 #PREDEFINED QML
@@ -124,6 +125,10 @@ for i in sys.argv[1:]:
     last = ""
     continue
   #TEST DATABASE(S)
+  if last == "-eval":
+    Qeval = 2
+    last = "-test2"
+    continue
   if last == "-test":
     TEST_HIGH = i
     Qeval = 1
@@ -410,7 +415,7 @@ if Qeval == 1 or Qeval == 2:
   #print(clustername[0][0])
   #for i in clustername: #np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
   if Qmonomers == 2: #no difference from monomers at all
-    ens_correction = [0]*len(ens)
+    ens_correction = [0]*len(clusters_df)
     if method == "delta":
       ens_correction2 = [0]*len(ens2)
   else:
