@@ -6,7 +6,7 @@ def help():
   print("-size <int>                        random number of samples for training set", flush = True)
   print("-train <file_HIGH> [<file_LOW>]    train on given pikled files", flush = True)
   print("-trained <file_VARS-PKL>           take pre-trained ML", flush = True)
-  print("-test <file_STRS> [<file_LOW>]     evaluate energies of NEW structures in pickled file(s)", flush = True)
+  print("-eval <file_STRS> [<file_LOW>]     evaluate energies of NEW structures in pickled file(s)", flush = True)
   print("-test <file_HIGH> [<file_LOW>]     validate ML on energies of structures in pickled file(s)", flush = True)
   print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
   print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
