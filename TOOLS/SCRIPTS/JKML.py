@@ -129,6 +129,7 @@ for i in sys.argv[1:]:
     continue
   #TEST DATABASE(S)
   if last == "-eval":
+    TEST_HIGH = i
     Qeval = 2
     last = "-test2"
     continue
