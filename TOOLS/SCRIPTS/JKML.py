@@ -95,6 +95,9 @@ for i in sys.argv[1:]:
   if i == "-test":
     last = "-test"
     continue
+  if i == "-eval":
+    last = "-eval"
+    continue
   if i == "-monomers":
     last = "-monomers"
     continue
