@@ -130,7 +130,7 @@ JKloadsupercomputer
 Qjpt=1 #jobs per task
 Qpickle=0 #Do I want to pickle afterwards?
 Qclean=0 #Do I want to clean after pickling?
-Qrecollect=0
+Qrecollect=1
 
 last=""
 # loop over all arguments
