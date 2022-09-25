@@ -22,6 +22,7 @@ TEST_LOW = ""
 TEST_HIGH = ""
 Qtrain = 0 #0=nothing (fails), 1=train, 2=trained
 Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
+Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 
 #PREDEFINED QML
@@ -98,6 +99,9 @@ for i in sys.argv[1:]:
   if i == "-eval":
     last = "-eval"
     continue
+  if i == "-opt":
+    last = "-opt"
+    continue
   if i == "-monomers":
     last = "-monomers"
     continue
@@ -127,7 +131,7 @@ for i in sys.argv[1:]:
     TRAIN_LOW = i
     last = ""
     continue
-  #TEST DATABASE(S)
+  #TEST/EVAL/OPT DATABASE(S)
   if last == "-eval":
     TEST_HIGH = i
     Qeval = 2
@@ -136,6 +140,11 @@ for i in sys.argv[1:]:
   if last == "-test":
     TEST_HIGH = i
     Qeval = 1
+    last = "-test2"
+    continue
+  if last == "-opt":
+    TEST_HIGH = i
+    Qopt = 1
     last = "-test2"
     continue
   if last == "-test2":
@@ -211,6 +220,37 @@ from qml.fchl import get_local_kernels
 #from qml.kernels import gaussian_kernel
 from qml.math import cho_solve
 #import matplotlib.pyplot as plt
+
+####################################################################################################
+# THIS IS TAKEN FROM tool.py IN JKCS.py 
+### Append to dataframe 
+def df_add_append(dataframe,label,name,indexs,variables):
+  if (label,name) in dataframe.columns:
+    newdataframe = pd.DataFrame(variables, index = indexs, columns = pd.MultiIndex.from_tuples([(label,name)]) )
+    dataframe = dataframe.append(newdataframe)
+  elif dataframe.shape == (0, 0):
+    dataframe = pd.DataFrame(variables, index = indexs, columns = pd.MultiIndex.from_tuples([(label,name)]) )
+  else:
+    dataframe[label,name] = pd.DataFrame(variables, index = indexs, columns = pd.MultiIndex.from_tuples([(label,name)]) )
+
+  return dataframe
+
+### Add to dataframe via iteration
+def df_add_iter(dataframe,label,name,indexs,variables):
+  if (label,name) in dataframe.columns:
+    df_l = dataframe.shape[0]
+    var_l = len(variables)
+    for i in range(var_l):
+      dataframe[label,name][df_l-var_l+i] = variables[i]
+  elif dataframe.shape == (0, 0):
+    dataframe = pd.DataFrame(variables, index = indexs, columns = pd.MultiIndex.from_tuples([(label,name)]) )
+  else:
+    dataframe[label,name] = pd.DataFrame(index = indexs, columns = pd.MultiIndex.from_tuples([(label,name)]) )
+    for i in range(len(variables)):
+      dataframe[label,name][i] = variables[i]
+
+  return dataframe
+####################################################################################################
 
 ######################
 ###### TRAINING ######
@@ -377,11 +417,11 @@ if Qeval == 1 or Qeval == 2:
   clusters_df = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
   try:
     ens = (clusters_df["log"]["electronic_energy"]).values.astype("float")
-    Qeval = 2
+    Qeval = 2 #2=Compare ML prediction with QC
   except:
-    Qeval = 1
+    Qeval = 1 #1=Only predicts
   strs = clusters_df["xyz"]["structure"]
-  ## The low level of theory
+  ## The low level of theory 
   if method == "delta":
     if Qeval == 1:
       clusters_df2 = clusters_df
@@ -557,4 +597,114 @@ if Qeval == 1 or Qeval == 2:
       clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]+form_ens2[i]+ens_correction[i]
   clustersout_df.to_pickle("predicted_QML.pkl")
 ########
+
+######################
+###### OPTIMIZE ######
+######################
+
+if Qopt == 1:
+  ### DATABASE LOADING ###
+  ## The high level of theory
+  clusters_df = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
+  strs = clusters_df["xyz"]["structure"]
+  
+  xyz=strs[0].get_positions()
+  maxsteps=3
+  for step in range(maxsteps):
+    ### GENERATE SHIFTED STRUCTURES
+    
+    R=[xyz]
+    xyzdeviation=0.05
+    if step != maxsteps-1:
+      for i in range(len(xyz)):
+        for j in range(3):
+          ch=np.zeros_like(xyz)
+          ch[i,j]=+xyzdeviation #THIS IS THE SHIFT OF 0.05 Angstrom
+          R.append(xyz+ch)
+          #ch=-ch
+          #R.append(xyz+ch)
+    
+    RR=pd.DataFrame(np.zeros(len(R)),index=range(len(R)))
+    RR[0]=R
+  
+    
+    #print(RR.values[0][0], flush = True)
+    ### REPRESENTATION CALCULATION ###
+    repres_dataframe = pd.DataFrame(index = RR.index, columns = ["xyz"])
+    max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
+    for i in range(len(repres_dataframe)):#TODO strs[0] cannot be define like that for different molecules
+      repres_dataframe["xyz"][i] = generate_representation(RR.values[i][0], strs[0].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
+    fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
+  
+    #some info about the full representation
+    #print(fchl_representations.shape, flush = True)
+  
+    ### DEFINING THE EVALUATION Xs:  Y = QML(X) 
+    #the full set
+    X_test = fchl_representations
+  
+    ### CORRECTING THE FCHL MATRIX SIZES
+    #X_train = fchl_representations0
+    #IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
+    if X_train.shape[1] != X_test.shape[1]:
+      if X_train.shape[1] > X_test.shape[1]:
+        small = X_test
+        large = X_train
+      else:
+        small = X_train
+        large = X_test
+      newmatrix = np.zeros([small.shape[0],large.shape[1],5,large.shape[3]])
+      newmatrix[:,:,0,:] = 1e+100
+      newmatrix[0:small.shape[0],0:small.shape[1],0:5,0:small.shape[3]] = small
+      if X_train.shape[1] > X_test.shape[1]:
+        X_test = newmatrix
+      else:
+        X_train = newmatrix
+  
+    ### THE EVALUATION
+    Ks = get_local_kernels(X_test, X_train, sigmas, **kernel_args)
+    Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
+  
+    xyzold = xyz
+    F=np.zeros_like(xyz)
+    if step != maxsteps-1:
+      Fp=np.zeros_like(xyz)
+      #Fm=np.zeros_like(xyz)
+      for i in range(len(xyz)):
+        for j in range(3):
+          F[i,j]=Y_predicted[0][0]
+          Fp[i,j]=Y_predicted[0][1+j+3*i]
+          #Fp[i,j]=Y_predicted[0][1+2*j+6*i]
+          #Fm[i,j]=Y_predicted[0][2+2*j+6*i]
+  
+      
+      #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
+      #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
+      change=(Fp-F)/xyzdeviation*0.05
+      xyz = xyz - change
+      maxdev=max(np.sqrt(sum(np.transpose(change*change))))
+
+    if step == 0:
+      print("step \tenergy [Eh]        \tmax.shift [A]")
+      clustersout_df = pd.DataFrame()
+    cluster_id = len(clustersout_df)
+    clustersout_df = df_add_append(clustersout_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
+    df_add_iter(clustersout_df, "log", "electronic_energy", [str(cluster_id)], [Y_predicted[0][0]])
+    newxyz = strs[0].copy()
+    newxyz.set_positions(xyzold)
+    clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
+    print(str(step)+" \t"+str(Y_predicted[0][0])+" \t"+str(maxdev),flush = True)
+    #print(xyz, flush = True)
+    
+
+  ### PRINTING THE RESULTS
+  print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]])+"};", flush = True)
+
+  ### PRINTING THE QML PICKLES
+  #clustersout_df = clusters_df.copy()
+  #for i in range(len(clustersout_df)):
+  #  clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]
+  clustersout_df.to_pickle("predicted_QML.pkl")
+########
+
 
