@@ -610,12 +610,12 @@ if Qopt == 1:
   strs = clusters_df["xyz"]["structure"]
   
   xyz=strs[0].get_positions()
-  maxsteps=3
+  maxsteps=10
+  xyzdeviation=0.05  
   for step in range(maxsteps):
     ### GENERATE SHIFTED STRUCTURES
     
     R=[xyz]
-    xyzdeviation=0.05
     if step != maxsteps-1:
       for i in range(len(xyz)):
         for j in range(3):
@@ -681,7 +681,7 @@ if Qopt == 1:
       
       #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
       #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
-      change=(Fp-F)/xyzdeviation*0.05
+      change=(Fp-F)/xyzdeviation*0.5
       xyz = xyz - change
       maxdev=max(np.sqrt(sum(np.transpose(change*change))))
 

@@ -1183,64 +1183,81 @@ if Qextract > 0:
   if Qout == 1:
     print("Extracting: "+str(prelen)+" --> "+str(len(clusters_df)))
 
+### REACTED ###
 if Qreacted > 0:
-  all_molecules = []
   dt = np.dtype(object)
-  a = clusters_df
-  for k in range(len(clusters_df)):
-    b = a["xyz"]["structure"][k]
-    if pd.isna(b):
-      all_molecules.append(str(missing))
-    else:
-      p = b.positions
-      symb = np.array(b.get_chemical_symbols())
-      ind = [i != 'H' for i in symb]
-  
-      dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
-      dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
-  
-      def bonded(x):
-        if x < 1.75:
-          return 1
-        else:
-          return 0
-  
-      bm = np.array([[bonded(j) for j in i] for i in dm])
-  
-      test = 0
-      choosing_list = range(len(bm))
-      molecules=[]
-      if len(choosing_list) == 0:
-        test = 1
-      while test == 0:
-        selected = [choosing_list[0]]
-        test_chosen = 0
-        j = -1
-        while test_chosen == 0:
-          j += 1
-          #print(str(j)+"/"+str(len(bm)))
-          #print(selected)
-          chosen = selected[j]
-          for i in choosing_list:
-            if bm[choosing_list[j]][i] == 1 and choosing_list[j] != i and not (i in selected):
-              selected.append(i)
-          if len(selected)-1 == j:
-            test_chosen = 1
-        molecules.append(list(np.sort([symb[ind][i] for i in selected])))
-        choosing_list = [i for i in choosing_list if i not in selected]
+  #Are there some cluster types which I should distinguish?
+  if Qclustername != 0:
+    unique_cluster_types = np.unique(clusters_df["info"]["cluster_type"].values)
+    cluster_subsets = []
+    for unique_cluster_type in unique_cluster_types:
+      indexes = clusters_df[clusters_df["info"]["cluster_type"]==unique_cluster_type].index.values
+      cluster_subsets.append(indexes)
+  else:
+    cluster_subsets = []
+    indexes = clusters_df.index.values
+    cluster_subsets.append(indexes)   
+  for k0 in range(len(cluster_subsets)):
+    all_molecules = []
+    for k in range(len(cluster_subsets[k0])):
+      b = clusters_df["xyz"]["structure"][cluster_subsets[k0][k]]
+      if pd.isna(b):
+        all_molecules.append(str(missing))
+      else:
+        p = b.positions
+        symb = np.array(b.get_chemical_symbols())
+        ind = [i != 'H' for i in symb]
+    
+        dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
+        dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
+    
+        def bonded(x):
+          if x < 1.75:
+            return 1
+          else:
+            return 0
+    
+        bm = np.array([[bonded(j) for j in i] for i in dm])
+    
+        test = 0
+        choosing_list = range(len(bm))
+        molecules=[]
         if len(choosing_list) == 0:
           test = 1
-      all_molecules.append(str(np.sort(np.array(molecules,dtype = dt))))
-
-  def most_frequent(List):
-      return max(set(List), key = List.count)
+        while test == 0:
+          selected = [choosing_list[0]]
+          test_chosen = 0
+          j = -1
+          while test_chosen == 0:
+            j += 1
+            #print(str(j)+"/"+str(len(bm)))
+            #print(selected)
+            chosen = selected[j]
+            for i in choosing_list:
+              if bm[choosing_list[j]][i] == 1 and choosing_list[j] != i and not (i in selected):
+                selected.append(i)
+            if len(selected)-1 == j:
+              test_chosen = 1
+          molecules.append(list(np.sort([symb[ind][i] for i in selected])))
+          choosing_list = [i for i in choosing_list if i not in selected]
+          if len(choosing_list) == 0:
+            test = 1
+        all_molecules.append(str(np.sort(np.array(molecules,dtype = dt))))
   
-  #print(most_frequent(all_molecules))
-  mf = most_frequent(all_molecules)
-  #print(mf)
-  #print(all_molecules[0])
-  nind = [ i == mf for i in all_molecules]
-  clusters_df = clusters_df[nind]
+    def most_frequent(List):
+        return max(set(List), key = List.count)
+    
+    #print(most_frequent(all_molecules))
+    mf = most_frequent(all_molecules)
+    #print(mf)
+    #print(all_molecules[0])
+    nind = [ i == mf for i in all_molecules]
+    if k0 == 0:
+      selclusters_df = clusters_df.loc[cluster_subsets[0]][nind].copy()
+    else:
+      selclusters_df.append(clusters_df.loc[cluster_subsets[k0]][nind].copy())
+  clusters_df = selclusters_df
+  ### END OF REACTED ###
 
 ## SAVE OUTPUT.pkl ##
 if Qout > 0:
