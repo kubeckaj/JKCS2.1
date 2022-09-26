@@ -681,7 +681,7 @@ if Qopt == 1:
       
       #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
       #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
-      change=(Fp-F)/xyzdeviation*0.5
+      change=(Fp-F)/xyzdeviation*0.1
       xyz = xyz - change
       maxdev=max(np.sqrt(sum(np.transpose(change*change))))
 

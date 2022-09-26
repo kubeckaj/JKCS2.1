@@ -1255,8 +1255,8 @@ if Qreacted > 0:
     if k0 == 0:
       selclusters_df = clusters_df.loc[cluster_subsets[0]][nind].copy()
     else:
-      selclusters_df.append(clusters_df.loc[cluster_subsets[k0]][nind].copy())
-  clusters_df = selclusters_df
+      selclusters_df = selclusters_df.append(clusters_df.loc[cluster_subsets[k0]][nind].copy())
+  clusters_df = selclusters_df.copy()
   ### END OF REACTED ###
 
 ## SAVE OUTPUT.pkl ##
