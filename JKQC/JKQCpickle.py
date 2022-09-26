@@ -1238,14 +1238,17 @@ if Qreacted > 0:
             return 0
 
         bm = np.array([[bonded(dm[i][j],symb[ind][i],symb[ind][j]) for j in range(len(dm[i]))] for i in range(len(dm))])
-    
+        #print(bm) 
+
         test = 0
         choosing_list = range(len(bm))
+        #print(choosing_list)
         molecules=[]
         if len(choosing_list) == 0:
           test = 1
         while test == 0:
           selected = [choosing_list[0]]
+          #print(selected)
           test_chosen = 0
           j = -1
           while test_chosen == 0:
@@ -1253,15 +1256,23 @@ if Qreacted > 0:
             #print(str(j)+"/"+str(len(bm)))
             #print(selected)
             chosen = selected[j]
+            #print([chosen,j,len(selected)-1,"checking",choosing_list])
             for i in choosing_list:
-              if bm[choosing_list[j]][i] == 1 and choosing_list[j] != i and not (i in selected):
+              
+              if bm[chosen][i] == 1 and choosing_list[j] != i and (not (i in selected)):
                 selected.append(i)
+                #print([i,j,selected,len(selected),bm[choosing_list[j]][i],choosing_list[j],choosing_list,(i in selected)])
+            #print("I am here")
             if len(selected)-1 == j:
               test_chosen = 1
+              #print("DONE")
+            #print("----------------")
+          #print(molecules)
           molecules.append(list(np.sort([symb[ind][i] for i in selected])))
           choosing_list = [i for i in choosing_list if i not in selected]
           if len(choosing_list) == 0:
             test = 1
+        #print(str(np.sort(np.array(molecules,dtype = dt))))
         all_molecules.append(str(np.sort(np.array(molecules,dtype = dt))))
   
     def most_frequent(List):
@@ -1277,6 +1288,7 @@ if Qreacted > 0:
       nind = [ i == mf for i in all_molecules]
     else:
       nind = [ i != mf for i in all_molecules]
+    #print(nind)
     if k0 == 0:
       selclusters_df = clusters_df.loc[cluster_subsets[0]][nind].copy()
     else:
