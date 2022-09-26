@@ -1,0 +1,8 @@
+#!/bin/bash
+source ~/.JKCSusersetup.txt
+if [ -z "$*" ]
+then 
+  program_JKQCpickle -b -el -g
+else
+  program_JKQCpickle ${@}
+fi

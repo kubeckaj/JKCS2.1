@@ -369,6 +369,7 @@ if Qtrain == 1:
   if size != "full":
     X_train, X_trash, idx, idx_trash = train_test_split(X_train0, range(len(X_train0)), test_size=(len(X_train0)-size)/len(X_train0), random_state=1)
     Y_train = Y_train0[idx]
+    size = "full" #IT IS BECAUSE I DO WANT TO MAKE MY TEST SET SMALLER
   else:
     X_train = X_train0
     Y_train = Y_train0
