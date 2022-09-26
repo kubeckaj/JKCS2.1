@@ -195,16 +195,16 @@ for i in sys.argv[1:]:
   #REACTED
   if i == "-reacted":
     Qreacted = 1
-    last = "-reacted"
+  #  last = "-reacted"
     continue
   if i == "-reacted2":
     Qreacted = 2
-    last = "-reacted"
+  #  last = "-reacted"
     continue
-  if last == "-reacted":
-    last = ""
-    bonddistancethreshold = float(i)
-    continue  
+  #if last == "-reacted":
+  #  last = ""
+  #  bonddistancethreshold = float(i)
+  #  continue  
   #NOEXAMPLE
   if i == "-noexample" or i == "-noex":
     Qout = 2
@@ -1221,13 +1221,23 @@ if Qreacted > 0:
         dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
         dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
     
-        def bonded(x):
-          if x < bonddistancethreshold:
+        def bonded(x,xA,xB):
+          if xA == "C" and xB == "N" and x < 1.75:
+            return 1
+          elif xA == "N" and xB == "C" and x < 1.75:
+            return 1
+          elif xA == "N" and xB == "N" and x < 1.5:
+            return 1
+          elif xA == "S" and xB == "O" and x < 1.9:
+            return 1
+          elif xA == "O" and xB == "S" and x < 1.9:
+            return 1
+          elif x < bonddistancethreshold:
             return 1
           else:
             return 0
-    
-        bm = np.array([[bonded(j) for j in i] for i in dm])
+
+        bm = np.array([[bonded(dm[i][j],symb[ind][i],symb[ind][j]) for j in range(len(dm[i]))] for i in range(len(dm))])
     
         test = 0
         choosing_list = range(len(bm))
@@ -1257,6 +1267,7 @@ if Qreacted > 0:
     def most_frequent(List):
         return max(set(List), key = List.count)
     
+    #print(all_molecules)
     #print(most_frequent(all_molecules))
     mf = most_frequent(all_molecules)
     
