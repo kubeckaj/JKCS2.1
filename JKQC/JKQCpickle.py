@@ -92,7 +92,7 @@ output_pkl = "mydatabase.pkl"
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
 Pextract = []
-Qreacted = 0 #Remove reacted structures
+Qreacted = 0 #Remove reacted structures?, 1 = yes; 2 = print the reverse 
 
 Qout = 0 #Do I want to save output.pkl? 0=NO,1=YES,2=YES but do not print example
 Pout = []
@@ -194,6 +194,10 @@ for i in sys.argv[1:]:
   #REACTED
   if i == "-reacted":
     Qreacted = 1
+    continue
+  #REACTED
+  if i == "-reacted2":
+    Qreacted = 2
     continue
   #NOEXAMPLE
   if i == "-noexample" or i == "-noex":
@@ -1251,7 +1255,10 @@ if Qreacted > 0:
     mf = most_frequent(all_molecules)
     #print(mf)
     #print(all_molecules[0])
-    nind = [ i == mf for i in all_molecules]
+    if Qreacted != 2:
+      nind = [ i == mf for i in all_molecules]
+    else:
+      nind = [ i != mf for i in all_molecules]
     if k0 == 0:
       selclusters_df = clusters_df.loc[cluster_subsets[0]][nind].copy()
     else:
