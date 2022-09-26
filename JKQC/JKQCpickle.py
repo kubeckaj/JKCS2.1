@@ -93,6 +93,7 @@ Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
 Pextract = []
 Qreacted = 0 #Remove reacted structures?, 1 = yes; 2 = print the reverse 
+bonddistancethreshold = 1.75
 
 Qout = 0 #Do I want to save output.pkl? 0=NO,1=YES,2=YES but do not print example
 Pout = []
@@ -194,11 +195,16 @@ for i in sys.argv[1:]:
   #REACTED
   if i == "-reacted":
     Qreacted = 1
+    last = "-reacted"
     continue
-  #REACTED
   if i == "-reacted2":
     Qreacted = 2
+    last = "-reacted"
     continue
+  if last == "-reacted":
+    last = ""
+    bonddistancethreshold = float(i)
+    continue  
   #NOEXAMPLE
   if i == "-noexample" or i == "-noex":
     Qout = 2
@@ -1216,7 +1222,7 @@ if Qreacted > 0:
         dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
     
         def bonded(x):
-          if x < 1.75:
+          if x < bonddistancethreshold:
             return 1
           else:
             return 0
@@ -1253,6 +1259,7 @@ if Qreacted > 0:
     
     #print(most_frequent(all_molecules))
     mf = most_frequent(all_molecules)
+    
     #print(mf)
     #print(all_molecules[0])
     if Qreacted != 2:

@@ -610,7 +610,7 @@ if Qopt == 1:
   strs = clusters_df["xyz"]["structure"]
   
   xyz=strs[0].get_positions()
-  maxsteps=10
+  maxsteps=100
   xyzdeviation=0.05  
   for step in range(maxsteps):
     ### GENERATE SHIFTED STRUCTURES
