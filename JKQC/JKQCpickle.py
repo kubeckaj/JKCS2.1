@@ -1268,12 +1268,14 @@ if Qreacted > 0:
               #print("DONE")
             #print("----------------")
           #print(molecules)
-          molecules.append(list(np.sort([symb[ind][i] for i in selected])))
+          molecules.append("".join(np.sort([symb[ind][i] for i in selected])))
+          #print(np.sort(molecules))
           choosing_list = [i for i in choosing_list if i not in selected]
           if len(choosing_list) == 0:
             test = 1
         #print(str(np.sort(np.array(molecules,dtype = dt))))
-        all_molecules.append(str(np.sort(np.array(molecules,dtype = dt))))
+#print(molecules)
+        all_molecules.append(str(np.sort(np.array(np.sort(molecules),dtype = dt))))
   
     def most_frequent(List):
         return max(set(List), key = List.count)
@@ -1288,6 +1290,7 @@ if Qreacted > 0:
       nind = [ i == mf for i in all_molecules]
     else:
       nind = [ i != mf for i in all_molecules]
+    #print(all_molecules)
     #print(nind)
     if k0 == 0:
       selclusters_df = clusters_df.loc[cluster_subsets[0]][nind].copy()
