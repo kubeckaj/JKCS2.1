@@ -1452,7 +1452,7 @@ if Qqha == 1:
    #  clusters_df["log","gibbs_free_energy_thermal_correction"] = [clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i] for i in range(len(clusters_df))] 
 
 ###### FILTERING ######
-if ( str(Qselect) != "0" or str(Quniq) != "0" ) and str(Qsort) == "0":
+if ( str(Qselect) != "0" or ( str(Quniq) != "0" and str(Quniq) != "dup" )) and str(Qsort) == "0":
   Qsort = "g"
 if str(Qsort) != "0":
   if Qsort == "g":
@@ -1461,33 +1461,37 @@ if str(Qsort) != "0":
     Qsort = "electronic_energy"
   clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
-  uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
-  newclusters_df = []
-  myNaN = lambda x : missing if x == "NaN" else x
-  for i in uniqueclusters:
-     preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
-     tocompare = []
-     for j in ["rg","electronic_energy"]:#,"gibbs_free_energy"]:
-       if j == "rg":
-         rg = []
-         for aseCL in preselected_df["xyz"]["structure"]:
-           try:
-             rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
-           except:
-             rg.append(missing)
-         values = [np.floor(myNaN(o)*1e2) for o in rg]
-       else:  
-         values = [np.floor(myNaN(o)*1e4) for o in preselected_df["log"][j].values]
-       tocompare.append(values)
-     tocompare = np.transpose(tocompare)
-     uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
-     selected_df = preselected_df.iloc[uniqueindexes]
-     if len(newclusters_df) == 0:
-       newclusters_df = selected_df
-     else:
-       #print(newclusters_df)
-       newclusters_df = newclusters_df.append(selected_df)
-       #print(newclusters_df)
+  if Quniq == "dup":
+    newclusters_df = clusters_df.copy()
+    newclusters_df = newclusters_df.drop_duplicates(subset=[("info","file_basename")])
+  else:
+    uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+    newclusters_df = []
+    myNaN = lambda x : missing if x == "NaN" else x
+    for i in uniqueclusters:
+       preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
+       tocompare = []
+       for j in ["rg","electronic_energy"]:#,"gibbs_free_energy"]:
+         if j == "rg":
+           rg = []
+           for aseCL in preselected_df["xyz"]["structure"]:
+             try:
+               rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
+             except:
+               rg.append(missing)
+           values = [np.floor(myNaN(o)*1e2) for o in rg]
+         else:  
+           values = [np.floor(myNaN(o)*1e4) for o in preselected_df["log"][j].values]
+         tocompare.append(values)
+       tocompare = np.transpose(tocompare)
+       uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
+       selected_df = preselected_df.iloc[uniqueindexes]
+       if len(newclusters_df) == 0:
+         newclusters_df = selected_df
+       else:
+         #print(newclusters_df)
+         newclusters_df = newclusters_df.append(selected_df)
+         #print(newclusters_df)
   if Qout == 1:
     print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
