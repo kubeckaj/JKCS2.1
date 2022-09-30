@@ -125,6 +125,7 @@ orcaext = "out"
 orcaextname = "out"
 turbomoleext = "out"
 turbomoleextname = "out"
+dash="-"
 
 last = ""
 for i in sys.argv[1:]:
@@ -132,6 +133,9 @@ for i in sys.argv[1:]:
   if i == "-help" or i == "--help":
     print_help()
     exit()
+  if i == "-underscore":
+    dash = "_"
+    continue
   #FOLDER
   if i == "-folder":
     last = "-folder"
@@ -558,7 +562,7 @@ def df_add_iter(dataframe,label,name,indexs,variables):
   return dataframe
 ####################################################################################################
 
-# Loading input pikles
+# Loading input pickles
 if len(input_pkl) == 0:
   clusters_df = pd.DataFrame()
 else:
@@ -718,7 +722,7 @@ for file_i in files:
         #    out_gibbs_free_energy = missing
         if re.search("TOTAL FREE ENERGY", line): #2
           try:
-            out_gibbs_free_energy = float(line.split()[0])
+            out_gibbs_free_energy = float(line.split()[4])
           except:
             out_gibbs_free_energy = missing
           continue
@@ -1052,7 +1056,7 @@ for file_i in files:
 def dash(input_array):
   output_array = [input_array]
   for element in range(len(input_array)):
-    if input_array[element] == "-":
+    if input_array[element] == dash:
       partbefore = input_array[0:element-1]
       partafter = input_array[element+2:]
       output_array_1 = []
