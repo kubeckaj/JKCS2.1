@@ -1056,7 +1056,7 @@ for file_i in files:
 def dash(input_array):
   output_array = [input_array]
   for element in range(len(input_array)):
-    if input_array[element] == dash:
+    if input_array[element] == "-":
       partbefore = input_array[0:element-1]
       partafter = input_array[element+2:]
       output_array_1 = []
@@ -1077,7 +1077,7 @@ def dash(input_array):
 def dash_comment(input_array):
   output_array = [input_array]
   for element in range(len(input_array)):
-    if input_array[element] == "-":
+    if input_array[element] == dash:
       output_array = []
       partbefore = input_array[0:element]
       output_array.append(partbefore)
