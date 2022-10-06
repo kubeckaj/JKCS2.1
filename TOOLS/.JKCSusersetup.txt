@@ -41,7 +41,12 @@ SBATCH_PREFIX="REPLACE_sbatch_prefix " #group sbatch requirment
 #########################
 #The calculation can be performed in the current subfolder: "./"  OR
 #you can perform the calculations somewhere else, e.g. on scratch: "/scratch/$USER/"  (This is strongly recommended, especially for G16 or Orca calcs.)
-WRKDIR="REPLACE_wrkdir"
+if [ "$1" != "-loc" ]
+then
+  WRKDIR="REPLACE_wrkdir"
+else
+  WRKDIR="./"
+fi
 
 ######################################
 ### Default computer cluster setup ###

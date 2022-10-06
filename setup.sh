@@ -87,6 +87,11 @@ do
     ADD="-qml"
     continue
   fi
+  if [ "$i" == "-descriptors" ] || [ "$i" == "descriptors" ]
+  then
+    ADD="-descriptors"
+    continue
+  fi
   if [ "$i" == "-r" ]
   then
     Qr=1

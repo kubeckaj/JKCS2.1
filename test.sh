@@ -23,7 +23,7 @@ else
   printf " SUCCESFULL\n"
   printf " SUCCESFULL\n" >> .log
 fi
-source ~/.JKCSusersetup.txt
+source ~/.JKCSusersetup.txt 
 source TOOLS/LOADING/colours.txt
 
 ### WRKDIR
