@@ -1220,7 +1220,7 @@ if Qreacted > 0:
       else:
         p = b.positions
         symb = np.array(b.get_chemical_symbols())
-        ind = [i != 'H' for i in symb]
+        ind = [i != 'test' for i in symb]
     
         dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
         dm = np.asarray([[dist(p1, p2) for p2 in p[ind]] for p1 in p[ind]])
@@ -1236,6 +1236,11 @@ if Qreacted > 0:
             return 1
           elif xA == "O" and xB == "S" and x < 1.9:
             return 1
+          elif xA == "H" or xB == "H":
+            if xA == "H" and xB == "H" and x < 0.8:
+              return 1
+            else:
+              return 0
           elif x < bonddistancethreshold:
             return 1
           else:
