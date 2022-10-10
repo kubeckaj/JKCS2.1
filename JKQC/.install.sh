@@ -55,6 +55,7 @@ echo "- activating environment"
 #source my-venv/bin/activate
 #conda activate JKCS
 source JKCS/bin/activate
+TMPDIR='$PWD/JKCS/'
 
 #echo "- installing python 3.8"
 #echo y | conda install -c anaconda python=3.8

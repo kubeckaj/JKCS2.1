@@ -631,8 +631,12 @@ if Qopt == 1:
     if method == "delta":
       for RR_iter in range(len(RR)): 
         os.system("mkdir test;")
-        write("test/test.xyz",RR[RR_iter])
+        tocalc = strs[0].copy()
+        tocalc.set_positions(RR[RR_iter])
+        write("test/test.xyz",tocalc)
         os.system("cd test;xtb test.xyz --sp --gfn 1 > test.log;cd ..;JKQC -folder test -out JKMLtest.pkl;rm -r test")
+        en=os.system("JKQC JKMLtest.pkl -el")
+        print(en)
         stop
       recalc_df = pd.DataFrame()
       for RR_iter in range(len(RR)): 
