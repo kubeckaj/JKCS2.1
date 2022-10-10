@@ -64,7 +64,7 @@ source JKCS/bin/activate
 
 #echo y | conda install xtb-python
 #echo y | conda install numba
-PIP="$PYTHON -m pip --cache-dir=$PWD/JKCS/"
+PIP="$PYTHON -m pip " #--cache-dir=$PWD/JKCS/"
 #$PIP --version
 $PIP install --upgrade pip
 $PIP install pathlib #Perhaps this one is not necessary
