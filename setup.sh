@@ -25,6 +25,7 @@ WRKDIR="./"
 cat TOOLS/label_big
 
 Qr=0
+ADD=""
 for i in "$@"
 do 
   if [ "$i" == "-help" ]
@@ -84,12 +85,12 @@ do
   fi
   if [ "$i" == "-qml" ] || [ "$i" == "qml" ]
   then
-    ADD="-qml"
+    ADD+=" -qml "
     continue
   fi
   if [ "$i" == "-descriptors" ] || [ "$i" == "descriptors" ]
   then
-    ADD="-descriptors"
+    ADD+=" -descriptors "
     continue
   fi
   if [ "$i" == "-r" ]

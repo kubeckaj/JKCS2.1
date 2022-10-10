@@ -117,6 +117,23 @@ then
     echo "   :: your python version probably does not have numpy libraries"
   fi
   rm .test.py .test.out
+
+  #Testing qml
+  echo "import qml" > .test.py
+  program_PYTHON .test.py > .test.out 2>&1
+  result=`wc -l .test.out | awk '{print $1}' `
+  if [ $result -eq 0 ]
+  then
+    printf "   -- qml: ${cfGREEN}SUCCESFULL${cfDEF}\n"
+    echo "   -- qml: SUCCESFULL" >> ../.log
+  else
+    printf "   -- qml: ${cfRED}UNSUCCESFULL${cfDEF}\n"
+    echo "   -- qml: UNSUCCESFULL" >> ../.log
+    cat .test.out >> ../.log
+    echo "   :: see .log for the error"
+    echo "   :: your python version probably does not have numpy libraries"
+  fi
+  rm .test.py .test.out
 else
   printf " ${cfRED}UNSUCCESFULL${cfDEF}\n" 
   cat .help >> ../.log

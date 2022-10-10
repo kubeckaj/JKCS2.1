@@ -71,21 +71,21 @@ $PIP install numexpr==2.7.0 $ADD
 $PIP install numpy==1.21.4 $ADD
 $PIP install pandas==1.3.4 $ADD
 $PIP install ase 
-if [ "$3" == "-qml" ] || [ "$4" == "-qml" ]
-then
- #$PIP install sklearn
- #$PIP install cffi
- #$PIP install dscribe
- ADD="--force-reinstall --upgrade"
- $PIP install install git+https://github.com/qmlcode/qml@develop $ADD
-fi
-if [ "$3" == "-descriptors" ] || [ "$4" == "-descriptors" ]
+if [[ "$*" == *"-descriptors"* ]]
 then
  $PIP install sklearn
  $PIP install cffi
  $PIP install dscribe
  #ADD="--force-reinstall --upgrade"
  #$PIP install install git+https://github.com/qmlcode/qml@develop $ADD
+fi
+if [[ "$*" == *"-qml"* ]]
+then
+ #$PIP install sklearn
+ #$PIP install cffi
+ #$PIP install dscribe
+ ADD="--force-reinstall --upgrade"
+ $PIP install install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 
 

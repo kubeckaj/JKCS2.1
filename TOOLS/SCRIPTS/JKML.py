@@ -628,12 +628,26 @@ if Qopt == 1:
     RR=pd.DataFrame(np.zeros(len(R)),index=range(len(R)))
     RR[0]=R
   
-    
+    if method == "delta":
+      for RR_iter in range(len(RR)): 
+        os.system("mkdir test;")
+        write("test/test.xyz",RR[RR_iter])
+        os.system("cd test;xtb test.xyz --sp --gfn 1 > test.log;cd ..;JKQC -folder test -out JKMLtest.pkl;rm -r test")
+        stop
+      recalc_df = pd.DataFrame()
+      for RR_iter in range(len(RR)): 
+        cluster_id = len(recalc_df)
+        recalc_df = df_add_append(recalc_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
+        newxyz = strs[0].copy()
+        newxyz.set_positions(RR[RR_iter])
+        recalc_df = df_add_iter(recalc_df, "xyz", "structure", [str(cluster_id)], [newxyz])
+        os.system("mkdir test;cd test;cp ../210001_30_126.xyz .;xtb 210001_30_126.xyz --sp --gfn 1 > 210001_30_126.log;cd ..;python ../ML_SA_B/DATABASES/JKQCpickle.py -folder test -out resultsXTB_FILTERED.pkl;rm -r test")
+
     #print(RR.values[0][0], flush = True)
     ### REPRESENTATION CALCULATION ###
     repres_dataframe = pd.DataFrame(index = RR.index, columns = ["xyz"])
     max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
-    for i in range(len(repres_dataframe)):#TODO strs[0] cannot be define like that for different molecules
+    for i in range(len(repres_dataframe)):#TODO strs[0] cannot be define like that for different molecules, i.e. I can optimize only 1 molecule
       repres_dataframe["xyz"][i] = generate_representation(RR.values[i][0], strs[0].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
     fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
   
@@ -690,7 +704,7 @@ if Qopt == 1:
       clustersout_df = pd.DataFrame()
     cluster_id = len(clustersout_df)
     clustersout_df = df_add_append(clustersout_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
-    df_add_iter(clustersout_df, "log", "electronic_energy", [str(cluster_id)], [Y_predicted[0][0]])
+    clustersout_df = df_add_iter(clustersout_df, "log", "electronic_energy", [str(cluster_id)], [Y_predicted[0][0]])
     newxyz = strs[0].copy()
     newxyz.set_positions(xyzold)
     clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
