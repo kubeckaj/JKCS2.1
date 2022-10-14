@@ -170,6 +170,7 @@ function program_JKML {
   done
   cd ../
   rm -r JKML$SLURM_JOBID
+  cd $currentdir
   #SPLIT
   if [[ "${@}" == *"-split"* ]]
   then
