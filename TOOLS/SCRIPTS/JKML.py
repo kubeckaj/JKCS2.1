@@ -1,5 +1,6 @@
 import sys
 import os.path
+import subprocess
 
 def help():
   print("-method <str>                      direct|delta [default = delta]", flush = True)
@@ -610,6 +611,13 @@ if Qopt == 1:
   strs = clusters_df["xyz"]["structure"]
   
   xyz=strs[0].get_positions()
+  F=np.zeros_like(xyz)
+  for i in range(len(xyz)):
+        for j in range(3):
+              F[i,j]=float(13.0)
+  print(F[0,0])
+  print(xyz[0,0]+0.23)
+  print(type(xyz))
   maxsteps=100
   xyzdeviation=0.05  
   for step in range(maxsteps):
@@ -627,25 +635,26 @@ if Qopt == 1:
     
     RR=pd.DataFrame(np.zeros(len(R)),index=range(len(R)))
     RR[0]=R
-  
+    #print(RR, flush = True)  
+
     if method == "delta":
-      for RR_iter in range(len(RR)): 
+      for RR_iter in range(len(RR[0])): 
+        #print(RR_iter,flush = True)
         os.system("mkdir test;")
         tocalc = strs[0].copy()
-        tocalc.set_positions(RR[RR_iter])
+        tocalc.set_positions(RR[0][RR_iter])
         write("test/test.xyz",tocalc)
-        os.system("cd test;xtb test.xyz --sp --gfn 1 > test.log;cd ..;JKQC -folder test -out JKMLtest.pkl;rm -r test")
-        en=os.system("JKQC JKMLtest.pkl -el")
-        print(en)
-        stop
-      recalc_df = pd.DataFrame()
-      for RR_iter in range(len(RR)): 
-        cluster_id = len(recalc_df)
-        recalc_df = df_add_append(recalc_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
-        newxyz = strs[0].copy()
-        newxyz.set_positions(RR[RR_iter])
-        recalc_df = df_add_iter(recalc_df, "xyz", "structure", [str(cluster_id)], [newxyz])
-        os.system("mkdir test;cd test;cp ../210001_30_126.xyz .;xtb 210001_30_126.xyz --sp --gfn 1 > 210001_30_126.log;cd ..;python ../ML_SA_B/DATABASES/JKQCpickle.py -folder test -out resultsXTB_FILTERED.pkl;rm -r test")
+        os.system("cd test;xtb test.xyz --sp --gfn 1 > test.log 2>&1 ;cd ..;JKQC -folder test -out JKMLtest.pkl -noex;rm -r test")
+        os.system("JKQC JKMLtest.pkl -el > .en")
+        with open(".en", "r") as ping:
+          en=float(ping.read().rstrip())
+        #print(en, flush=True)
+        if RR_iter == 0:
+          all_ens = [en]
+        else:
+          all_ens.append(en)
+        #print(all_ens, flush = True)
+      #print(all_ens, flush = True)
 
     #print(RR.values[0][0], flush = True)
     ### REPRESENTATION CALCULATION ###
@@ -691,15 +700,24 @@ if Qopt == 1:
       #Fm=np.zeros_like(xyz)
       for i in range(len(xyz)):
         for j in range(3):
-          F[i,j]=Y_predicted[0][0]
-          Fp[i,j]=Y_predicted[0][1+j+3*i]
+          if method == "delta":
+            #print(Y_predicted[0][0])
+            #print(all_ens[0])
+            #print(wtf1)
+            #print(F[i,j])
+            F[i,j]=Y_predicted[0][0]+all_ens[0]
+            #print(F[i,j])
+            Fp[i,j]=Y_predicted[0][1+j+3*i]+all_ens[1+j+3*i]
+          else:
+            F[i,j]=Y_predicted[0][0]
+            Fp[i,j]=Y_predicted[0][1+j+3*i]
           #Fp[i,j]=Y_predicted[0][1+2*j+6*i]
           #Fm[i,j]=Y_predicted[0][2+2*j+6*i]
   
       
       #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
       #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
-      change=(Fp-F)/xyzdeviation*0.1
+      change=(Fp-F)/xyzdeviation*0.8
       xyz = xyz - change
       maxdev=max(np.sqrt(sum(np.transpose(change*change))))
 
@@ -711,8 +729,11 @@ if Qopt == 1:
     clustersout_df = df_add_iter(clustersout_df, "log", "electronic_energy", [str(cluster_id)], [Y_predicted[0][0]])
     newxyz = strs[0].copy()
     newxyz.set_positions(xyzold)
-    clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
-    print(str(step)+" \t"+str(Y_predicted[0][0])+" \t"+str(maxdev),flush = True)
+    clustersout_df = clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
+    if method == "delta":
+      print(str(step)+" \t"+str(Y_predicted[0][0]+all_ens[0])+" \t"+str(maxdev),flush = True)
+    else:
+      print(str(step)+" \t"+str(Y_predicted[0][0])+" \t"+str(maxdev),flush = True)
     #print(xyz, flush = True)
     
 

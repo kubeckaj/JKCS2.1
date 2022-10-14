@@ -82,7 +82,7 @@ def print_help():
   print("                         NOTE: -g/-gout is treated correctly + -s not treated; use (G - H)/T")
   print(" -formation              print values as formation ")
   print(" <input_file> -formation print formations for the input file (no averaging though)")
-  print(" -conc sa 0.00001        dG at given conc. (use -cnt for self-consistent dG)")
+  print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
 
 folder = "./"	
 files = []  
