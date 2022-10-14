@@ -65,7 +65,7 @@ fi
 # -loc or load supercomputer parameters
 JKloadsupercomputer
 
-
+Qarray=0 #submit jobs as array?
 Qsplit=1 #HOW much is split the K, 1 = no split
 
 last=""
@@ -84,6 +84,12 @@ do
   then
     last=""
     Qsplit=$iter
+    continue
+  fi
+  # Array submission
+  if [ "$iter" == "-array" ]
+  then
+    Qarray=1
     continue
   fi
   #
@@ -105,6 +111,8 @@ then
   addsplit0=" -split $Qsplit "
 fi
 addsplit=""
+calc=0
+SCtasks=`echo "($Qsplit*$Qsplit+$Qsplit)/2" | bc`
 for i in `seq 1 $Qsplit`
 do
   for j in `seq 1 $i`
@@ -113,16 +121,31 @@ do
     then
       addsplit="$addsplit0 $i $j"
     fi
-    echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" >> output
-    echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" > .run
-
-    if [ $METHODsupercomputer == "loc" ]
+    if [ $Qarray -eq 1 ]
     then
-      /bin/bash .run | tee -a output
+      calc=`echo $calc+1 | bc`
+      echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit" > .run$calc
+      if [ $calc -eq $SCtasks ]
+      then
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks/"`
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
+        job=$(/bin/bash .run)
+        if [ ! -z "$job" ] ;then echo $job;fi
+        echo $job | awk '{print $4}'  >> .jobs.txt 
+      fi
     else
-      job=$(/bin/bash .run)
-      if [ ! -z "$job" ] ;then echo $job;fi
-      echo $job | awk '{print $4}'  >> .jobs.txt
+      echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" >> output
+      echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" > .run
+
+      if [ $METHODsupercomputer == "loc" ]
+      then
+        /bin/bash .run | tee -a output
+      else
+        job=$(/bin/bash .run)
+        if [ ! -z "$job" ] ;then echo $job;fi
+        echo $job | awk '{print $4}'  >> .jobs.txt
+      fi
     fi
   done
 done

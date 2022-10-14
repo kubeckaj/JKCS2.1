@@ -12,6 +12,7 @@ def help():
   print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
   print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
   print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
+  print("OTHER: -split X, -array, -optimize", flush = True)
   
 #PREDEFINED ARGUMENTS
 method = "delta"

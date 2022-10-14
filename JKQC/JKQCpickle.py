@@ -35,6 +35,7 @@ def print_help():
   print(" -help      print this help")
   print(" -in X.pkl  read data from a database")
   print(" -out X.pkl save data to XX.pkl (-noex = do not print example)")
+  print(" -orcaext X if ORCA has different extension than out")
   print(" -folder X  takes in all X/*.log files")
   print(" -noname    the file names are not analysed (e.g. 1000-10_1.xyz)")
   print(" -extract X prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")

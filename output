@@ -1,0 +1,4 @@
+JKCS: Neither parameters.txt nor SYS_ exist! [NO - EXITING]
+COMMAND: JKML help 
+sbatch -J 'JKCS2.1' -p small --time 24:00:00 -N 1 --mem-per-cpu 4000mb -n 1 /home/kubeckaj/Applications/JKCS2.1/JKCSx/../TOOLS/SCRIPTS/JKsend  "source ~/.JKCSusersetup.txt;program_JKML /home/kubeckaj/Applications/JKCS2.1/JKCSx/../TOOLS/SCRIPTS/JKML.py help "
+JKCS: Calculations submitted or calculations done (-loc).
