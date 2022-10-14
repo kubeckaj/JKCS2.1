@@ -170,6 +170,33 @@ function program_JKML {
   done
   cd ../
   rm -r JKML$SLURM_JOBID
+  #SPLIT
+  if [[ "${@}" == *"-split"* ]]
+  then
+    input="${@}"
+    Qsplits_i=`echo ${input#*-split} | awk '{print $2}'`
+    Qsplits_j=`echo ${input#*-split} | awk '{print $3}'`
+    Qsplits=`echo ${input#*-split} | awk '{print $1}'`
+    if [ $Qsplits -eq $Qsplits_i ] && [ $Qsplits -eq $Qsplits_j ]
+    then
+      expected_files=`echo "($Qsplits*$Qsplits+$Qsplits)/2" | bc`
+
+      varstest=0
+      while [ $varstest -eq 0 ]
+      do
+        found=`ls vars_*_*_*.pkl | wc -w`
+        if [ $found -eq $expected_files ]
+        then
+          varstest=1
+        else
+          sleep 5
+        fi
+      done
+      time program_PYTHON ${@} -finishsplit
+      rm vars_*_*_*.pkl
+    fi
+  fi
+  ##
   if [ ! -z "$SLURM_CPUS_ON_NODE" ]
   then
     echo JOBID = $SLURM_JOBID done

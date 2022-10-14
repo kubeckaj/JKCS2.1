@@ -22,6 +22,8 @@ TEST_DATABASE = ""
 TEST_LOW = ""
 TEST_HIGH = ""
 Qtrain = 0 #0=nothing (fails), 1=train, 2=trained
+Qsplit = 1 #1=no split, how many splits to do; ONLY FOR TRAINING
+Qsplit_i = 1; Qsplit_j = 1; 
 Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
@@ -113,6 +115,25 @@ for i in sys.argv[1:]:
       print("cannot take trained if training [EXITING]")
       exit
     last = "-trained"
+    continue
+  #SPLIT
+  if i == "-split":
+    last = "-split"
+    continue
+  if last == "-split":
+    last = "-splitt"
+    Qsplit = int(i)
+    continue
+  if last == "-splitt":
+    last = "-splittt"
+    Qsplit_i = int(i)-1
+    continue
+  if last == "-splittt":
+    last = ""
+    Qsplit_j = int(i)-1
+    continue
+  if i == "-finishsplit":
+    Qsplit=-1
     continue
   #TRAIN DATABASE(S)
   if last == "-trained":
@@ -390,16 +411,63 @@ if Qtrain == 1:
   #  #alpha = [cho_solve(Ki, Y_train_2) for Ki in K]
   #else:
   #  K = get_local_kernels(X_train_1,X_train_2, sigmas, **kernel_args)
+  
+  #ONLY FOR JOINING ALL THE SPLITS AND CHOLESKY DECOMPOSITION
+  if Qsplit == -1:
+    splits = Qsplit_i+1
+    K = [];
+    for i in range(0,splits):
+      Kx = []
+      for j in range(0,splits):
+        if i < j:
+          s1 = j
+          s2 = i
+        else:
+          s1 = i
+          s2 = j
+        f = open("vars_"+str(splits)+"_"+str(s1)+"_"+str(s2)+".pkl","rb")
+        Kcell, Y_train = pickle.load(f)
+        if i > j:
+          Kcell = np.transpose(Kcell[0])
+        else:
+          Kcell = Kcell[0]
+        if len(Kx) == 0:
+          Kx = Kcell
+        else:
+          Kx = np.concatenate((Kx,Kcell))
+        f.close()
+      if len(K) == 0:
+        K = Kx
+      else:
+        K = np.concatenate((K,Kx),axis = 1)
+    alpha = cho_solve(K, Y_train)
+    #alpha = [cho_solve(Ki, Y_train_1) for Ki in K]
+    f = open("vars.pkl","wb")
+    pickle.dump([X_train, sigmas, alpha],f)
+    f.close()
+    print("Training completed.", flush = True)
+  elif Qsplit == 1:
+    K = get_local_symmetric_kernels(X_train, sigmas, **kernel_args)       #calculates kernel
+    K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
+    alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
 
-  K = get_local_symmetric_kernels(X_train, sigmas, **kernel_args)       #calculates kernel
-  K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
-  alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
-
-  #I will for now everytime save the trained QML
-  f = open("vars.pkl","wb")
-  pickle.dump([X_train, sigmas, alpha],f)
-  f.close()
-  print("Training completed.", flush = True)
+    #I will for now everytime save the trained QML
+    f = open("vars.pkl","wb")
+    pickle.dump([X_train, sigmas, alpha],f)
+    f.close()
+    print("Training completed.", flush = True)
+  else:
+    X_train_i = np.array_split(X_train,Qsplit)[Qsplit_i]
+    X_train_j = np.array_split(X_train,Qsplit)[Qsplit_j]
+    if Qsplit_i == Qsplit_j:
+      K = get_local_symmetric_kernels(X_train_i, sigmas, **kernel_args)       #calculates kernel
+      K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
+    else:
+      K = get_local_kernels(X_train_i, X_train_j, sigmas, **kernel_args)
+    f = open("vars"+"_"+str(Qsplit)+"_"+str(Qsplit_i)+"_"+str(Qsplit_j)+".pkl","wb")
+    pickle.dump([K,Y_train],f)
+    f.close()
+    exit()
 
 #LOAD TRAINING
 #TODO collect splitting: /home/kubeckaj/ML_SA_B/ML/TRAIN/TEST/SEPARATE/cho_solve.pkl
@@ -408,6 +476,7 @@ if Qtrain == 2:
   X_train, sigmas, alpha = pickle.load(f)
   f.close()
   print("Training loaded.", flush = True)
+
 
 ######################
 ###### EVALUATE ######

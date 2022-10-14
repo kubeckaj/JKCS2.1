@@ -65,20 +65,67 @@ fi
 # -loc or load supercomputer parameters
 JKloadsupercomputer
 
+
+Qsplit=1 #HOW much is split the K, 1 = no split
+
+last=""
+# loop over all arguments
+arguments_help=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  # split
+  if [ "$iter" == "-split" ]
+  then
+    last="-split"
+    continue
+  fi
+  if [ "$last" == "-split" ]
+  then
+    last=""
+    Qsplit=$iter
+    continue
+  fi
+  #
+  arguments_help+=( "${arguments[i]}" )
+done
+arguments=("${arguments_help[@]}")
 therest=${arguments[@]}
 
 # print inserted command
 echoCOMMAND COMMAND: JKML "$@" >> output
-echo  "$SC_command \"source ~/.JKCSusersetup.txt;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest\"" >> output
-echo  "$SC_command \"source ~/.JKCSusersetup.txt;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest\"" > .run
-if [ $METHODsupercomputer == "loc" ]
+if [ "$METHODsupercomputer" == "loc" ]
 then
-  /bin/bash .run | tee -a output
+  loc=" -loc"
 else
-  job=$(/bin/bash .run)
-  if [ ! -z "$job" ] ;then echo $job;fi
-  echo $job | awk '{print $4}'  >> .jobs.txt
+  loc=""
 fi
+if [ $Qsplit -gt 1 ]
+then
+  addsplit0=" -split $Qsplit "
+fi
+addsplit=""
+for i in `seq 1 $Qsplit`
+do
+  for j in `seq 1 $i`
+  do
+    if [ $Qsplit -gt 1 ]
+    then
+      addsplit="$addsplit0 $i $j"
+    fi
+    echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" >> output
+    echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" > .run
+
+    if [ $METHODsupercomputer == "loc" ]
+    then
+      /bin/bash .run | tee -a output
+    else
+      job=$(/bin/bash .run)
+      if [ ! -z "$job" ] ;then echo $job;fi
+      echo $job | awk '{print $4}'  >> .jobs.txt
+    fi
+  done
+done
 
 JKecho 1 "Calculations submitted or calculations done (-loc)."
 exit
