@@ -1557,10 +1557,16 @@ if str(Quniq) != "0":
 if str(Qsort) != "0":
   clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Qselect) != "0":
-  uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+  if Qclustername != 0:
+    uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+  else:
+    uniqueclusters = "1"
   newclusters_df = []
   for i in uniqueclusters:
-     selected_df = clusters_df[clusters_df["info"]["cluster_type"] == i][0:Qselect] 
+     if Qclustername != 0:
+       selected_df = clusters_df[clusters_df["info"]["cluster_type"] == i][0:Qselect] 
+     else:
+       selected_df = clusters_df[0:Qselect]
      if len(newclusters_df) == 0:
        newclusters_df = selected_df
      else:
