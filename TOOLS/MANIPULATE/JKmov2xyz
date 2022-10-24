@@ -1,0 +1,4 @@
+#!/bin/bash
+
+JKjxyz2xyz $@
+

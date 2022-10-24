@@ -303,6 +303,12 @@ then
   JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 else
   #TODO Do I really want to recollect everytime?
+  logsouts=`ls $method/*.log $method/*.out $method/*/*.log $method/*/*.out $method/*/*/*.log $method/*/*/*.out 2>/dev/null | wc -w`
+  if [ $logsouts -eq 0 ]
+  then
+    JKecho 2 "I cannot recollect if there is nothing what to collect (logs/outs)"
+    Qrecollect=0
+  fi
   if [ $Qrecollect -eq 1 ]
   then
     rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null

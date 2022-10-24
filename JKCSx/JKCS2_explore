@@ -165,6 +165,8 @@ Qpickle=0 #Do I want to pickle afterwards?
 Qabcxtb=0 #Do I want to run ABC_XTB instead?
 GFN=1     #Use GFN1-xtb by default 
 Qrepeat=1 #How many times I want to repeat each simulation?
+Qarray=0 #submit jobs as array?
+
 
 last=""
 # loop over all arguments
@@ -238,6 +240,12 @@ do
   then
     last=""
     Qjpt=$iter
+    continue
+  fi
+  # Array submission
+  if [ "$iter" == "-array" ]
+  then
+    Qarray=1
     continue
   fi
   # JKQC
@@ -541,11 +549,26 @@ do
     $SC_command sh $toolspath/SCRIPTS/JKperform2.sh 
     echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output 
   else
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output 
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
-    job=$(/bin/bash .run)
-    if [ ! -z "$job" ];  then echo $job; fi
-    echo $job | awk '{print $4}'  >> .jobs.txt
+    if [ $Qarray -eq 1 ]
+    then
+      echo "`tail -n $i commands_TODO.txt | head -n 1`" > .run$i
+      if [ $i -eq 1 ]
+      then
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks/"`
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
+        #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+        job=$(/bin/bash .run)
+        if [ ! -z "$job" ] ;then echo $job;fi
+        echo $job | awk '{print $4}'  >> .jobs.txt
+      fi
+    else  
+      echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output 
+      echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
+      job=$(/bin/bash .run)
+      if [ ! -z "$job" ];  then echo $job; fi
+      echo $job | awk '{print $4}'  >> .jobs.txt
+    fi
   fi
 done
 JKecho 1 "Performing calculations/Calculations submitted or calculation done (-loc)."
