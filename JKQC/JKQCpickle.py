@@ -67,7 +67,7 @@ def print_help():
   print(" -mull     Mulliken charges [-el.charge]      -ami         average moment of inertia")
   print(" -xyz      save all XYZ files                 -rg          radius of gyration [Angstrom]")
   print(" -movie    save all XYZs to movie.xyz         -radius      approx. radius of cluster size [Angstrom]")
-  print("                                              -radius0.5   radius with +0.5 Angstrom correction")
+  print(" -charges  save all Mulliken .charges files   -radius0.5   radius with +0.5 Angstrom correction")
   print("\nPOST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies")
   print(" -temp [value in K]   recalculate for different temperature")
@@ -78,6 +78,7 @@ def print_help():
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("\nFORMATION PROPERTIES:")
+  print(" -pop                    prints column of population probability")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
   print(" -bavg OR -bavgout       prints a value that is Boltzmann average over each cluster using -g OR -gout")
   print("                         NOTE: -g/-gout is treated correctly + -s not treated; use (G - H)/T")
@@ -412,6 +413,9 @@ for i in sys.argv[1:]:
   if i == "-mull" or i == "--mull":
     Pout.append("-mull")
     continue
+  if i == "-charges" or i == "--charges":
+    Pout.append("-charges")
+    continue
   if i == "-dip" or i == "--dip":
     Pout.append("-dip")
     continue
@@ -685,12 +689,42 @@ for file_i in files:
         testXTB = 1
         break
     if testXTB == 1:
+      out_NAtoms = missing
       out_dipole_moment = missing      #0
       out_electronic_energy = missing  #1
       out_enthalpy_energy = missing                      #T8
       out_gibbs_free_energy = missing  #2
       out_entropy = missing                              #E1
+      out_mulliken_charges = missing           
+      save_something = ""
       for line in file:
+        ## NAtoms
+        if re.search("number of atoms", line):
+          try:
+            out_NAtoms = int(line.split()[4])
+          except:
+            out_NAtoms = missing
+          continue
+        ## MULLIKEN
+        if re.search("     #   Z          covCN         q      C6AA      ", line): #O4
+          save_mulliken_charges = out_NAtoms
+          save_something = "mulliken_charges"
+          try:
+            out_mulliken_charges = ["0"]*out_NAtoms
+          except:
+            out_mulliken_charges = missing
+          continue
+        if save_something == "mulliken_charges":
+          try:
+            if save_mulliken_charges<=out_NAtoms:
+              out_mulliken_charges[out_NAtoms-save_mulliken_charges] = str(line.split()[4])
+          except:
+            out_mulliken_charges = missing
+          save_mulliken_charges-=1
+          if save_mulliken_charges == 0:
+            save_something = ""
+          continue
+        ## OTHERS
         if re.search("Debye", line): #0
           try:
             out_dipole_moment = float(line.split()[5])
@@ -735,6 +769,8 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy])
       clusters_df = df_add_iter(clusters_df, "log", "enthalpy_energy", [str(cluster_id)], [out_enthalpy_energy])
       clusters_df = df_add_iter(clusters_df, "log", "entropy", [str(cluster_id)], [out_entropy])
+      clusters_df = df_add_iter(clusters_df, "log", "mulliken_charges", [str(cluster_id)], [out_mulliken_charges]) #O4
+      clusters_df = df_add_iter(clusters_df, "log", "NAtoms", [str(cluster_id)], [out_NAtoms]) #I3
     file.close()
 
   ###############
@@ -1561,6 +1597,13 @@ for i in Pout:
   if i == "-xyz":
     for ind in clusters_df.index:
       write(clusters_df["info"]["file_basename"][ind]+".xyz",clusters_df["xyz"]["structure"][ind])
+    continue
+  #CHARGES
+  if i == "-charges":
+    for ind in clusters_df.index:
+      f = open(clusters_df["info"]["file_basename"][ind]+".charges","w")
+      f.write("\n".join(clusters_df["log"]["mulliken_charges"][ind])+"\n")
+      f.close()
     continue
   #MOVIE
   if i == "-movie":
