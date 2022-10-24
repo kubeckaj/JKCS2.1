@@ -349,6 +349,9 @@ for i in sys.argv[1:]:
   if i == "-g" or i == "-gibbs" or i == "--g" or i == "--gibbs":
     Pout.append("-g")
     continue
+  if i == "-pop" or i == "--pop":
+    Pout.append("-pop")
+    continue
   if i == "-h" or i == "-enthalpy" or i == "--h" or i == "--enthalpy":
     Pout.append("-h")
     continue
@@ -1475,13 +1478,23 @@ if str(Quniq) != "0":
     newclusters_df = clusters_df.copy()
     newclusters_df = newclusters_df.drop_duplicates(subset=[("info","file_basename")])
   else:
-    uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+    if Qclustername != 0:
+      uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+    else:
+      uniqueclusters = "1"
     newclusters_df = []
     myNaN = lambda x : missing if x == "NaN" else x
     for i in uniqueclusters:
-       preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
+       if Qclustername != 0:
+         preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
+       else:
+         preselected_df = clusters_df
        tocompare = []
-       for j in ["rg","electronic_energy"]:#,"gibbs_free_energy"]:
+       if str(Quniq) == "rg,g":
+         compare_list = ["rg","gibbs_free_energy"]
+       else:
+         compare_list = ["rg","electronic_energy"]
+       for j in compare_list:
          if j == "rg":
            rg = []
            for aseCL in preselected_df["xyz"]["structure"]:
@@ -1489,9 +1502,9 @@ if str(Quniq) != "0":
                rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
              except:
                rg.append(missing)
-           values = [np.floor(myNaN(o)*1e2) for o in rg]
+           values = [np.floor(myNaN(o)*1e1) for o in rg]
          else:  
-           values = [np.floor(myNaN(o)*1e4) for o in preselected_df["log"][j].values]
+           values = [np.floor(myNaN(o)*1e3) for o in preselected_df["log"][j].values]
          tocompare.append(values)
        tocompare = np.transpose(tocompare)
        uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
@@ -1725,6 +1738,27 @@ for i in Pout:
       output.append(QUenergy*clusters_df["log"]["gibbs_free_energy"].values)
     except:
       output.append([missing]*len(clusters_df))
+    continue
+  if i == "-pop":
+    population = []
+    R = 1.987 #cal/mol/K #=8.31441
+    for pop in range(len(clusters_df)):
+      try:
+        if Qclustername != 0:
+          allsameclusters = clusters_df[clusters_df["info"]["cluster_type"]==clusters_df["info"]["cluster_type"].values[pop]]
+        else: 
+          allsameclusters = clusters_df
+        try:
+          Qt = float(clusters_df["log","temperature"].values[pop])
+        except:
+          Qt = 298.15
+        me=clusters_df["log"]["gibbs_free_energy"].values[pop] #*627.503*1000/Qt/R
+        partition_function = np.sum([np.exp(iii) for iii in -(allsameclusters["log"]["gibbs_free_energy"].values-me)*627.503*1000/Qt/R])
+        ratio=np.exp(-0*627.503*1000/Qt/R)/partition_function
+        population.append(f"{ratio:8f}")
+      except:
+        population.append(missing)
+    output.append(population)
     continue
   if i == "-gc":
     try:
