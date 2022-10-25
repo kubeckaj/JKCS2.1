@@ -1508,7 +1508,8 @@ if str(Qsort) != "0":
     Qsort = "gibbs_free_energy"
   if Qsort == "el":
     Qsort = "electronic_energy"
-  clusters_df = clusters_df.sort_values([("log",Qsort)])
+  if Qsort != "no":
+    clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
   if Quniq == "dup":
     newclusters_df = clusters_df.copy()
@@ -1528,6 +1529,8 @@ if str(Quniq) != "0":
        tocompare = []
        if str(Quniq) == "rg,g":
          compare_list = ["rg","gibbs_free_energy"]
+       elif str(Quniq) == "rg":
+         compare_list = ["rg"]
        else:
          compare_list = ["rg","electronic_energy"]
        for j in compare_list:
@@ -1554,7 +1557,7 @@ if str(Quniq) != "0":
   if Qout == 1:
     print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
-if str(Qsort) != "0":
+if str(Qsort) != "0" and str(Qsort) != "no":
   clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Qselect) != "0":
   if Qclustername != 0:
@@ -1608,7 +1611,7 @@ for i in Pout:
   if i == "-charges":
     for ind in clusters_df.index:
       f = open(clusters_df["info"]["file_basename"][ind]+".charges","w")
-      f.write("\n".join(clusters_df["log"]["mulliken_charges"][ind])+"\n")
+      f.write("\n".join([str(tt) for tt in clusters_df["log"]["mulliken_charges"][ind]])+"\n")
       f.close()
     continue
   #MOVIE

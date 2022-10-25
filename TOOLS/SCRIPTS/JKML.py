@@ -316,7 +316,7 @@ if Qtrain == 1:
   if Qmonomers == 2: #no difference from monomers at all
     ens_correction = [0]*len(ens)
     if method == "delta":
-      ens_correction2 = [0]*len(ens2)
+      ens2_correction = [0]*len(ens2)
   else:
     #HIGH LEVEL
     if Qmonomers == 1:
@@ -533,7 +533,7 @@ if Qeval == 1 or Qeval == 2:
   if Qmonomers == 2: #no difference from monomers at all
     ens_correction = [0]*len(clusters_df)
     if method == "delta":
-      ens_correction2 = [0]*len(ens2)
+      ens2_correction = [0]*len(ens2)
   else:
     #HIGH LEVEL
     if Qmonomers == 1:
@@ -679,17 +679,19 @@ if Qopt == 1:
   ## The high level of theory
   clusters_df = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
   strs = clusters_df["xyz"]["structure"]
-  
+ 
+  print("Preparing optimization", flush = True) 
   xyz=strs[0].get_positions()
-  F=np.zeros_like(xyz)
-  for i in range(len(xyz)):
-        for j in range(3):
-              F[i,j]=float(13.0)
-  print(F[0,0])
-  print(xyz[0,0]+0.23)
-  print(type(xyz))
-  maxsteps=100
+  #F=np.zeros_like(xyz)
+  #for i in range(len(xyz)):
+  #      for j in range(3):
+  #            F[i,j]=float(13.0)
+  #print(F[0,0], flush = True)
+  #print(xyz[0,0]+0.23, flush = True)
+  #print(type(xyz), flush = True)
+  maxsteps=20
   xyzdeviation=0.05  
+  print("Starting optimization", flush = True)
   for step in range(maxsteps):
     ### GENERATE SHIFTED STRUCTURES
     
@@ -762,7 +764,17 @@ if Qopt == 1:
     ### THE EVALUATION
     Ks = get_local_kernels(X_test, X_train, sigmas, **kernel_args)
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
-  
+
+    if method == "delta":
+      new_save_energy = Y_predicted[0][0]+all_ens[0]
+    else:
+      new_save_energy = Y_predicted[0][0]
+    if step != 0:
+      if new_save_energy > save_energy:     
+        xyz = xyz + change
+        xyzdeviation = xyzdeviation/2
+        continue
+
     xyzold = xyz
     F=np.zeros_like(xyz)
     if step != maxsteps-1:
@@ -787,23 +799,27 @@ if Qopt == 1:
       
       #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
       #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
-      change=(Fp-F)/xyzdeviation*0.8
+      change=(Fp-F) #/xyzdeviation*0.05
       xyz = xyz - change
+      #print("TEST:",flush = True)
+      #print(change, flush = True)
+      #print(change*change, flush = True)
+      #print(np.transpose(change*change),flush=True)
+      #print(sum(np.transpose(change*change)),flush=True)
+      #print(np.sqrt(sum(np.transpose(change*change))),flush = True)
       maxdev=max(np.sqrt(sum(np.transpose(change*change))))
 
     if step == 0:
-      print("step \tenergy [Eh]        \tmax.shift [A]")
+      print("step \tenergy [Eh]        \tmax.shift [A]", flush = True)
       clustersout_df = pd.DataFrame()
+    save_energy = new_save_energy
     cluster_id = len(clustersout_df)
     clustersout_df = df_add_append(clustersout_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
-    clustersout_df = df_add_iter(clustersout_df, "log", "electronic_energy", [str(cluster_id)], [Y_predicted[0][0]])
+    clustersout_df = df_add_iter(clustersout_df, "log", "electronic_energy", [str(cluster_id)], [save_energy])
     newxyz = strs[0].copy()
     newxyz.set_positions(xyzold)
     clustersout_df = clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
-    if method == "delta":
-      print(str(step)+" \t"+str(Y_predicted[0][0]+all_ens[0])+" \t"+str(maxdev),flush = True)
-    else:
-      print(str(step)+" \t"+str(Y_predicted[0][0])+" \t"+str(maxdev),flush = True)
+    print(str(step)+" \t"+str(save_energy)+" \t"+str(maxdev),flush = True)
     #print(xyz, flush = True)
     
 
