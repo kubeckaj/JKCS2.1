@@ -689,8 +689,9 @@ if Qopt == 1:
   #print(F[0,0], flush = True)
   #print(xyz[0,0]+0.23, flush = True)
   #print(type(xyz), flush = True)
-  maxsteps=20
-  xyzdeviation=0.05  
+  maxsteps=8
+  xyzdeviation=0.05
+  shift=0.3  
   print("Starting optimization", flush = True)
   for step in range(maxsteps):
     ### GENERATE SHIFTED STRUCTURES
@@ -772,7 +773,7 @@ if Qopt == 1:
     if step != 0:
       if new_save_energy > save_energy:     
         xyz = xyz + change
-        xyzdeviation = xyzdeviation/2
+        shift = shift/2
         continue
 
     xyzold = xyz
@@ -799,7 +800,7 @@ if Qopt == 1:
       
       #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
       #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
-      change=(Fp-F) #/xyzdeviation*0.05
+      change=(Fp-F)/xyzdeviation*shift
       xyz = xyz - change
       #print("TEST:",flush = True)
       #print(change, flush = True)
@@ -824,7 +825,7 @@ if Qopt == 1:
     
 
   ### PRINTING THE RESULTS
-  print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]])+"};", flush = True)
+  #print("Ypredicted = {" + ",".join([str(i) for i in save_energy])+"};", flush = True)
 
   ### PRINTING THE QML PICKLES
   #clustersout_df = clusters_df.copy()
