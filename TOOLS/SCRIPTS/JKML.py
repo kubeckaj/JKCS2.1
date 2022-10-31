@@ -441,7 +441,7 @@ if Qtrain == 1:
         K = Kx
       else:
         K = np.concatenate((K,Kx),axis = 1)
-    alpha = cho_solve(K, Y_train)
+    alpha = [cho_solve(K, Y_train)]
     #alpha = [cho_solve(Ki, Y_train_1) for Ki in K]
     f = open("vars.pkl","wb")
     pickle.dump([X_train, sigmas, alpha],f)
@@ -475,6 +475,8 @@ if Qtrain == 1:
 if Qtrain == 2:
   f = open(VARS_PKL,"rb")
   X_train, sigmas, alpha = pickle.load(f)
+  if len(alpha)!=1:
+    alpha = [alpha]
   f.close()
   print("Training loaded.", flush = True)
 
@@ -643,6 +645,13 @@ if Qeval == 1 or Qeval == 2:
   if method != "delta":
     print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]+ens_correction])+"};", flush = True)
   else:
+    #print("TEST",flush=True)
+    #print(Y_predicted[0],flush=True)
+    #print("TEST",flush=True)
+    #print(form_ens2,flush=True)
+    #print("TEST",flush=True)
+    #print(ens_correction,flush=True)
+    #print("TEST",flush=True)
     print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]+form_ens2+ens_correction])+"};", flush = True)
   #print("formensval = {" + ",".join([str(i) for i in form_ens[idx]])+"};")
   #print("ens_correction = {" + ",".join([str(i) for i in ens_correction])+"};")
