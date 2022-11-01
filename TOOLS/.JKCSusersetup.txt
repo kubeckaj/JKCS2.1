@@ -141,43 +141,46 @@ function program_JKML {
     export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
   fi
   currentdir=$PWD
-  cd $WRKDIR
-  mkdir -p TMP
-  cd TMP
-  mkdir JKML$SLURM_JOBID
-  cd JKML$SLURM_JOBID
-  files=`echo ${@} | xargs -n 1 | grep ".pkl" | xargs`
-  for i in $files
-  do
-    cp $currentdir/$i ./
-  done
-  time program_PYTHON ${@}
-  for i in `ls *.pkl`
-  do
-    test=0
-    for j in $files
+  if [[ "${@}" != *"-finishsplit"* ]]
+  then 
+    cd $WRKDIR
+    mkdir -p TMP
+    cd TMP
+    mkdir JKML$SLURM_JOBID
+    cd JKML$SLURM_JOBID
+    files=`echo ${@} | xargs -n 1 | grep ".pkl" | xargs`
+    for i in $files
     do
-      if [ "$i" == "$j" ]
-      then
-        test=1
-        break
+      cp $currentdir/$i ./
+    done
+    time program_PYTHON ${@}
+    for i in `ls *.pkl`
+    do
+      test=0
+      for j in $files
+      do
+        if [ "$i" == "$j" ]
+        then
+          test=1
+          break
+        fi
+      done
+      if [ $test -eq 0 ]
+      then 
+        cp $i $currentdir/
       fi
     done
-    if [ $test -eq 0 ]
-    then 
-      cp $i $currentdir/
-    fi
-  done
-  cd ../
-  rm -r JKML$SLURM_JOBID
-  cd $currentdir
+    cd ../
+    rm -r JKML$SLURM_JOBID
+    cd $currentdir
+  fi
   #SPLIT
-  if [[ "${@}" == *"-split"* ]]
+  if [[ "${@}" == *"-split"* ]] || [[ "${@}" == *"-finishsplit"* ]]
   then
     input="${@}"
-    Qsplits_i=`echo ${input#*-split} | awk '{print $2}'`
-    Qsplits_j=`echo ${input#*-split} | awk '{print $3}'`
-    Qsplits=`echo ${input#*-split} | awk '{print $1}'`
+    Qsplits_i=`echo ${input#*split} | awk '{print $2}'`
+    Qsplits_j=`echo ${input#*split} | awk '{print $3}'`
+    Qsplits=`echo ${input#*split} | awk '{print $1}'`
     if [ $Qsplits -eq $Qsplits_i ] && [ $Qsplits -eq $Qsplits_j ]
     then
       expected_files=`echo "($Qsplits*$Qsplits+$Qsplits)/2" | bc`

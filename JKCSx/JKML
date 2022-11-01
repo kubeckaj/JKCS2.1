@@ -67,6 +67,7 @@ JKloadsupercomputer
 
 Qarray=0 #submit jobs as array?
 Qsplit=1 #HOW much is split the K, 1 = no split
+Qsplitargument=""
 
 last=""
 # loop over all arguments
@@ -75,8 +76,9 @@ for i in "${!arguments[@]}"
 do
   iter="${arguments[$i]}"
   # split
-  if [ "$iter" == "-split" ]
+  if [ "$iter" == "-split" ] || [ "$iter" == "-startsplit" ] || [ "$iter" == "-finishsplit" ]
   then
+    Qsplitargument="$iter"
     last="-split"
     continue
   fi
@@ -108,7 +110,7 @@ else
 fi
 if [ $Qsplit -gt 1 ]
 then
-  addsplit0=" -split $Qsplit "
+  addsplit0=" $Qsplitargument $Qsplit "
 fi
 addsplit=""
 calc=0
@@ -119,6 +121,13 @@ do
   do
     if [ $Qsplit -gt 1 ]
     then
+      if [ "$Qsplitargument" == "-finishsplit" ]
+      then
+        if [ $j -ne $Qsplit ] || [ $i -ne $Qsplit ]
+        then
+          continue
+        fi
+      fi
       addsplit="$addsplit0 $i $j"
     fi
     if [ $Qarray -eq 1 ]
