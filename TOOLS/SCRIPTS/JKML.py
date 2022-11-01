@@ -118,7 +118,9 @@ for i in sys.argv[1:]:
     last = "-trained"
     continue
   #SPLIT
-  if i == "-split" or i == "-startsplit":
+  if i == "-finishsplit":
+    Qsplit=-1
+  if i == "-split" or i == "-startsplit" or i == "-finishsplit":
     last = "-split"
     continue
   if last == "-split":
@@ -132,9 +134,6 @@ for i in sys.argv[1:]:
   if last == "-splittt":
     last = ""
     Qsplit_j = int(i)-1
-    continue
-  if i == "-finishsplit":
-    Qsplit=-1
     continue
   #TRAIN DATABASE(S)
   if last == "-trained":
