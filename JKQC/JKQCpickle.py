@@ -1179,7 +1179,7 @@ if Qextract > 0:
       Pextract_comma.append(comma_separated[separated_i])
   #print(Pextract_comma)    
   if Qclustername == 0:
-    Pextract_ultimate = Pextract_comma
+    Pextract_ultimate = unique(Pextract_comma)
   else:
     #print(Pextract_comma)    
     Pextract_dash = []
@@ -1215,17 +1215,24 @@ if Qextract > 0:
     Pextract_ultimate = unique(Pextract_final)
     #print(Pextract_ultimate)
   newclusters_df = pd.DataFrame()
-  for extract_i in Pextract_ultimate:
+  for extract_i in Pextract_ultimate: 
+    #print(extract_i)
     if Qclustername == 0:
-      extracted_df = clusters_df[clusters_df["info"]["file_basename"].values == extract_i]
+      extracted_df = clusters_df[clusters_df["info"]["file_basename"].values == extract_i].copy()
+      #print(len(extracted_df))
     else:
-      extracted_df = clusters_df[clusters_df["info"]["cluster_type"].values == extract_i]
+      extracted_df = clusters_df[clusters_df["info"]["cluster_type"].values == extract_i].copy()
     if len(extracted_df) > 0:
       if len(newclusters_df) == 0:
-        newclusters_df = extracted_df
+        newclusters_df = extracted_df.copy()
       else:
         #print(newclusters_df)
-        newclusters_df = newclusters_df.append(extracted_df)
+        newclusters_df = newclusters_df.append(extracted_df.copy())
+        #try:
+        #print(newclusters_df.loc['19268'])
+        #print(extracted_df)
+        #except: 
+        #  print("0")
         #print(newclusters_df)
   prelen=len(clusters_df)
   if Qextract == 2:
@@ -1233,9 +1240,13 @@ if Qextract > 0:
     a2 = pd.Index(newclusters_df.index)
     clusters_df = clusters_df.iloc[a1.difference(a2, sort=False)]
   else:
-    clusters_df = newclusters_df
+    #print("here")
+    #print(clusters_df.loc['19268'])
+    #print(newclusters_df.loc['19268'])
+    clusters_df = newclusters_df.copy()
   if Qout == 1:
     print("Extracting: "+str(prelen)+" --> "+str(len(clusters_df)))
+
 
 ### REACTED ###
 if Qreacted > 0:
@@ -1500,6 +1511,7 @@ if Qqha == 1:
   #  clusters_df["log","gibbs_free_energy"] = [clusters_df["log","enthalpy_energy"][i] - clusters_df["log","entropy"][i]/1000/627.503 * clusters_df["log","temperature"][i] for i in range(len(clusters_df))] 
    #  clusters_df["log","gibbs_free_energy_thermal_correction"] = [clusters_df["log","gibbs_free_energy"][i] - clusters_df["log","electronic_energy"][i] for i in range(len(clusters_df))] 
 
+
 ###### FILTERING ######
 if ( str(Qselect) != "0" or ( str(Quniq) != "0" and str(Quniq) != "dup" )) and str(Qsort) == "0":
   Qsort = "g"
@@ -1582,7 +1594,13 @@ if str(Qselect) != "0":
 
 ## SAVE OUTPUT.pkl ##
 if Qout > 0:
+  #print(original_clusters_df.iloc[0])
   tosave = original_clusters_df.loc[clusters_df.index]
+  #print(clusters_df.index[0])
+  #print(original_clusters_df.loc['19268'])  
+  #print(len(clusters_df.index))
+  #print(len(clusters_df.index))
+  #print(len(tosave))
   tosave.to_pickle(output_pkl)
   if Qout == 1:
     if len(tosave) == 0:
