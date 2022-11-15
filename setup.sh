@@ -75,7 +75,7 @@ do
     PATH_XTB="/users/kubeckaj/XTB6.0/"
     MODULE_XTB=""
     PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
-    MODULE_G16="module load gaussian/G16RevC.01"
+    MODULE_G16="module load gaussian"
     PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
     MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
     project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
