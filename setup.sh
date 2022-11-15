@@ -177,7 +177,7 @@ then
   sed 's,REPLACE_sbatch_prefix,'"$SBATCH_PREFIX"',g' .help12 > .help13
   sed 's,REPLACE_wrkdir,'"$WRKDIR"',g' .help13 > .help14
   mv .help14 ~/.JKCSusersetup.txt
-  rm .help*
+  #rm .help*
   printf "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
 else
   echo "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
