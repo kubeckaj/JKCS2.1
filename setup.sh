@@ -69,7 +69,7 @@ do
   if [ "$i" == "puhti" ]
   then
     PYTHON="python3.9"    #Please modify this and use python version >3.8.0 but <4.0.0
-    MODULE_PYTHON="module load python-data/3.9-1"  #Is there some module required to load python?
+    MODULE_PYTHON="module load python-data/3.9-22.04"  #Is there some module required to load python?
     PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
     MODULE_ABC="module load gcc"
     PATH_XTB="/users/kubeckaj/XTB6.0/"
