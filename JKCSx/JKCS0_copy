@@ -51,6 +51,7 @@ function help {
    nta .......... nitric acid
    sa ........... sulphuric acid
    msa .......... methanesulfonic acid
+   fa ........... formic acid
 
    am ........... ammonia
    ma ........... methylamine
@@ -237,6 +238,9 @@ function add {
   "msa") echo "  msa    0   $path2/msa.xyz"         >> $userinputfile
          echo "  msa   -1   $path2/msam.xyz"        >> $userinputfile
          ;;
+  "fa")  echo "  fa     0   $path2/fa.xyz"          >> $userinputfile
+         echo "  fa    -1   $path2/fa-.xyz"         >> $userinputfile
+         ;;
   "ma") echo  "  ma     0   $path2/ma.xyz"          >> $userinputfile
         echo  "  ma     1   $path2/mah.xyz"         >> $userinputfile
         ;;
@@ -327,6 +331,7 @@ do
     add "HNO3"
     add "SA"
     add "MSA"
+    add "FA"
 
     add "A"
     add "GD"
