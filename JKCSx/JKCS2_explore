@@ -358,6 +358,14 @@ then
 else
   method="ABC_XTB"
 fi
+
+if [ "$METHODsupercomputer" == "loc" ]
+then
+  loc=" -loc"
+else
+  loc=""
+fi
+
 # creating ABC. if it exist, I will just enter it
 if [ ! -d $method ]; then mkdir $method; fi
 cd $method 
@@ -460,7 +468,7 @@ cd ..""" > rename.sh
     if [ $Qpickle -eq 1 ]
     then
       echo """cd $name-LM
-source ~/.JKCSusersetup.txt
+source ~/.JKCSusersetup.txt$loc
 sleep `echo $Qrepeat*2 | bc`
 program_JKQCpickle *.xyz -noname
 rm *.xyz
@@ -470,9 +478,9 @@ cd ..""" >> rename.sh
     # command
     if [ $Qabcxtb -eq 0 ]
     then
-      command="source ~/.JKCSusersetup.txt;\n program_ABC ${name}.inp;\n sh rename.sh" 
+      command="source ~/.JKCSusersetup.txt$loc;\n program_ABC ${name}.inp;\n sh rename.sh" 
     else
-      command="source ~/.JKCSusersetup.txt;\n program_GEOM ${name}.inp;\n sh rename.sh"
+      command="source ~/.JKCSusersetup.txt$loc;\n program_GEOM ${name}.inp;\n sh rename.sh"
     fi
     printf "$command" > run${scriptfilecommand}.sh
     commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"

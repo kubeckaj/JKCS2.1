@@ -13,6 +13,7 @@ def help():
   print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
   print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
   print("OTHER: -split X, -startsplit X, -finishsplit X, -array, -optimize", flush = True)
+  print("OUTPUTFILES: -out X.pkl [def = predicted_QML.pkl], -varsout X.pkl [def = vars.pkl]")
   
 #PREDEFINED ARGUMENTS
 method = "delta"
@@ -47,6 +48,9 @@ lambdas = [1e-4]*len(sigmas)
 #            "fourier_order": 3}  
 kernel_args = {}
 
+outfile="predicted_QML.pkl"
+varsoutfile="vars.pkl"
+
 #TREATING ARGUMENTS
 last=""
 for i in sys.argv[1:]:
@@ -54,6 +58,24 @@ for i in sys.argv[1:]:
   if i == "-help":
     help()
     exit()
+  #VARS OUT FILE
+  if i == "-varsout":
+    last = "-varsout"
+    continue
+  if last = "-varsout": 
+   varsoutfile = i
+   varsoutfile = varsoutfile.split(".pkl")[0]+".pkl"
+   last = ""
+   continue
+  #OUT FILE
+  if i == "-out":
+    last = "-out"
+    continue
+  if last = "-out":
+   outfile = i
+   outfile = outfile.split(".pkl")[0]+".pkl"
+   last = ""
+   continue
   #METHOD
   if i == "-method":
     last = "-method"
@@ -425,7 +447,7 @@ if Qtrain == 1:
         else:
           s1 = i
           s2 = j
-        f = open("vars_"+str(splits)+"_"+str(s1)+"_"+str(s2)+".pkl","rb")
+        f = open(varsoutfile.split(".pkl")[0]+"_"++str(splits)+"_"+str(s1)+"_"+str(s2)+".pkl","rb")
         Kcell, Y_train = pickle.load(f)
         if i > j:
           Kcell = np.transpose(Kcell[0])
@@ -442,7 +464,7 @@ if Qtrain == 1:
         K = np.concatenate((K,Kx),axis = 1)
     alpha = [cho_solve(K, Y_train)]
     #alpha = [cho_solve(Ki, Y_train_1) for Ki in K]
-    f = open("vars.pkl","wb")
+    f = open(varsoutfile,"wb")
     pickle.dump([X_train, sigmas, alpha],f)
     f.close()
     print("Training completed.", flush = True)
@@ -452,7 +474,7 @@ if Qtrain == 1:
     alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
 
     #I will for now everytime save the trained QML
-    f = open("vars.pkl","wb")
+    f = open(varsoutfile,"wb")
     pickle.dump([X_train, sigmas, alpha],f)
     f.close()
     print("Training completed.", flush = True)
@@ -464,7 +486,7 @@ if Qtrain == 1:
       K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
     else:
       K = get_local_kernels(X_train_i, X_train_j, sigmas, **kernel_args)
-    f = open("vars"+"_"+str(Qsplit)+"_"+str(Qsplit_i)+"_"+str(Qsplit_j)+".pkl","wb")
+    f = open(varsoutfile.split(".pkl")[0]+"_"+str(Qsplit)+"_"+str(Qsplit_i)+"_"+str(Qsplit_j)+".pkl","wb")
     pickle.dump([K,Y_train],f)
     f.close()
     exit()
@@ -675,7 +697,7 @@ if Qeval == 1 or Qeval == 2:
       clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]+ens_correction[i]
     else:
       clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]+form_ens2[i]+ens_correction[i]
-  clustersout_df.to_pickle("predicted_QML.pkl")
+  clustersout_df.to_pickle(outfile)
 ########
 
 ######################
@@ -839,7 +861,7 @@ if Qopt == 1:
   #clustersout_df = clusters_df.copy()
   #for i in range(len(clustersout_df)):
   #  clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]
-  clustersout_df.to_pickle("predicted_QML.pkl")
+  clustersout_df.to_pickle(outfile)
 ########
 
 
