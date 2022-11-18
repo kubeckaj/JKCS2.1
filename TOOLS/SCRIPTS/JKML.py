@@ -62,7 +62,7 @@ for i in sys.argv[1:]:
   if i == "-varsout":
     last = "-varsout"
     continue
-  if last = "-varsout": 
+  if last == "-varsout": 
    varsoutfile = i
    varsoutfile = varsoutfile.split(".pkl")[0]+".pkl"
    last = ""
@@ -71,7 +71,7 @@ for i in sys.argv[1:]:
   if i == "-out":
     last = "-out"
     continue
-  if last = "-out":
+  if last == "-out":
    outfile = i
    outfile = outfile.split(".pkl")[0]+".pkl"
    last = ""
