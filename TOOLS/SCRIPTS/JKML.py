@@ -29,6 +29,7 @@ Qsplit_i = 1; Qsplit_j = 1;
 Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
+Qsampleeach = 0
 
 #PREDEFINED QML
 sigmas = [1.0]
