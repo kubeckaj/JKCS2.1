@@ -1,0 +1,594 @@
+#!/bin/bash
+##########################################################################################
+############################## USER SETUP ################################################
+##########################################################################################
+
+##########################
+### Output style setup ###			
+##########################
+Qcolours=1 # Do you want JKCS colorful output? [1/0]
+Qsymbol=1  # Do you want JKCS smiling face? [1/0]
+
+#########################
+### PATHS AND MODULES ###
+#########################
+# Please, define all paths and modules required for each individual program here:
+# NOTE1: Do not use tilde "~" symbol but use full paths
+# NOTE2: The default paths should work for people using CSC (Puhti)
+
+# ABC = ABCluster
+PATH_ABC="REPLACE_abc"
+MODULE_ABC="REPLACE_module_abc" #"module load gcc/8.2.0" || "module load GCC/8.2.0-2.31.1"
+
+# XTB
+PATH_XTB="REPLACE_xtb"
+MODULE_XTB="REPLACE_module_xtb"
+
+# G16 = GAUSSIAN
+PATH_G16="REPLACE_g16"
+MODULE_G16="REPLACE_module_g16" #"module load Gaussian"
+
+# ORCA
+PATH_ORCA="REPLACE_orca"
+MODULE_ORCA="REPLACE_module_orca" #"module load OpenMPI/3.1.3-GCC-8.2.0-2.31.1" || "module load openmpi/1.10.2"
+
+# SBATCH 
+SBATCH_PREFIX="REPLACE_sbatch_prefix " #group sbatch requirment
+
+
+#########################
+### WORKING DIRECTORY ###
+#########################
+#The calculation can be performed in the current subfolder: "./"  OR
+#you can perform the calculations somewhere else, e.g. on scratch: "/scratch/$USER/"  (This is strongly recommended, especially for G16 or Orca calcs.)
+if [ "$1" != "-loc" ]
+then
+  WRKDIR="REPLACE_wrkdir"
+else
+  WRKDIR="./"
+fi
+
+######################################
+### Default computer cluster setup ###
+######################################
+# Perhaps, if you are a beginner, modify only the partition names and required time (=walltime)
+
+function echo_SCpartition {
+  echo """######################################################
+## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
+======================================================
+ABC   NoC     1    1   72:00:00   small      4000mb
+XTB   NoC     1    1   72:00:00   small      4000mb
+G16   100     8    1   72:00:00   small      4000mb
+ORCA  100     8    1   72:00:00   small      4000mb
+CC    100     8    1   330:00:00  longrun    4000mb
+-loc  1       1    1   -          -          4000mb
+======================================================"""
+}
+
+##########################################################################################
+########################## ADVANCED USER SETUP ###########################################
+##########################################################################################
+###############   DO NOT MODIFY UNLESS YOU KNOW WHAT YOU ARE DOING   #####################
+##########################################################################################
+
+# ADVANCED USER SETUP
+#   - sbatch
+#   - program_PYTHON
+#   - program_JKQCpickle
+#   - program_ABC
+#   - program_XTB
+#   - program_G16
+#   - program_ORCA
+#   - program_MATCH //functional only on Puhti yet
+
+##########################################################################################
+# sbatch
+# modifies sbatch command: sbatch [some_parameter] $SBATCH_PREFIX submitted_script/job
+##########################################################################################
+function program_SBATCH {
+  #1=job name,2=partition name,3=walltime,4=nodes,5=memory
+  SBATCH_command="sbatch "
+  SBATCH_command+="-J '$1' "
+  SBATCH_command+="-p $2 "
+  SBATCH_command+="--time $3 "
+  SBATCH_command+="-N $4 "
+  SBATCH_command+="--mem-per-cpu $5 " #NOTE: This line must be commented out on Mahti
+  if [ ! -z "$6" ]                    
+  then
+    SBATCH_command+="-n $6 "
+  fi
+  SBATCH_command+=$SBATCH_PREFIX" "
+  echo $SBATCH_command  
+}
+##########################################################################################
+
+
+
+##########################################################################################
+# Python
+# it is important to load the JKCS python envirnment
+##########################################################################################
+function program_PYTHON {
+  if [ "$module_python" != "loaded" ]
+  then
+    REPLACE_module_python 2>/dev/null
+    source /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/bin/activate
+    module_python="loaded"
+  fi
+  REPLACE_python ${@}
+}
+##########################################################################################
+
+
+
+##########################################################################################
+# JKQCpickle
+# This is the file used for collecting and pickling file from QC outputs
+##########################################################################################
+function program_JKQCpickle {
+  program_PYTHON /home/kubeckaj/Applications/JKCS2.1/JKQC/JKQCpickle.py ${@}
+}
+##########################################################################################
+
+##########################################################################################
+# JKML
+# Running QML
+##########################################################################################
+function program_JKML {
+  if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+  then 
+    export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+  fi
+  currentdir=$PWD
+  if [[ "${@}" != *"-finishsplit"* ]]
+  then 
+    cd $WRKDIR
+    mkdir -p TMP
+    cd TMP
+    mkdir JKML$SLURM_JOBID
+    cd JKML$SLURM_JOBID
+    files=`echo ${@} | xargs -n 1 | grep ".pkl" | xargs`
+    for i in $files
+    do
+      cp $currentdir/$i ./
+    done
+    time program_PYTHON ${@}
+    for i in `ls *.pkl`
+    do
+      test=0
+      for j in $files
+      do
+        if [ "$i" == "$j" ]
+        then
+          test=1
+          break
+        fi
+      done
+      if [ $test -eq 0 ]
+      then 
+        cp $i $currentdir/
+      fi
+    done
+    cd ../
+    rm -r JKML$SLURM_JOBID
+    cd $currentdir
+  fi
+  #SPLIT
+  if [[ "${@}" == *"-split"* ]] || [[ "${@}" == *"-finishsplit"* ]]
+  then
+    input="${@}"
+    Qsplits_i=`echo ${input#*split} | awk '{print $2}'`
+    Qsplits_j=`echo ${input#*split} | awk '{print $3}'`
+    Qsplits=`echo ${input#*split} | awk '{print $1}'`
+    if [ $Qsplits -eq $Qsplits_i ] && [ $Qsplits -eq $Qsplits_j ]
+    then
+      expected_files=`echo "($Qsplits*$Qsplits+$Qsplits)/2" | bc`
+
+      varstest=0
+      while [ $varstest -eq 0 ]
+      do
+        found=`ls vars_*_*_*.pkl | wc -w`
+        if [ $found -eq $expected_files ]
+        then
+          varstest=1
+        else
+          sleep 5
+        fi
+      done
+      time program_PYTHON ${@} -finishsplit
+      rm vars_*_*_*.pkl
+    fi
+  fi
+  ##
+  if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+  then
+    echo JOBID = $SLURM_JOBID done
+  fi
+}
+##########################################################################################
+
+##########################################################################################
+# ABCluster: rigidmol-optimizer 
+# abcluster uses OpenMP. Use all available CPU, unless OMP_NUM_THREADS is specified.
+##########################################################################################
+function program_ABC {
+  input=$1                             # $name.inp
+  output=$(basename $input .inp).out   # $name.out
+ 
+  #script full path
+  if [ -e $PATH_ABC/rigidmol-optimizer ]
+  then
+    rigidmoloptimizer=$PATH_ABC/rigidmol-optimizer
+  else
+    rigidmoloptimizer=$PATH_ABC/rigidmol
+  fi
+ 
+  #loading module
+  if [ "$module_abc_loaded" != "loaded" ]
+  then
+    $MODULE_ABC 2>/dev/null
+    module_abc_loaded="loaded"
+  fi
+  
+  #performing the calculation
+  $rigidmoloptimizer $input > $output 
+}
+function program_GEOM {
+  input=$1                             # $name.inp
+  output=$(basename $input .inp).out   # $name.out
+
+  #script full path
+  geom=$PATH_ABC/geom
+
+  #loading module
+  if [ "$module_abc_loaded" != "loaded" ]
+  then
+    $MODULE_ABC 2>/dev/null
+    module_abc_loaded="loaded"
+    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    then
+      export OMP_STACKSIZE=1G
+      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+    fi
+  fi
+
+  #performing the calculation
+  $geom $input >> $output
+}
+##########################################################################################
+
+
+
+##########################################################################################
+# XTB
+# xtb uses OMP parallelization. Use all available CPU, unless OMP_NUM_THREADS is specified.
+##########################################################################################
+function program_XTB {
+  #input manipulation
+  base="$(basename $1 .xyz)"   # file basename
+  #if you need to extract the file from pickled database
+  testPKL=`echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
+  if [ "$testPKL" != ".pkl" ]
+  then
+    input="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.xyz" # full path of file.xyz    
+  fi
+  output=$base.log             # file.log
+  args=${@:2}                  # all arguments except the first one
+  
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
+  
+  #loading module  
+  export XTBPATH=$PATH_XTB
+  if [[ "$PATH" != *"$XTBBPATH"* ]]; then
+    export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
+  fi
+  if [ "$module_xtb_loaded" != "loaded" ]
+  then
+    $MODULE_XTB 2>/dev/null
+    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    then
+      export OMP_STACKSIZE=1G
+      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+    fi
+    module_xtb_loaded="loaded"
+  fi  
+
+  #CREATING WORKING DIRECTORY
+  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  ADD=""
+  test=0
+  while [ $test -eq 0 ]
+  do
+    CALC_NAME=$WRKDIR/TMP/XTB${SLURM_JOBID}_$base${ADD}
+    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
+    else test=1;fi     
+  done
+
+  #TEMPERATURE
+  next=0;method_help="";args_help="";
+  for i in $method
+  do 
+    if [ "$i" == "-temp" ]; then next=1;continue;fi
+    if [ "$next" == "1" ]; then next=2;TEMP=$i;continue;fi 
+    method_help+=" $i"
+  done
+  method=$method_help
+  for i in $args
+  do 
+    if [ "$i" == "-temp" ]; then next=1;continue;fi
+    if [ "$next" == "1" ]; then next=2;TEMP=$i;continue;fi 
+    args_help+=" $i"
+  done
+  args=$args_help
+
+  #CHARGE AND MULTIPLICITY
+  if [[ "$method" != *"-c "* ]] && [[ "$method" != *"-chrg "* ]] && [[ "$args" != *"-c "* ]] && [[ "$args" != *"-chrg "* ]];
+  then
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    args+=" --chrg $CHARGE "
+  fi
+  if [[ "$method" != *"-u "* ]] && [[ "$method" != *"-uhf "* ]] && [[ "$args" != *"-u "* ]] && [[ "$args" != *"-uhf "* ]];
+  then
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    unpaired=`echo $MULTIPLICITY-1|bc` 
+    args+=" --uhf $unpaired "
+  fi
+
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  mkdir $CALC_NAME
+  cd $CALC_NAME
+  if [ "$testPKL" == ".pkl" ]
+  then
+    program_JKQCpickle `echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz -noname; 
+    mv ${base}.xyz calc.xyz
+    echo "" >> calc.xyz
+  else 
+    cp $input calc.xyz
+  fi
+  if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
+
+  $XTBPATH/bin/xtb calc.xyz $method $args > $output 2>&1
+  
+  #COPYING RESULTS BACK
+  cp $output $DIR/$output
+  if [ -e xtbopt.xyz ]					      
+  then								 
+    cp xtbopt.xyz $DIR/$base.xyz				     
+  else							     
+    cp calc.xyz $DIR/$base.xyz
+  fi  
+
+  #CLEANING
+  cd $DIR
+  rm -rf $CALC_NAME
+}
+##########################################################################################
+
+
+
+##########################################################################################
+# G16 script: gaussian
+# loadinng gaussian licence might be required
+##########################################################################################
+function program_G16 {
+  input=$1                        # file.xyz or .com
+  base=$(basename $(basename $input .xyz) .com)   # file
+  inputCOM=$base.com
+  output=$base.log             # file.log
+  args=${@:2}                  # all arguments except the first one
+  
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
+
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  #*.com or *.xyz
+  test=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
+  if [ "$test" == ".xyz" ] || [ "$test" == ".pkl" ]
+  then
+    if [ "$test" == ".pkl" ]; 
+    then 
+      pickledfile=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'`
+      preCHARGE=`program_JKQCpickle $pickledfile -extract $base -xyz -noname -chrg -noex`
+      re='^[0-9]+$'
+      if [[ "$preCHARGE" =~ $re ]] 
+      then
+        CHARGE=$preCHARGE
+      fi
+      input=${base}.xyz; 
+    fi 
+    if [ -z "$method" ]
+    then 
+      JKxyz2com $input $args
+    else
+      JKxyz2com $input -method "$method" -mem $MEMORY -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
+    fi
+    if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
+  else
+    inputtest="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.com"
+    if [ $inputtest != $DIR/$inputCOM ]
+    then
+      cp $inputtest $DIR/$inputCOM
+    fi
+  fi
+
+  #CHANGE: G16, inputCOM, .log, adjust copying back
+  echo """#!/bin/bash
+
+export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
+if [ \"\$module_g16_loaded\" != \"loaded\" ]
+then
+  $MODULE_G16 2>/dev/null
+  module_g16_loaded=\"loaded\"
+fi
+export GAUSS_EXEDIR=$PATH_G16/g16/
+export g16root=$PATH_G16
+
+#CREATING WORKING DIRECTORY
+if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+ADD=\"\"
+test=0
+while [ \$test -eq 0 ]
+do
+  CALC_NAME=$WRKDIR/TMP/G16\${SLURM_JOBID}_$base\${ADD}
+  if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
+  else test=1;fi
+done
+
+#dirs
+mkdir \$CALC_NAME
+cp $inputCOM \$CALC_NAME/
+cd \$CALC_NAME
+
+$PATH_G16/g16/g16 < $inputCOM >& $output
+
+#COPYING RESULTS BACK
+if [ -e $DIR/$output ]
+then
+  mv $DIR/$output $DIR/${base}O.log
+fi
+cp $output $DIR/
+cp *.err $DIR/ 2>/dev/null
+cp *.out $DIR/ 2>/dev/null
+cd $DIR
+wait
+JKlog2xyz $output > /dev/null 2>/dev/null
+
+#CLEANING
+rm -rf \$CALC_NAME""" > $base.cmd
+
+  if [ -e ../submit ]
+  then
+    sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh 
+  fi 
+  sh $base.cmd
+}
+##########################################################################################
+
+
+
+##########################################################################################
+# ORCA script: orca
+# 
+##########################################################################################
+function program_ORCA {
+  input=$1                     # file.xyz or .inp    
+  base=$(basename $(basename $(basename $input .xyz) .com) .inp) # file
+  inputINP=$base.inp           # file.inp 
+  inputXYZ=$base.xyz           # file.xyz
+  output=$base.out             # file.out
+  args=${@:2}                  # all arguments except the first one
+
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
+  
+  if [ -e $input ]
+  then
+    cp $input ./  2>/dev/null # .INP .XYZ
+  fi
+  
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  #*.inp or *.xyz or *.pkl
+  test=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
+  if [ "$test" == ".xyz" ] || [ "$test" == ".pkl" ]
+  then
+    if [ "$test" == ".pkl" ]; then program_JKQCpickle `echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz -noname; input=${base}.xyz; fi
+    if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
+    MEMinsert2=`echo $MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
+    MEMinsert1=`echo 0.75*$MEMinsert2 | bc` #it is said in ORCA manual
+    if [ -z "$CPU" ]; then CPU=1; fi
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    if [ -z "$method" ] # IF NO METHOD SPECIFIED ... THEN SOME TROUBLES MIGHT APPEAR 
+    then    
+      JKxyz2inp $input -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY $args
+    else
+      JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
+    fi
+    #if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
+  fi
+
+  #CHANGE: ORCA, inputINP, .out
+  echo """#!/bin/bash
+export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
+
+if [ \"\$module_orca_loaded\" != \"loaded\" ]
+then
+  $MODULE_ORCA 2>/dev/null
+  module_orca_loaded=\"loaded\"
+fi
+export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
+
+#CREATING WORKING DIRECTORY
+if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+ADD=\"\"
+test=0
+while [ \$test -eq 0 ]
+do
+  CALC_NAME=$WRKDIR/TMP/ORCA\${SLURM_JOBID}_$base\${ADD}
+  if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
+  else test=1;fi
+done
+
+#dirs
+mkdir \$CALC_NAME
+
+if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
+cp $inputINP \$CALC_NAME/
+cd \$CALC_NAME
+
+$PATH_ORCA/orca $inputINP > $output 2> $output
+
+#COPYING RESULTS BACK
+if [ -e $DIR/$output ]
+then
+  mv $DIR/$output $DIR/${base}O.out
+fi
+cp $output $DIR/
+cp *.xyz $DIR/ 2>/dev/null
+cp *.err $DIR/ 2>/dev/null
+cd $DIR
+
+#CLEANING
+rm -rf \$CALC_NAME""" > $base.cmd
+  if [ -e ../submit ]
+  then
+    sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh
+  fi
+  sh $base.cmd
+}
+##########################################################################################
+
+
+
+
+##########################################################################################
+# MATCH 
+# this program should match the atoms with some FF databases 
+##########################################################################################
+function program_MATCH {
+  input=$1 #.log
+  cp $input .matchHELP1.log
+  JKlog2xyz .matchHELP1.log
+  module load openbabel
+  obabel .matchHELP1.xyz -O .matchHELP1.mol
+  PATH_MATCH="/users/kubeckaj/MATCH_RELEASE/"
+  export PerlChemistry=${PATH_MATCH}PerlChemistry
+  export MATCH=${PATH_MATCH}MATCH
+  export PATH=$PATH:${PATH_MATCH}MATCH/scripts
+  MATCH.pl -Forcefield  top_all36_cgenff -CreatePdb .matchHELP .matchHELP1.mol > .matchHELP2 
+}
+##########################################################################################
