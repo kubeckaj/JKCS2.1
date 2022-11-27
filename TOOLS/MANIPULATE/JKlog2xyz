@@ -21,6 +21,8 @@ function help {
    -ma,-matchabc. uses MATCH from ~/.JKCSusersetup.txt to make -abc
    -new \"XX\" .... new name of file [e.q.: test]
    -xtb ......... structure is from XTB output
+   -f,-forces ... print forces as well [Hartree/Bohr]
+   -units ....... converts Bohrs to Angstroms
   FILES:
    gaussian (G16) output is expected
   EXAMPLES:
@@ -33,6 +35,7 @@ function help {
 ### PREPARING WHAT AND HOW
 what=""
 Qforce=0
+Qunit="1.0"
 Qabc=0
 Qnewname=""
 Qnew=0
@@ -56,7 +59,7 @@ do
       Qabc=2
     fi
     ### Qforce 
-    if [ "$i" == "-f" ] || [ "$i" == "-force" ]
+    if [ "$i" == "-f" ] || [ "$i" == "-forces" ]
     then
       Qforce=1
       continue
@@ -83,6 +86,12 @@ do
     if [ "$i" == "-xtb" ]
     then
       Qxtb=1
+    fi
+    ### unit
+    if [ "$i" == "-units" ]
+    then
+      Qunit=`echo 1/0.529177 | bc -l`
+      continue
     fi
     ###
   else
@@ -128,7 +137,7 @@ function convertG16 {
 
     if [ $Qforce -eq 1 ]
     then
-      grep -C $N2 " Center     Atomic                   Forces (Hartrees/Bohr)" $file | tail -n $N | awk '{print $3,$4,$5}' > helpingfile3
+      grep -C $N2 " Center     Atomic                   Forces (Hartrees/Bohr)" $file | tail -n $N | awk -v unit=$Qunit '{print $3*unit,$4*unit,$5*unit}' > helpingfile3
     fi
 
     ### CREATING NEW FILE
@@ -159,13 +168,13 @@ function convertG16 {
     then
       energy+=" Dipole_moment: `grep "molecular dipole:" $file | tail -n 1 | awk '{print $5}'`"
     fi
-    echo "$energy" >> $newfile
+    echo "energy = $energy" >> $newfile
 
     if [ $Qforce -ne 1 ]
     then
-      paste helpingfile1 helpingfile2 >> $newfile
+      paste helpingfile1 helpingfile2 | column -t >> $newfile
     else
-      paste helpingfile1 helpingfile2 helpingfile3 >> $newfile
+      paste helpingfile1 helpingfile2 helpingfile3 | column -t >> $newfile
     fi
 }
 

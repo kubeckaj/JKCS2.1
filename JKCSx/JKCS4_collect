@@ -42,7 +42,6 @@ function help {
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ............ print this help and exit
-   -JKQC ............ use JKQCpickle to collect the data
    -JKQCclean ....... use JKQCpickle to collect the data and remove *.xyz,*.log,*.out,*.cmd,*.com,TMP
    -JKQCcleanfull ... use JKQCpickle to collect the data and remove the whole folder
   (-JKQCrecollect ... recollect all pickles)
@@ -128,7 +127,7 @@ JKloadsupercomputer
 #reading arguments important for this script
 #basically search just for the FOLDER.
 Qjpt=1 #jobs per task
-Qpickle=0 #Do I want to pickle afterwards?
+Qpickle=1 #Do I want to pickle afterwards?
 Qclean=0 #Do I want to clean after pickling?
 Qrecollect=1
 
@@ -156,7 +155,8 @@ do
     # JKQC
     if [ "$iter" == "-pickle" ] || [ "$iter" == "-JKQC" ] || [ "$iter" == "-JKQCpickle" ]
     then
-      Qpickle=1
+      #Qpickle=1
+      echo "No need to use $iter argument anymore. [Used by default.]"
       continue
     fi
     # JKQCclean
@@ -261,13 +261,26 @@ arguments_hcatch=()
 for i in "${!arguments[@]}"
 do
   iter="${arguments[$i]}"
-  if [ "$iter" == "-gibbs" ] || [ "$iter" == "-gibbsh" ] || [ "$iter" == "-g" ] || [ "$iter" == "-gh" ] || [ "$iter" == "-freq" ] || [ "$iter" == "--freq" ]
+  if [ "$iter" == "-gibbs" ] || [ "$iter" == "-g" ] || [ "$iter" == "-freq" ] || [ "$iter" == "--freq" ]
   then
     Qs=4
     Qu+=" 3"
-    arguments_hcatch+=( "$iter" )
+    arguments_hcatch+=( "-g" )
     continue 
   fi
+  if [ "$iter" == "-gibbsh" ] || [ "$iter" == "-gh" ]
+  then
+    Qs=4
+    Qu+=" 3"
+    arguments_hcatch+=( "-g -v 0.996 -fc 100" )
+    continue
+  fi
+  arguments_hpass0+=( "$iter" )
+done
+arguments=${arguments_hpass0[@]}
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
   if [ "$iter" == "-dip" ]
   then
     Qu+=" 1"
@@ -378,7 +391,7 @@ do
     if [ -z "$PKLinsubfolders" ]
     then
       echo "source ~/.JKCSusersetup.txt;" > run${scriptfilecommand}.sh
-      echo "program_JKQCpickle -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh
+      echo "program_JKQCpickle -noex -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh
     else
       echo "source ~/.JKCSusersetup.txt" > run${scriptfilecommand}.sh
     fi

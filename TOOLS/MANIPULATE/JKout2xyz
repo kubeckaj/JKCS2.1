@@ -1,0 +1,113 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2023                                     ##
+## Program for analysis of pulling str from ORCA .out     ##
+## To understand program run help:                        ##
+##        JKlog2xyz -help                                 ##
+############################################################
+## "Once I have seen shark in open sea, I ate snake, I    ##
+## jumped from bridge...nothing stops me!"  Jakub Kubecka ##
+############################################################
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo "Program for analysis of pulling str from orca .out"
+  echo """
+  JKout2xyz [OPTIONS] [FILES]
+  OPTIONS:
+   -help ........ print this help and exit
+   -f,-forces ... print forces as well [Hartree/Bohr]
+   -units ....... converts Bohrs to Angstroms
+  FILES:
+   orca output is expected
+  EXAMPLES:
+   JKout2xyz
+   JKlog2xyz test.out
+   JKlog2xyz test.out -forces
+  """
+  exit
+}
+
+### PREPARING WHAT AND HOW
+what=""
+next=0
+Qforce=0
+Qunit="1.0"
+for i in $*
+do
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+  firstletter=`echo $i | cut -c 1`
+  if [ $firstletter == "-" ] || [ $next -eq 1 ]
+  then
+    ### Qforce
+    if [ "$i" == "-f" ] || [ "$i" == "-forces" ]
+    then
+      Qforce=1
+      continue
+    fi
+    ### unit
+    if [ "$i" == "-units" ]
+    then
+      Qunit=`echo 1/0.529177 | bc -l`
+      continue
+    fi
+  else
+    what+="$i "
+  fi
+done
+### CHECK WHAT
+if [ -z "$what" ]; then what=`ls *.out`;fi
+
+### MAIN PROGRAM // in the case a lot of file might take a few seconds
+echo "JKout2xyz: Wait a moment ..."
+
+function convertORCA {
+  N=`grep "Number of atoms"    $file | tail -n 1 | awk '{print $5}'`
+  N1=`echo $N+1 | bc`
+  N2=`echo $N+2 | bc`
+  E=`grep "FINAL SINGLE POINT" $file | awk '{print $5}'`  
+  newfile=$(basename ${file%.*} ).xyz
+  if [ -e $newfile ]
+  then
+    test=`head -n 1 $newfile`
+    if [ $test -ne $N ]
+    then
+      echo "There is some mismatch with number of atoms [EXITING]"
+      exit
+    fi
+    test=`cat $newfile | wc -l`
+    if [ $test -ne $N2 ]
+    then
+      echo "There is some mismatch with number of atoms and lines [EXITING]"
+      exit
+    fi
+    tail -n $N $newfile | awk '{print $1 " " $2 " " $3 " " $4}' | column -t > helpingfile1
+    #TODO comment out
+    mv $newfile BCP${newfile}old
+  else
+    echo "For file $file, no xyz exist, I will just take the input coordinates."
+    grep -C $N1 "CARTESIAN COORDINATES (ANGSTROEM)" $file | tail -n $N | awk '{print $1 " " $2 " "$3 " " $4}' | column -t > helpingfile1
+  fi
+  echo " $N" > $newfile
+  echo "energy = $E" >> $newfile
+  if [ $Qforce -ne 1 ]
+  then
+    cat helpingfile1 >> $newfile
+  else
+    grep -C $N2 "CARTESIAN GRADIENT"  $file | tail -n $N | awk -v unit=$Qunit '{print $4*unit " " $5*unit " " $6*unit}' > helpingfile2
+    paste helpingfile1 helpingfile2 | column -t >> $newfile
+  fi     
+}
+
+for file in $what
+do
+  convertORCA
+done
+
+if [ -e helpingfile1 ]; then rm helpingfile1; fi
+if [ -e helpingfile2 ]; then rm helpingfile2; fi
+echo "JKout2xyz: Done :-D"
+
+
+
