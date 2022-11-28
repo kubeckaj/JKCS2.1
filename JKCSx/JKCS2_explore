@@ -52,7 +52,7 @@ function help {
     OTHERS: -box [def=7+M]
     OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
     OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
-    OTHERS: -pickle,-JKQC [TESTING]
+    OTHERS: -pickle,-JKQC,-expl/-exploded (>50A; must be with -JKQC)
  
   ${cfMAGENTA}SYMBOLS:${cfDEF}
     M .... number of molecules
@@ -166,7 +166,7 @@ Qabcxtb=0 #Do I want to run ABC_XTB instead?
 GFN=1     #Use GFN1-xtb by default 
 Qrepeat=1 #How many times I want to repeat each simulation?
 Qarray=0 #submit jobs as array?
-
+Qremoveexploded=0 #Do I want to get rid of exploded. only with JKQC
 
 last=""
 # loop over all arguments
@@ -270,6 +270,12 @@ do
   then
     Qrepeat="$iter"
     last=""
+    continue
+  fi
+  # remove exploded
+  if [ "$iter" == "-exploded" ] || [ "$iter" == "-expl" ]
+  then
+    Qremoveexploded=1
     continue
   fi
   # GFN
@@ -465,12 +471,17 @@ do
   mv \$i `echo $currentdir | sed "s/SYS//" | sed "s/_//g"`-${NAMEcomp}_${const_iter}_\$i 
 done
 cd ..""" > rename.sh
+    if [ $Qremoveexploded -eq 1 ]
+    then
+      addexploded=" -cut rg 50"
+    else
+      addexploded=""
+    fi
     if [ $Qpickle -eq 1 ]
     then
       echo """cd $name-LM
 source ~/.JKCSusersetup.txt$loc
-sleep `echo $Qrepeat*2 | bc`
-program_JKQCpickle *.xyz -noname
+program_JKQCpickle *.xyz -noex -noname $addexploded
 rm *.xyz
 cd ..""" >> rename.sh
     fi
@@ -478,9 +489,9 @@ cd ..""" >> rename.sh
     # command
     if [ $Qabcxtb -eq 0 ]
     then
-      command="source ~/.JKCSusersetup.txt$loc;\n program_ABC ${name}.inp;\n sh rename.sh" 
+      command="source ~/.JKCSusersetup.txt$loc;\n sleep "`echo "($Qrepeat-1)*2" | bc`"\n program_ABC ${name}.inp;\n sh rename.sh" 
     else
-      command="source ~/.JKCSusersetup.txt$loc;\n program_GEOM ${name}.inp;\n sh rename.sh"
+      command="source ~/.JKCSusersetup.txt$loc;\n sleep "`echo "($Qrepeat-1)*2" | bc`"\n program_GEOM ${name}.inp;\n sh rename.sh"
     fi
     printf "$command" > run${scriptfilecommand}.sh
     commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"

@@ -36,7 +36,7 @@ def print_help():
   print(" -in X.pkl  read data from a database")
   print(" -out X.pkl save data to XX.pkl (-noex = do not print example)")
   print(" -orcaext X if ORCA has different extension than out")
-  print(" -folder X  takes in all X/*.log files")
+  print(" -folder X  takes in all X/*.log files (use -R for resursive)")
   print(" -noname    the file names are not analysed (e.g. 1000-10_1.xyz)")
   print(" -extract X prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -except X  prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
@@ -77,6 +77,9 @@ def print_help():
   print(" -sort <str>          sort by: g,gout,el")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
+  print("                      use e.g. rg2,el0.5 to define threshold as 10**x [def: rg=2, el/g=3, dip=1]")
+  print(" -cut/-pass X Y       filters values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
+  print(" -cutr/-passr X Y     filters rel. values from the lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
@@ -87,6 +90,8 @@ def print_help():
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
 
 folder = "./"	
+Qcollect = "log" #what extension am I collecting?
+Qrecursive = False
 files = []  
 input_pkl = []
 output_pkl = "mydatabase.pkl"
@@ -115,6 +120,8 @@ Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
 Quniq = 0 # uniqie based on given arguments
 formation_input_file = ""
+Qthreshold = 0 #cut/pass something
+Qcut = [] #what will be cutted
 
 Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
 Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
@@ -150,6 +157,17 @@ for i in sys.argv[1:]:
     else:
       print("Folder "+i+" does not exist. [EXITING]")
       exit()
+  #COLLECT
+  if i == "-collect" or i == "-col" or i == "-coll":
+    last = "-collect"
+    continue
+  if last == "-collect":
+    last = ""
+    Qcollect = str(i)
+    continue
+  if i == "-R":
+    Qrecursive = True
+    continue
   #INPKL
   if i == "-in" or i == "-i":
     last = "-in"
@@ -279,6 +297,35 @@ for i in sys.argv[1:]:
     last = ""
     Quniq = str(i)
     continue
+  if i == "-cut":
+    Qthreshold = 1
+    last = "-threshold"
+    attach = ["<=","absolute"]
+    continue
+  if i == "-cutr":
+    Qthreshold = 1
+    last = "-threshold"
+    attach = ["<=","relative"]
+    continue
+  if i == "-pass":
+    Qthreshold = 1
+    last = "-threshold"
+    attach = [">","absolute"]
+    continue
+  if i == "-passr":
+    Qthreshold = 1
+    last = "-threshold"
+    attach = [">","relative"]
+    continue
+  if last == "-threshold":
+    last = "-threshold2"
+    attach.append(i)
+    continue
+  if last == "-threshold2":
+    last = ""
+    attach.append(float(i))
+    Qcut.append(attach)
+    continue 
   ########
   # INFO
   if i == "-info" or i == "--info":
@@ -518,8 +565,11 @@ for i in sys.argv[1:]:
 
 if len(files) == 0:
   if len(input_pkl) == 0 and len(formation_input_file) == 0:
-    import glob
-    files = glob.glob(folder+"/*.log")
+    from glob import glob
+    if Qrecursive:
+      files = glob(folder+"/**/*."+Qcollect)
+    else:
+      files = glob(folder+"/*."+Qcollect)
     if len(files) == 0:
       print("No inputs. No *.log files. [EXITING]")
       exit()
@@ -603,6 +653,35 @@ def seperate_string_number(string):
         previous_character = i
         if x == len(string) - 2:
             groups.append(newword)
+            newword = ''
+    return groups
+
+def seperate_string_number2(string):
+    ### rg3,el2.4,g -> [rg,3,el,2.4,g]
+    previous_character = string[0]
+    groups = []
+    newword = string[0]
+    for x, i in enumerate(string[1:]):
+        if i == "_" or previous_character == "_":
+            newword += i
+        elif i.isalpha() and previous_character.isalpha():
+            newword += i
+        elif (i.isnumeric() or i == ".") and (previous_character.isnumeric() or previous_character == "."):
+            newword += i
+        else:
+            if previous_character != ",":
+              if previous_character.isnumeric() or previous_character == ".":
+                groups[-1]=[groups[-1],newword]
+              else:
+                groups.append(newword)
+            if i != ",":  
+              newword = i
+        previous_character = i
+        if x == len(string) - 2:
+            if previous_character.isnumeric() or previous_character == ".":
+              groups[-1]=[groups[-1],newword]
+            else:
+              groups.append(newword)
             newword = ''
     return groups
 
@@ -1539,13 +1618,48 @@ if str(Quniq) != "0":
        else:
          preselected_df = clusters_df
        tocompare = []
+       separated_inputs = seperate_string_number2(str(Quniq))
+       compare_list = []
+       compare_list_num = []
+       for separated_input in separated_inputs:
+         if isinstance(separated_input,list):
+           if separated_input[0] == "rg":
+             compare_list.append("rg")
+           elif separated_input[0] == "el":
+             compare_list.append("electronic_energy")         
+           elif separated_input[0] == "g":
+             compare_list.append("gibbs_free_energy")
+           elif separated_input[0] == "d" or separated_input[0] == "dip":
+             compare_list.append("dipole_moment")
+           else:
+             compare_list.append(separated_input[0])
+           compare_list_num.append(float(separated_input[1]))
+         else:
+           compare_list.append(separated_input)
+           if separated_input == "rg":
+             compare_list.append("rg")
+             compare_list_num.append(2)
+           elif separated_input == "el":
+             compare_list.append("electronic_energy")
+             compare_list_num.append(3)
+           elif separated_input == "g":
+             compare_list.append("gibbs_free_energy")
+             compare_list_num.append(3)
+           elif separated_input == "d" or separated_input == "dip":
+             compare_list.append("dipole_moment")
+             compare_list_num.append(1)
+           else:
+             compare_list.append(separated_input)
+             compare_list_num.append(1)
        if str(Quniq) == "rg,g":
          compare_list = ["rg","gibbs_free_energy"]
        elif str(Quniq) == "rg":
          compare_list = ["rg"]
        else:
          compare_list = ["rg","electronic_energy"]
-       for j in compare_list:
+       for compare_element_i in range(len(compare_list)):
+         j = compare_list[compare_element_i]
+         jj = compare_list_num[compare_element_i]
          if j == "rg":
            rg = []
            for aseCL in preselected_df["xyz"]["structure"]:
@@ -1553,9 +1667,9 @@ if str(Quniq) != "0":
                rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
              except:
                rg.append(missing)
-           values = [np.floor(myNaN(o)*1e1) for o in rg]
+           values = [np.floor(myNaN(o)*10**jj) for o in rg]
          else:  
-           values = [np.floor(myNaN(o)*1e3) for o in preselected_df["log"][j].values]
+           values = [np.floor(myNaN(o)*10**jj) for o in preselected_df["log"][j].values]
          tocompare.append(values)
        tocompare = np.transpose(tocompare)
        uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
@@ -1569,6 +1683,30 @@ if str(Quniq) != "0":
   if Qout == 1:
     print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
+if Qthreshold != 0:
+  for i in range(len(Qcut)):
+    if Qcut[i][2] == "el":
+      what = 627.503*clusters_df["log"]["electronic_energy"].values
+    elif Qcut[i][2] == "g":
+      what = 627.503*clusters_df["log"]["gibbs_free_energy"].values
+    elif Qcut[i][2] == "rg":
+      rg = []
+      for aseCL in clusters_df["xyz"]["structure"]:
+        try:
+          rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
+        except:
+          rg.append(missing)
+      what = np.array(rg)
+    else:
+      what = clusters_df["log"][Qcut[i][2]].values
+    if Qcut[i][1] == "relative":
+      min = np.min(what)
+    else:
+      min = 0
+    if Qcut[i][0] == ">":
+      clusters_df = clusters_df[what-min > Qcut[i][3]]       
+    else:
+      clusters_df = clusters_df[what-min <= Qcut[i][3]]
 if str(Qsort) != "0" and str(Qsort) != "no":
   clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Qselect) != "0":
