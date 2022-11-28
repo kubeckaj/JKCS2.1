@@ -77,7 +77,7 @@ def print_help():
   print(" -sort <str>          sort by: g,gout,el")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
-  print("                      use e.g. rg2,el0.5 to define threshold as 10**x [def: rg=2, el/g=3, dip=1]")
+  print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
   print(" -cut/-pass X Y       filters values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     filters rel. values from the lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("\nFORMATION PROPERTIES:")
@@ -567,7 +567,7 @@ if len(files) == 0:
   if len(input_pkl) == 0 and len(formation_input_file) == 0:
     from glob import glob
     if Qrecursive:
-      files = glob(folder+"/**/*."+Qcollect)
+      files = glob(folder+"/**/*."+Qcollect, recursive = True)
     else:
       files = glob(folder+"/*."+Qcollect)
     if len(files) == 0:
