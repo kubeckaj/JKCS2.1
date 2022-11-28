@@ -59,7 +59,7 @@ do
       Qabc=2
     fi
     ### Qforce 
-    if [ "$i" == "-f" ] || [ "$i" == "-forces" ]
+    if [ "$i" == "-f" ] || [ "$i" == "-forces" ] || [ "$i" == "-force" ]
     then
       Qforce=1
       continue

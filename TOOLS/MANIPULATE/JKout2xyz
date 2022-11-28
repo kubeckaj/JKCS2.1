@@ -41,7 +41,7 @@ do
   if [ $firstletter == "-" ] || [ $next -eq 1 ]
   then
     ### Qforce
-    if [ "$i" == "-f" ] || [ "$i" == "-forces" ]
+    if [ "$i" == "-f" ] || [ "$i" == "-forces" ] || [ "$i" == "-force" ]
     then
       Qforce=1
       continue
@@ -87,7 +87,7 @@ function convertORCA {
     mv $newfile BCP${newfile}old
   else
     echo "For file $file, no xyz exist, I will just take the input coordinates."
-    grep -C $N1 "CARTESIAN COORDINATES (ANGSTROEM)" $file | tail -n $N | awk '{print $1 " " $2 " "$3 " " $4}' | column -t > helpingfile1
+    grep -C $N1 "CARTESIAN COORDINATES (ANGSTROEM)" $file | tail -n $N | awk '{print $1 " " $2*1.0 " "$3*1.0 " " $4*1.0}' | column -t > helpingfile1
   fi
   echo " $N" > $newfile
   echo "energy = $E" >> $newfile
@@ -95,7 +95,7 @@ function convertORCA {
   then
     cat helpingfile1 >> $newfile
   else
-    grep -C $N2 "CARTESIAN GRADIENT"  $file | tail -n $N | awk -v unit=$Qunit '{print $4*unit " " $5*unit " " $6*unit}' > helpingfile2
+    grep -C $N2 "CARTESIAN GRADIENT"  $file | tail -n $N | awk -v unit=$Qunit '{printf("%.8f %.8f %.8f\n"),$4*unit,$5*unit,$6*unit}' > helpingfile2
     paste helpingfile1 helpingfile2 | column -t >> $newfile
   fi     
 }
