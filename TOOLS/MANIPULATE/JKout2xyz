@@ -87,7 +87,7 @@ function convertORCA {
     mv $newfile BCP${newfile}old
   else
     echo "For file $file, no xyz exist, I will just take the input coordinates."
-    grep -C $N1 "CARTESIAN COORDINATES (ANGSTROEM)" $file | tail -n $N | awk '{print $1 " " $2*1.0 " "$3*1.0 " " $4*1.0}' | column -t > helpingfile1
+    grep -C $N1 "CARTESIAN COORDINATES (ANGSTROEM)" $file | tail -n $N | awk '{printf("%s %.8f %.8f %.8f\n"),$1,$2,$3,$4}' | column -t > helpingfile1
   fi
   echo " $N" > $newfile
   echo "energy = $E" >> $newfile
