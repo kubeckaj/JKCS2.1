@@ -1,5 +1,0 @@
-COMMAND: JKCS4_collect 
-JKCS4_collect: Neither parameters.txt nor SYS_ exist! [NO - EXITING]
-JKCS4_collect: No parameters.txt file. (Assuming M=1 if needed!!!)
-JKCS4_collect: Collecting data from XTB folder.
-JKCS4_collect: Folder XTB does not exist.[EXITING]
