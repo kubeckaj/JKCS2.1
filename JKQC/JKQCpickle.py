@@ -1689,6 +1689,9 @@ if Qthreshold != 0:
       what = 627.503*clusters_df["log"]["electronic_energy"].values
     elif Qcut[i][2] == "g":
       what = 627.503*clusters_df["log"]["gibbs_free_energy"].values
+    elif Qcut[i][2] == "lf":
+      #print(clusters_df["log"]["vibrational_frequencies"].values)
+      what = 627.503*np.array([np.array(ii) for ii in clusters_df["log"]["vibrational_frequencies"].values])[:,0]
     elif Qcut[i][2] == "rg":
       rg = []
       for aseCL in clusters_df["xyz"]["structure"]:
