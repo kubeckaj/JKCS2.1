@@ -113,10 +113,10 @@ function program_PYTHON {
   if [ "$module_python" != "loaded" ]
   then
     REPLACE_module_python 2>/dev/null
-    source REPLACE_jkcs_path/JKQC/JKCS/bin/activate
+    source /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/bin/activate
     module_python="loaded"
   fi
-  REPLACE_python ${@}
+  python3.9 ${@}
 }
 ##########################################################################################
 
@@ -127,7 +127,7 @@ function program_PYTHON {
 # This is the file used for collecting and pickling file from QC outputs
 ##########################################################################################
 function program_JKQCpickle {
-  program_PYTHON REPLACE_jkcs_path/JKQC/JKQCpickle.py ${@}
+  program_PYTHON /home/kubeckaj/Applications/JKCS2.1/JKQC/JKQCpickle.py ${@}
 }
 ##########################################################################################
 

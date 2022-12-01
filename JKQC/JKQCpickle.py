@@ -5,6 +5,10 @@ import os
 import sys
 import numpy as np
 
+#Attach command to the output
+cmd="".join(["echo COMMAND: JKQC "," ".join(sys.argv[1:])," >> output"])
+os.system(cmd)
+
 def listToString(s,spaces): 
     # initialize an empty string
     str1 = ""

@@ -17,11 +17,11 @@ Qsymbol=1  # Do you want JKCS smiling face? [1/0]
 # NOTE2: The default paths should work for people using CSC (Puhti)
 
 # ABC = ABCluster
-PATH_ABC="REPLACE_abc"
-MODULE_ABC="REPLACE_module_abc" #"module load gcc/8.2.0" || "module load GCC/8.2.0-2.31.1"
+PATH_ABC="/home/kubeckaj/Applications/ABCluster-2.0-Linux/"
+MODULE_ABC="module load gcc" #"module load gcc/8.2.0" || "module load GCC/8.2.0-2.31.1"
 
 # XTB
-PATH_XTB="REPLACE_xtb"
+PATH_XTB="/home/kubeckaj/Applications/XTB6.4/"
 MODULE_XTB="REPLACE_module_xtb"
 
 # G16 = GAUSSIAN
@@ -112,11 +112,11 @@ function program_SBATCH {
 function program_PYTHON {
   if [ "$module_python" != "loaded" ]
   then
-    REPLACE_module_python 2>/dev/null
-    source REPLACE_jkcs_path/JKQC/JKCS/bin/activate
+    module load python/3.9.4 2>/dev/null
+    source /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/bin/activate
     module_python="loaded"
   fi
-  REPLACE_python ${@}
+  python3.9 ${@}
 }
 ##########################################################################################
 
@@ -127,7 +127,7 @@ function program_PYTHON {
 # This is the file used for collecting and pickling file from QC outputs
 ##########################################################################################
 function program_JKQCpickle {
-  program_PYTHON REPLACE_jkcs_path/JKQC/JKQCpickle.py ${@}
+  program_PYTHON /home/kubeckaj/Applications/JKCS2.1/JKQC/JKQCpickle.py ${@}
 }
 ##########################################################################################
 
