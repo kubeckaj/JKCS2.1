@@ -835,9 +835,9 @@ for sampleeach_i in sampleeach_all:
     clustersout_df.to_pickle(outfile)
     if Qsampleeach > 0:
       if sampleeach_i == 0:
-        os.system("JKQC "+outfile+" -out predicted_QML_FULL.pkl")
+        os.system("JKQC "+outfile+" -out predicted_QML_FULL.pkl -noex")
       else:
-        os.system("JKQC "+outfile+" predicted_QML_FULL.pkl -out predicted_QML_FULL.pkl")
+        os.system("JKQC "+outfile+" predicted_QML_FULL.pkl -out predicted_QML_FULL.pkl -noex")
   ########
   
   ######################

@@ -49,6 +49,7 @@ function help {
                           (it has to be described in ~/.JKCSusersetup.txt)
      OTHERS: -bs,-add,-addbase \"ATOM\", (-greasy,-con X = cores on node) 
              -array = does submit array instead of single jobs
+             -arraymax X = max jobs per array
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
@@ -138,6 +139,7 @@ method="--opt vtight"
 
 Qjpt=1 #jobs per task
 Qarray=0 #submit jobs as array?
+Qarraymax=0 #max jobs per array
 
 #for GREASY:
 cores_in_node=40
@@ -188,6 +190,19 @@ do
   then
     next=1
     last="-nf"
+    continue
+  fi
+  #Qarraymax
+  if [ "$iter" == "-arraymax" ]
+  then
+    last="-arraymax"
+    Qarray=1
+    continue
+  fi
+  if [ "$last" == "-arraymax" ]
+  then
+    Qarraymax="$iter" 
+    last=""
     continue
   fi
   ### -oldfolder "X"
@@ -606,7 +621,13 @@ do
     then
       if [ $i -eq 1 ]
       then
-        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks/"`
+        if [ $Qarraymax -gt 0 ]
+        then
+          arraymax="%$Qarrayn"
+        else
+          arraymax=""
+        fi
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
