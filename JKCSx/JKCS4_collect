@@ -54,6 +54,7 @@ function help {
        =sorted with respect to energy
     -movie[${cfBLUE}FOLDER${cfDEF}].xyz:
        =Molden usable file to visualize the structures
+    OTHERS: -oc/-onlycollect
 
   ${cfMAGENTA}ADITIONAL OPTIONS:${cfDEF}
    -dip ............. + dipoles
