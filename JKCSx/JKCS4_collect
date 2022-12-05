@@ -130,6 +130,7 @@ Qjpt=1 #jobs per task
 Qpickle=1 #Do I want to pickle afterwards?
 Qclean=0 #Do I want to clean after pickling?
 Qrecollect=1
+Qonlycollect=0 #after JKQC no recollecting will be done
 
 last=""
 # loop over all arguments
@@ -177,6 +178,12 @@ do
     if [ "$iter" == "-JKQCrecollect" ]
     then
       Qrecollect=1
+      continue
+    fi
+    # Qonlycollect
+    if [ "$iter" == "-onlycollect" ] || [ "$iter" == "-oc" ]
+    then
+      Qonlycollect=1
       continue
     fi
     arguments_help+=( "${arguments[i]}" )
@@ -456,7 +463,12 @@ else
   else
     removingcommand=""
   fi
-  commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; $toolspath/SCRIPTS/JKcollect CONTROL $savepklfile $resultfile $movie $Qs $Qu; $removingcommand break; else sleep 1; fi; done"
+  commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; "
+  if [ $Qonlycollect -eq 0 ]
+  then
+    commandTODO+="$toolspath/SCRIPTS/JKcollect CONTROL $savepklfile $resultfile $movie $Qs $Qu; $removingcommand "
+  fi
+  commandTODO+="break; else sleep 1; fi; done"
 fi
 if [ "$Qperform" == 2 ]
 then

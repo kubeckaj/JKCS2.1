@@ -702,6 +702,22 @@ def zeros(input_array):
     output_string += input_array[i]
   return output_string
 
+def is_nameable(input_array):
+  #input_array = seperate_string_number(file_i_BASE.split("-")[0])
+  nameable_test = True
+  if np.mod(len(input_array),2) == 0:
+    for input_array_i in input_array[0::2]:
+      if not input_array_i.isnumeric():
+        nameable_test = False
+        break
+    for input_array_i in input_array[1::2]:  
+      if input_array_i.isnumeric():
+        nameable_test = False
+        break
+  else:
+    nameable_test = False
+  return nameable_test
+
 # Reading the new files in
 for file_i in files:
   folder = os.path.abspath(file_i)[::-1].split("/",1)[1][::-1]+"/"
@@ -723,7 +739,8 @@ for file_i in files:
   # sorted cluster type
   if Qclustername == 1:
     cluster_type_array = seperate_string_number(file_i_BASE.split("-")[0]) 
-    if np.mod(len(cluster_type_array),2) == 0:
+    #if np.mod(len(cluster_type_array),2) == 0:
+    if is_nameable(cluster_type_array):
       cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
       cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
       cluster_type_string = zeros(cluster_type_array_sorted)
@@ -1298,6 +1315,8 @@ if Qextract > 0:
     Pextract_ultimate = unique(Pextract_final)
     #print(Pextract_ultimate)
   newclusters_df = pd.DataFrame()
+  #print(Pextract_ultimate)
+  #exit()
   for extract_i in Pextract_ultimate: 
     #print(extract_i)
     if Qclustername == 0:
