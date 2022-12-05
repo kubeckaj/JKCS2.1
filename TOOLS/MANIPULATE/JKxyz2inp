@@ -21,7 +21,7 @@ function help {
    -c,-cpu \"x\" ...... specify number of CPUs=x
    -char,-ch,-q \"x\" . specify system charge ch=x
    -mult \"x\" ........ specify system multiplicity m=x
-   OTHERS: -time(-t),-partition(-par)
+   OTHERS: -time(-t),-partition(-par),-add
   FILES:
     xyz file(s) is(are) expected
   EXAMPLES:
@@ -47,6 +47,8 @@ multiplicity=1
 method="! DFT OPT FREQ PW91 6-31++g** GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS"
 next=0
 
+Qextrainput=0
+
 ### SOLVING INPUT
 for i in "$@"
 do
@@ -61,11 +63,13 @@ do
       method="$i"
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-method" ] || [ "$i" == "-m" ]
     then
       next=1
       last="-method"
+      continue
     fi
     ### -cpu X
     if [ "$last" == "-cpu" ]
@@ -73,11 +77,13 @@ do
       prossu=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-cpu" ] || [ "$i" == "-c" ]
     then
       next=1
       last="-cpu"
+      continue
     fi
     ### -ch -x
     if [ "$last" == "-ch" ]
@@ -85,11 +91,13 @@ do
       charge=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-char" ] || [ "$i" == "-ch" ] || [ "$i" == "-q" ]
     then
       next=1
       last="-ch"
+      continue
     fi
     ### -partition -x
     if [ "$last" == "-par" ]
@@ -97,11 +105,13 @@ do
       partition=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-par" ] || [ "$i" == "-partition" ]
     then
       next=1
       last="-par"
+      continue
     fi
     ### -time -x
     if [ "$last" == "-time" ]
@@ -109,11 +119,13 @@ do
       aika=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-time" ] || [ "$i" == "-t" ]
     then
       next=1
       last="-time"
+      continue
     fi
     ### -m -x
     if [ "$last" == "-mult" ]
@@ -121,11 +133,13 @@ do
       multiplicity=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-mult" ]
     then
       next=1
       last="-mult"
+      continue
     fi
     ### -mem -x
     if [ "$last" == "-mem" ]
@@ -134,11 +148,13 @@ do
       muisti2=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-mem" ]
     then
       next=1
       last="-mem"
+      continue
     fi
     ### -mem1 -x
     if [ "$last" == "-mem1" ]
@@ -146,11 +162,13 @@ do
       muisti1=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-mem1" ]
     then
       next=1
       last="-mem1"
+      continue
     fi
     ### -mem2 -x
     if [ "$last" == "-mem2" ]
@@ -158,13 +176,29 @@ do
       muisti2=$i
       last=""
       next=0
+      continue
     fi
     if [ "$i" == "-mem2" ]
     then
       next=1
       last="-mem2"
+      continue
     fi
-    ###
+    ### $Qextrainput
+    if [ "$i" == "-ea" ] || [ "$i" == "-extrainput" ] || [ "$i" == "-add" ]
+    then
+      last="-ea"
+      next=1
+      continue
+    fi
+    if [ "$last" == "-ea" ]
+    then
+      Qextrainput=$i
+      last=""
+      next=0
+      continue
+    fi
+    ###   
   else
     ### UPDATE LOG FILES
     filesin+="$i "
@@ -196,11 +230,29 @@ toolspath="$scriptpath/../TOOLS"
 for i in $filesin;
 do 
   echo "$method
-  %pal nprocs $prossu
+%pal nprocs $prossu
     end
-  %Maxcore $muisti1
-  * xyzfile $charge $multiplicity $(basename $i .xyz).xyz
-  " > $(basename $i .xyz).inp
+%Maxcore $muisti1" > $(basename $i .xyz).inp
+  ######## EXTRA INPUT
+  if [ "$Qextrainput" != "0" ]
+  then
+    if [ -e "$Qextrainput" ]
+    then
+      cat $Qextrainput >> $(basename $i .xyz).inp
+    elif [ "$Qextrainput" == "I" ]
+    then
+      echo """%basis
+	NewGTO I "aug-cc-pVTZ-PP" end
+	NewECP I "SK-MCDHF-RSC" end
+end
+%geom
+	maxIter 500
+end""" >> $(basename $i .xyz).inp
+    fi
+  fi
+  ########## END OF EXTRA INPUT
+  echo "* xyzfile $charge $multiplicity $(basename $i .xyz).xyz
+  " >> $(basename $i .xyz).inp
 done
 
 for i in $filesin;
