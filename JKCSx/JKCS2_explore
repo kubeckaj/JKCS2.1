@@ -496,7 +496,7 @@ cd ..""" > rename.sh
     then
       echo """cd $name-LM
 source ~/.JKCSusersetup.txt$loc
-program_JKQCpickle *.xyz -noex -noname $addexploded
+program_JKQCpickle *.xyz -noex  $addexploded
 rm *.xyz
 cd ..""" >> rename.sh
     fi
