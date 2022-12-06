@@ -574,15 +574,15 @@ cd $currentdirpath
 if [ "$Qperform" != 2 ]
 then
   JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
-  echo  "$SC_command '$commandTODO'" >> output
+  echo  "$SC_command '$commandTODO'" >> $method/output
   JKecho 3 "Submitting CONTROL command"
-  echo  "$SC_command '$commandTODO'" > .run
-  job=$(/bin/bash .run)
+  echo  "$SC_command '$commandTODO'" > $method/.run0
+  job=$(/bin/bash $method/.run0)
   #job=$(eval $SC_command "$commandTODO")
   if [ ! -z "$job" ];then echo $job; fi
   if [ "$METHODsupercomputer" != "loc" ]
   then
-    echo $job | awk '{print $4}'  >> .jobs.txt  
+    echo $job | awk '{print $4}'  >> $method/.jobs.txt  
   fi
 fi
 JKecho 1 "Subfolder finished/submitted."
