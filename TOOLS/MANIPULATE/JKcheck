@@ -8,6 +8,11 @@ do
     Q_num=1
     continue
   fi
+  if [ "$i" == "-this" ]
+  then
+    Q_add="./"
+    continue
+  fi
   subfolders+=" $i"
 done
 
@@ -33,12 +38,13 @@ do
   cd $i
   if [ -z "$subfolders" ]
   then
-    subsselected=`ls -d */`
+    subsselected=`ls -d */ 2>/dev/null` 
   else
     subsselected=$subfolders
   fi
-
-  for j in $subsselected
+  
+  nowdir=$PWD
+  for j in $subsselected $Q_add
   do
     if [ -e $j ]
     then
@@ -90,7 +96,7 @@ do
       else 
         v3="= "`echo $v2/$v1*100 | bc -l | awk '{printf "%.2f\n",$1}'`" %"; 
       fi
-      cd ..
+      cd $nowdir
     else 
       v1="--XXX--"
       v2="--XXX--"

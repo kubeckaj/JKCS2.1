@@ -29,7 +29,7 @@ function check_if_all_finished {
   while [ $test -eq 0 ]
   do
     test=1
-    JKcheck -num > .test 2>/dev/null
+    JKcheck -num -this > .test 2>/dev/null
     testlines=`wc -l .test | awk '{print $1}'`
     for l in `seq 1 $testlines`
     do
