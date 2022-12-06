@@ -165,7 +165,8 @@ Qpickle=0 #Do I want to pickle afterwards?
 Qabcxtb=0 #Do I want to run ABC_XTB instead?
 GFN=1     #Use GFN1-xtb by default 
 Qrepeat=1 #How many times I want to repeat each simulation?
-Qarray=0 #submit jobs as array?
+Qarray=1 #submit jobs as array?
+Qarraymax=0 #max jobs per array
 Qremoveexploded=0 #Do I want to get rid of exploded. only with JKQC
 
 last=""
@@ -242,10 +243,24 @@ do
     Qjpt=$iter
     continue
   fi
+  #Qarraymax
+  if [ "$iter" == "-arraymax" ]
+  then
+    last="-arraymax"
+    Qarray=1
+    continue
+  fi
+  if [ "$last" == "-arraymax" ]
+  then
+    Qarraymax="$iter"
+    last=""
+    continue
+  fi
   # Array submission
   if [ "$iter" == "-array" ]
   then
     Qarray=1
+    echo "No need to use $iter argument anymore. [Used by default.]"
     continue
   fi
   # JKQC
@@ -573,7 +588,13 @@ do
       echo "`tail -n $i commands_TODO.txt | head -n 1`" > .run$i
       if [ $i -eq 1 ]
       then
-        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks/"`
+        if [ $Qarraymax -gt 0 ]
+        then
+          arraymax="%$Qarraymax"
+        else
+          arraymax=""
+        fi
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")

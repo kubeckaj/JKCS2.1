@@ -66,7 +66,9 @@ function help {
      $scriptfile -p ORCA -rf XTB -nf OPT -m \"! PBE0 def2-TZVP TIGHTSCF Opt D3BJ\"
    ${cfYELLOW}ADVANCED:${cfDEF}
      $scriptfile -p G16 -rf XTB -nf DFT -bc I -m \"#wb97xd GEN Pseudo=Read Opt Int=UltraFine Freq MaxDisk=32GB\" -mem 12GB -cpu 16
-     $scriptfile -p ORCA -rf DFT_freq -nf DLPNO -m \"! DLPNO-CCSD(T) aug-cc-pvtz aug-cc-pvtz/C GRID4 nofinalgrid TightPNO TightSCF NOPOP NOPRINTMOS\"\n"""
+     $scriptfile -p ORCA -rf paths.txt -nf DLPNO -m \"! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK\" -maxtasks 100 -cpu 8 -par q24,q28,q36,q40,q48,q64 -time 10-00:00:00 
+     $scriptfile -p ORCA -rf XTB -nf DFT -add I -m \"! aug-cc-pVTZ wB97X-D3BJ OPT FREQ\" -cpu 4 -mem 8000
+"""
   printf "#################################################################\n"
   exit
 }
@@ -139,7 +141,7 @@ method="--opt vtight"
 addbase="" #add base or some extraline?
 
 Qjpt=1 #jobs per task
-Qarray=0 #submit jobs as array?
+Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 
 #for GREASY:
@@ -256,6 +258,7 @@ do
   if [ "$iter" == "-array" ]
   then
     Qarray=1
+    echo "No need to use $iter argument anymore. [Used by default.]"
     continue
   fi
   # Jobs per task
@@ -407,7 +410,7 @@ then
     if [ "$Qperform" == 2 ]
     then
       #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
-      command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt$loc; program_$program \$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
+      command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt$loc; program_$program \$file${addbase};\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
     else
       if [ $Qpickle -eq 1 ]
       then
@@ -488,7 +491,7 @@ else
     const_iter=`echo $const_iter+1 |bc`
     #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file"
     #printf "$command" > run${scriptfilecommand}.sh
-    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM/; program_$program $file;"
+    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM/; program_$program $file${addbase};"
     if [ "$Qperform" == 2 ]
     then
       echo "$commandTODO" >> $currentdirpath/$folderNEW/commands_TODO.txt

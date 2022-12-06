@@ -57,11 +57,11 @@ function echo_SCpartition {
   echo """######################################################
 ## MAXTASKS CPU NODES REQ.TIME  PARTITION MEMPERCPU ##
 ======================================================
-ABC   NoC     1    1   72:00:00   small      4000mb
-XTB   NoC     1    1   72:00:00   small      4000mb
-G16   100     8    1   72:00:00   small      4000mb
-ORCA  100     8    1   72:00:00   small      4000mb
-CC    100     8    1   330:00:00  longrun    4000mb
+ABC   NoC     1    1   REPLACE_time1   REPLACE_queue1      4000mb
+XTB   NoC     1    1   REPLACE_time1   REPLACE_queue1      4000mb
+G16   100     8    1   REPLACE_time1   REPLACE_queue1      4000mb
+ORCA  100     8    1   REPLACE_time1   REPLACE_queue1      4000mb
+CC    100     8    1   REPLACE_time2  REPLACE_queue2    4000mb
 -loc  1       1    1   -          -          4000mb
 ======================================================"""
 }
@@ -365,10 +365,10 @@ function program_XTB {
   fi
   if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
 
-  $XTBPATH/bin/xtb calc.xyz $method $args > $output 2>&1
+  $XTBPATH/bin/xtb calc.xyz $method $args > $DIR/$output 2>&1
   
   #COPYING RESULTS BACK
-  cp $output $DIR/$output
+  #cp $output $DIR/$output
   if [ -e xtbopt.xyz ]					      
   then								 
     cp xtbopt.xyz $DIR/$base.xyz				     
@@ -461,14 +461,14 @@ mkdir \$CALC_NAME
 cp $inputCOM \$CALC_NAME/
 cd \$CALC_NAME
 
-$PATH_G16/g16/g16 < $inputCOM >& $output
+$PATH_G16/g16/g16 < $inputCOM >& $DIR/$output
 
 #COPYING RESULTS BACK
-if [ -e $DIR/$output ]
-then
-  mv $DIR/$output $DIR/${base}O.log
-fi
-cp $output $DIR/
+#if [ -e $DIR/$output ]
+#then
+#  mv $DIR/$output $DIR/${base}O.log
+#fi
+#cp $output $DIR/
 cp *.err $DIR/ 2>/dev/null
 cp *.out $DIR/ 2>/dev/null
 cd $DIR
@@ -562,14 +562,14 @@ if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
 cp $inputINP \$CALC_NAME/
 cd \$CALC_NAME
 
-$PATH_ORCA/orca $inputINP > $output 2> $output
+$PATH_ORCA/orca $inputINP > $DIR/$output 2> $DIR/$output
 
 #COPYING RESULTS BACK
-if [ -e $DIR/$output ]
-then
-  mv $DIR/$output $DIR/${base}O.out
-fi
-cp $output $DIR/
+#if [ -e $DIR/$output ]
+#then
+#  mv $DIR/$output $DIR/${base}O.out
+#fi
+#cp $output $DIR/
 cp *.xyz $DIR/ 2>/dev/null
 cp *.err $DIR/ 2>/dev/null
 cd $DIR
@@ -604,3 +604,13 @@ function program_MATCH {
   MATCH.pl -Forcefield  top_all36_cgenff -CreatePdb .matchHELP .matchHELP1.mol > .matchHELP2 
 }
 ##########################################################################################
+
+############################################
+function submit_MANAGER {
+  sbatch $SBATCH_PREFIX -p REPLACE_queue1 --time 24:00:00 -n 1 -J "manager" JKsend ${@}
+}
+
+function submit_BOSS {
+  sbatch $SBATCH_PREFIX -p REPLACE_queue1 --time 24:00:00 -n 1 -J "boss" JKsend ${@}
+}
+

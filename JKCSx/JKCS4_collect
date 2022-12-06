@@ -132,6 +132,8 @@ Qpickle=1 #Do I want to pickle afterwards?
 Qclean=0 #Do I want to clean after pickling?
 Qrecollect=1
 Qonlycollect=0 #after JKQC no recollecting will be done
+Qarray=1 #submit jobs as array?
+Qarraymax=0 #max jobs per array
 
 last=""
 # loop over all arguments
@@ -152,6 +154,26 @@ do
     then
       last=""
       Qjpt=$iter
+      continue
+    fi
+    # Array submission
+    if [ "$iter" == "-array" ]
+    then
+      Qarray=1
+      echo "No need to use $iter argument anymore. [Used by default.]"
+      continue
+    fi
+    #Qarraymax
+    if [ "$iter" == "-arraymax" ]
+    then
+      last="-arraymax"
+      Qarray=1
+      continue
+    fi
+    if [ "$last" == "-arraymax" ]
+    then
+      Qarraymax="$iter"
+      last=""
       continue
     fi
     # JKQC
@@ -515,14 +537,35 @@ do
     $SC_command sh $toolspath/SCRIPTS/JKperform2.sh
     echo "$SC_command sh $toolspath/SCRIPTS/JKperform2.sh" >> output
   else
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
-    JKecho 3 "Submitting  RUN command"
-    echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
-    job=$(/bin/bash .run)
-    #job=$(eval `cat .run`)
-    #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
-    if [ ! -z "$job" ]; then echo $job; fi
-    echo $job | awk '{print $4}'  >> .jobs.txt
+    echo "`tail -n $i commands_TODO.txt | head -n 1`" > .run$i
+    if [ $Qarray -eq 1 ]
+    then
+      if [ $i -eq 1 ]
+      then
+        if [ $Qarraymax -gt 0 ]
+        then
+          arraymax="%$Qarraymax"
+        else
+          arraymax=""
+        fi
+        SC_command0=$SC_command
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
+        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
+        #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+        job=$(/bin/bash .run)
+        if [ ! -z "$job" ] ;then echo $job;fi
+        echo $job | awk '{print $4}'  >> .jobs.txt
+      fi
+    else
+      echo  "$SC_command sh .run$i" >> output
+      echo  "$SC_command sh .run$i" > .run
+      #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
+      job=$(/bin/bash .run)
+      #job=$(eval `cat .run`)
+      if [ ! -z "$job" ] ;then echo $job;fi
+      echo $job | awk '{print $4}'  >> .jobs.txt
+    fi
   fi
 done
 cd $currentdirpath
@@ -530,9 +573,9 @@ cd $currentdirpath
 if [ "$Qperform" != 2 ]
 then
   JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
-  echo  "$SC_command '$commandTODO'" >> output
+  echo  "$SC_command0 '$commandTODO'" >> output
   JKecho 3 "Submitting CONTROL command"
-  echo  "$SC_command '$commandTODO'" > .run
+  echo  "$SC_command0 '$commandTODO'" > .run
   job=$(/bin/bash .run)
   #job=$(eval $SC_command "$commandTODO")
   if [ ! -z "$job" ];then echo $job; fi

@@ -242,8 +242,8 @@ do
     elif [ "$Qextrainput" == "I" ]
     then
       echo """%basis
-	NewGTO I "aug-cc-pVTZ-PP" end
-	NewECP I "SK-MCDHF-RSC" end
+	NewGTO I \"aug-cc-pVTZ-PP\" end
+	NewECP I \"SK-MCDHF-RSC\" end
 end
 %geom
 	maxIter 500

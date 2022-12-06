@@ -19,6 +19,11 @@ MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
 SBATCH_PREFIX=""
 WRKDIR="./"
 
+time1="72:00:00"
+time2="330:00:00"
+queue1="small"
+queue2="longrun"
+
 ###########################################################################################################
 ## DO NOT MODIFY
 
@@ -47,6 +52,10 @@ do
     MODULE_ORCA="source /comm/groupstacks/gaussian/bin/modules.sh --silent; module load orca/5.0.3"
     SBATCH_PREFIX=""
     WRKDIR="/scratch/\\\$SLURM_JOB_ID/"
+    time1="10-00:00:00"
+    time2="10-00:00:00"
+    queue1="q24,q36,q40,q48,q64"
+    queue2="q24,q36,q40,q48,q64"
     continue
   fi
   if [ "$i" == "mahti" ]
@@ -177,8 +186,12 @@ then
   sed 's,REPLACE_module_orca,'"$MODULE_ORCA"',g' .help11 > .help12
   sed 's,REPLACE_sbatch_prefix,'"$SBATCH_PREFIX"',g' .help12 > .help13
   sed 's,REPLACE_wrkdir,'"$WRKDIR"',g' .help13 > .help14
-  mv .help14 ~/.JKCSusersetup.txt
-  #rm .help*
+  sed 's,REPLACE_time1,'"$time1"',g' .help14 > .help15
+  sed 's,REPLACE_time2,'"$time2"',g' .help15 > .help16
+  sed 's/REPLACE_queue1/'"$queue1"'/g' .help16 > .help17
+  sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
+  mv .help18 ~/.JKCSusersetup.txt
+  rm .help*
   printf "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
 else
   echo "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."

@@ -65,7 +65,8 @@ fi
 # -loc or load supercomputer parameters
 JKloadsupercomputer
 
-Qarray=0 #submit jobs as array?
+Qarray=1 #submit jobs as array?
+Qarraymax=0 #max jobs per array
 Qsplit=1 #HOW much is split the K, 1 = no split
 Qsplitargument=""
 
@@ -92,6 +93,20 @@ do
   if [ "$iter" == "-array" ]
   then
     Qarray=1
+    echo "No need to use $iter argument anymore. [Used by default.]"
+    continue
+  fi
+  #Qarraymax
+  if [ "$iter" == "-arraymax" ]
+  then
+    last="-arraymax"
+    Qarray=1
+    continue
+  fi
+  if [ "$last" == "-arraymax" ]
+  then
+    Qarraymax="$iter"
+    last=""
     continue
   fi
   #
@@ -136,7 +151,13 @@ do
       echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit" > .run$calc
       if [ $calc -eq $SCtasks ]
       then
-        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks/"`
+        if [ $Qarraymax -gt 0 ]
+        then
+          arraymax="%$Qarraymax"
+        else
+          arraymax=""
+        fi
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         job=$(/bin/bash .run)
