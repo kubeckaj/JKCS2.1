@@ -548,7 +548,7 @@ do
         else
           arraymax=""
         fi
-        SC_command0=$SC_command
+        SC_command0="$SC_command"
         SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
