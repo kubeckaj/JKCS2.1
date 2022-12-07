@@ -112,4 +112,7 @@ then
 else
   cat $helpfile | sort -nrk 4 | column -t
 fi
-rm $helpfile
+if [ -e $helpfile ]
+then
+  rm $helpfile
+fi
