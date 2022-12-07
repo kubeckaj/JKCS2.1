@@ -130,6 +130,10 @@ fi
 addsplit=""
 calc=0
 SCtasks=`echo "($Qsplit*$Qsplit+$Qsplit)/2" | bc`
+if [ "$Qsplitargument" == "-finishsplit" ]
+then 
+  SCtasks=1
+fi
 for i in `seq 1 $Qsplit`
 do
   for j in `seq 1 $i`
@@ -149,7 +153,7 @@ do
     then
       calc=`echo $calc+1 | bc`
       echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit" > .run$calc
-      if [ $calc -eq $SCtasks ] || [ "$Qsplitargument" == "-finishsplit" ]
+      if [ $calc -eq $SCtasks ] 
       then
         if [ $Qarraymax -gt 0 ]
         then
