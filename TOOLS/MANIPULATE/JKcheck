@@ -98,7 +98,8 @@ do
         subsubfolders=`ls -d */ 2>/dev/null`
         if [ -z "$subsubfolders" ]
         then
-          v3="--XXX--"
+          #v3="--XXX--"
+          v3="= 100.00 %"
         else
           v1=`echo $subsubfolders | xargs -n 1 | wc -l`
           v1=`echo $v1 | bc -l`
