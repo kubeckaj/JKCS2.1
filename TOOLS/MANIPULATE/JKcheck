@@ -46,6 +46,18 @@ do
   nowdir=$PWD
   for j in $subsselected $Q_add
   do
+    if [ "$j" == "./" ]
+    then
+      if [ ! -e .jobs.txt ]
+      then
+        continue
+      fi
+      t=`cat .jobs.txt | wc -l`
+      if [ $t -eq 0 ]
+      then
+        continue
+      fi
+    fi
     if [ -e $j ]
     then
       cd $j
