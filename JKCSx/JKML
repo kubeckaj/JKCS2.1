@@ -149,7 +149,7 @@ do
     then
       calc=`echo $calc+1 | bc`
       echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit" > .run$calc
-      if [ $calc -eq $SCtasks ]
+      if [ $calc -eq $SCtasks ] || [ "$Qsplitargument" == "-finishsplit" ]
       then
         if [ $Qarraymax -gt 0 ]
         then
