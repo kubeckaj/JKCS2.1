@@ -106,13 +106,13 @@ do
   done
   cd ..
 done
-if [ $Q_num -eq 1 ]
-then
-  cat $helpfile | sort -nrk 4 | column -t | awk '{print $5}'
-else
-  cat $helpfile | sort -nrk 4 | column -t
-fi
 if [ -e $helpfile ]
 then
+  if [ $Q_num -eq 1 ]
+  then
+    cat $helpfile | sort -nrk 4 | column -t | awk '{print $5}'
+  else
+    cat $helpfile | sort -nrk 4 | column -t
+  fi
   rm $helpfile
 fi
