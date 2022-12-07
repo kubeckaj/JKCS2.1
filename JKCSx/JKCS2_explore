@@ -561,6 +561,11 @@ else
 fi
 JKecho 2 "Tasks used: ${cfBLUE}$SCtasks${cfDEF}"
 
+if [ "$METHODsupercomputer" == "loc" ]
+then
+  Qarray=0
+fi
+
 ##Qlinking=0
 ##if [ $Qlinking -eq 1 ]
 ##then

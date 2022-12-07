@@ -552,6 +552,11 @@ else
 fi
 JKecho 2 "Tasks to be submitted: ${cfBLUE}$SCtasks${cfDEF}"
 
+if [ "$METHODsupercomputer" == "loc" ]
+then
+  Qarray=0
+fi
+
 #IF greasy module should be used
 if [ "$Qgreasy" == "1" ]
 then
