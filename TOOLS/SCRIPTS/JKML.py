@@ -539,8 +539,9 @@ for sampleeach_i in sampleeach_all:
     else: 
       Y_train0 = form_ens
     #Do we take only subset for training?
-    if len(X_train0) <= size:
-      size = "full"
+    if size != "full":
+      if len(X_train0) <= int(size):
+        size = "full"
     if size != "full":
       X_train, X_trash, idx, idx_trash = train_test_split(X_train0, range(len(X_train0)), test_size=(len(X_train0)-size)/len(X_train0), random_state=1)
       Y_train = Y_train0[idx]
@@ -763,8 +764,9 @@ for sampleeach_i in sampleeach_all:
     #the full set
     X_test0 = fchl_representations
     #TODO Do we take only subset for the testing?
-    if len(X_test0) <= size:
-      size = "full"
+    if size != "full":
+      if len(X_test0) <= int(size):
+        size = "full"
     if size != "full":
       X_test, X_trash, idx, idx_trash = train_test_split(X_test0, range(len(X_test0)), test_size=(len(X_test0)-size)/len(X_test0))
       clusters_df = clusters_df[idx]
