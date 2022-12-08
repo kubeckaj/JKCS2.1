@@ -100,6 +100,10 @@ files = []
 input_pkl = []
 output_pkl = "mydatabase.pkl"
 
+Qmodify = 0 #Do I want to somehow modify the input dataframe or names?
+Qrename = 0 #Do I want to rename some monomer? 
+QrenameWHAT = [] #Do I want to rename some monomer? 
+
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
 Pextract = []
@@ -219,6 +223,20 @@ for i in sys.argv[1:]:
   #NONAME
   if i == "-noname":
     Qclustername = 0
+    continue
+  #RENAME
+  if i == "-rename":
+    Qmodify = 1
+    Qrename = 1
+    last = "-rename"
+    continue
+  if last == "-rename":
+    remember = i
+    last = "-rename2"
+    continue
+  if last == "-rename2":
+    last = ""
+    QrenameWHAT.append([remember,i])
     continue
   #REACTED
   if i == "-reacted":
@@ -592,8 +610,10 @@ import pandas as pd
 import re
 from ase.io import read,write
 
-
 ####################################################################################################
+####################################################################################################
+####################################################################################################
+## MANIPULATING DATAFRAMES
 # THIS IS TAKEN FROM tool.py IN JKCS.py 
 ### Append to dataframe 
 def df_add_append(dataframe,label,name,indexs,variables):
@@ -623,22 +643,9 @@ def df_add_iter(dataframe,label,name,indexs,variables):
 
   return dataframe
 ####################################################################################################
-
-# Loading input pickles
-if len(input_pkl) == 0:
-  clusters_df = pd.DataFrame()
-else:
-  for i in range(len(input_pkl)):
-    newclusters_df = pd.read_pickle(input_pkl[i])
-    newclusters_df.index = [str(j) for j in range(len(newclusters_df))]
-    if Qout == 1:
-      print("Number of files in "+input_pkl[i]+": "+str(len(newclusters_df)))
-    if i == 0: 
-      clusters_df = newclusters_df
-    else:
-      len_clusters_df = len(clusters_df)
-      newclusters_df.index = [str(j+len_clusters_df) for j in range(len(newclusters_df))]
-      clusters_df = clusters_df.append(newclusters_df)
+####################################################################################################
+####################################################################################################
+## HERE ARE SOME FUNCTIONS THAT I JUST NEEDED SO FAST THAT I EVEN DID NOT COMMENT ON THEM
 
 def seperate_string_number(string):
     previous_character = string[0]
@@ -717,6 +724,28 @@ def is_nameable(input_array):
   else:
     nameable_test = False
   return nameable_test
+
+####################################################################################################
+####################################################################################################
+####################################################################################################
+
+# Loading input pickles
+if len(input_pkl) == 0:
+  clusters_df = pd.DataFrame()
+else:
+  for i in range(len(input_pkl)):
+    newclusters_df = pd.read_pickle(input_pkl[i])
+    newclusters_df.index = [str(j) for j in range(len(newclusters_df))]
+    if Qout == 1:
+      print("Number of files in "+input_pkl[i]+": "+str(len(newclusters_df)))
+    if i == 0: 
+      clusters_df = newclusters_df
+    else:
+      len_clusters_df = len(clusters_df)
+      newclusters_df.index = [str(j+len_clusters_df) for j in range(len(newclusters_df))]
+      clusters_df = clusters_df.append(newclusters_df)
+
+####################################################################################################
 
 # Reading the new files in
 for file_i in files:
@@ -1192,7 +1221,36 @@ for file_i in files:
       file.close()
       clusters_df = df_add_iter(clusters_df, turbomoleextname, "electronic_energy", [str(cluster_id)], [out])
 
-## EXTRACT
+####################################################################################################
+####################################################################################################
+## HERE I MODIFY THE INPUT
+
+if Qmodify > 0:
+  if Qrename == 1:
+    # sorted cluster type
+    if Qclustername == 1:
+      print(clusters_df)
+      for cluster_id in clusters_df.index:
+        file_i_BASE = clusters_df.loc[cluster_id]['info']['file_basename']
+        cluster_type_array = seperate_string_number(file_i_BASE.split("-")[0])
+        #if np.mod(len(cluster_type_array),2) == 0:
+        if is_nameable(cluster_type_array):
+          print(cluster_id)
+          cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
+          cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
+          cluster_type_string = zeros(cluster_type_array_sorted)
+          clusters_df = df_add_iter(clusters_df, "info", "cluster_type", [str(cluster_id)], [cluster_type_string])
+          #
+          components = re.split('(\d+)', file_i_BASE.split("-")[0])[1:][1::2]
+          clusters_df = df_add_iter(clusters_df, "info", "components", [str(cluster_id)], [components])
+          component_ratio = [int(i) for i in re.split('(\d+)', file_i_BASE.split("-")[0])[1:][0::2]]
+          clusters_df = df_add_iter(clusters_df, "info", "component_ratio", [str(cluster_id)], [component_ratio])
+      print(clusters_df)   
+
+####################################################################################################
+####################################################################################################
+## HERE I MANUPILATE WHICH CLUSTERS PASSES THROUGH!! NOT THE SAME AS FILTERING
+# EXTRACT
 def dash(input_array):
   output_array = [input_array]
   for element in range(len(input_array)):

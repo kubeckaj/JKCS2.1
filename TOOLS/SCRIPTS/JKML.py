@@ -576,7 +576,7 @@ for sampleeach_i in sampleeach_all:
           else:
             s1 = i
             s2 = j
-          f = open(varsoutfile.split(".pkl")[0]+"_"++str(splits)+"_"+str(s1)+"_"+str(s2)+".pkl","rb")
+          f = open(varsoutfile.split(".pkl")[0]+"_"+str(splits)+"_"+str(s1)+"_"+str(s2)+".pkl","rb")
           Kcell, Y_train = pickle.load(f)
           if i > j:
             Kcell = np.transpose(Kcell[0])
