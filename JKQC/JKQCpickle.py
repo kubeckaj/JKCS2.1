@@ -36,15 +36,16 @@ def print_help():
   print(" any .xyz .log .out files")
   print(" any .pkl (you can also use -in/-out)")
   print("\nARGUMENTS:")
-  print(" -help      print this help")
-  print(" -in X.pkl  read data from a database")
-  print(" -out X.pkl save data to XX.pkl (-noex = do not print example)")
-  print(" -orcaext X if ORCA has different extension than out")
-  print(" -folder X  takes in all X/*.log files (use -R for resursive)")
-  print(" -noname    the file names are not analysed (e.g. 1000-10_1.xyz)")
-  print(" -extract X prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
-  print(" -except X  prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
-  print(" -reacted   removes (the minority of) reacted structures")
+  print(" -help       print this help")
+  print(" -in X.pkl   read data from a database")
+  print(" -out X.pkl  save data to XX.pkl (-noex = do not print example)")
+  print(" -orcaext X  if ORCA has different extension than out")
+  print(" -folder X   takes in all X/*.log files (use -R for resursive)")
+  print(" -noname     the file names are not analysed (e.g. 1000-10_1.xyz)")
+  print(" -rename X Y renames e.g. 1X2sa to 1Y2sa")
+  print(" -extract X  prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
+  print(" -except X   prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
+  print(" -reacted    removes (the minority of) reacted structures")
   print(" -noexample,-noex does not print an example")
   print("\nPRINT:")
   print(" -ct                cluster type (e.g. 1sa,3sa2am)")
@@ -1229,23 +1230,37 @@ if Qmodify > 0:
   if Qrename == 1:
     # sorted cluster type
     if Qclustername == 1:
-      print(clusters_df)
+      #print(clusters_df)
+      l1 = []
+      l2 = []
+      l3 = []
+      l4 = []
       for cluster_id in clusters_df.index:
         file_i_BASE = clusters_df.loc[cluster_id]['info']['file_basename']
         cluster_type_array = seperate_string_number(file_i_BASE.split("-")[0])
         #if np.mod(len(cluster_type_array),2) == 0:
         if is_nameable(cluster_type_array):
-          print(cluster_id)
+          #print(cluster_id)
+          for QrenameONE in QrenameWHAT: 
+            cluster_type_array = [w.replace(QrenameONE[0],QrenameONE[1]) if QrenameONE[0] == w else w for w in cluster_type_array]
+          l4.append("".join(cluster_type_array)+"-"+file_i_BASE.split("-")[1]) 
           cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
           cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
           cluster_type_string = zeros(cluster_type_array_sorted)
-          clusters_df = df_add_iter(clusters_df, "info", "cluster_type", [str(cluster_id)], [cluster_type_string])
+          #clusters_df = df_add_iter(clusters_df, "info", "cluster_type", [str(cluster_id)], [cluster_type_string])
           #
           components = re.split('(\d+)', file_i_BASE.split("-")[0])[1:][1::2]
-          clusters_df = df_add_iter(clusters_df, "info", "components", [str(cluster_id)], [components])
+          #clusters_df = df_add_iter(clusters_df, "info", "components", [str(cluster_id)], [components])
           component_ratio = [int(i) for i in re.split('(\d+)', file_i_BASE.split("-")[0])[1:][0::2]]
-          clusters_df = df_add_iter(clusters_df, "info", "component_ratio", [str(cluster_id)], [component_ratio])
-      print(clusters_df)   
+          #clusters_df = df_add_iter(clusters_df, "info", "component_ratio", [str(cluster_id)], [component_ratio])
+          l1.append(cluster_type_string)
+          l2.append(components)
+          l3.append(component_ratio)
+      clusters_df =  df_add_iter(clusters_df, "info", "cluster_type", [str(missing)], l1)
+      clusters_df =  df_add_iter(clusters_df, "info", "components", [str(missing)], l2)
+      clusters_df =  df_add_iter(clusters_df, "info", "component_ratio", [str(missing)], l3)
+      clusters_df =  df_add_iter(clusters_df, "info", "file_basename", [str(missing)], l4)
+      #print(clusters_df)   
 
 ####################################################################################################
 ####################################################################################################
