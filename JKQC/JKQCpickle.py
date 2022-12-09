@@ -125,6 +125,8 @@ Qp = missing
 Qfc = 0 #Run QHA with vib. frequency cutoff
 Qanh = 1
 
+Qpresplit = 0 #Do I want to take only part of the data?
+
 Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
 Quniq = 0 # uniqie based on given arguments
@@ -224,6 +226,14 @@ for i in sys.argv[1:]:
   #NONAME
   if i == "-noname":
     Qclustername = 0
+    continue
+  #PRESPLIT
+  if i == "-presplit":
+    last = "-presplit"
+    continue
+  if last == "-presplit":
+    last = ""
+    Qpresplit = int(i)
     continue
   #RENAME
   if i == "-rename":
@@ -1221,6 +1231,10 @@ for file_i in files:
           out = float(line.split()[5])
       file.close()
       clusters_df = df_add_iter(clusters_df, turbomoleextname, "electronic_energy", [str(cluster_id)], [out])
+####################################################################################################
+####################################################################################################
+if Qpresplit > 0:
+  clusters_df = clusters_df.sample(n=Qpresplit, random_state=42)
 
 ####################################################################################################
 ####################################################################################################
@@ -1249,7 +1263,8 @@ if Qmodify > 0:
           cluster_type_string = zeros(cluster_type_array_sorted)
           #clusters_df = df_add_iter(clusters_df, "info", "cluster_type", [str(cluster_id)], [cluster_type_string])
           #
-          components = re.split('(\d+)', file_i_BASE.split("-")[0])[1:][1::2]
+          #components = re.split('(\d+)', file_i_BASE.split("-")[0])[1:][1::2]
+          components = cluster_type_array[1::2]
           #clusters_df = df_add_iter(clusters_df, "info", "components", [str(cluster_id)], [components])
           component_ratio = [int(i) for i in re.split('(\d+)', file_i_BASE.split("-")[0])[1:][0::2]]
           #clusters_df = df_add_iter(clusters_df, "info", "component_ratio", [str(cluster_id)], [component_ratio])

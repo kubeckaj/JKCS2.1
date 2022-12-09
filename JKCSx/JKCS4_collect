@@ -352,7 +352,7 @@ else
     JKecho 2 "I cannot recollect if there is nothing what to collect (logs/outs)"
     Qrecollect=0
   fi
-  if [ $Qrecollect -eq 1 ]
+  if [ $Qrecollect -eq 1 ] && [[ "$method" != *"ABC"* ]]
   then
     rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null
   fi

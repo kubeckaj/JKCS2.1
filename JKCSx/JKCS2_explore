@@ -496,6 +496,19 @@ cd ..""" > rename.sh
     then
       echo """cd $name-LM
 source ~/.JKCSusersetup.txt$loc
+for i in *.xyz
+do
+  base=\$(basename \$i .xyz)
+  test=\`grep -c \"Energy:\" \$i\`
+  if [ \$test -gt 0 ]
+  then
+    energy=\`grep \"Energy:\" \$i | awk '{print \$2}'\`
+  else
+    energy=\`head -n 2 \$i | tail -n 1\`
+  fi
+  echo \"ABC\" > \${base}.log
+  echo \"ABC energy: \$energy\" >> \${base}.log
+done
 program_JKQCpickle *.xyz -noex  $addexploded
 rm *.xyz
 cd ..""" >> rename.sh
