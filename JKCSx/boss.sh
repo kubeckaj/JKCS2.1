@@ -30,7 +30,7 @@ function check_if_all_finished {
   while [ $test -eq 0 ]
   do
     numOfMangs=`squeue -u $USER | awk '{print $3}' | grep manager | wc -l`
-    echo $numOfMangs -lt $max_Managers 
+    #echo $numOfMangs -lt $max_Managers 
     if [ $numOfMangs -lt $max_Managers ]
     then
       test=1
