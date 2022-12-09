@@ -16,21 +16,22 @@ line_num=$start_line
 
 function submitME {
   #sbatch -p q24,q36,q40,q48 --time 30:00 -n 1 -J "BOSS" JKsend 
-  submit_BOSS sh $scriptpath/boss.sh $input $line_num "SUB"
+  submit_BOSS sh $scriptpath/boss.sh $input $line_num "SUB" $max_Managers
 }
-if [ -z "$3" ]; then submitME; exit; fi
-
+if [ ! -z "$4" ]; then max_Managers=$4; else max_Managers=4; fi
+if [ "$3" != "SUB" ]; then if [ ! -z "$3" ]; then max_Managers=$3; fi; submitME; exit; fi
+ 
 max_walltime=`echo 24*60*60 | bc` #in seconds
 max_SingleCommandExecutionTime=`echo 60*60 | bc` #in seconds
 walltime_cutoff=`echo $max_walltime-$max_SingleCommandExecutionTime | bc`
-max_Managers=4
 
 function check_if_all_finished {
   test=0
   while [ $test -eq 0 ]
   do
     numOfMangs=`squeue -u $USER | awk '{print $3}' | grep manager | wc -l`
-    if [ $numOfMangs -le $max_Managers ]
+    echo $numOfMangs -lt $max_Managers 
+    if [ $numOfMangs -lt $max_Managers ]
     then
       test=1
     fi

@@ -19,10 +19,13 @@ Qsymbol=1  # Do you want JKCS smiling face? [1/0]
 # ABC = ABCluster
 PATH_ABC="REPLACE_abc"
 MODULE_ABC="REPLACE_module_abc" #"module load gcc/8.2.0" || "module load GCC/8.2.0-2.31.1"
+PATH_GEOM="REPLACE_abc/../ABCluster-3.1-Linux/"
+MODULE_GEOM="module load intel"
 
 # XTB
 PATH_XTB="REPLACE_xtb"
 MODULE_XTB="REPLACE_module_xtb"
+PATH_CREST=""
 
 # G16 = GAUSSIAN
 PATH_G16="REPLACE_g16"
@@ -61,6 +64,7 @@ ABC   NoC     1    1   REPLACE_time1   REPLACE_queue1      4000mb
 XTB   NoC     1    1   REPLACE_time1   REPLACE_queue1      4000mb
 G16   100     8    1   REPLACE_time1   REPLACE_queue1      4000mb
 ORCA  100     8    1   REPLACE_time1   REPLACE_queue1      4000mb
+CREST 100     8    1   REPLACE_time1   REPLACE_queue1      4000mb
 CC    100     8    1   REPLACE_time2  REPLACE_queue2    4000mb
 -loc  1       1    1   -          -          4000mb
 ======================================================"""
@@ -251,7 +255,29 @@ function program_GEOM {
   output=$(basename $input .inp).out   # $name.out
 
   #script full path
-  geom=$PATH_ABC/geom
+  geom=$PATH_GEOM/geom
+
+  #loading module
+  if [ "$module_abc_loaded" != "loaded" ]
+  then
+    $MODULE_GEOM 2>/dev/null
+    module_abc_loaded="loaded"
+    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    then
+      export OMP_STACKSIZE=1G
+      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+    fi
+  fi
+
+  #performing the calculation
+  $geom $input >> $output
+}
+function program_TOPGEN {
+  input=$1                             # $name.inp
+  output=$(basename $input .inp).out   # $name.out
+
+  #script full path
+  topgen=$PATH_GEOM/topgen
 
   #loading module
   if [ "$module_abc_loaded" != "loaded" ]
@@ -266,11 +292,118 @@ function program_GEOM {
   fi
 
   #performing the calculation
-  $geom $input >> $output
+  $topgen $input >> $output
 }
+#########################################################################################
+
 ##########################################################################################
+# CREST
+#  
+##########################################################################################
+function program_CREST {
+  #input manipulation
+  base="$(basename $1 .xyz)"   # file basename
+  #if you need to extract the file from pickled database
+  testPKL=`echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
+  if [ "$testPKL" != ".pkl" ]
+  then
+    input="$( cd "$(dirname "$1")" ; pwd -P )""/${base}.xyz" # full path of file.xyz    
+  fi
+  output=$base.output             # file.log
+  args=${@:2}                  # all arguments except the first one
 
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
+ 
+  #loading module  
+  export XTBPATH=$PATH_XTB
+  if [[ "$PATH" != *"$XTBBPATH"* ]]; then
+    export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
+  fi
+  if [ "$module_xtb_loaded" != "loaded" ]
+  then
+    $MODULE_XTB 2>/dev/null
+    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    then
+      export OMP_STACKSIZE=1G
+      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+    fi
+    module_xtb_loaded="loaded"
+  fi
 
+  #CREATING WORKING DIRECTORY
+  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  ADD=""
+  test=0
+  while [ $test -eq 0 ]
+  do
+    CALC_NAME=$WRKDIR/TMP/CREST${SLURM_JOBID}_$base${ADD}
+    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
+    else test=1;fi
+  done 
+
+  #CHARGE AND MULTIPLICITY
+  if [[ "$method" != *"-c "* ]] && [[ "$method" != *"-chrg "* ]] && [[ "$args" != *"-c "* ]] && [[ "$args" != *"-chrg "* ]];
+  then
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    args+=" --chrg $CHARGE "
+  fi
+  if [[ "$method" != *"-u "* ]] && [[ "$method" != *"-uhf "* ]] && [[ "$args" != *"-u "* ]] && [[ "$args" != *"-uhf "* ]];
+  then
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    unpaired=`echo $MULTIPLICITY-1|bc`
+    args+=" --uhf $unpaired "
+  fi
+
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  mkdir $CALC_NAME
+  cd $CALC_NAME
+  if [ "$testPKL" == ".pkl" ]
+  then
+    program_JKQCpickle `echo $1 | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz -noname;
+    mv ${base}.xyz calc.xyz
+    echo "" >> calc.xyz
+  else
+    cp $input calc.xyz
+  fi
+
+  ${PATH_CREST}crest calc.xyz $method $args > $DIR/$output 2>&1
+
+  #COPYING RESULTS BACK
+  #cp $output $DIR/$output
+  if [ -e crest_conformers.xyz ]
+  then
+    t=`wc -l crest_conformers.xyz | awk '{print $1}'`
+    if [ $t -gt 0 ];
+    then
+      mkdir COLLECT
+      cd COLLECT
+      cp ../crest_conformers.xyz .
+      JKmov2xyz crest_conformers.xyz
+      rm crest_conformers.xyz
+      for i in *.xyz
+      do 
+        mv $i $base-$i
+      done
+    else
+      mkdir COLLECT 
+      cd COLLECT
+      cp ../crest_best.xyz ./${base}-best.xyz
+    fi
+    JKQC *.xyz -out collection${base}.pkl
+    cp collection${base}.pkl $DIR/
+  fi
+
+  #CLEANING
+  cd $DIR
+  rm -rf $CALC_NAME
+}
+
+#########################################################################################
 
 ##########################################################################################
 # XTB
