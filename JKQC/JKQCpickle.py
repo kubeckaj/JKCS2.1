@@ -356,7 +356,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-threshold2":
     last = ""
-    attach.append(float(i))
+    attach.append(str(i))
     Qcut.append(attach)
     continue 
   ########
@@ -1801,8 +1801,9 @@ if Qthreshold != 0:
     elif Qcut[i][2] == "g":
       what = 627.503*clusters_df["log"]["gibbs_free_energy"].values
     elif Qcut[i][2] == "lf":
-      #print(clusters_df["log"]["vibrational_frequencies"].values)
-      what = 627.503*np.array([np.array(ii) for ii in clusters_df["log"]["vibrational_frequencies"].values])[:,0]
+      #print([len(i) for i in clusters_df["log"]["vibrational_frequencies"].values])
+      #what = np.array([np.array([ii]) if pd.isna([ii]).any() else np.array(ii) for ii in clusters_df["log"]["vibrational_frequencies"].values])[:,0]
+      what = np.array([np.array(ii) if pd.isna([ii]).any() else np.array(ii[0]) for ii in clusters_df["log"]["vibrational_frequencies"].values])
     elif Qcut[i][2] == "rg":
       rg = []
       for aseCL in clusters_df["xyz"]["structure"]:
@@ -1817,10 +1818,16 @@ if Qthreshold != 0:
       min = np.min(what)
     else:
       min = 0
-    if Qcut[i][0] == ">":
-      clusters_df = clusters_df[what-min > Qcut[i][3]]       
+    if Qcut[i][3] == "nan" or Qcut[i][3] == "NA" or Qcut[i][3] == "na" or Qcut[i][3] == "NaN":   
+      if Qcut[i][0] == ">":
+        clusters_df = clusters_df[pd.isna(what-min)]       
+      else:
+        clusters_df = clusters_df.drop(index=clusters_df[pd.isna(what-min)].index)
     else:
-      clusters_df = clusters_df[what-min <= Qcut[i][3]]
+      if Qcut[i][0] == ">":
+        clusters_df = clusters_df[what-min > float(Qcut[i][3])]       
+      else:
+        clusters_df = clusters_df[what-min <= float(Qcut[i][3])]
 if str(Qsort) != "0" and str(Qsort) != "no":
   clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Qselect) != "0":
