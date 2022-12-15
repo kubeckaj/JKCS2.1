@@ -1205,12 +1205,240 @@ for file_i in files:
   ###############
   if os.path.exists(file_i_ORCA):
     file = open(file_i_ORCA, "r")
-    out = missing
-    for line in file:
-      if re.search("FINAL SINGLE POINT ENERGY", line):
-        out = float(line.split()[4])
+    testORCA = 0
+    for i in range(5):
+      if re.search("O   R   C   A", file.readline()):
+        testORCA = 1
+        break
+    if testORCA == 1:
+      out_time = missing                                 #TIME
+      out_termination = 0                                #TERMINATION
+      out_charge = missing                               #I1
+      out_multiplicity = missing                         #I2
+      out_NAtoms = missing                               #I3
+      out_rotational_constants = missing                 #O1
+      out_rotational_constant = missing                  #O2
+      out_sp_electronic_energy = missing                 #O3x
+      out_electronic_energy = missing                    #O3
+      out_mulliken_charges = missing                     #O4
+      out_dipole_moment = missing                        #O5
+      out_dipole_moments = missing                       #O6
+      out_polarizability = missing                       #O7
+      out_vibrational_frequencies = missing              #V1
+      out_temperature = missing                          #V2
+      out_pressure = missing                             #V3
+      out_moments_of_inertia = missing                   #V4
+      out_rotational_symmetry_number = missing           #T1
+      out_zero_point_correction = missing                #T2
+      out_energy_thermal_correction = missing            #T3
+      out_enthalpy_thermal_correction = missing          #T4
+      out_gibbs_free_energy_thermal_correction = missing #T5
+      out_zero_point_energy = missing                    #T6
+      out_internal_energy = missing                      #T7
+      out_enthalpy_energy = missing                      #T8
+      out_gibbs_free_energy = missing                    #T9
+      out_entropy = missing                              #E1
+      search=-1
+      save_mulliken_charges=0
+      save_something=""
+      for line in file:
+        #TIME
+        if re.search("TOTAL RUN TIME",line):
+          if np.isnan(out_time):
+            out_time = 0
+          try:
+            out_time += float(line.split()[3])*24*60+float(line.split()[5])*60+float(line.split()[7])+float(line.split()[9])/60+float(line.split()[11])/6000
+          except:
+            out_time = missing
+          continue
+        #TERMINATION
+        if re.search("ORCA TERMINATED NORMALLY",line):
+          out_termination += 1
+          continue
+        #INITIAL SEARCH
+        if search==-1:
+          if re.search("Number of atoms", line): #I3
+            try:
+              out_NAtoms = int(line.split()[4])
+            except:
+              out_NAtoms = missing
+            continue
+          if re.search(" Total Charge", line): #I1/I2
+            try:
+              out_charge = int(line.split()[4])
+            except:
+              out_charge = missing
+            continue
+          if re.search(" Multiplicity", line): #I1/I2
+            try:
+              out_multiplicity = int(line.split()[3])
+            except:
+              out_multiplicity = missing
+            continue
+        #OPTIMIZATION SEARCH
+        ## I will convert the strings into floats/ints later !!!!!!!
+        if search==0 or search==-1:
+          if re.search("FINAL SINGLE POINT ENERGY", line): #O3
+            try:
+              out_electronic_energy = float(line.split()[4])
+            except:
+              out_electronic_energy = missing
+            if np.isnan(out_sp_electronic_energy):
+              out_sp_electronic_energy = out_electronic_energy
+              search+=1
+            continue
+          ## MULLIKEN
+          if re.search("MULLIKEN ATOMIC CHARGES", line): #O4
+            save_mulliken_charges = out_NAtoms+1
+            save_something = "mulliken_charges"
+            try:
+              out_mulliken_charges = ["0"]*out_NAtoms
+            except:
+              out_mulliken_charges = missing
+            continue
+          if save_something == "mulliken_charges":
+            try:
+              if save_mulliken_charges<=out_NAtoms:
+                out_mulliken_charges[out_NAtoms-save_mulliken_charges] = float(line.split()[3])
+            except:
+              out_mulliken_charges = missing
+            save_mulliken_charges-=1
+            if save_mulliken_charges == 0:
+              save_something = ""
+            continue
+          ## DIPOLE
+          if re.search('Total Dipole Moment', line): #O5/O6
+            try:
+              out_dipole_moments = [float(line.split()[4])/0.393456, float(line.split()[5])/0.393456, float(line.split()[6])/0.393456]
+            except:
+              out_dipole_moments = missing
+            search+=1
+            continue
+        if search==1:
+          if re.search('Magnitude \(Debye\)', line): #O5/O6
+            try:            
+              out_dipole_moment = float(line.split()[3])
+            except:
+              out_dipole_moment = missing
+            continue
+          if re.search("Rotational constants in MHz", line): #O1/O2
+            try:
+              out_rotational_constants = [float(line.split()[5])/1000,float(line.split()[6])/1000,float(line.split()[7])/1000]
+            except:
+              out_rotational_constants = missing
+            out_rotational_constant = np.linalg.norm(out_rotational_constants)
+            search+=1
+            continue
+        if search==2:
+          #VIBRATIONAL FREQUENCIES
+          if re.search("cm\*\*-1", line): #V1
+            if np.all(np.isnan(out_vibrational_frequencies)):
+              out_vibrational_frequencies = []
+            try:
+              out_vibrational_frequencies += [float(line.split()[1])]
+            except:
+              out_vibrational_frequencies = missing
+            continue
+          if re.search("NORMAL MODES",line):
+            search+=1
+            continue
+        if search==3:
+          if re.search("Temperature         ...", line): #V2
+            try:
+              out_temperature = float(line.split()[2])
+            except:
+              out_temperature = missing
+            continue
+          if re.search("Pressure            ...", line): #V3
+            try:
+              out_pressure = float(line.split()[2])
+            except:
+              out_pressure = missing
+            continue
+          if re.search("Zero point energy                ...", line): #T2
+            try:
+              out_zero_point_correction = float(line.split()[4])
+            except:
+              out_zero_point_correction = missing
+            continue
+          if re.search("Total thermal energy", line): #T7
+            try:
+              out_internal_energy = float(line.split()[3])
+            except:
+              out_internal_energy = missing
+            continue
+          if re.search("Symmetry Number", line): #T1
+            try:
+              out_rotational_symmetry_number = float(line.split()[5])
+            except:
+              out_rotational_symmetry_number = missing
+            continue
+          if re.search("Final entropy term", line): #E1
+            try:
+              out_entropy = float(line.split()[4])/out_temperature
+            except:
+              out_entropy = missing
+            continue
+          if re.search("Final Gibbs free energy", line): #T9
+            try:
+              out_gibbs_free_energy = float(line.split()[5])
+            except:
+              out_gibbs_free_energy = missing
+            continue
+          if re.search("Total Enthalpy", line): #T8
+            try:
+              out_enthalpy_energy = float(line.split()[3])
+            except:
+              out_enthalpy_energy = missing
+            continue
+      #FINISH MISSING
+      try:
+        out_energy_thermal_correction = out_internal_energy - out_electronic_energy
+      except:
+        out_energy_thermal_correction = missing
+      try: 
+        out_enthalpy_thermal_correction = out_enthalpy_energy - out_electronic_energy
+      except:
+        out_enthalpy_thermal_correction = missing
+      try:
+        out_gibbs_free_energy_thermal_correction = out_gibbs_free_energy - out_electronic_energy
+      except:
+        out_gibbs_free_energy_thermal_correction = missing
+      try:
+        out_zero_point_energy = out_zero_point_correction + out_electronic_energy
+      except:
+        out_zero_point_energy = missing
+      out_moments_of_inertia = missing
+      out_polarizability = missing
+      #SAVE
+      clusters_df = df_add_iter(clusters_df, orcaextname, "time", [str(cluster_id)], [out_time]) #TIME
+      clusters_df = df_add_iter(clusters_df, orcaextname, "termination", [str(cluster_id)], [out_termination]) #TERMINATION
+      clusters_df = df_add_iter(clusters_df, orcaextname, "charge", [str(cluster_id)], [out_charge]) #I1
+      clusters_df = df_add_iter(clusters_df, orcaextname, "multiplicity", [str(cluster_id)], [out_multiplicity]) #I2
+      clusters_df = df_add_iter(clusters_df, orcaextname, "NAtoms", [str(cluster_id)], [out_NAtoms]) #I3
+      clusters_df = df_add_iter(clusters_df, orcaextname, "rotational_constants", [str(cluster_id)], [out_rotational_constants]) #O1
+      clusters_df = df_add_iter(clusters_df, orcaextname, "rotational_constant", [str(cluster_id)], [out_rotational_constant]) #O2
+      clusters_df = df_add_iter(clusters_df, orcaextname, "sp_electronic_energy", [str(cluster_id)], [out_sp_electronic_energy]) #O3
+      clusters_df = df_add_iter(clusters_df, orcaextname, "electronic_energy", [str(cluster_id)], [out_electronic_energy]) #O3
+      clusters_df = df_add_iter(clusters_df, orcaextname, "mulliken_charges", [str(cluster_id)], [out_mulliken_charges]) #O4
+      clusters_df = df_add_iter(clusters_df, orcaextname, "dipole_moment", [str(cluster_id)], [out_dipole_moment]) #O5
+      clusters_df = df_add_iter(clusters_df, orcaextname, "dipole_moments", [str(cluster_id)], [out_dipole_moments]) #O6
+      clusters_df = df_add_iter(clusters_df, orcaextname, "polarizability", [str(cluster_id)], [out_polarizability]) #O7
+      clusters_df = df_add_iter(clusters_df, orcaextname, "vibrational_frequencies", [str(cluster_id)], [out_vibrational_frequencies]) #V1
+      clusters_df = df_add_iter(clusters_df, orcaextname, "temperature", [str(cluster_id)], [out_temperature]) #V2
+      clusters_df = df_add_iter(clusters_df, orcaextname, "pressure", [str(cluster_id)], [out_pressure]) #V3
+      clusters_df = df_add_iter(clusters_df, orcaextname, "moments_of_inertia", [str(cluster_id)], [out_moments_of_inertia]) #V4
+      clusters_df = df_add_iter(clusters_df, orcaextname, "rotational_symmetry_number", [str(cluster_id)], [out_rotational_symmetry_number]) #T1
+      clusters_df = df_add_iter(clusters_df, orcaextname, "zero_point_correction", [str(cluster_id)], [out_zero_point_correction]) #T2
+      clusters_df = df_add_iter(clusters_df, orcaextname, "energy_thermal_correction", [str(cluster_id)], [out_energy_thermal_correction]) #T3
+      clusters_df = df_add_iter(clusters_df, orcaextname, "enthalpy_thermal_correction", [str(cluster_id)], [out_enthalpy_thermal_correction]) #T4
+      clusters_df = df_add_iter(clusters_df, orcaextname, "gibbs_free_energy_thermal_correction", [str(cluster_id)], [out_gibbs_free_energy_thermal_correction]) #T5
+      clusters_df = df_add_iter(clusters_df, orcaextname, "zero_point_energy", [str(cluster_id)], [out_zero_point_energy]) #T6
+      clusters_df = df_add_iter(clusters_df, orcaextname, "internal_energy", [str(cluster_id)], [out_internal_energy]) #T7
+      clusters_df = df_add_iter(clusters_df, orcaextname, "enthalpy_energy", [str(cluster_id)], [out_enthalpy_energy]) #T8
+      clusters_df = df_add_iter(clusters_df, orcaextname, "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy]) #T9
+      clusters_df = df_add_iter(clusters_df, orcaextname, "entropy", [str(cluster_id)], [out_entropy]) #E1
     file.close()
-    clusters_df = df_add_iter(clusters_df, orcaextname, "electronic_energy", [str(cluster_id)], [out])
 
   ###############
   ### TURBOMOLE #
