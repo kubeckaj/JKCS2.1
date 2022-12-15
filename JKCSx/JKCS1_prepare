@@ -180,6 +180,8 @@ composition=`Cbrackets $composition`
 JKecho 2 "Composition without (): ${cfBLUE}$composition$cfDEF"
 composition=`Cdash $composition`
 JKecho 2 "Composition without - : ${cfBLUE}$composition${cfDEF}"
+composition=`Cequal $composition`
+JKecho 2 "Composition without x : ${cfBLUE}$composition${cfDEF}"
 
 ##############################################################################
 

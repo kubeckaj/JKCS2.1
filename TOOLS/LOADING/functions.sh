@@ -530,6 +530,90 @@ function Cdash {
   echo $outputTOT
 }
 
+# JKCS1 - replace dash by serie
+function Cequal {
+  outputTOT=""
+  for input in $*
+  do
+    mytest=0
+    found=0
+    testchain="_x"
+    chain=""
+    zeros=",0"
+    while [ $mytest -eq 0 ]
+    do
+      if [[ "$input" == *"$testchain"* ]]
+      then
+        found=`echo $found+1 | bc`
+        testchain+="_x"
+        chain+="_x"
+        zeros+=",0"
+      else
+        mytest=1
+      fi
+    done
+    if [ $found -gt 0 ]
+    then
+      c="$input"
+      n1=`echo "$input" | sed -n "s/${chain}.*//p" | wc -c | xargs`
+      #echo n1 $n1
+      #n1=$(echo $(expr index "$input" "-"))
+      n1m=$(echo $n1-1|bc)
+      t1=`echo ${c:0:$n1m}`
+      #echo t1 $t1
+      if [[ "$t1" == *"_"* ]];
+      then
+        F1=`echo ${t1%_*}`;
+        F1="${F1}_"
+        l=${#F1};
+        F2=`echo ${t1:$l} `;
+      else
+        F1=""
+        F2="$t1"
+      fi
+      F4=`echo ${c#*$chain}`;
+      #if [[ "$t2" == *"_"* ]];
+      #then
+      #  F4=`echo ${t2#*_}`;
+      #  n1=`echo "$t2" | sed -n "s/[_].*//p" | wc -c | xargs`
+      #  #n1=$(echo $(expr index "$t2" "_"))
+      #  n1m=`echo $n1-1 | bc`
+      #  F3=`echo ${t2:0:$n1m}`;
+      #  F4="_${F4}"
+      #else
+      #  F3="$t2"
+      #  F4=""
+      #fi
+      foundP1=`echo $found+1|bc`
+      #echo ,$foundP1 ,$F2 $zeros 0
+      #exit
+      F3=`program_PYTHON $toolspath/SCRIPTS/combinations.py ,$foundP1 ,$F2 $zeros 0`
+      #echo F1 F4 $F1 $F4
+      #echo F3 $F3
+      output=''
+      #exit
+      #F3str=`grep -Eo '[[:alpha:]]+' <<< $F3`
+      #F3=`grep -Eo '[0-9]+' <<< $F3`
+      for j in $F3
+      do
+        output+=" $F1$j$F4"
+      done
+      output2=''
+      for i in $output
+      do
+        output2h=`Cequal $i`
+        output2+=" $output2h"
+      done
+      outputTOT+=" $output2"
+    else
+      outputTOT+=" $input"
+    fi
+    #exit
+  done
+  echo $outputTOT
+}
+
+
 function strindex { 
     local str=$1
     local search=$2
