@@ -652,7 +652,7 @@ function program_ORCA {
   then
     if [ "$test" == ".pkl" ]; then program_JKQCpickle `echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz -noname; input=${base}.xyz; fi
     if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
-    MEMinsert2=`echo $MEMORY | sed 's/mb//' | sed 's/gb/*1000/' | bc`
+    MEMinsert2=`echo $MEMORY | awk '{print tolower($0)}' | sed 's/mb//' | sed 's/gb/*1000/' | sed 's/tb/*1000000/'| bc`
     MEMinsert1=`echo 0.75*$MEMinsert2 | bc` #it is said in ORCA manual
     if [ -z "$CPU" ]; then CPU=1; fi
     if [ -z "$CHARGE" ]; then CHARGE=0; fi

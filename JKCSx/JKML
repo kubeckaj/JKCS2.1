@@ -120,6 +120,7 @@ echoCOMMAND COMMAND: JKML "$@" >> output
 if [ "$METHODsupercomputer" == "loc" ]
 then
   loc=" -loc"
+  Qarray=0
 else
   loc=""
 fi
