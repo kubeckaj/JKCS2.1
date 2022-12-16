@@ -176,6 +176,12 @@ do
       last=""
       continue
     fi
+    # ORCA
+    if [ "$iter" == "-orca" ] 
+    then
+      program="ORCA" 
+      continue
+    fi
     # JKQC
     if [ "$iter" == "-pickle" ] || [ "$iter" == "-JKQC" ] || [ "$iter" == "-JKQCpickle" ]
     then
@@ -420,8 +426,12 @@ do
   else
     if [ -z "$PKLinsubfolders" ]
     then
+      if [ $program == "ORCA" ] 
+      then
+        addarg="-orcaext out -collect out"
+      fi
       echo "source ~/.JKCSusersetup.txt;" > run${scriptfilecommand}.sh
-      echo "program_JKQCpickle -noex -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh
+      echo "program_JKQCpickle $addarg -noex -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh
     else
       echo "source ~/.JKCSusersetup.txt" > run${scriptfilecommand}.sh
     fi

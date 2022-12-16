@@ -230,7 +230,7 @@ then
   #if old savefile exist, remove it
   if [ -e $savefile ]; then rm $savefile; fi
   if [ -e .$savefile ]; then rm .$savefile; fi
-  $toolspath/MANIPULATE/JKgaussstat "${@:3}" $files >> .$savefile
+  $toolspath/MANIPULATE/JKgaussstat "${@:3}" $files -orcaext out >> .$savefile
   sed '/JKrg.py: ERROR to read file/d' .$savefile > $savefile
 fi
 
