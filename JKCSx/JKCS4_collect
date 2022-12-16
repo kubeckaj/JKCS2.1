@@ -42,37 +42,29 @@ function help {
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ............ print this help and exit
-   -JKQCclean ....... use JKQCpickle to collect the data and remove *.xyz,*.log,*.out,*.cmd,*.com,TMP
-   -JKQCcleanfull ... use JKQCpickle to collect the data and remove the whole folder
-  (-JKQCrecollect ... recollect all pickles)
+   -orca ............ collects ORCA 
+   -oc/-onlycollect . only collects pickle file
+   OTHERS: -JKQCclean,-JKQCcleanfull
   
   ${cfMAGENTA}OUTPUTS:${cfDEF} 
+    -collection[${cfBLUE}FOLDER${cfDEF}].pkl:
+      crucial file that contains all data from the folder  
     -collection[${cfBLUE}FOLDER${cfDEF}].txt:
       XYZ_full_path  Radius_Of_Gyration  Electronic_Energy  
     -results[${cfBLUE}FOLDER${cfDEF}].dat:
-       =collection file with removed redundant structures
-       =sorted with respect to energy
+       =file with removed redundant structures (sorted by enegry)
     -movie[${cfBLUE}FOLDER${cfDEF}].xyz:
        =Molden usable file to visualize the structures
-    OTHERS: -oc/-onlycollect
 
-  ${cfMAGENTA}ADITIONAL OPTIONS:${cfDEF}
-   -dip ............. + dipoles
-   -g,-gibbs ........ + Gibbs free energy
-   -gh,-gibbsh ...... + Gibbs free energy (GoodVibes corrected)
-    ${cfRED}OR${cfDEF}
-   define by yourself using JKgaussstat commands: (see JKgaussstat --help)
-                 !! but then, you need to define also the path etc. !!
-		 e.g., $scriptfile DFT -pXYZ -rg -el -dip -pol 
-		 e.g., $scriptfile DFT -ePKL -rg -el -dip -pol -JKQC 
+  ${cfMAGENTA}TIPS:${cfDEF}
+   define output by yourself: (see JKQC --help)
+      JKQC collection[${cfBLUE}FOLDER${cfDEF}].pkl -pXYZ -rg -el -dip -pol
+      JKQC collection[${cfBLUE}FOLDER${cfDEF}].pkl -ePKL -rg -el -g -lf 
  
   ${cfMAGENTA}EXAMPLES:${cfDEF}
-    
-    $scriptfile ABC                         || [xyz] [Angstrom] [kJ/mol]
-    $scriptfile XTB -dip                    || [xyz] [Angstrom] [hartree] [Debye]
-    $scriptfile DFT_HIGH -loc               || [xyz] [Angstrom] [hartree]
-    $scriptfile DFT_HIGH_freq -gibbs -loc   || [xyz] [Angstrom] [hartree] [hartree]
-    $scriptfile XTB -pXYZ -rg -el -dip      || [xyz] [Angstrom] [hartree] [Debye] 
+    $scriptfile ABC                         
+    $scriptfile XTB -oc                     
+    $scriptfile DFT_HIGH -loc               
 """
    # FOR REMOVING WRONG BONDING: (number of C-C, C-O, and O-H bonds)
    # JKCS4_collect -pXYZ -rg -el -dip -script JKgaussstat \"-b2 C C 1.6\" -script JKgaussstat \"-b2 C O 1.6\" -script JKgaussstat \"-b2 O H 1.1\" \n"""
