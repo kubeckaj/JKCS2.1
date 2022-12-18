@@ -2157,6 +2157,7 @@ for i in Pout:
       f2.write(f1.readline())
       f1.close()
       f2.close()
+      os.remove(".JKQChelp.pdb")
     continue
   #CHARGES
   if i == "-charges":
