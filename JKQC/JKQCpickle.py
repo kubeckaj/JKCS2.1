@@ -94,6 +94,8 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
 
+#OTHERS: -imos
+
 folder = "./"	
 Qcollect = "log" #what extension am I collecting?
 Qrecursive = False
@@ -371,6 +373,9 @@ for i in sys.argv[1:]:
   # XYZ
   if i == "-xyz" or i == "--xyz" or i == "-XYZ" or i == "--XYZ":
     Pout.append("-xyz")
+    continue
+  if i == "-imos" or i == "--imos" or i == "-IMOS" or i == "--IMOS" or i == "-IMoS" or i == "--IMoS":
+    Pout.append("-imos")
     continue
   # MOVIE
   if i == "-movie" or i == "--movie":
@@ -934,6 +939,7 @@ for file_i in files:
       out_sp_electronic_energy = missing                 #O3x
       out_electronic_energy = missing                    #O3
       out_mulliken_charges = missing                     #O4
+      out_esp_charges = missing                          #O4b
       out_dipole_moment = missing                        #O5
       out_dipole_moments = missing                       #O6
       out_polarizability = missing                       #O7
@@ -1063,8 +1069,27 @@ for file_i in files:
             except:
               out_dipole_moments = missing
             continue       
-        #VIBRATIONAL FREQUENCIES
         if search==1:
+          ## ESP
+          if re.search(" ESP charges:", line): #O4
+            save_esp_charges = out_NAtoms+1
+            save_something = "esp_charges"
+            try:
+              out_esp_charges = ["0"]*out_NAtoms
+            except:
+              out_esp_charges = missing
+            continue
+          if save_something == "esp_charges":
+            try:
+              if save_esp_charges<=out_NAtoms:
+                out_esp_charges[out_NAtoms-save_esp_charges] = float(line.split()[2])
+            except:
+              out_esp_charges = missing
+            save_esp_charges-=1
+            if save_esp_charges == 0:
+              save_something = ""
+            continue
+          #VIBRATIONAL FREQUENCIES
           if re.search("Frequencies", line): #V1
             if np.all(np.isnan(out_vibrational_frequencies)):
               out_vibrational_frequencies = []
@@ -1169,6 +1194,7 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "sp_electronic_energy", [str(cluster_id)], [out_sp_electronic_energy]) #O3
       clusters_df = df_add_iter(clusters_df, "log", "electronic_energy", [str(cluster_id)], [out_electronic_energy]) #O3
       clusters_df = df_add_iter(clusters_df, "log", "mulliken_charges", [str(cluster_id)], [out_mulliken_charges]) #O4
+      clusters_df = df_add_iter(clusters_df, "log", "esp_charges", [str(cluster_id)], [out_esp_charges]) #O4b
       clusters_df = df_add_iter(clusters_df, "log", "dipole_moment", [str(cluster_id)], [out_dipole_moment]) #O5
       clusters_df = df_add_iter(clusters_df, "log", "dipole_moments", [str(cluster_id)], [out_dipole_moments]) #O6
       clusters_df = df_add_iter(clusters_df, "log", "polarizability", [str(cluster_id)], [out_polarizability]) #O7
@@ -2111,6 +2137,26 @@ for i in Pout:
   if i == "-xyz":
     for ind in clusters_df.index:
       write(clusters_df["info"]["file_basename"][ind]+".xyz",clusters_df["xyz"]["structure"][ind])
+    continue
+  #PDB IMOS
+  if i == "-imos":
+    from ase.io.proteindatabank import write_proteindatabank
+    for ind in clusters_df.index:
+      write_proteindatabank(".JKQChelp.pdb",clusters_df["xyz"]["structure"][ind])
+      f1=open(".JKQChelp.pdb", "r")
+      f2=open(clusters_df["info"]["file_basename"][ind]+".pdb", "w")
+      f2.write(f1.readline())
+      for j in range(len(clusters_df["xyz"]["structure"][ind].get_chemical_symbols())):
+        line=f1.readline()
+        ch4="{:+.2f}".format(clusters_df["log"]["esp_charges"][ind][j])
+        #print(line)
+        #print(line[:56]+ch4+line[61:])
+        #print("ATOM      2  H1  GLY     1      52.826  13.287  -6.429  0.1642   1.300       H")
+        #line[52:62]="0.012164968"
+        f2.write(line[:56]+ch4+line[61:])
+      f2.write(f1.readline())
+      f1.close()
+      f2.close()
     continue
   #CHARGES
   if i == "-charges":
