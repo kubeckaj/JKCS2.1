@@ -94,7 +94,7 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
 
-#OTHERS: -imos
+#OTHERS: -imos,-esp,-chargesESP
 
 folder = "./"	
 Qcollect = "log" #what extension am I collecting?
@@ -498,8 +498,14 @@ for i in sys.argv[1:]:
   if i == "-mull" or i == "--mull":
     Pout.append("-mull")
     continue
+  if i == "-esp" or i == "--esp":
+    Pout.append("-esp")
+    continue
   if i == "-charges" or i == "--charges":
     Pout.append("-charges")
+    continue
+  if i == "-chargesESP" or i == "--chargesESP":
+    Pout.append("-chargesESP")
     continue
   if i == "-dip" or i == "--dip":
     Pout.append("-dip")
@@ -2160,6 +2166,12 @@ for i in Pout:
       os.remove(".JKQChelp.pdb")
     continue
   #CHARGES
+  if i == "-chargesESP":
+    for ind in clusters_df.index:
+      f = open(clusters_df["info"]["file_basename"][ind]+".charges","w")
+      f.write("\n".join([str(tt) for tt in clusters_df["log"]["esp_charges"][ind]])+"\n")
+      f.close()
+    continue
   if i == "-charges":
     for ind in clusters_df.index:
       f = open(clusters_df["info"]["file_basename"][ind]+".charges","w")
@@ -2440,6 +2452,12 @@ for i in Pout:
   if i == "-char":
     try:
       output.append(clusters_df["log"]["charge"].values)
+    except:
+      output.append([missing]*len(clusters_df))
+    continue
+  if i == "-esp":
+    try:
+      output.append(clusters_df["log"]["esp_charges"].values)
     except:
       output.append([missing]*len(clusters_df))
     continue
