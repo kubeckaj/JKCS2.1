@@ -2191,8 +2191,9 @@ for i in Pout:
   #Rg
   if i == "-rg":
     rg = []
-    for aseCL in clusters_df["xyz"]["structure"]:
+    for ind in clusters_df.index:
       try:
+        aseCL=clusters_df["xyz"]["structure"][ind]
         rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
       except:
         rg.append(missing)
