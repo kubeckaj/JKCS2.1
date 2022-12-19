@@ -28,6 +28,12 @@ function check_if_all_finished {
   test=0
   while [ $test -eq 0 ]
   do
+    runningcpus=`squeue -u $USER --array -o "%C" | awk 'BEGIN{j=-1;c=0}{j+=1;if (j>0) c+=$1}END{print c}'`
+    if [ $runningcpus -gt 3600 ]
+    then
+      sleep 90
+      continue
+    fi
     test=1
     JKcheck -num -this > .test 2>/dev/null
     testlines=`wc -l .test | awk '{print $1}'`
