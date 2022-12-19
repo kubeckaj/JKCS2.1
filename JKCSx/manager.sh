@@ -67,8 +67,8 @@ do
   echo $line > commandsNOW.txt
   echo $line >> commandsSENT.txt
   job=$(/bin/bash commandsNOW.txt)
-  if [ ! -z "$job" ] ;then echo $job;fi
-  echo $job | awk '{print $4}'  >> .jobs.txt
+  #if [ ! -z "$job" ] ;then echo $job;fi
+  #echo $job | awk '{print $4}'  >> .jobs.txt
   rm commandsNOW.txt
 done
 
