@@ -94,7 +94,7 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
 
-#OTHERS: -imos,-esp,-chargesESP
+#OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
 folder = "./"	
 Qcollect = "log" #what extension am I collecting?
@@ -376,6 +376,9 @@ for i in sys.argv[1:]:
     continue
   if i == "-imos" or i == "--imos" or i == "-IMOS" or i == "--IMOS" or i == "-IMoS" or i == "--IMoS":
     Pout.append("-imos")
+    continue
+  if i == "-imos_xlsx" or i == "--imos_xlsx":
+    Pout.append("-imos_xlsx")
     continue
   # MOVIE
   if i == "-movie" or i == "--movie":
@@ -2164,6 +2167,37 @@ for i in Pout:
       f1.close()
       f2.close()
       os.remove(".JKQChelp.pdb")
+    continue
+  #XLSX IMOS
+  if i == "-imos_xlsx":
+    from ase.data.vdw import vdw_radii
+    import xlsxwriter
+    workbook = xlsxwriter.Workbook('imos.xlsx')
+    bold = workbook.add_format({'bold': True,'fg_color': '#FFFF00', 'border':1})
+    for ind in clusters_df.index:
+      worksheet = workbook.add_worksheet(clusters_df["info"]["file_basename"][ind])
+      
+      pos=clusters_df["xyz"]["structure"][ind].get_positions()
+      mass=clusters_df["xyz"]["structure"][ind].get_masses()
+      at=clusters_df["xyz"]["structure"][ind].get_atomic_numbers()
+      ch=clusters_df["log"]["esp_charges"][ind]
+      row = 0
+      for j in range(len(pos)):
+        worksheet.write(row, 0, pos[j][0])
+        worksheet.write(row, 1, pos[j][1])
+        worksheet.write(row, 2, pos[j][2])
+        worksheet.write(row, 3, vdw_radii[at[j]])
+        worksheet.write(row, 4, ch[j])
+        worksheet.write(row, 6, mass[j])
+        row += 1
+      
+      worksheet.write(0, 5, 'TOTAL z',bold)
+      worksheet.write(1, 5, str(clusters_df["log"]["charge"][ind]))
+      worksheet.write(2, 5, 'Totalmass',bold)
+      worksheet.write(3, 5, str(np.sum(clusters_df["xyz"]["structure"][ind].get_masses())))
+      worksheet.write(4, 5, 'Crossection',bold)
+      
+    workbook.close()
     continue
   #CHARGES
   if i == "-chargesESP":

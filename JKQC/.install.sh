@@ -90,6 +90,8 @@ then
  $PIP install install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 
+#NOT IMPORTANT FOR ALL BUT CHEAP TO INSTALL
+$PIP install xlsxwriter
 
 #echo "- exporting environment"
 #conda env export > environment.yml
