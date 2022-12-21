@@ -2087,10 +2087,11 @@ if Qthreshold != 0:
       else:
         clusters_df = clusters_df.drop(index=clusters_df[pd.isna(what-min)].index)
     else:
-      if Qcut[i][0] == ">":
-        clusters_df = clusters_df[what-min > float(Qcut[i][3])]       
-      else:
-        clusters_df = clusters_df[what-min <= float(Qcut[i][3])]
+      with np.errstate(invalid='ignore'):
+        if Qcut[i][0] == ">":
+          clusters_df = clusters_df[what-min > float(Qcut[i][3])]       
+        else:
+          clusters_df = clusters_df[what-min <= float(Qcut[i][3])]
 if str(Qsort) != "0" and str(Qsort) != "no":
   clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Qselect) != "0":
