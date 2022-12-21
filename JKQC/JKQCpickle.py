@@ -2189,7 +2189,10 @@ for i in Pout:
         worksheet.write(row, 2, pos[j][2])
         worksheet.write(row, 3, vdw_radii[at[j]])
         worksheet.write(row, 4, ch[j])
-        worksheet.write(row, 6, mass[j])
+        if at[j] == 18:
+          worksheet.write(row, 6, 41)
+        else:
+          worksheet.write(row, 6, np.round(mass[j]))
         row += 1
       
       worksheet.write(0, 5, 'TOTAL z',bold)
