@@ -2190,7 +2190,9 @@ for i in Pout:
         worksheet.write(row, 3, vdw_radii[at[j]])
         worksheet.write(row, 4, ch[j])
         if at[j] == 18:
-          worksheet.write(row, 6, 41)
+          worksheet.write(row, 6, 41) #argon
+        elif at[j] == 84:
+          worksheet.write(row, 6, 212) #polonium
         else:
           worksheet.write(row, 6, np.round(mass[j]))
         row += 1
