@@ -30,6 +30,8 @@ Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 Qsampleeach = 0
+column_name_1 = "log"
+column_name_2 = "electronic_energy" 
 
 #PREDEFINED QML
 sigmas = [1.0]
@@ -88,6 +90,18 @@ for i in sys.argv[1:]:
     if i == "delta":
       method = "delta"
     continue
+  #COLUMN
+  if i == "-column":
+    last = "-column"
+    continue
+  if last == "-column":
+    column_name_1 = i
+    last = "-column2"
+    continue  
+  if last == "-column2":
+    column_name_2 = i
+    last = ""
+    continue 
   #HYPERPARAMETERS
   if i == "-sigma":
     last = "-sigma"
@@ -436,14 +450,14 @@ for sampleeach_i in sampleeach_all:
     clusters_df = train_high_database
     if Qsampleeach > 0:
       clusters_df = clusters_df.iloc[sampledist]
-    ens = (clusters_df["log"]["electronic_energy"]).values.astype("float")
+    ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
     strs = clusters_df["xyz"]["structure"]
     ## The low level of theory
     if method == "delta":
       clusters_df2 = train_low_database
       if Qsampleeach > 0:
         clusters_df2 = clusters_df2.iloc[sampledist]
-      ens2 = (clusters_df2["log"]["electronic_energy"]).values.astype("float")
+      ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by princip
     
     ### REPRESENTATION CALCULATION ###
@@ -486,7 +500,7 @@ for sampleeach_i in sampleeach_all:
             monomer_k = monomers_df.iloc[k]
             monomer_k_name = monomer_k["info"]["components"]
             if j == monomer_k_name[0]:
-              ens_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+              ens_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
               test = 1
               break
           if test == 0:
@@ -514,7 +528,7 @@ for sampleeach_i in sampleeach_all:
               monomer_k = monomers_df.iloc[k]
               monomer_k_name = monomer_k["info"]["components"]
               if j == monomer_k_name[0]:
-                ens2_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+                ens2_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
                 test = 1
                 break
             if test == 0:
@@ -645,7 +659,7 @@ for sampleeach_i in sampleeach_all:
     if Qsampleeach > 0:
       clusters_df = clusters_df.iloc[[sampleeach_i]]
     try:
-      ens = (clusters_df["log"]["electronic_energy"]).values.astype("float")
+      ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
       Qeval = 2 #2=Compare ML prediction with QC
     except:
       Qeval = 1 #1=Only predicts
@@ -658,9 +672,7 @@ for sampleeach_i in sampleeach_all:
         clusters_df2 = test_low_database
         if Qsampleeach > 0:
           clusters_df2 = clusters_df2.iloc[[sampleeach_i]]
-      #print(clusters_df2["log"]["electronic_energy"])
-      #print((clusters_df2["log"]["electronic_energy"]).values)
-      ens2 = (clusters_df2["log"]["electronic_energy"]).values.astype("float")
+      ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by princip
   
     ### REPRESENTATION CALCULATION ###
@@ -714,7 +726,7 @@ for sampleeach_i in sampleeach_all:
             monomer_k = monomers_df.iloc[k]
             monomer_k_name = monomer_k["info"]["components"]
             if j == monomer_k_name[0]:
-              ens_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+              ens_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
               test = 1
               break
           if test == 0:
@@ -742,7 +754,7 @@ for sampleeach_i in sampleeach_all:
               monomer_k = monomers_df.iloc[k]
               monomer_k_name = monomer_k["info"]["components"]
               if j == monomer_k_name[0]:
-                ens2_correction[n] += monomer_k["log"]["electronic_energy"]*i[1][nn]
+                ens2_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
                 test = 1
                 break
             if test == 0:
@@ -835,9 +847,9 @@ for sampleeach_i in sampleeach_all:
     clustersout_df = clusters_df.copy()
     for i in range(len(clustersout_df)):
       if method != "delta":
-        clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]+ens_correction[i]
+        clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]+ens_correction[i]
       else:
-        clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]+form_ens2[i]+ens_correction[i]
+        clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]+form_ens2[i]+ens_correction[i]
     clustersout_df.to_pickle(outfile)
     if Qsampleeach > 0:
       if sampleeach_i == 0:
@@ -992,7 +1004,7 @@ for sampleeach_i in sampleeach_all:
       save_energy = new_save_energy
       cluster_id = len(clustersout_df)
       clustersout_df = df_add_append(clustersout_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
-      clustersout_df = df_add_iter(clustersout_df, "log", "electronic_energy", [str(cluster_id)], [save_energy])
+      clustersout_df = df_add_iter(clustersout_df, column_name_1, column_name_2, [str(cluster_id)], [save_energy])
       newxyz = strs[0].copy()
       newxyz.set_positions(xyzold)
       clustersout_df = clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
@@ -1006,7 +1018,7 @@ for sampleeach_i in sampleeach_all:
     ### PRINTING THE QML PICKLES
     #clustersout_df = clusters_df.copy()
     #for i in range(len(clustersout_df)):
-    #  clustersout_df.loc[clustersout_df.iloc[i].name,("log","electronic_energy")] = Y_predicted[0][i]
+    #  clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]
     clustersout_df.to_pickle(outfile)
   ########
 
