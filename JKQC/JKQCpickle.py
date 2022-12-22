@@ -2198,9 +2198,9 @@ for i in Pout:
         row += 1
       
       worksheet.write(0, 5, 'TOTAL z',bold)
-      worksheet.write(1, 5, str(clusters_df["log"]["charge"][ind]))
+      worksheet.write(1, 5, clusters_df["log"]["charge"][ind])
       worksheet.write(2, 5, 'Totalmass',bold)
-      worksheet.write(3, 5, str(np.sum(clusters_df["xyz"]["structure"][ind].get_masses())))
+      worksheet.write(3, 5, np.sum(clusters_df["xyz"]["structure"][ind].get_masses()))
       worksheet.write(4, 5, 'Crossection',bold)
       
     workbook.close()
