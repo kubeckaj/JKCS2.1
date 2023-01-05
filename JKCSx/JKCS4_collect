@@ -344,13 +344,18 @@ then
   JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 else
   #TODO Do I really want to recollect everytime?
-  logsouts=`ls $method/*.log $method/*.out $method/*/*.log $method/*/*.out $method/*/*/*.log $method/*/*/*.out 2>/dev/null | wc -w`
+  if [[ "$method" == *"ABC"* ]]
+  then
+    logsouts=`ls $method/calc-LM/*.xyz $method/*/calc-LM/*.xyz $method/*/*/calc-LM/*.xyz 2>/dev/null | wc -w`
+  else
+    logsouts=`ls $method/*.log $method/*.out $method/*/*.log $method/*/*.out $method/*/*/*.log $method/*/*/*.out 2>/dev/null | wc -w`
+  fi
   if [ $logsouts -eq 0 ]
   then
-    JKecho 2 "I cannot recollect if there is nothing what to collect (logs/outs)"
+    JKecho 2 "I cannot recollect if there is nothing what to collect (xyz/logs/outs)"
     Qrecollect=0
   fi
-  if [ $Qrecollect -eq 1 ] && [[ "$method" != *"ABC"* ]]
+  if [ $Qrecollect -eq 1 ] #&& [[ "$method" != *"ABC"* ]]
   then
     rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null
   fi
@@ -389,12 +394,13 @@ do
       sh rename.sh
       cd calc-LM
     fi
-    test=`ls *.log 2>/dev/null | wc -l`
-    if [ $test -eq 0 ]
+    test=`ls *.xyz 2>/dev/null | wc -l`
+    if [ $test -ne 0 ]
     then
-      test=`ls *.xyz 2>/dev/null | wc -l`
-      if [ $test -ne 0 ]
+      test2=`ls *.log 2>/dev/null | wc -l`
+      if [ $test2 -ne $test ]
       then
+        rm *.log
         for i in *.xyz
         do
           base=$(basename $i .xyz)

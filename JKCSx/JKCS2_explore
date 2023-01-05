@@ -510,7 +510,7 @@ do
   echo \"ABC energy: \$energy\" >> \${base}.log
 done
 program_JKQCpickle *.xyz -noex  $addexploded
-rm *.xyz
+rm *.xyz *.log
 cd ..""" >> rename.sh
     fi
     ######################
