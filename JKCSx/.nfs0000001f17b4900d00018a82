@@ -400,7 +400,7 @@ do
       test2=`ls *.log 2>/dev/null | wc -l`
       if [ $test2 -ne $test ]
       then
-        rm *.log 2>/dev/null
+        rm *.log
         for i in *.xyz
         do
           base=$(basename $i .xyz)
