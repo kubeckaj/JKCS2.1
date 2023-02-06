@@ -30,6 +30,7 @@ Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 Qsampleeach = 0
+Qkernel = "Gaussian"
 column_name_1 = "log"
 column_name_2 = "electronic_energy" 
 
@@ -184,6 +185,10 @@ for i in sys.argv[1:]:
       Qeval = 1
     Qsampleeach = int(i)
     continue
+  #LAPLACIAN
+  if i == "-laplacian":
+    Qkernel = "Laplacian"
+    continue
   #TRAIN DATABASE(S)
   if last == "-trained":
     last = ""
@@ -295,8 +300,16 @@ if Qmonomers == 1:
 #from qml import fchl
 #from qml import Compound
 from qml.fchl import generate_representation
-from qml.fchl import get_local_symmetric_kernels
-from qml.fchl import get_local_kernels
+if Qkernel == "Gaussian":
+  from qml.fchl import get_local_symmetric_kernels
+  from qml.fchl import get_local_kernels
+  JKML_sym_kernel = get_local_symmetric_kernels
+  JKML_kernel = get_local_kernels
+else:
+  from qml.kernels import laplacian_kernel
+  from qml.kernels import laplacian_kernel_symmetric
+  JKML_sym_kernel = laplacian_kernel_symmetric
+  JKML_kernel = laplacian_kernel
 #from qml.fchl import get_atomic_symmetric_kernels
 #from qml.fchl import get_atomic_kernels
 #from qml.fchl import get_global_symmetric_kernels
@@ -615,7 +628,7 @@ for sampleeach_i in sampleeach_all:
       f.close()
       print("Training completed.", flush = True)
     elif Qsplit == 1:
-      K = get_local_symmetric_kernels(X_train, sigmas, **kernel_args)       #calculates kernel
+      K = JKML_sym_kernel(X_train, sigmas, **kernel_args)       #calculates kernel
       K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
       alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
   
@@ -628,10 +641,10 @@ for sampleeach_i in sampleeach_all:
       X_train_i = np.array_split(X_train,Qsplit)[Qsplit_i]
       X_train_j = np.array_split(X_train,Qsplit)[Qsplit_j]
       if Qsplit_i == Qsplit_j:
-        K = get_local_symmetric_kernels(X_train_i, sigmas, **kernel_args)       #calculates kernel
+        K = JKML_sym_kernel(X_train_i, sigmas, **kernel_args)       #calculates kernel
         K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
       else:
-        K = get_local_kernels(X_train_i, X_train_j, sigmas, **kernel_args)
+        K = JKML_kernel(X_train_i, X_train_j, sigmas, **kernel_args)
       f = open(varsoutfile.split(".pkl")[0]+"_"+str(Qsplit)+"_"+str(Qsplit_i)+"_"+str(Qsplit_j)+".pkl","wb")
       pickle.dump([K,Y_train],f)
       f.close()
@@ -809,7 +822,7 @@ for sampleeach_i in sampleeach_all:
         X_train = newmatrix
    
     ### THE EVALUATION
-    Ks = get_local_kernels(X_test, X_train, sigmas, **kernel_args)
+    Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
   
     ### PRINTING THE RESULTS
@@ -951,7 +964,7 @@ for sampleeach_i in sampleeach_all:
           X_train = newmatrix
     
       ### THE EVALUATION
-      Ks = get_local_kernels(X_test, X_train, sigmas, **kernel_args)
+      Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
       Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
   
       if method == "delta":
