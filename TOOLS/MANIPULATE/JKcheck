@@ -89,6 +89,21 @@ do
           then
             v2=`echo $v2+1| bc`
           fi
+          #TODO: there is once a time problem that squeue does not return anything, modifying following code could fix it
+          #jobN=`head -n $job .jobs.txt | tail -n 1`
+          #if [ -z "$jobN" ] #This might be what is causing it? Why does it get deleted when it is done?
+          #then
+          #  v2=`echo $v2+1| bc`
+          #  continue
+          #fi
+          #jobR=`jobinfo $jobN | grep State | awk '{ print $2 }'` 
+          #jobT=$(sacct -j $jobN | wc -l)
+          #jobD=$(sacct -j $jobN | grep 'COMPLETED\|CANCELLED\|TIMEOUT\|FAILED' | wc -l)
+          #echo "jobT is $jobT and jobD is $jobD and jobN is jobN $jobN"
+          #if [ $jobT == $((jobD+2)) ] && [ $jobD != 0 ] 
+          #then
+          #  v2=`echo $v2+1| bc`
+          #fi
         done
       else
         v2=0

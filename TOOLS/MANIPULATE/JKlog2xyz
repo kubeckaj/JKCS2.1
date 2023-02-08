@@ -132,7 +132,7 @@ function convertG16 {
     N1=`echo $N+1 |bc`
     N2=`echo $N+2 |bc`
 
-    grep -C $N1 "Symbolic Z-matrix:" $file | tail -n $N | awk '{print $1}' > helpingfile1
+    grep -C $N1 "Symbolic Z-matrix:" $file | tail -n $N | awk '{print $1}' | sed 's/^16/S/g' | sed 's/^1/H/g' | sed 's/^8/O/g' | sed 's/^6/C/g' | sed 's/^7/N/g' > helpingfile1
     grep -C $N2 " Center     Atomic      Atomic             Coordinates (Angstroms)" $file | tail -n $N | awk '{print $4,$5,$6}' > helpingfile2
 
     if [ $Qforce -eq 1 ]
@@ -194,7 +194,7 @@ function convertXTB {
     echo "   $Natoms" >> $output
     echo $file >> $output
     Natoms2=`echo $Natoms+2 | bc`
-    grep -C $Natoms2 'final structure' $file | tail -n $Natoms | awk '{print $4 "\t " $1*0.529177249 "\t " $2*0.529177249 "\t " $3*0.529177249}' >> $output
+    grep -C $Natoms2 'final structure' $file | tail -n $Natoms | awk '{print $4 "\t " $1*0.529177249 "\t " $2*0.529177249 "\t " $3*0.529177249}'  >> $output
 }
 
 for file in $what
