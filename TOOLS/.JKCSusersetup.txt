@@ -149,21 +149,34 @@ function program_JKML {
   then 
     mkdir -p $WRKDIR/TMP
     mkdir $WRKDIR/TMP/JKML$SLURM_JOBID
-    files=`echo ${@} | xargs -n 1 | grep ".pkl" | xargs`
-    for i in $files
-    do
-      cp $i $WRKDIR/TMP/JKML$SLURM_JOBID/
-    done
+    #files=`echo ${@} | xargs -n 1 | grep ".pkl" | xargs`
     args=""
+    files=""
+    donottakenext=0
     for i in ${@}
     do
       test=`echo $i | grep -c ".pkl"`
-      if [ $test -eq 1 ]
+      if [ $test -eq 1 ] 
       then
         args+=" "$(basename $i)
+        #WHAT TO SAVE  
+        if [ $donottakenext -eq 1 ]
+        then
+          donottakenext=0
+          continue
+        fi
+        files+=" $i"
       else
         args+=" $i"
+        if [ "$i" == "-varsout" ] || [ "$i" == "-out" ]
+        then
+          donottakenext=1
+        fi
       fi
+    done
+    for i in $files
+    do
+      cp $i $WRKDIR/TMP/JKML$SLURM_JOBID/
     done
     cd $WRKDIR
     cd TMP

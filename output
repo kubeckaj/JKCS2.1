@@ -1,0 +1,2 @@
+COMMAND: JKQC /home/jlund/ml/caric_02_235/gfn1_train.pkl -b
+COMMAND: JKQC /home/jlund/ml/caric_02_235/r2_train.pkl -b
