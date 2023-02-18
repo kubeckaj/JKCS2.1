@@ -93,6 +93,8 @@ def print_help():
   print(" -formation              print values as formation ")
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
+  print(" OTHERS:")
+  print(" -add <column> <file>, -extra <column>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -103,6 +105,7 @@ files = []
 input_pkl = []
 output_pkl = "mydatabase.pkl"
 
+addcolumn = []
 Qmodify = 0 #Do I want to somehow modify the input dataframe or names?
 Qrename = 0 #Do I want to rename some monomer? 
 QrenameWHAT = [] #Do I want to rename some monomer? 
@@ -225,6 +228,22 @@ for i in sys.argv[1:]:
     turbomoleext = str(i)
     turbomoleextname = "log"
     continue
+  #ADD EXTRA COLUMN
+  if i == "-add" or i == "-addcolumn":
+    last = "-add"
+    continue
+  if last == "-add":
+    last = "-add2"
+    columnname = str(i)
+    continue
+  if last == "-add2":
+    last = "" 
+    if os.path.exists(str(i)):
+      addcolumn.append([columnname, str(i)])
+      continue
+    else:
+      print("File "+i+" does not exist. Sorry [EXITING]")
+      exit()       
   #NONAME
   if i == "-noname":
     Qclustername = 0
@@ -539,6 +558,14 @@ for i in sys.argv[1:]:
     continue
   if i == "-termination" or i == "--termination":
     Pout.append("-termination")
+    continue
+  if i == "-extra":
+    Pout.append("-extra")
+    last = "-extra"
+    continue
+  if last == "-extra":
+    last = ""
+    Pout.append(str(i))
     continue
   #PRE_EXTRACT_DATA MANIPULATION
   if i == "-fc" or i == "--fc":
@@ -1496,6 +1523,17 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, turbomoleextname, "electronic_energy", [str(cluster_id)], [out])
 ####################################################################################################
 ####################################################################################################
+
+if len(addcolumn) > 0:
+  dtype = np.dtype([("label", "U100"), ("value", float)])
+  for i in range(len(addcolumn)):
+    loadedmatrix = np.loadtxt(addcolumn[i][1], usecols=(0, 1), unpack=True, dtype=dtype)
+    loadeddictionary = {loadedmatrix[0][idx] : loadedmatrix[1][idx] for idx in range(len(loadedmatrix[1]))}
+    tobeadded = clusters_df["info"]['file_basename'].map(loadeddictionary)
+    clusters_df = df_add_iter(clusters_df, "extra", addcolumn[i][0], tobeadded.index, tobeadded.values) 
+####################################################################################################
+####################################################################################################
+
 if Qpresplit > 0:
   clusters_df = clusters_df.sample(n=Qpresplit, random_state=42)
 
@@ -2136,7 +2174,15 @@ if Qout > 0:
 
 ## EXTRACT DATA ##
 output = []
+last = ''
 for i in Pout:
+  if i == "-extra":
+    last = "-extra"
+    continue
+  if last == "-extra":
+    last = ""
+    output.append(clusters_df["extra"][i].values)
+    continue
   if i == "-cite":
     try:
       output.append(clusters_df["info"]["citation"].values)
@@ -2176,7 +2222,10 @@ for i in Pout:
     workbook = xlsxwriter.Workbook('imos.xlsx')
     bold = workbook.add_format({'bold': True,'fg_color': '#FFFF00', 'border':1})
     for ind in clusters_df.index:
-      worksheet = workbook.add_worksheet(clusters_df["info"]["file_basename"][ind])
+      clustername = clusters_df["info"]["file_basename"][ind]
+      if len(clustername) > 30:
+        clustername = clustername[:20]+'-TBC'+str(ind)
+      worksheet = workbook.add_worksheet(clustername)
       
       pos=clusters_df["xyz"]["structure"][ind].get_positions()
       mass=clusters_df["xyz"]["structure"][ind].get_masses()
