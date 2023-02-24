@@ -452,6 +452,7 @@ function program_XTB {
     $MODULE_XTB 2>/dev/null
     if [ ! -z "$SLURM_CPUS_ON_NODE" ]
     then
+      ulimit -s unlimited
       export OMP_STACKSIZE=1G
       export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
     fi
