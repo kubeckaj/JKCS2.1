@@ -412,6 +412,21 @@ then
       #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
       command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt$loc; program_$program \$file${addbase};\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
     else
+      if [ $Qpickle -eq 0 ]
+      then
+        test=`ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz 2> /dev/null | wc -w`
+        if [ $test -eq 0 ]
+        then
+          test=`ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.pkl 2> /dev/null | wc -w`
+          if [ $test -eq 0 ]
+          then
+            JKecho 0 "No XYZ nor PKL file found in $currentdirpath/$folderOLD/${sub}/${name}-LM/."
+            JKecho 0 "I will continue anyway but this subfolder might be corrupted."
+          else
+            Qpickle=1  
+          fi
+        fi
+      fi
       if [ $Qpickle -eq 1 ]
       then
         command0="source ~/.JKCSusersetup.txt$loc;cd $currentdirpath/$folderOLD/${sub}/${name}-LM/; program_JKQCpickle *.pkl -xyz; cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file${addbase};\"; eval \"\$commandTODO\"; done; rm $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz; program_JKQCpickle *.log; rm *.log; rm *.xyz;"

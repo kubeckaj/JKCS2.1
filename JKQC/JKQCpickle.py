@@ -74,15 +74,16 @@ def print_help():
   print(" -movie    save all XYZs to movie.xyz         -radius      approx. radius of cluster size [Angstrom]")
   print(" -charges  save all Mulliken .charges files   -radius0.5   radius with +0.5 Angstrom correction")
   print("\nPOST-CALCULATIONS:")
-  print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies")
+  print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies CITE: Grimme")
   print(" -temp [value in K]   recalculate for different temperature")
-  print(" -v,-as [value]       anharmonicity scaling factor")
+  print(" -v,-as [value]       anharmonicity scaling factor CITE: Grimme")
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
   print("\nFILTERING:")
   print(" -sort <str>          sort by: g,gout,el")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
+  print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
   print(" -cut/-pass X Y       filters values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     filters rel. values from the lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("\nFORMATION PROPERTIES:")
@@ -135,6 +136,7 @@ Qpresplit = 0 #Do I want to take only part of the data?
 Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
 Quniq = 0 # uniqie based on given arguments
+Qarbalign = 0 #use ArbAlign with float parameter
 formation_input_file = ""
 Qthreshold = 0 #cut/pass something
 Qcut = [] #what will be cutted
@@ -380,6 +382,14 @@ for i in sys.argv[1:]:
     attach.append(str(i))
     Qcut.append(attach)
     continue 
+  #ArbAlign
+  if i == "-arbalign" or i == "-ArbAlign":
+    last = "-arbalign"
+    continue
+  if last == "-arbalign":
+    last = ""
+    Qarbalign = float(i)
+    continue
   ########
   # INFO
   if i == "-info" or i == "--info":
@@ -2004,6 +2014,8 @@ if Qqha == 1:
 
 
 ###### FILTERING ######
+if str(Qsort) == "0" and str(Qarbalign) != "0":
+  Qsort = "el"
 if ( str(Qselect) != "0" or ( str(Quniq) != "0" and str(Quniq) != "dup" )) and str(Qsort) == "0":
   Qsort = "g"
 if str(Qsort) != "0":
@@ -2095,6 +2107,33 @@ if str(Quniq) != "0":
   if Qout == 1:
     print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
+if Qarbalign > 0:
+  import ArbAlign
+  if Qclustername != 0:
+    uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
+  else:
+    uniqueclusters = "1"
+  newclusters_df = []
+  myNaN = lambda x : missing if x == "NaN" else x
+  for i in uniqueclusters:
+     if Qclustername != 0:
+       preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
+     else:
+       preselected_df = clusters_df
+     allindexes = preselected_df.index
+     removedindexes = [] 
+     for AAi in range(len(allindexes)):
+       if allindexes[AAi] in removedindexes:
+         continue
+       for AAj in range(AAi+1,len(allindexes)):
+         if allindexes[AAj] in removedindexes:
+           continue
+         AAci = preselected_df.loc[allindexes[AAi]]
+         AAcj = preselected_df.loc[allindexes[AAj]]
+         AAcompared = ArbAlign.compare(AAci["xyz"]["structure"],AAcj["xyz"]["structure"])
+         if AAcompared < Qarbalign:
+           removedindexes.append(allindexes[AAj])
+     clusters_df = clusters_df.drop(removedindexes)
 if Qthreshold != 0:
   for i in range(len(Qcut)):
     if Qcut[i][2] == "el":

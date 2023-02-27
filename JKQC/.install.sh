@@ -93,6 +93,10 @@ fi
 #NOT IMPORTANT FOR ALL BUT CHEAP TO INSTALL
 $PIP install xlsxwriter
 
+#ArbAlign stuff:
+$PIP install lapjv
+cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$PYTHON/site-packages/ArbAlign.py
+
 #echo "- exporting environment"
 #conda env export > environment.yml
 
