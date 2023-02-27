@@ -2109,6 +2109,14 @@ if str(Quniq) != "0":
   clusters_df = newclusters_df
 if Qarbalign > 0:
   import ArbAlign
+  from joblib import Parallel, delayed
+  import multiprocessing
+  num_cores = multiprocessing.cpu_count()
+  def compare_pair(arg):
+    tobecompared = comparepairs[arg]
+    AAci = preselected_df.loc[allindexes[tobecompared[0]]]
+    AAcj = preselected_df.loc[allindexes[tobecompared[1]]]
+    return ArbAlign.compare(AAci["xyz"]["structure"],AAcj["xyz"]["structure"])
   if Qclustername != 0:
     uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)
   else:
@@ -2125,14 +2133,16 @@ if Qarbalign > 0:
      for AAi in range(len(allindexes)):
        if allindexes[AAi] in removedindexes:
          continue
+       comparepairs = []
        for AAj in range(AAi+1,len(allindexes)):
          if allindexes[AAj] in removedindexes:
            continue
-         AAci = preselected_df.loc[allindexes[AAi]]
-         AAcj = preselected_df.loc[allindexes[AAj]]
-         AAcompared = ArbAlign.compare(AAci["xyz"]["structure"],AAcj["xyz"]["structure"])
-         if AAcompared < Qarbalign:
-           removedindexes.append(allindexes[AAj])
+         pair = [AAi,AAj]
+         comparepairs.append(pair)
+       comparison = Parallel(n_jobs=num_cores)(delayed(compare_pair)(i) for i in range(len(comparepairs)))
+       for AAc in range(len(comparison)):
+         if comparison[AAc] < Qarbalign:
+           removedindexes.append(allindexes[comparepairs[AAc][1]])
      clusters_df = clusters_df.drop(removedindexes)
 if Qthreshold != 0:
   for i in range(len(Qcut)):
