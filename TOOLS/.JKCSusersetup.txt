@@ -622,7 +622,7 @@ cp *.err $DIR/ 2>/dev/null
 cp *.out $DIR/ 2>/dev/null
 cd $DIR
 wait
-JKlog2xyz $output > /dev/null 2>/dev/null
+JKlog2xyz $output >> output 2>>output
 
 #CLEANING
 rm -rf \$CALC_NAME""" > $base.cmd

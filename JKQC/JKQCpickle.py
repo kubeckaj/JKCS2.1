@@ -73,6 +73,7 @@ def print_help():
   print(" -xyz      save all XYZ files                 -rg          radius of gyration [Angstrom]")
   print(" -movie    save all XYZs to movie.xyz         -radius      approx. radius of cluster size [Angstrom]")
   print(" -charges  save all Mulliken .charges files   -radius0.5   radius with +0.5 Angstrom correction")
+  print(" -mass     prints molecular mass [g/mol]")
   print("\nPOST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies CITE: Grimme")
   print(" -temp [value in K]   recalculate for different temperature")
@@ -94,7 +95,7 @@ def print_help():
   print(" -formation              print values as formation ")
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
-  print(" OTHERS:")
+  print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
@@ -475,6 +476,9 @@ for i in sys.argv[1:]:
     continue
   if i == "-s" or i == "-entropy" or i == "--s" or i == "--entropy":
     Pout.append("-s")
+    continue
+  if i == "-mass":
+    Pout.append("-mass")
     continue
   if i == "-u" or i == "--u":
     Pout.append("-u")
@@ -2427,6 +2431,15 @@ for i in Pout:
     else:
       print("Sorry but it seems to me that you are taking this from more file or no file is formed (yet)")
       exit()
+    continue
+  if i == "-mass":
+    masses = []  
+    for ind in clusters_df.index:
+      try:
+        masses.append(np.sum(clusters_df["xyz"]["structure"][ind].get_masses()))
+      except:
+        masses.append(missing)
+    output.append(masses)
     continue
   if i == "-elsp":
     try:
