@@ -12,7 +12,7 @@ def help():
   print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
   print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
   print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
-  print("OTHER: -split X, -startsplit X, -finishsplit X, -sampleeach X, -optimize", flush = True)
+  print("OTHER: -split X, -startsplit X, -finishsplit X, -sampleeach X, -similarity X, -optimize", flush = True)
   print("OUTPUTFILES: -out X.pkl [def = predicted_QML.pkl], -varsout X.pkl [def = vars.pkl]")
   
 #PREDEFINED ARGUMENTS
@@ -184,6 +184,18 @@ for i in sys.argv[1:]:
     if Qeval == 0:
       Qeval = 1
     Qsampleeach = int(i)
+    continue
+  #SIMILARITY
+  if i == "-similarity" or i == "-sim":
+    last = "-similarity"
+    continue
+  if last == "-similarity":
+    last = ""
+    if Qtrain == 0:
+      Qtrain = 1
+    if Qeval == 0:
+      Qeval = 1
+    Qsampleeach = -int(i)
     continue
   #LAPLACIAN
   if i == "-laplacian":
@@ -449,6 +461,21 @@ if Qsampleeach > 0:
   #      process.join()
   print("MBTR done", flush = True)
   sampleeach_all = range(len(mbtr_test))
+elif Qsampleeach < 0: 
+  from joblib import Parallel, delayed
+  import multiprocessing
+  def task(arg):
+    return generate_representation(arg.get_positions(),arg.get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
+
+  num_cores = multiprocessing.cpu_count()
+  print("Trying to use "+str(num_cores)+" CPUs for MBTR. (If less are available I hope that nothing gets fucked up.)")
+  max_atoms = max([len(i.get_atomic_numbers()) for i in train_high_database["xyz"]["structure"]])
+  max_atoms2 = max([len(i.get_atomic_numbers()) for i in test_high_database["xyz"]["structure"]])
+  if max_atoms2 > max_atoms:
+    max_atoms = max_atoms2
+  fchl_train = Parallel(n_jobs=num_cores)(delayed(task)(i) for i in train_high_database["xyz"]["structure"])
+  fchl_test = Parallel(n_jobs=num_cores)(delayed(task)(i) for i in test_high_database["xyz"]["structure"])
+  sampleeach_all = range(len(fchl_test))
 else:
   sampleeach_all = ["once"]
 
@@ -456,19 +483,26 @@ for sampleeach_i in sampleeach_all:
   if Qsampleeach > 0:
     dist = np.array([compare_mbtr(mbtr_train[i],mbtr_test[sampleeach_i]) for i in range(np.shape(mbtr_train)[0])])
     sampledist = dist.argsort()[:Qsampleeach] 
+    print(sampledist)
+  elif Qsampleeach < 0:
+    simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), sigmas, **kernel_args)
+    me = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)
+    dist = np.array([np.abs(m-me[0][0][0]) for m in simil[0][0]])
+    sampledist = dist.argsort()[:-Qsampleeach]
+    print(sampledist)
   #TRAIN
   if Qtrain == 1:
     ### DATABASE LOADING ###
     ## The high level of theory
     clusters_df = train_high_database
-    if Qsampleeach > 0:
+    if Qsampleeach != 0:
       clusters_df = clusters_df.iloc[sampledist]
     ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
     strs = clusters_df["xyz"]["structure"]
     ## The low level of theory
     if method == "delta":
       clusters_df2 = train_low_database
-      if Qsampleeach > 0:
+      if Qsampleeach != 0:
         clusters_df2 = clusters_df2.iloc[sampledist]
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by princip
@@ -669,7 +703,7 @@ for sampleeach_i in sampleeach_all:
     ### DATABASE LOADING ###
     ## The high level of theory
     clusters_df = test_high_database
-    if Qsampleeach > 0:
+    if Qsampleeach != 0:
       clusters_df = clusters_df.iloc[[sampleeach_i]]
     try:
       ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
@@ -683,7 +717,7 @@ for sampleeach_i in sampleeach_all:
         clusters_df2 = clusters_df
       else:
         clusters_df2 = test_low_database
-        if Qsampleeach > 0:
+        if Qsampleeach != 0:
           clusters_df2 = clusters_df2.iloc[[sampleeach_i]]
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by princip
