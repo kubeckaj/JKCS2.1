@@ -468,7 +468,7 @@ elif Qsampleeach < 0:
     return generate_representation(arg.get_positions(),arg.get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
 
   num_cores = multiprocessing.cpu_count()
-  print("Trying to use "+str(num_cores)+" CPUs for MBTR. (If less are available I hope that nothing gets fucked up.)")
+  print("Trying to use "+str(num_cores)+" CPUs for FCHL. (If less are available I hope that nothing gets fucked up.)")
   max_atoms = max([len(i.get_atomic_numbers()) for i in train_high_database["xyz"]["structure"]])
   max_atoms2 = max([len(i.get_atomic_numbers()) for i in test_high_database["xyz"]["structure"]])
   if max_atoms2 > max_atoms:
@@ -483,12 +483,18 @@ for sampleeach_i in sampleeach_all:
   if Qsampleeach > 0:
     dist = np.array([compare_mbtr(mbtr_train[i],mbtr_test[sampleeach_i]) for i in range(np.shape(mbtr_train)[0])])
     sampledist = dist.argsort()[:Qsampleeach] 
-    print(sampledist)
+    #print(sampledist)
   elif Qsampleeach < 0:
     simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), sigmas, **kernel_args)
-    me = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)
-    dist = np.array([np.abs(m-me[0][0][0]) for m in simil[0][0]])
+    simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(simil))]
+    #me = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)
+    #me = [ me[i]/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers()) for i in range(len(me))]
+    #dist = np.array([1/np.abs(m-me[0][0][0]) for m in simil[0][0]])
+    dist = np.array([-m for m in simil[0][0]])
+    
     sampledist = dist.argsort()[:-Qsampleeach]
+    #print(me)
+    print(np.sort(dist)[:-Qsampleeach])
     print(sampledist)
   #TRAIN
   if Qtrain == 1:

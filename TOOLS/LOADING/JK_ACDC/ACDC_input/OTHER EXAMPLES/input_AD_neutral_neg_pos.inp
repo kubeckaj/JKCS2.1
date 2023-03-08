@@ -1,0 +1,38 @@
+#								sulfuric_acid	bisulfate_ion	ammonia			dimethylamine	proton
+name:							A				B				N				D				P
+charge:							0				-1				0				0 				1
+corresponding neutral molecule:	-				A				-				-				-
+corresponding negative ion:		B				-				-				-				-
+corresponding positive ion:		-				-				1N1P			1D1P			-
+mass [g/mol]:					98.08			97.08			17.04			45.08			1.00
+density [kg/m**3]:              1830.0			1830.0			696.0			680.0			-
+base strength:					-1				3				1				2				-1
+acid strength:					2				-1				-1				-1				3
+########################################################################################################
+# Electrically neutral clusters:
+								1-4				0				0				0				0
+								0-4				0				0				1				0
+								0-4				0				0				2				0
+								0-4				0				0				3				0
+								0-4				0				0				4				0
+# Criteria for growing out of the simulation:
+out neutral						5				0				0				4				0
+out neutral						4				0				0				5				0
+########################################################################################################
+# Negative clusters:
+								0-3				1				0				0				0
+								0-3				1				0				1				0
+								0-3				1				0				2				0
+								2-3				1				0				3				0
+								3-3				1				0				4				0
+# Criteria for growing out of the simulation:
+out negative					4				1				0				2				0
+########################################################################################################
+# Positive clusters:
+								0-2				0				0				1				1
+								0-2				0				0				2				1
+								0-4				0				0				3				1
+								2-4				0				0				4				1
+# Criteria for growing out of the simulation:
+out positive					3				0				0				5				1
+########################################################################################################

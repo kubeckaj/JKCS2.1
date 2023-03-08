@@ -1,0 +1,368 @@
+#!/bin/bash
+source ~/.JKCSusersetup.txt
+JKQCpath=`which JKQC | rev | cut -c5- | rev`
+toolspath="$JKQCpath/../"
+
+if [ -z "$1" ]; then echo "Missing input"; exit; fi
+inputfile="$1"
+if [ ! -e "$inputfile" ]; then echo "File $inputfile does not extist"; exit; fi
+
+#num=0
+#testfolder=0
+#while [ $testfolder -eq 0 ]
+#do
+#  num=`echo $num+1 | bc -l`
+#  if [ ! -d "ACDCrun$num" ]
+#  then
+#    testfolder=1
+#  fi
+#done
+#mkdir "ACDCrun$num"
+#cd "ACDCrun$num"
+if [ -e "ACDCrun" ]; then echo "Folder ACDCrun already exists"; exit; fi
+mkdir ACDCrun
+cd ACDCrun
+mkdir ACDC_input
+cd ACDC_input
+
+echo ""
+echo "           //////|||||||\\\\\\\\\\\\"
+echo "           #### input.inp ####"
+echo "           \\\\\\\\\\\\|||||||//////"
+echo ""
+
+loadclusters=`cat ../../$inputfile | sed '/^$/d' | awk -F'[\t ]+'  '(NF>=2)' | awk '{print $1}' | xargs` 
+monomers=`echo $loadclusters | sed 's/[0-9]/ /g' | xargs -n 1 | sort -u | xargs`
+clusters=""
+for i in $loadclusters
+do
+  newcluster=""
+  for j in $monomers
+  do
+    test=`echo $i | grep -c "\([0-9]\+\)$j\([0-9]\|$\)"`  
+    if [ $test -eq 0 ]
+    then
+      count=0
+    else
+      count=`echo $i | sed "s@\([0-9]\+\)$j\([0-9]\|$\)@\1 @" | awk '{print $1}' | rev | sed 's/[a-zA-Z]/ /g' | awk '{print $1}' | rev`
+    fi
+    #echo $i $j $count
+    newcluster+="$count$j"
+  done
+  clusters+="$newcluster "
+done
+#echo $clusters
+clustercompositions=`echo $clusters | xargs -n 1 | sed 's/[a-zA-Z]\+/_/g' | rev | sed 's/_//' | rev`
+Nmonomers=`echo $monomers | wc -w`
+maxcount=`echo $clusters | sed 's/[a-zA-Z]/ /g' | xargs -n 1 | sort -u | tail -n 1`
+zeros="";for i in `seq 1 $Nmonomers`; do zeros+=",0"; done
+maxmonomers=`echo $clustercompositions | xargs -n 1 | sed "s/_/+/g" | bc | sort -nk 1 | tail -n 1`
+
+#echo clustercompositions=$clustercompositions
+#echo monomers=$monomers
+#echo Nmonomers=$Nmonomers
+#echo zeros=$zeros
+
+function lowerclusters {
+  input=$1
+  splits=`echo $input | sed "s/_/ /g"`
+  splitlength=`echo $splits | wc -w`
+  return=""
+  for split in `seq 1 $splitlength`
+  do
+    currentnumber=`echo $splits | awk -v var=$split '{print $var}'`
+    if [ $currentnumber -eq 0 ]; then continue; fi
+    lowersplit=`echo $splits | awk -v IND=$split '{$IND=$IND-1; print }'`
+    return+=" "`echo $lowersplit | sed "s/ /_/g"`
+  done
+  echo $return
+}
+
+function properties {
+  case $1 in
+    #1monomer 2charge 30 4-1 5+1 6mass 7density 8bs 9as 
+    "sa")  echo "sa  0 - - - 98.08  1830.0 -1 2"  | awk -v V=$2 '{print $V}'
+          ;;
+    "am")  echo "am  0 - - - 17.04  696.0  1  -1" | awk -v V=$2 '{print $V}'
+          ;;
+    "ma")  echo "ma  0 - - - 31.057 656.2  2  -2" | awk -v V=$2 '{print $V}'
+          ;;
+    "dma") echo "dma 0 - - - 45.08  680.0  3  -3" | awk -v V=$2 '{print $V}'
+          ;;
+    "tma") echo "tma 0 - - - 59.11  670.0  4  -4" | awk -v V=$2 '{print $V}'
+          ;;
+    "eda") echo "eda 0 - - - 60.10  900.0  4  -4" | awk -v V=$2 '{print $V}'
+          ;;
+    "msa") echo "msa 0 - - - 96.10  1480.0 -1 1"  | awk -v V=$2 '{print $V}'
+          ;;
+    "fa")  echo "fa  0 - - - 46.03  1220.0 -1 1"  | awk -v V=$2 '{print $V}'
+          ;;
+    "nta") echo "nta 0 - - - 63.01  1513.0 -1 1"  | awk -v V=$2 '{print $V}'
+          ;;
+    *)    echo  "$1  0 - - - XXXXX  XXXXXX 0  0"  | awk -v V=$2 '{print $V}'
+          ;;
+  esac
+}
+
+l1=33
+l2=7
+function printcomposition {
+  printf "%-${l1}s" "$2" >> input.inp
+  printf "%-${l1}s" "$2" 
+  for elmt in `echo $1 | sed "s/_/ /g"`
+  do  
+    printf "%-${l2}s" $elmt >> input.inp
+    printf "%-${l2}s" $elmt 
+  done  
+  printf "\n" >> input.inp
+  printf "\n"
+}
+line="";totlength=`echo $l1+$Nmonomers*$l2 | bc`;
+for i in `seq 1 $totlength`; do line+="#";done
+
+listofproperties="#"
+for j in 1 
+do
+  toprint=`echo $listofproperties | awk -v V=$j '{print $V}'`
+  printf "%-${l1}s" $toprint | sed "s/_/ /g" >> input.inp
+  printf "%-${l1}s" $toprint | sed "s/_/ /g"
+  for i in $monomers
+  do
+    printf "%-${l2}s" `properties $i $j` >> input.inp
+    printf "%-${l2}s" `properties $i $j`
+  done
+  printf "\n" >> input.inp
+  printf "\n"
+done
+listofproperties="name: charge: corresponding_neutral_molecule: corresponding_negative_ion: corresponding_positive_ion: mass_[g/mol]: density_[kg/m**3]: base_strength: acid_strength:"
+for j in 1 2 3 4 5 6 7 8 9
+do
+  toprint=`echo $listofproperties | awk -v V=$j '{print $V}'`
+  printf "%-${l1}s" $toprint | sed "s/_/ /g" >> input.inp
+  printf "%-${l1}s" $toprint | sed "s/_/ /g"
+  for i in $monomers
+  do
+    printf "%-${l2}s" `properties $i $j` >> input.inp 
+    printf "%-${l2}s" `properties $i $j` 
+  done
+  printf "\n" >> input.inp
+  printf "\n"
+done
+echo $line >> input.inp
+echo $line
+
+maxmonomersP1=`echo $maxmonomers+1 | bc`
+selectedclusters=""
+outgrowingclusters=""
+for molecules in `seq 1 $maxmonomersP1`
+do
+  if [ $molecules -eq 1 ]; then echo "# monomers";echo "# monomers" >> input.inp; 
+  else
+    if [ $molecules -lt $maxmonomersP1 ]; then echo "# $molecules-molecular clusters:"; echo "# $molecules-molecular clusters:" >> input.inp; fi
+  fi
+  compositions=`program_PYTHON $toolspath/SCRIPTS/combinations.py ,$Nmonomers ,$molecules $zeros 0`
+  for composition in $compositions
+  do
+    #echo $composition
+    if [ $molecules -le $maxmonomers ]
+    then
+      if [[ "$clustercompositions" == *"$composition"* ]]; then
+        testlower=0
+        if [ $molecules -gt 1 ]
+        then
+          for i in `lowerclusters $composition`
+          do
+            if [[ "$selectedclusters" == *"$i"* ]]; then
+              testlower=1
+              break
+            fi
+          done
+        fi
+        if [ $testlower -eq 1 ] || [ $molecules -eq 1 ]
+        then
+          selectedclusters+=" $composition"
+          printcomposition $composition ""
+        fi
+      fi
+    fi
+    if [ $molecules -eq $maxmonomersP1 ]
+    then
+      if [[ "$clustercompositions" != *"$composition"* ]]; then
+        testlower=0
+        if [ $molecules -gt 1 ]
+        then
+          for i in `lowerclusters $composition`
+          do
+            if [[ "$selectedclusters" == *"$i"* ]]; then
+              testlower=1
+              break
+            fi
+          done
+        fi
+        if [ $testlower -eq 1 ] || [ $molecules -eq 1 ]
+        then
+          outgrowingclusters+=" $composition"
+        fi
+      fi
+    fi
+  done
+done
+
+echo $line >> input.inp
+echo $line
+for i in $outgrowingclusters
+do
+  printcomposition $i "out neutral"
+done
+echo $line >> input.inp
+echo $line
+
+function clustername {
+  name=""
+  for i in `seq 1 $Nmonomers`
+  do 
+    moni=`echo $monomers | awk -v V=$i '{print $V}'`
+    counti=`echo $1 | sed "s/_/ /g" | awk -v V=$i '{print $V}'`
+    if [ $counti -gt 0 ]
+    then 
+      name+="$counti$moni"
+    fi
+  done  
+  echo $name
+}
+
+#TEST
+for i in $clustercompositions
+do
+  if [[ "$selectedclusters" != *"$i"* ]]; then
+    echo "#Cluster `clustername $i` seems to be useless and is not used!"
+  fi
+done
+
+
+#### ACDCsource
+
+echo ""
+echo "           //////||||||||\\\\\\\\\\\\"
+echo "           #### ACDCsource ####"
+echo "           \\\\\\\\\\\\||||||||//////"
+echo ""
+
+variables=""
+for i in `seq 1 $Nmonomers`
+do 
+  variables+="c$i"
+  if [ $i -ne $Nmonomers ]
+  then
+    variables+=","
+  fi
+done
+
+echo "function [] = ACDCsource($variables)" >> ACDCsource.m
+echo "function [] = ACDCsource($variables)"
+echo "  fileID = fopen('sources.txt','w');" >> ACDCsource.m
+echo "  fileID = fopen('sources.txt','w');"
+
+for i in `seq 1 $Nmonomers`
+do
+  moni=`echo $monomers | awk -v V=$i '{print $V}'`
+  echo "" >> ACDCsource.m
+  echo ""
+  echo "  fprintf(fileID,\"constant 1$moni %3.3e \n\",c$i);" >> ACDCsource.m
+  echo "  fprintf(fileID,\"constant 1$moni %3.3e \n\",c$i);"
+done
+
+echo """
+  if fclose(fileID)==1
+    error
+  end
+end""" >> ACDCsource.m
+echo """
+  if fclose(fileID)==1
+    error
+  end
+end"""
+
+
+echo """
+%fprintf(fileID,\"constant 1A %3.3e -1A1N-1A2N-1A3N-1A4N\n\",c1);
+%fprintf(fileID,\"source neg 3.000000 \n\");
+%fprintf(fileID,\"source pos 3.000000 \n\");
+%fprintf(fileID,\"wall enhancement 1.000000e+00 \n\");
+%fprintf(fileID,\"constant 1A %3.3e -1A1MSA-1A1MSA1N-1A1MSA2N-1A2MSA-1A2MSA1N-1A3MSA-1A1N-1A2N-1A3N\n\",c1);
+%constant 1A 1.000000e+08 -1A1N-1A2N-1A3N-1A4N
+%constant 1N 2.621047e+10
+%source neg 3.000000e+00
+%source pos 3.000000e+00
+%wall enhancement 1.000000e+00""" >> ACDCsource.m
+
+echo ""
+echo "           //////||||\\\\\\\\\\\\"
+echo "           #### others ####"
+echo "           \\\\\\\\\\\\||||//////"
+echo ""
+
+echo " -- ACDCinit.m"
+cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCinit.m .
+echo " -- ACDCrun.m"
+cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCrun.m .
+echo " -- acdc.pl [DO NOT FORGET TO CITE ACDC!]"
+cp $toolspath/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl .
+echo " -- G.txt"
+cp ../../$inputfile G.txt
+
+cd ..
+echo " -- FUNCTIONS folder "
+cp -r $toolspath/LOADING/JK_ACDC/FUNCTIONS .
+echo " -- init.m"
+cp $toolspath/LOADING/JK_ACDC/init.m .
+
+echo " -- JKrun_single.m"
+echo """%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% INTIALIZATION %%
+init
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% MANUAL %%
+%1) in ACDC_input folder, create: input.inp, dG.txt (or dHdS.txt)
+%2) in ACDC folder, adjust: ACDCinit, ACDCsource
+%3) run single job: JKrun_single
+%4) plot some properties: plotJT, plotCT, plotCd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% USER AREA %%
+temp=298.15; %Temperature
+
+""" > JKrun_single.m
+variable=""
+for i in `seq 1 $Nmonomers`
+do
+  moni=`echo $monomers | awk -v V=$i '{print $V}'`
+  if [ "$moni" == "sa" ] || [ "$moni" == "msa" ] || [ "$moni" == "fa" ] || [ "$moni" == "nta" ]
+  then
+    echo "${moni}_conc=10^7; %cmmc=cm^-3" >> JKrun_single.m
+    variable+="${moni}_conc"
+  else
+    echo "${moni}_conc=10; %ppt" >>  JKrun_single.m
+    variable+="ppt2cmmc(${moni}_conc,temp)"
+  fi
+  if [ $i -ne $Nmonomers ]
+  then
+    variable+=","
+  fi
+done
+
+echo """
+ACDCinit(temp);                    %adjust ACDCinit
+ACDCsource($variable) %adjust ACDCsource
+[T,C,J_out]=ACDCrun();
+J_out(end)
+
+%get_evap; get_coll; get_wl; get_cs;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%leave back from RUN folder
+cd '../'"""  >>  JKrun_single.m
+
+echo " ===================== "
+echo " run, e.g.:   "
+echo "    cd ACDCrun"
+echo "    module load matlab"
+echo "    matlab -nodesktop -nosplash -nodisplay < JKrun_single.m "

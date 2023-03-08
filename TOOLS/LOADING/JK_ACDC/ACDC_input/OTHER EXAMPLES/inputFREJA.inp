@@ -1,0 +1,92 @@
+#							    SA  	bisulf.	MSA		DMA		proton
+name:							A		lol		MSA		N		omg
+charge:							0		0		0		0 		0
+corresponding neutral molecule:	-		A		-		-		-
+corresponding negative ion:		lol		-		-		-		-
+corresponding positive ion:		-		-		-		-		-
+mass [g/mol]:					98.08	97.08	96.10	45.085	1.00
+density [kg/m**3]:				1830.0	1830.0	1480	649.6	-
+#base strength:					-1		3		-1		1		-1
+#acid strength:					3		-1		2		-1		3
+########################################################################################################
+# Electrically neutral clusters:
+							1-4		0		0		0		0
+							0-3		0		1		0		0
+							0-3		0		2		0		0
+							0-3		0		3		0		0
+# SA-DMA clusters
+							0-5		0		0		1		0
+							0-4		0		0		2		0
+							0-4		0		0		3		0
+							0-4		0		0		4		0
+							4		0		0		5		0
+# MSA-DMA clusters
+#							0		0		2-4		0		0
+							0		0		1-4		1		0
+							0		0		1-4		2		0
+							0		0		1-4		3		0
+							0		0		1-4		4		0
+# SA-MSA-DMA clusters
+							1		0		1		1		0
+							1		0		1		2		0
+							1		0		1		3		0
+							1		0		2		1		0
+							1		0		2		2		0
+							1		0		2		3		0
+							1		0		3		1		0
+							1		0		3		2		0
+							1		0		3		3		0
+							1		0		3		4		0
+							2		0		1		1		0
+							2		0		1		2		0
+							2		0		1		3		0
+							2		0		2		1		0
+							2		0		2		2		0
+							2		0		2		3		0
+							2		0		2		4		0
+							3		0		1		1		0
+							3		0		1		2		0
+							3		0		1		3		0
+							3		0		1		4		0
+# Criteria for growing out of the simulation:
+out neutral						5		0		0		4		0
+out neutral						5		0		0		5		0
+out neutral						0		0		4		5		0
+out neutral						0		0		5		4		0
+out neutral						0		0		5		5		0
+out neutral						1		0		4		4		0
+out neutral						1		0		4		5		0
+out neutral						2		0		3		4		0
+out neutral						2		0		3		5		0
+out neutral						3		0		2		4		0
+out neutral						3		0		2		5		0
+out neutral						4		0		1		4		0
+out neutral						4		0		1		5		0
+# Grow two out of system: I am not sure if these are necessary, but why not?
+out neutral						6		0		0		4		0
+out neutral						6		0		0		5		0
+out neutral						6		0		0		6		0
+out neutral						0		0		6		4		0
+out neutral						0		0		6		5		0
+out neutral						0		0		6		6		0
+out neutral						1		0		5		4		0
+out neutral						1		0		5		5		0
+out neutral						1		0		5		6		0
+out neutral						2		0		4		4		0
+out neutral						2		0		4		5		0
+out neutral						2		0		4		6		0
+out neutral						3		0		3		4		0
+out neutral						3		0		3		5		0
+out neutral						3		0		3		6		0
+out neutral						4		0		2		4		0
+out neutral						4		0		2		5		0
+out neutral						4		0		2		6		0
+out neutral						5		0		1		4		0
+out neutral						5		0		1		5		0
+out neutral						5		0		1		6		0
+# baser
+#out neutral						4		0		0		5		0
+#out neutral						1		0		3		5		0
+#out neutral						2		0		2		5		0
+#out neutral						3		0		1		5		0
+#out neutral						4		0		0		6		0
