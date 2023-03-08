@@ -149,6 +149,9 @@ Qconc = 0
 conc = []
 CNTfactor = 0 #see Wyslouzil
 
+folderMAIN = ""
+folderSP = ""
+
 orcaext = "out"
 orcaextname = "out"
 turbomoleext = "out"
@@ -1541,10 +1544,18 @@ for file_i in files:
 if len(addcolumn) > 0:
   dtype = np.dtype([("label", "U100"), ("value", float)])
   for i in range(len(addcolumn)):
-    loadedmatrix = np.loadtxt(addcolumn[i][1], usecols=(0, 1), unpack=True, dtype=dtype)
-    loadeddictionary = {loadedmatrix[0][idx] : loadedmatrix[1][idx] for idx in range(len(loadedmatrix[1]))}
-    tobeadded = clusters_df["info"]['file_basename'].map(loadeddictionary)
-    clusters_df = df_add_iter(clusters_df, "extra", addcolumn[i][0], tobeadded.index, tobeadded.values) 
+    if addcolumn[i][0] == "SP" and addcolumn[i][1][-3:] == "pkl":
+      loadedclustersdf = pd.read_pickle(addcolumn[i][1])
+      loadedmatrix = np.array([loadedclustersdf["info"]["file_basename"],loadedclustersdf["log"]["electronic_energy"]])
+      loadeddictionary = {loadedmatrix[0][idx] : loadedmatrix[1][idx] for idx in range(len(loadedmatrix[1]))}
+      tobeadded = clusters_df["info"]['file_basename'].map(loadeddictionary)
+      clusters_df = df_add_iter(clusters_df, "out", "electronic_energy", tobeadded.index, tobeadded.values) 
+    else:
+      loadedmatrix = np.loadtxt(addcolumn[i][1], usecols=(0, 1), unpack=True, dtype=dtype)
+      loadeddictionary = {loadedmatrix[0][idx] : loadedmatrix[1][idx] for idx in range(len(loadedmatrix[1]))}
+      tobeadded = clusters_df["info"]['file_basename'].map(loadeddictionary)
+      clusters_df = df_add_iter(clusters_df, "extra", addcolumn[i][0], tobeadded.index, tobeadded.values) 
+    
 ####################################################################################################
 ####################################################################################################
 
