@@ -2039,8 +2039,9 @@ if str(Qsort) != "0":
   if Qsort == "el":
     Qsort = "electronic_energy"
   if Qsort == "gout":
-    sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
-    clusters_df = clusters_df.loc[sorted_indices]
+    if ("out","electronic_energy") in clusters_df.columns:
+      sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
+      clusters_df = clusters_df.loc[sorted_indices]
   if str(Qsort) != "no" and str(Qsort) != "gout":
     clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
@@ -2175,8 +2176,9 @@ if Qarbalign > 0:
 #not sure if this sorting is necessary but maybe after uniqueness filtering yes
 if str(Qsort) != "0" and str(Qsort) != "no":
   if Qsort == "gout":
-    sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
-    clusters_df = clusters_df.loc[sorted_indices]
+    if ("out","electronic_energy") in clusters_df.columns:
+      sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
+      clusters_df = clusters_df.loc[sorted_indices]
   else:
     clusters_df = clusters_df.sort_values([("log",Qsort)])
 if Qthreshold != 0:
