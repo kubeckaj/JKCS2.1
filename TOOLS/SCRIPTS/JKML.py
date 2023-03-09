@@ -507,8 +507,8 @@ for sampleeach_i in sampleeach_all:
     if Qsampleeach != 0:
       clusters_df = clusters_df.iloc[sampledist]
     #TODO
-    clusters_df0 = monomers_high_database
-    clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
+    #clusters_df0 = monomers_high_database
+    #clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
     ###
     ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
     strs = clusters_df["xyz"]["structure"]
@@ -518,8 +518,8 @@ for sampleeach_i in sampleeach_all:
       if Qsampleeach != 0:
         clusters_df2 = clusters_df2.iloc[sampledist]
       #TODO
-      clusters_df0l = monomers_low_database
-      clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
+      #clusters_df0l = monomers_low_database
+      #clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by princip
     
