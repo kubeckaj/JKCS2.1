@@ -2038,7 +2038,10 @@ if str(Qsort) != "0":
     Qsort = "gibbs_free_energy"
   if Qsort == "el":
     Qsort = "electronic_energy"
-  if Qsort != "no":
+  if Qsort == "gout":
+    sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
+    clusters_df = clusters_df.loc[sorted_indices]
+  if str(Qsort) != "no" and str(Qsort) != "gout":
     clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
   if Quniq == "dup":
@@ -2074,7 +2077,7 @@ if str(Quniq) != "0":
              compare_list.append(separated_input[0])
            compare_list_num.append(float(separated_input[1]))
          else:
-           compare_list.append(separated_input)
+           #compare_list.append(separated_input)
            if separated_input == "rg":
              compare_list.append("rg")
              compare_list_num.append(2)
@@ -2090,12 +2093,14 @@ if str(Quniq) != "0":
            else:
              compare_list.append(separated_input)
              compare_list_num.append(1)
-       if str(Quniq) == "rg,g":
-         compare_list = ["rg","gibbs_free_energy"]
-       elif str(Quniq) == "rg":
-         compare_list = ["rg"]
-       else:
-         compare_list = ["rg","electronic_energy"]
+       #if str(Quniq) == "rg,g":
+       #  compare_list = ["rg","gibbs_free_energy"]
+       #elif str(Quniq) == "rg":
+       #  compare_list = ["rg"]
+       #else:
+       #  compare_list = ["rg","electronic_energy"]
+       #print(compare_list)
+       #print(compare_list_num)
        for compare_element_i in range(len(compare_list)):
          j = compare_list[compare_element_i]
          jj = compare_list_num[compare_element_i]
@@ -2107,6 +2112,14 @@ if str(Quniq) != "0":
              except:
                rg.append(missing)
            values = [np.floor(myNaN(o)*10**jj) for o in rg]
+         elif j == "gout":
+           gout = []
+           for Gouti in range(len(preselected_df)):
+             try:
+               gout.append(preselected_df["log"]["gibbs_free_energy"].values[Gouti]-preselected_df["log"]["electronic_energy"].values[Gouti]+preselected_df["out"]["electronic_energy"].values[Gouti])
+             except:
+               gout.append(missing)
+           values = [np.floor(myNaN(o)*10**jj) for o in gout]
          else:  
            values = [np.floor(myNaN(o)*10**jj) for o in preselected_df["log"][j].values]
          tocompare.append(values)
@@ -2159,6 +2172,13 @@ if Qarbalign > 0:
          if comparison[AAc] < Qarbalign:
            removedindexes.append(allindexes[comparepairs[AAc][1]])
      clusters_df = clusters_df.drop(removedindexes)
+#not sure if this sorting is necessary but maybe after uniqueness filtering yes
+if str(Qsort) != "0" and str(Qsort) != "no":
+  if Qsort == "gout":
+    sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
+    clusters_df = clusters_df.loc[sorted_indices]
+  else:
+    clusters_df = clusters_df.sort_values([("log",Qsort)])
 if Qthreshold != 0:
   for i in range(len(Qcut)):
     if Qcut[i][2] == "el":
@@ -2194,8 +2214,6 @@ if Qthreshold != 0:
           clusters_df = clusters_df[what-min > float(Qcut[i][3])]       
         else:
           clusters_df = clusters_df[what-min <= float(Qcut[i][3])]
-if str(Qsort) != "0" and str(Qsort) != "no":
-  clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Qselect) != "0":
   if Qclustername != 0:
     uniqueclusters = np.unique(clusters_df["info"]["cluster_type"].values)

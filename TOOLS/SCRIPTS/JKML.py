@@ -485,12 +485,15 @@ for sampleeach_i in sampleeach_all:
     sampledist = dist.argsort()[:Qsampleeach] 
     #print(sampledist)
   elif Qsampleeach < 0:
-    simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), sigmas, **kernel_args)
-    simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(simil))]
-    #me = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)
+    simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), sigmas, **kernel_args)[0][0]
+    simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(train_high_database))]
+    print(simil[:20])
+    me = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)[0][0][0]
+    me = me/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers())
     #me = [ me[i]/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers()) for i in range(len(me))]
-    #dist = np.array([1/np.abs(m-me[0][0][0]) for m in simil[0][0]])
-    dist = np.array([-m for m in simil[0][0]])
+    print(me)
+    dist = np.array([np.abs(m-me) for m in simil])
+    #dist = np.array([-m for m in simil])
     
     sampledist = dist.argsort()[:-Qsampleeach]
     #print(me)
@@ -503,6 +506,10 @@ for sampleeach_i in sampleeach_all:
     clusters_df = train_high_database
     if Qsampleeach != 0:
       clusters_df = clusters_df.iloc[sampledist]
+    #TODO
+    clusters_df0 = monomers_high_database
+    clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
+    ###
     ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
     strs = clusters_df["xyz"]["structure"]
     ## The low level of theory
@@ -510,6 +517,9 @@ for sampleeach_i in sampleeach_all:
       clusters_df2 = train_low_database
       if Qsampleeach != 0:
         clusters_df2 = clusters_df2.iloc[sampledist]
+      #TODO
+      clusters_df0l = monomers_low_database
+      clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by princip
     
