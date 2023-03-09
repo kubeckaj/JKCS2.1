@@ -2253,6 +2253,7 @@ if Qrebasename == 1:
       while values[i]+"-v"+str(version) in values:
         version+=1
       clusters_df["info","file_basename"][i] = values[i]+"-v"+str(version)
+      original_clusters_df.loc[clusters_df.index[i]]["info","file_basename"] = values[i]+"-v"+str(version)
 
 ## SAVE OUTPUT.pkl ##
 if Qout > 0:
