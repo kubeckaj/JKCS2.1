@@ -478,6 +478,7 @@ elif Qsampleeach < 0:
   sampleeach_all = range(len(fchl_test))
 else:
   sampleeach_all = ["once"]
+  print("FCHL done", flush = True)
 
 for sampleeach_i in sampleeach_all:
   if Qsampleeach > 0:
@@ -485,7 +486,7 @@ for sampleeach_i in sampleeach_all:
     sampledist = dist.argsort()[:Qsampleeach] 
     #print(sampledist)
   elif Qsampleeach < 0:
-    simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), sigmas, **kernel_args)[0][0]
+    simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), [0.001], **kernel_args)[0][0]
     simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(train_high_database))]
     print(simil[:20])
     me = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)[0][0][0]

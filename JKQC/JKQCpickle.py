@@ -96,7 +96,7 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
-  print(" -add <column> <file>, -extra <column>")
+  print(" -add <column> <file>, -extra <column>, -rebasename")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -111,6 +111,7 @@ addcolumn = []
 Qmodify = 0 #Do I want to somehow modify the input dataframe or names?
 Qrename = 0 #Do I want to rename some monomer? 
 QrenameWHAT = [] #Do I want to rename some monomer? 
+Qrebasename = 0 #change names if they are the same 
 
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
@@ -275,6 +276,10 @@ for i in sys.argv[1:]:
   if last == "-rename2":
     last = ""
     QrenameWHAT.append([remember,i])
+    continue
+  #rebasename
+  if i == "-rebasename":
+    Qrebasename = 1
     continue
   #REACTED
   if i == "-reacted":
@@ -2236,6 +2241,18 @@ if str(Qselect) != "0":
   if Qout == 1:
     print("Selecting/Sampling: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
+
+#x = clusters_df["info"]["file_basename"].astype("category")
+#print(x.astype("category").categories)
+if Qrebasename == 1:
+  values=clusters_df["info"]["file_basename"].values
+  for i in range(len(clusters_df)):
+    if values[i] in np.delete(values, i, axis=0):
+      version=1
+      values=clusters_df["info"]["file_basename"].values
+      while values[i]+"-v"+str(version) in values:
+        version+=1
+      clusters_df["info","file_basename"][i] = values[i]+"-v"+str(version)
 
 ## SAVE OUTPUT.pkl ##
 if Qout > 0:
