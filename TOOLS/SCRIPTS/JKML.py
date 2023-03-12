@@ -487,14 +487,15 @@ for sampleeach_i in sampleeach_all:
     #print(sampledist)
   elif Qsampleeach < 0:
     simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), [0.001], **kernel_args)[0][0]
-    simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(train_high_database))]
+    #simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(train_high_database))]
+    simil = [ simil[i]/JKML_kernel(np.array([m for m in [fchl_train[i]]]),np.array([m for m in [fchl_train[i]]])) for i in range(len(train_high_database))]
     print(simil[:20])
     me = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)[0][0][0]
-    me = me/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers())
+    #me = me/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers())
     #me = [ me[i]/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers()) for i in range(len(me))]
     print(me)
-    dist = np.array([np.abs(m-me) for m in simil])
-    #dist = np.array([-m for m in simil])
+    #dist = np.array([np.abs(m-me) for m in simil])
+    dist = np.array([-m for m in simil])
     
     sampledist = dist.argsort()[:-Qsampleeach]
     #print(me)
