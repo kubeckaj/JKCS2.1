@@ -919,6 +919,7 @@ for file_i in files:
           continue
         print(line)
         print(save_something)
+        print(out_NAtoms)
         if save_something == "mulliken_charges":
           try:
             if save_mulliken_charges<=out_NAtoms:
