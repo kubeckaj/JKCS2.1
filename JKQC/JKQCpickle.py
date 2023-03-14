@@ -890,6 +890,7 @@ for file_i in files:
     for i in range(5):
       if re.search("\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-", file.readline()):
         testXTB = 1
+        print("XTB")
         break
     if testXTB == 1:
       out_NAtoms = missing
