@@ -938,10 +938,14 @@ for file_i in files:
             out_dipole_moment = missing
           continue
         if re.search("molecular dipole:", line):
+          print("TEST 1")
+          print(line)
           save_something = "molecular_dipole"
           save_molecular_dipole = 3
           continue
         if save_something == "molecular_dipole": 
+          print("TEST 2")
+          print(line)
           save_molecular_dipole-=1
           if save_molecular_dipole == 0:
             try: 
