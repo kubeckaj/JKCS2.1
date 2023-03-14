@@ -901,6 +901,7 @@ for file_i in files:
       out_mulliken_charges = missing           
       save_something = ""
       for line in file:
+        print(line)
         ## NAtoms
         if re.search("number of atoms", line):
           try:
