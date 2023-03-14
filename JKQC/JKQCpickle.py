@@ -909,7 +909,7 @@ for file_i in files:
             out_NAtoms = missing
           continue
         ## MULLIKEN
-        if re.search("     #   Z          covCN         q      C6AA      ", line) and not(np.isna(out_NAtoms)): #O4
+        if re.search("     #   Z          covCN         q      C6AA      ", line) and not np.isna(out_NAtoms): #O4
           save_mulliken_charges = out_NAtoms
           save_something = "mulliken_charges"
           try:
@@ -917,9 +917,9 @@ for file_i in files:
           except:
             out_mulliken_charges = missing
           continue
-        print(line)
-        print(save_something)
-        print(out_NAtoms)
+        #print(line)
+        #print(save_something)
+        #print(out_NAtoms)
         if save_something == "mulliken_charges":
           try:
             if save_mulliken_charges<=out_NAtoms:
