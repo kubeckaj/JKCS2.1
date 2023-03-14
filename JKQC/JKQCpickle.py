@@ -937,6 +937,19 @@ for file_i in files:
           except:
             out_dipole_moment = missing
           continue
+        if re.search("molecular dipole:", line):
+          save_something = "molecular_dipole"
+          save_molecular_dipole = 3
+          continue
+        if save_something == "molecular_dipole": 
+          save_molecular_dipole-=1
+          if save_molecular_dipole == 0:
+            try: 
+              out_dipole_moment = float(line.split()[4])
+            except:
+              out_dipole_moment = missing
+            save_something = ""
+          continue
         if re.search("TOTAL ENERGY", line): #1
           try:
             out_electronic_energy = float(line.split()[3])
