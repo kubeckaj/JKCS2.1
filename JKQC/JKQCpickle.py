@@ -939,7 +939,6 @@ for file_i in files:
           continue
         if re.search("TOTAL ENERGY", line): #1
           try:
-            print(line)
             out_electronic_energy = float(line.split()[3])
           except:
             out_electronic_energy = missing
