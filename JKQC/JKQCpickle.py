@@ -909,7 +909,7 @@ for file_i in files:
             out_NAtoms = missing
           continue
         ## MULLIKEN
-        if re.search("     #   Z          covCN         q      C6AA      ", line): #O4
+        if re.search("     #   Z          covCN         q      C6AA      ", line) and not(np.isna(out_NAtoms)): #O4
           save_mulliken_charges = out_NAtoms
           save_something = "mulliken_charges"
           try:
