@@ -890,7 +890,6 @@ for file_i in files:
     for i in range(5):
       if re.search("\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-", file.readline()):
         testXTB = 1
-        print("XTB")
         break
     if testXTB == 1:
       out_NAtoms = missing
@@ -939,7 +938,10 @@ for file_i in files:
           try:
             out_electronic_energy = float(line.split()[3])
           except:
-            out_electronic_energy = missing
+            try: 
+              out_electronic_energy = float(line.split()[4])
+            except:
+              out_electronic_energy = missing
           continue
         if re.search("total E", line): #1
           try:
