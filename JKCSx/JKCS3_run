@@ -167,15 +167,27 @@ do
   #  next=1
   #  continue
   #fi
-  # addbase
-  if [ "$last" == '-add' ]
+  # addbase or ea
+  if [ "$last" == "maxiter" ]
   then
-    addbase=" -add $iter"
     last=''
     next=0
+    addbase+=" $iter"
     continue
   fi
-  if [ "$iter" == "-addbase" ] || [ "$iter" == "-add" ] || [ "$iter" == "-bs" ]
+  if [ "$last" == '-add' ]
+  then
+    addbase+=" -add $iter"
+    if [ "$iter" == "maxiter" ] 
+    then
+      last='maxiter'
+    else
+      last=''
+      next=0
+    fi
+    continue
+  fi
+  if [ "$iter" == "-addbase" ] || [ "$iter" == "-add" ] || [ "$iter" == "-bs" ] || [ "$iter" == "-ea" ]
   then
     last='-add'
     next=1

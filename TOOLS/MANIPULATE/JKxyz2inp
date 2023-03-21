@@ -48,6 +48,7 @@ method="! DFT OPT FREQ PW91 6-31++g** GRID4 nofinalgrid TightPNO TightSCF NOPOP 
 next=0
 
 Qextrainput=0
+QmaxIter=500
 
 ### SOLVING INPUT
 for i in "$@"
@@ -193,7 +194,20 @@ do
     fi
     if [ "$last" == "-ea" ]
     then
-      Qextrainput=$i
+      if [ "$i" == "maxIter" ] || [ "$i" == "maxiter" ]
+      then
+        Qextrainput="maxiter"
+        last="maxiter"
+      else  
+        Qextrainput="$i"
+        last=""
+        next=0
+      fi
+      continue
+    fi
+    if [ "$last" == "maxiter" ]
+    then
+      QmaxIter=$i
       last=""
       next=0
       continue
@@ -244,9 +258,12 @@ do
       echo """%basis
 	NewGTO I \"aug-cc-pVTZ-PP\" end
 	NewECP I \"SK-MCDHF-RSC\" end
-end
-%geom
-	maxIter 500
+end""" >> $(basename $i .xyz).inp
+    fi
+    if [ "$Qextrainput" == "I" ] || [ "$Qextrainput" == "maxiter" ]
+    then
+      echo """%geom
+        maxIter $QmaxIter
 end""" >> $(basename $i .xyz).inp
     fi
   fi
