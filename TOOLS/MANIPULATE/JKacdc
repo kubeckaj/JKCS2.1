@@ -5,7 +5,16 @@ toolspath="$JKQCpath/../"
 
 if [ -z "$1" ]; then echo "Missing input"; exit; fi
 inputfile="$1"
+if [ "$inputfile" == "-help" ]; then  echo "oh, this fucking Jakub was even so lazy to write any help."; exit; fi
 if [ ! -e "$inputfile" ]; then echo "File $inputfile does not extist"; exit; fi
+
+#CHECK IF SOME LINE/CLUSTERS ARE REPEATED
+t1=`cat $inputfile | awk '{print $1}' | wc -w`
+t2=`cat $inputfile | awk '{print $1}' | sort -uk 1 | wc -w`
+if [ "$t1" != "$t2" ]
+then
+  echo "Repetition of some lines in ${inputfile}."; exit;
+fi
 
 #num=0
 #testfolder=0
@@ -309,7 +318,16 @@ cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCrun.m .
 echo " -- acdc.pl [DO NOT FORGET TO CITE ACDC!]"
 cp $toolspath/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl .
 echo " -- G.txt"
-cp ../../$inputfile G.txt
+test=`head -n 1 ../../$inputfile | awk '{print $2}'`
+if [ ! -z "$test" ] 
+then
+  echo """101325
+298.15
+""" > G.txt
+else
+  touch G.txt
+fi
+cat ../../$inputfile >> G.txt
 
 cd ..
 echo " -- FUNCTIONS folder "
@@ -323,8 +341,8 @@ echo """%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% MANUAL %%
-%1) in ACDC_input folder, create: input.inp, dG.txt (or dHdS.txt)
-%2) in ACDC folder, adjust: ACDCinit, ACDCsource
+%1) in ACDC_input folder, create: input.inp, dG.txt
+%2) in ACDC_input folder, adjust: ACDCinit, ACDCsource
 %3) run single job: JKrun_single
 %4) plot some properties: plotJT, plotCT, plotCd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -338,7 +356,7 @@ do
   moni=`echo $monomers | awk -v V=$i '{print $V}'`
   if [ "$moni" == "sa" ] || [ "$moni" == "msa" ] || [ "$moni" == "fa" ] || [ "$moni" == "nta" ]
   then
-    echo "${moni}_conc=10^7; %cmmc=cm^-3" >> JKrun_single.m
+    echo "${moni}_conc=10^8; %cmmc=cm^-3" >> JKrun_single.m
     variable+="${moni}_conc"
   else
     echo "${moni}_conc=10; %ppt" >>  JKrun_single.m
@@ -358,6 +376,7 @@ J_out(end)
 
 %get_evap; get_coll; get_wl; get_cs;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+save(\"variables.mat\")
 %leave back from RUN folder
 cd '../'"""  >>  JKrun_single.m
 
@@ -366,3 +385,5 @@ echo " run, e.g.:   "
 echo "    cd ACDCrun"
 echo "    module load matlab"
 echo "    matlab -nodesktop -nosplash -nodisplay < JKrun_single.m "
+echo "or:"
+echo "    cd ACDCrun;sbatch JKsend \"module load matlab;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m\""
