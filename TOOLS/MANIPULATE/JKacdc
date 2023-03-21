@@ -4,9 +4,81 @@ JKQCpath=`which JKQC | rev | cut -c5- | rev`
 toolspath="$JKQCpath/../"
 
 if [ -z "$1" ]; then echo "Missing input"; exit; fi
-inputfile="$1"
-if [ "$inputfile" == "-help" ]; then  echo "oh, this fucking Jakub was even so lazy to write any help."; exit; fi
-if [ ! -e "$inputfile" ]; then echo "File $inputfile does not extist"; exit; fi
+
+folder="ACDCrun"
+QconcMOL=""
+QconcNUM=""
+QconcTYP=""
+Qtemp="298.15"
+Qrun="0"
+last=""
+for i in $@
+do 
+  #HELP
+  if [ "$i" == "-help" ]
+  then
+    echo "oh, this fucking Jakub was even so lazy to write any help."; exit;
+  fi
+  #FOLDER
+  if [ "$i" == "-folder" ]
+  then
+    last="-folder"
+    continue
+  fi
+  if [ "$last" == "-folder" ]
+  then
+   folder="$i"
+   last=""
+   continue
+  fi
+  #CONC
+  if [ "$i" == "-conc" ]
+  then
+    QconcTYP+=" cmmc"
+    last="-concTYP"
+    continue
+  fi
+  if [ "$i" == "-concppt" ]
+  then
+    QconcTYP+=" ppt"
+    last="-concTYP"
+    continue
+  fi
+  if [ "$last" == "-concTYP" ]
+  then
+    last="-concMOL"
+    QconcMOL+=" $i"
+    continue
+  fi
+  if [ "$last" == "-concMOL" ]
+  then
+    last=""
+    QconcNUM+=" $i"
+    continue
+  fi
+  #TEMPERATURE
+  if [ "$i" == "-temp" ]
+  then
+    last="-temp"
+    continue
+  fi
+  if [ "$last" == "-temp" ]
+  then
+    last=""
+    Qtemp=$i
+    continue
+  fi
+  #RUN
+  if [ $i == "-run" ]
+  then
+    Qrun=1
+    continue
+  fi
+  #INPUT FILE
+  inputfile="$i"
+  if [ ! -e "$inputfile" ]; then echo "File $inputfile does not extist"; exit; fi  
+done
+
 
 #CHECK IF SOME LINE/CLUSTERS ARE REPEATED
 t1=`cat $inputfile | awk '{print $1}' | wc -w`
@@ -28,9 +100,9 @@ fi
 #done
 #mkdir "ACDCrun$num"
 #cd "ACDCrun$num"
-if [ -e "ACDCrun" ]; then echo "Folder ACDCrun already exists"; exit; fi
-mkdir ACDCrun
-cd ACDCrun
+if [ -e "$folder" ]; then echo "Folder ACDCrun already exists"; exit; fi
+mkdir $folder
+cd $folder
 mkdir ACDC_input
 cd ACDC_input
 
@@ -322,12 +394,18 @@ test=`head -n 1 ../../$inputfile | awk '{print $2}'`
 if [ ! -z "$test" ] 
 then
   echo """101325
-298.15
+$Qtemp
 """ > G.txt
 else
   touch G.txt
 fi
 cat ../../$inputfile >> G.txt
+test=`head -n 2 G.txt | tail -n 1`
+if [ "$test" != "$Qtemp" ]
+then
+  echo "Something wrong with defining the temperature! ERROR!!"
+  exit
+fi
 
 cd ..
 echo " -- FUNCTIONS folder "
@@ -347,20 +425,45 @@ init
 %4) plot some properties: plotJT, plotCT, plotCd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% USER AREA %%
-temp=298.15; %Temperature
+temp=$Qtemp; %Temperature
 
 """ > JKrun_single.m
 variable=""
+predefined=`echo $QconcMOL | wc -w`
 for i in `seq 1 $Nmonomers`
 do
   moni=`echo $monomers | awk -v V=$i '{print $V}'`
-  if [ "$moni" == "sa" ] || [ "$moni" == "msa" ] || [ "$moni" == "fa" ] || [ "$moni" == "nta" ]
+  if [[ "$QconcMOL" == *"$moni"* ]]
   then
-    echo "${moni}_conc=10^8; %cmmc=cm^-3" >> JKrun_single.m
-    variable+="${moni}_conc"
+    position=0
+    for j in `seq 1 $predefined`
+    do
+      test=`echo $QconcMOL | awk -v var=$j '{print $var}'`
+      if [ "$moni" == "$test" ]
+      then
+        position=$j
+        break
+      fi 
+    done
+    typ=`echo $QconcTYP | awk -v var=$position '{print $var}'`
+    conc=`echo $QconcNUM | awk -v var=$position '{print $var}'`
+    if [ "$typ" == "ppt" ]
+    then
+      echo "${moni}_conc=${conc}; %ppt" >> JKrun_single.m
+      variable+="ppt2cmmc(${moni}_conc,temp)"
+    else
+      echo "${moni}_conc=${conc}; %cmmc=cm^-3" >> JKrun_single.m
+      variable+="${moni}_conc"
+    fi   
   else
-    echo "${moni}_conc=10; %ppt" >>  JKrun_single.m
-    variable+="ppt2cmmc(${moni}_conc,temp)"
+    if [ "$moni" == "sa" ] || [ "$moni" == "msa" ] || [ "$moni" == "fa" ] || [ "$moni" == "nta" ]
+    then
+      echo "${moni}_conc=10^8; %cmmc=cm^-3" >> JKrun_single.m
+      variable+="${moni}_conc"
+    else
+      echo "${moni}_conc=10; %ppt" >>  JKrun_single.m
+      variable+="ppt2cmmc(${moni}_conc,temp)"
+    fi
   fi
   if [ $i -ne $Nmonomers ]
   then
@@ -372,18 +475,28 @@ echo """
 ACDCinit(temp);                    %adjust ACDCinit
 ACDCsource($variable) %adjust ACDCsource
 [T,C,J_out]=ACDCrun();
-J_out(end)
+fprintf(\"\nJ_out = %f\n\", J_out(end))
 
 %get_evap; get_coll; get_wl; get_cs;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-save(\"variables.mat\")
+save(\"variables.mat\");
 %leave back from RUN folder
-cd '../'"""  >>  JKrun_single.m
+cd '../';"""  >>  JKrun_single.m
+
+echo " -- JKrun_fluxes_out.m"
+cp $toolspath/LOADING/JK_ACDC/JKrun_fluxes_out.m .
 
 echo " ===================== "
 echo " run, e.g.:   "
-echo "    cd ACDCrun"
+echo "    cd $folder"
 echo "    module load matlab"
 echo "    matlab -nodesktop -nosplash -nodisplay < JKrun_single.m "
 echo "or:"
-echo "    cd ACDCrun;sbatch JKsend \"module load matlab;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m\""
+echo "    cd $folder;sbatch JKsend \"module load matlab;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m\""
+
+if [ "$Qrun" == "1" ]
+then
+  echo ""
+  echo "ok, I will do even the submission for you:"
+  sbatch -J $folder JKsend "module load matlab;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m"
+fi
