@@ -273,8 +273,8 @@ do
     echo "No need to use $iter argument anymore. [Used by default.]"
     continue
   fi
-  # Jobs per task
-  if [ "$iter" == "-jpt" ]
+  # Jobs per task !!! it is actually tasks per job -tpj
+  if [ "$iter" == "-tpj" ] [ "$iter" == "-jpt" ]
   then
     last="-jpt"
     continue

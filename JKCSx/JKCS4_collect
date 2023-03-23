@@ -136,8 +136,8 @@ do
   firstletter=`echo $iter | cut -c 1`
   if [ "$firstletter" == "-" ] || [ ! -z "$last" ]
   then
-    # Jobs per task
-    if [ "$iter" == "-jpt" ]
+    # Jobs per task !! it is actually tasks per job
+    if [ "$iter" == "-tpj" ] || [ "$iter" == "-jpt" ]
     then
       last="-jpt"
       continue

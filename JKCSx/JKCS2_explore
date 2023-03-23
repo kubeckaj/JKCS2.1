@@ -231,8 +231,8 @@ do
     if [ $INITcheck -gt $INITinp ]; then INIT="$time/NoC/0.0012/M/M/M/M"; fi
     continue
   fi
-  # Jobs per task
-  if [ "$iter" == "-jpt" ]
+  # Jobs per task !! it is actually tasks per job
+  if [ "$iter" == "-tpj" ] || [ "$iter" == "-jpt" ]
   then
     last="-jpt"
     continue

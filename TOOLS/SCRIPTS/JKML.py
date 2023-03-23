@@ -12,7 +12,7 @@ def help():
   print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
   print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
   print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
-  print("OTHER: -split X, -startsplit X, -finishsplit X, -sampleeach X, -similarity X, -optimize", flush = True)
+  print("OTHER: -split X, -startsplit X, -finishsplit X, -sampleeach X, -similarity X, -optimize, -forcemonomers", flush = True)
   print("OUTPUTFILES: -out X.pkl [def = predicted_QML.pkl], -varsout X.pkl [def = vars.pkl]")
   
 #PREDEFINED ARGUMENTS
@@ -31,6 +31,7 @@ Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 Qsampleeach = 0
 Qkernel = "Gaussian"
+Qforcemonomers = 0
 column_name_1 = "log"
 column_name_2 = "electronic_energy" 
 
@@ -90,6 +91,10 @@ for i in sys.argv[1:]:
       method = "direct"
     if i == "delta":
       method = "delta"
+    continue
+  #FORCE MONOMERS
+  if i == "-forcemonomers":
+    Qforcemonomers = 1
     continue
   #COLUMN
   if i == "-column":
@@ -508,9 +513,9 @@ for sampleeach_i in sampleeach_all:
     clusters_df = train_high_database
     if Qsampleeach != 0:
       clusters_df = clusters_df.iloc[sampledist]
-    #TODO
-    #clusters_df0 = monomers_high_database
-    #clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
+    if Qforcemonomers == 1:
+      clusters_df0 = monomers_high_database
+      clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
     ###
     ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
     strs = clusters_df["xyz"]["structure"]
@@ -519,9 +524,9 @@ for sampleeach_i in sampleeach_all:
       clusters_df2 = train_low_database
       if Qsampleeach != 0:
         clusters_df2 = clusters_df2.iloc[sampledist]
-      #TODO
-      #clusters_df0l = monomers_low_database
-      #clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
+      if Qforcemonomers == 1:
+        clusters_df0l = monomers_low_database
+        clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by princip
     
