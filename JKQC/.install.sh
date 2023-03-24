@@ -67,10 +67,10 @@ source JKCS/bin/activate
 PIP="$PYTHON -m pip " #--cache-dir=$PWD/JKCS/"
 #$PIP --version
 $PIP install --upgrade pip
+$PIP install scipy==1.9.3 $ADD 
 $PIP install pathlib #Perhaps this one is not necessary
 $PIP install numexpr==2.7.0 $ADD
-#$PIP install scipy==1.9.3 $ADD 
-$PIP install numpy==1.21.4 $ADD #1.23.0 had some issues for qml np.distutils or something like that
+$PIP install numpy==1.23.5 $ADD #1.23.0 had some issues for qml np.distutils or something like that
 $PIP install pandas==1.3.4 $ADD
 $PIP install ase 
 if [[ "$*" == *"-descriptors"* ]]

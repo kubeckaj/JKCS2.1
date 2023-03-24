@@ -489,14 +489,14 @@ cp $toolspath/LOADING/JK_ACDC/JKrun_fluxes_out.m .
 echo " ===================== "
 echo " run, e.g.:   "
 echo "    cd $folder"
-echo "    module load matlab"
+echo "    module load matlab/R2022b"
 echo "    matlab -nodesktop -nosplash -nodisplay < JKrun_single.m "
 echo "or:"
-echo "    cd $folder;sbatch JKsend \"module load matlab;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m\""
+echo "    cd $folder;sbatch JKsend \"module load matlab/R2022b;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m\""
 
 if [ "$Qrun" == "1" ]
 then
   echo ""
   echo "ok, I will do even the submission for you:"
-  sbatch -J $folder JKsend "module load matlab;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m"
+  sbatch -J $folder JKsend "module load matlab/R2022b;matlab -nodesktop -nosplash -nodisplay < JKrun_single.m"
 fi

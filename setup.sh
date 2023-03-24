@@ -123,7 +123,7 @@ done
 if [ ! -e JKQC/JKCS ] || [ "$Qr" == "1" ] 
 then
   cd JKQC
-  rm -r JKCS 2>/dev/null 
+  rm -r JKCS 
   sh .install.sh "$PYTHON" "$MODULE_PYTHON" "$ADD"
   if [ ! -e JKCS ]
   then
