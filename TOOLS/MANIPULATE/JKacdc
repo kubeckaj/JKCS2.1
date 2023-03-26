@@ -100,7 +100,7 @@ fi
 #done
 #mkdir "ACDCrun$num"
 #cd "ACDCrun$num"
-if [ -e "$folder" ]; then echo "Folder ACDCrun already exists"; exit; fi
+if [ -e "$folder" ]; then echo "Folder $folder already exists"; exit; fi
 mkdir $folder
 cd $folder
 mkdir ACDC_input
