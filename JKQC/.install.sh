@@ -70,7 +70,9 @@ $PIP install --upgrade pip
 $PIP install scipy==1.9.3 $ADD 
 $PIP install pathlib #Perhaps this one is not necessary
 $PIP install numexpr==2.7.0 $ADD
-$PIP install numpy==1.23.5 $ADD #1.23.0 had some issues for qml np.distutils or something like that
+#NUMPY: the numpy is reinstalled later in the script because lapjv would not run with this version
+#this version is however needed for QML. When QML is installed with the newest version, it works ...I guess
+$PIP install numpy==1.21.4 $ADD #1.23.0 had some issues for qml np.distutils or something like that
 $PIP install pandas==1.3.4 $ADD
 $PIP install ase 
 if [[ "$*" == *"-descriptors"* ]]
@@ -86,9 +88,10 @@ then
  #$PIP install sklearn
  #$PIP install cffi
  #$PIP install dscribe
- ADD="--force-reinstall --upgrade"
+ #ADD="--force-reinstall --upgrade"
  $PIP install install git+https://github.com/qmlcode/qml@develop $ADD
 fi
+$PIP install numpy==1.23.0
 
 #NOT IMPORTANT FOR ALL BUT CHEAP TO INSTALL
 $PIP install xlsxwriter

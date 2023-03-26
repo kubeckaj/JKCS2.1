@@ -96,7 +96,7 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
-  print(" -add <column> <file>, -extra <column>, -rebasename")
+  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -134,6 +134,7 @@ Qfc = 0 #Run QHA with vib. frequency cutoff
 Qanh = 1
 
 Qpresplit = 0 #Do I want to take only part of the data?
+Qindex = "-1"#
 
 Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
@@ -192,7 +193,7 @@ for i in sys.argv[1:]:
     Qrecursive = True
     continue
   #INPKL
-  if i == "-in" or i == "-i":
+  if i == "-in":
     last = "-in"
     continue
   if last == "-in":
@@ -262,6 +263,14 @@ for i in sys.argv[1:]:
   if last == "-presplit":
     last = ""
     Qpresplit = int(i)
+    continue
+  #INDEX
+  if i == "-i" or i == "-index":
+    last = "-index"
+    continue
+  if last == "-index":
+    last = ""
+    Qindex = str(i)
     continue
   #RENAME
   if i == "-rename":
@@ -1586,6 +1595,13 @@ if len(addcolumn) > 0:
 
 if Qpresplit > 0:
   clusters_df = clusters_df.sample(n=Qpresplit, random_state=42)
+
+if Qindex != "-1":
+  try:
+    clusters_df = eval(f"clusters_df[{Qindex}]")
+  except:
+    print("Error selecting given index")
+    exit()
 
 ####################################################################################################
 ####################################################################################################

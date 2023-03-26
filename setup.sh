@@ -167,7 +167,7 @@ writetobashrc "$command2"
 Qcolours=1
 source TOOLS/LOADING/colours.txt
 
-printf "${cfRED}Write following command:${cfDEF}\n"
+printf "${cfGREEN}Write following command:${cfDEF}\n"
 printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}\n"
 echo "-----------------------"
 
@@ -194,7 +194,7 @@ then
   sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
   mv .help18 ~/.JKCSusersetup.txt
   rm .help*
-  printf "${cfRED}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
+  printf "${cfGREEN}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
 else
   echo "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
   echo "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
