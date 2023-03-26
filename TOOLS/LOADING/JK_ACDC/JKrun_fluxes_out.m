@@ -42,7 +42,9 @@ for i=1:max
  end
 end
 if size(out,1) > 1
-  out=sort(out,1,"descend");
+  % out=sort(out,1,"descend");
+  [~,order] = sort(str2double(out(:,4)),"descend");
+  out(order,:)
 end
 for i = 1:size(out,1)
   fprintf("\n%10s + %10s --> %10s (%.2f %s)\n",out(i,1),out(i,2),out(i,3),out(i,4),"%")

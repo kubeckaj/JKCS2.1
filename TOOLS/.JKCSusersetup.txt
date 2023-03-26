@@ -719,7 +719,7 @@ $PATH_ORCA/orca $inputINP > $DIR/$output 2> $DIR/$output
 #  mv $DIR/$output $DIR/${base}O.out
 #fi
 #cp $output $DIR/
-cp *.xyz $DIR/ 2>/dev/null
+cp ${base}.xyz $DIR/${base}.xyz 2>/dev/null
 cp *.err $DIR/ 2>/dev/null
 cd $DIR
 
