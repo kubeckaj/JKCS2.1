@@ -226,7 +226,7 @@ for i in sys.argv[1:]:
     last = "-train2"
     continue
   if last == "-train2":
-    if not os.path.exists(i):
+    if os.path.exists(i):
       method = "delta"
       TRAIN_LOW = i
       last = ""
@@ -248,7 +248,7 @@ for i in sys.argv[1:]:
     last = "-test2"
     continue
   if last == "-test2":
-    if not os.path.exists(i):
+    if os.path.exists(i):
       method = "delta"
       TEST_LOW = i
       last = ""
@@ -264,7 +264,7 @@ for i in sys.argv[1:]:
     last = "-monomers2"
     continue
   if last == "-monomers2":
-    if not os.path.exists(i):
+    if os.path.exists(i):
       method = "delta"
       MONOMERS_LOW = i
       last = ""

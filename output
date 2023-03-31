@@ -1,0 +1,5 @@
+JKCS: Neither parameters.txt nor SYS_ exist! [NO - EXITING]
+COMMAND: JKML -train database_2sa2am_DFT_train.pkl -loc -size 10 
+sh /home/kubeckaj/Applications/JKCS2.1/JKCSx/../TOOLS/SCRIPTS/JKsend  "source ~/.JKCSusersetup.txt -loc;program_JKML /home/kubeckaj/Applications/JKCS2.1/JKCSx/../TOOLS/SCRIPTS/JKML.py -train database_2sa2am_DFT_train.pkl -size 10 "
+Error reading file. TRAIN_HIGH = database_2sa2am_DFT_train.pkl
+JKCS: Calculations submitted or calculations done (-loc).
