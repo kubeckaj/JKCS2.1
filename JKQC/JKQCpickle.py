@@ -1,13 +1,14 @@
 ####################################################################################################
 # Reading input
 
-import os
-import sys
+from os import system, remove, environ, path
+from sys import argv
 import numpy as np
+#from numpy import nan, array, mod, isnan, linalg, matrix, all, dtype, loadtxt, unique, sqrt, sum, asarray, sort, log, exp, pi, mean, tile, floor, transpose, min, errstate, delete, round, dot, prod, random, apply_along_axis
 
 #Attach command to the output
-cmd="".join(["echo COMMAND: JKQC "," ".join(sys.argv[1:])," >> output"])
-os.system(cmd)
+cmd="".join(["echo COMMAND: JKQC "," ".join(argv[1:])," >> output"])
+system(cmd)
 
 def listToString(s,spaces): 
     # initialize an empty string
@@ -20,10 +21,10 @@ def listToString(s,spaces):
     return str1
 
 # Checking if correct environmnent is loaded
-if str(os.environ.get("VIRTUAL_ENV").split("/")[-1]) != "JKCS":
+if str(environ.get("VIRTUAL_ENV").split("/")[-1]) != "JKCS":
   print("Trying to load JKCS environment by myself since you were lazy ass and did not do it!.")
   from subprocess import call
-  if not call(['/bin/bash', '-i', '-c', "JKpython; python "+listToString(sys.argv," ")]):
+  if not call(['/bin/bash', '-i', '-c', "JKpython; python "+listToString(argv," ")]):
     print("This time, JKCS environment was loaded. Please, load it next time by yourself (JKpython).")
   else:
     print("You did not load JKCS environment and I was not able to do it for you.")
@@ -161,7 +162,7 @@ turbomoleextname = "out"
 dash="-"
 
 last = ""
-for i in sys.argv[1:]:
+for i in argv[1:]:
   #HELP
   if i == "-help" or i == "--help":
     print_help()
@@ -175,7 +176,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-folder":
     last = ""
-    if os.path.exists(i):
+    if path.exists(i):
       folder = i
       continue
     else:
@@ -198,7 +199,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-in":
     last = ""
-    if os.path.exists(i):    
+    if path.exists(i):    
       input_pkl.append(i)
       continue
     else:
@@ -246,7 +247,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-add2":
     last = "" 
-    if os.path.exists(str(i)):
+    if path.exists(str(i)):
       addcolumn.append([columnname, str(i)])
       continue
     else:
@@ -329,14 +330,14 @@ for i in sys.argv[1:]:
   if len(i) > 3:
     ext = i[-4:]
     if ext == ".xyz" or ext == ".log" or ext == ".out":
-      if os.path.exists(i):
+      if path.exists(i):
         files.append(i)
         continue
       else:
         print("File "+i+" does not exist. Sorry [EXITING]")
         exit()
     if ext == ".pkl":
-      if os.path.exists(i):
+      if path.exists(i):
         input_pkl.append(i)
         continue
       else:
@@ -655,7 +656,7 @@ for i in sys.argv[1:]:
     last = ""
     conc.append(np.array([remember, float(i)]))
     continue
-  if os.path.exists(i):
+  if path.exists(i):
     formation_input_file = i
     continue
   if i == "-cnt" or i == "--cnt":
@@ -832,7 +833,7 @@ else:
 
 # Reading the new files in
 for file_i in files:
-  folder = os.path.abspath(file_i)[::-1].split("/",1)[1][::-1]+"/"
+  folder = path.abspath(file_i)[::-1].split("/",1)[1][::-1]+"/"
   file_i_BASE = file_i[:-4][::-1].split("/",1)[0][::-1]
   file_i_ABC  = folder+file_i_BASE+".log"
   file_i_XTB  = folder+file_i_BASE+".log"
@@ -862,7 +863,7 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "info", "components", [str(cluster_id)], [components])
       component_ratio = [int(i) for i in re.split('(\d+)', file_i_BASE.split("-")[0])[1:][0::2]]
       clusters_df = df_add_iter(clusters_df, "info", "component_ratio", [str(cluster_id)], [component_ratio])
-  if os.path.exists(file_i_INFO):
+  if path.exists(file_i_INFO):
     file = open(file_i_INFO, "r")  
     for line in file:
       clusters_df = df_add_iter(clusters_df, "info", str(line.split(" ",1)[0]), [str(cluster_id)], [line.split(" ",1)[-1].strip()])    
@@ -871,7 +872,7 @@ for file_i in files:
   ###############
   ### ABC #######
   ###############
-  if os.path.exists(file_i_ABC):
+  if path.exists(file_i_ABC):
     file = open(file_i_ABC, "r")
     testABC = 0
     for i in range(1):
@@ -893,7 +894,7 @@ for file_i in files:
   ###############
   ### XTB #######
   ###############
-  if os.path.exists(file_i_XTB):
+  if path.exists(file_i_XTB):
     file = open(file_i_XTB, "r")
     testXTB = 0
     for i in range(5):
@@ -1008,7 +1009,7 @@ for file_i in files:
   ###############
   ### G16 #######
   ###############
-  if os.path.exists(file_i_G16):
+  if path.exists(file_i_G16):
     file = open(file_i_G16, "r")
     testG16 = 0
     for i in range(5):
@@ -1304,7 +1305,7 @@ for file_i in files:
   ###############
   ### XYZ #######
   ###############
-  if os.path.exists(file_i_XYZ):
+  if path.exists(file_i_XYZ):
     try:
       out = read(file_i_XYZ)
     except:
@@ -1316,7 +1317,7 @@ for file_i in files:
   ###############
   ### ORCA ######
   ###############
-  if os.path.exists(file_i_ORCA):
+  if path.exists(file_i_ORCA):
     file = open(file_i_ORCA, "r")
     testORCA = 0
     for i in range(5):
@@ -1556,7 +1557,7 @@ for file_i in files:
   ###############
   ### TURBOMOLE #
   ###############
-  if os.path.exists(file_i_TURBOMOLE):
+  if path.exists(file_i_TURBOMOLE):
     file = open(file_i_TURBOMOLE, "r")
     testTURBOMOLE = 0
     for i in range(5):
@@ -2351,7 +2352,7 @@ for i in Pout:
       f2.write(f1.readline())
       f1.close()
       f2.close()
-      os.remove(".JKQChelp.pdb")
+      remove(".JKQChelp.pdb")
     continue
   #XLSX IMOS
   if i == "-imos_xlsx":
@@ -2505,12 +2506,12 @@ for i in Pout:
     if Qout > 0 or len(input_pkl) == 1:
       if Qout > 0:
         try:
-          output.append(os.path.abspath(output_pkl)+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
+          output.append(path.abspath(output_pkl)+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
         except:
           output.append([missing]*len(clusters_df))
       else:
         try:
-          output.append(os.path.abspath(input_pkl[0])+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
+          output.append(path.abspath(input_pkl[0])+"/:EXTRACT:/"+clusters_df["info"]["file_basename"].values)
         except:
           output.append([missing]*len(clusters_df))
     else:
@@ -2852,8 +2853,8 @@ if not len(output) == 0:
   f.close()
   #TODO can you make this working using only python?
   if Qout != 2 or Qformation == 0:
-    os.system("cat "+fn+" | column -t")
-    os.remove(fn)
+    system("cat "+fn+" | column -t")
+    remove(fn)
 
 def myFunc(e):
   try:
@@ -2967,5 +2968,5 @@ if Qformation == 1:
         line[1:] = missing 
     f.write(" ".join(map(str,line))+"\n")
   f.close()
-  os.system("cat .help.txt | column -t")
-  os.remove(".help.txt")
+  system("cat .help.txt | column -t")
+  remove(".help.txt")

@@ -3,20 +3,21 @@ import os.path
 import subprocess
 
 def help():
-  print("-method <str>                      direct|delta [default = delta]", flush = True)
-  print("-size <int>                        random number of samples for training set", flush = True)
+  #print("-method <str>                      direct|delta [default]", flush = True)
   print("-train <file_HIGH> [<file_LOW>]    train on given pikled files", flush = True)
-  print("-trained <file_VARS-PKL>           take pre-trained ML", flush = True)
+  print("-size <int>                        random number of samples for training set", flush = True)
+  print("-trained <file_VARS-PKL>           take pre-trained ML model", flush = True)
   print("-eval <file_STRS> [<file_LOW>]     evaluate energies of NEW structures in pickled file(s)", flush = True)
   print("-test <file_HIGH> [<file_LOW>]     validate ML on energies of structures in pickled file(s)", flush = True)
   print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
-  print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
+  #print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
   print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
   print("OTHER: -split X, -startsplit X, -finishsplit X, -sampleeach X, -similarity X, -optimize, -forcemonomers", flush = True)
-  print("OUTPUTFILES: -out X.pkl [def = predicted_QML.pkl], -varsout X.pkl [def = vars.pkl]")
+  print("OTHER: -column <string> <string>", flush = True)
+  print("OUTPUTFILES: -out X.pkl [def = predicted_QML.pkl], -varsout X.pkl [def = vars.pkl]", flush = True)
   
 #PREDEFINED ARGUMENTS
-method = "delta"
+method = "direct"
 size = "full"
 TRAIN_HIGH = ""
 TRAIN_LOW = ""
@@ -28,7 +29,7 @@ Qsplit = 1 #1=no split, how many splits to do; ONLY FOR TRAINING
 Qsplit_i = 1; Qsplit_j = 1; 
 Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
-Qmonomers = 0 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
+Qmonomers = 2 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 Qsampleeach = 0
 Qkernel = "Gaussian"
 Qforcemonomers = 0
@@ -89,8 +90,12 @@ for i in sys.argv[1:]:
     last = ""
     if i == "direct":
       method = "direct"
-    if i == "delta":
+    elif i == "delta":
       method = "delta"
+    else:
+      print("I do not understand your input:")
+      print(i)
+      exit()
     continue
   #FORCE MONOMERS
   if i == "-forcemonomers":
@@ -221,9 +226,11 @@ for i in sys.argv[1:]:
     last = "-train2"
     continue
   if last == "-train2":
-    TRAIN_LOW = i
-    last = ""
-    continue
+    if not os.path.exists(i):
+      method = "delta"
+      TRAIN_LOW = i
+      last = ""
+      continue
   #TEST/EVAL/OPT DATABASE(S)
   if last == "-eval":
     TEST_HIGH = i
@@ -241,9 +248,11 @@ for i in sys.argv[1:]:
     last = "-test2"
     continue
   if last == "-test2":
-    TEST_LOW = i
-    last = ""
-    continue
+    if not os.path.exists(i):
+      method = "delta"
+      TEST_LOW = i
+      last = ""
+      continue
   #MONOMER DATABASE(S)
   if last == "-monomers":
     if i == "0" or i == "none" or i == "no":
@@ -255,9 +264,11 @@ for i in sys.argv[1:]:
     last = "-monomers2"
     continue
   if last == "-monomers2":
-    MONOMERS_LOW = i
-    last = ""
-    continue
+    if not os.path.exists(i):
+      method = "delta"
+      MONOMERS_LOW = i
+      last = ""
+      continue
   #UNKNOWN ARGUMENT
   print("Sorry cannot understand this argument: "+i)
   exit()
@@ -485,29 +496,31 @@ else:
   sampleeach_all = ["once"]
   print("FCHL done", flush = True)
 
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+### looping over all test structures / or / doing the whole process process for all
+
 for sampleeach_i in sampleeach_all:
+  ### SIMILARITY AND SAMPLE EACH
   if Qsampleeach > 0:
     dist = np.array([compare_mbtr(mbtr_train[i],mbtr_test[sampleeach_i]) for i in range(np.shape(mbtr_train)[0])])
     sampledist = dist.argsort()[:Qsampleeach] 
-    #print(sampledist)
   elif Qsampleeach < 0:
     simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), [0.001], **kernel_args)[0][0]
     #simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(train_high_database))]
     simil = [ simil[i]/np.sqrt(JKML_kernel(np.array([m for m in [fchl_train[i]]]),np.array([m for m in [fchl_train[i]]]))[0][0][0]) for i in range(len(train_high_database))]
-    #print(simil[:20])
     #me = np.sqrt(JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)[0][0][0])
     #me = np.sqrt(me)
     #me = me/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers())
     #me = [ me[i]/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers()) for i in range(len(me))]
-    print(me)
     #dist = np.array([np.abs(m-me) for m in simil])
     dist = np.array([-m for m in simil])
     
     sampledist = dist.argsort()[:-Qsampleeach]
-    #print(me)
-    #print(np.sort(dist)[:-Qsampleeach])
-    #print(sampledist)
-  #TRAIN
+
+  ### TRAININING
   if Qtrain == 1:
     ### DATABASE LOADING ###
     ## The high level of theory
@@ -517,7 +530,7 @@ for sampleeach_i in sampleeach_all:
     if Qforcemonomers == 1:
       clusters_df0 = monomers_high_database
       clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
-    ###
+    ### ENERGIES / VARIABLES
     ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
     strs = clusters_df["xyz"]["structure"]
     ## The low level of theory
@@ -529,7 +542,7 @@ for sampleeach_i in sampleeach_all:
         clusters_df0l = monomers_low_database
         clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
-      #str2 should be the same as str by princip
+      #str2 should be the same as str by principle
     
     ### REPRESENTATION CALCULATION ###
     repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
@@ -908,11 +921,17 @@ for sampleeach_i in sampleeach_all:
       else:
         Y_validation = form_ens - form_ens2
       # Calculate mean-absolute-error (MAE):
-      mae = [627.503*np.mean(np.abs(Y_predicted[i] - Y_validation))  for i in range(len(sigmas))]
-      print("mae = " + ",".join([str(i) for i in mae])+" kcal/mol", flush = True)
+      if column_name_1 == "log" and column_name_2 == "electronic_energy":
+        multiplier = 627.503
+        units = " kcal/mol"
+      else:
+        multiplier = 1.0
+        units = " [?]"
+      mae = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation))  for i in range(len(sigmas))]
+      print("mae = " + ",".join([str(i) for i in mae])+units, flush = True)
       # Calculate root-mean-squared-error (RMSE):
-      rmse = [627.503*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation)**2))  for i in range(len(sigmas))]
-      print("rmse = " + ",".join([str(i) for i in rmse])+" kcal/mol", flush = True)
+      rmse = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation)**2))  for i in range(len(sigmas))]
+      print("rmse = " + ",".join([str(i) for i in rmse])+units, flush = True)
   
     ### PRINTING THE QML PICKLES
     clustersout_df = clusters_df.copy()
