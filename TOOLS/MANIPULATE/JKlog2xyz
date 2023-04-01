@@ -230,8 +230,14 @@ do
           text="Summary of Natural Population Analysis"
           N1new=`echo $N1+4 |bc`
           elem=1
-        else 
-          text=" Mulliken charges:"
+        else
+          test=`grep -c "Mulliken charges and spin densities:" $file`
+          if [ $test -gt 0 ]
+          then 
+            text=" Mulliken charges and spin densities:"
+          else
+            text=" Mulliken charges:" 
+          fi
           N1new=$N1
           elem=2
         fi
