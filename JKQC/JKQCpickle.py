@@ -2089,7 +2089,7 @@ if str(Qsort) != "0":
     if ("out","electronic_energy") in clusters_df.columns:
       sorted_indices = clusters_df["out"]["electronic_energy"].sort_values().index
       clusters_df = clusters_df.loc[sorted_indices]
-  if str(Qsort) != "no" and str(Qsort) != "gout":
+  if str(Qsort) != "no" and str(Qsort) != "gout" and str(Qsort) != "elout":
     clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
   if Quniq == "dup":
