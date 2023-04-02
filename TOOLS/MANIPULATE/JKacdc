@@ -9,7 +9,7 @@ folder="ACDCrun"
 QconcMOL=""
 QconcNUM=""
 QconcTYP=""
-Qtemp="298.15"
+Qtemp=""
 Qrun="0"
 last=""
 for i in $@
@@ -86,6 +86,28 @@ t2=`cat $inputfile | awk '{print $1}' | sort -uk 1 | wc -w`
 if [ "$t1" != "$t2" ]
 then
   echo "Repetition of some lines in ${inputfile}."; exit;
+fi
+
+#CHECKING TEMPERATURE
+test=`head -n 2 $inputfile | tail -n 1 | awk '{print $2}'`
+if [ -z "$test" ]
+then 
+  if [ -z "$Qtemp" ]
+  then
+    Qtemp=`head -n 2 $inputfile | tail -n 1 | awk '{print $1}'`
+  else
+    test=`head -n 2 $inputfile | tail -n 1 | awk '{print $1}'`
+    if [ "$Qtemp" != "$test" ]
+    then
+      echo "Temparatures $Qtemp and $test do not match. [EXITING]"
+      exit
+    fi
+  fi
+else
+  if [ -z "$Qtemp" ]
+  then
+    Qtemp=298.15
+  fi
 fi
 
 #num=0
@@ -490,13 +512,14 @@ echo " ===================== "
 echo " run, e.g.:   "
 echo "    cd $folder"
 echo "    module load matlab/R2022b"
+echo "    ulimit -s unlimited"
 echo "    matlab -batch JKrun_single"
 echo "or:"
-echo "    cd $folder;sbatch JKsend 'module load matlab/R2022b;matlab -batch JKrun_single"
+echo "    cd $folder;sbatch JKsend 'module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single"
 
 if [ "$Qrun" == "1" ]
 then
   echo ""
   echo "ok, I will do even the submission for you:"
-  sbatch -J $folder JKsend "module load matlab/R2022b;matlab -batch JKrun_single"
+  sbatch -J $folder JKsend "module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single"
 fi

@@ -479,7 +479,8 @@ end""" >> $F2
     fi
     ######################
     ### CREATE rename.sh
-    echo """cd $name-LM
+    echo """rm abc*.gjf abc*.cluster abc*.xyz 2>/dev/null
+cd $name-LM
 rm *.gjf *.cluster 2>/dev/null
 for i in \`ls *.xyz\`
 do
@@ -509,7 +510,7 @@ do
   echo \"ABC\" > \${base}.log
   echo \"ABC energy: \$energy\" >> \${base}.log
 done
-program_JKQCpickle *.xyz -noex  $addexploded
+program_JKQCpickle *.xyz -noex $addexploded
 rm *.xyz *.log
 cd ..""" >> rename.sh
     fi

@@ -435,7 +435,7 @@ do
     fi
     if [ $Qclean -gt 0 ]
     then
-      echo "rm -r *.xyz *.log *.out *.cmd *.com TMP 2>/dev/null" >> run${scriptfilecommand}.sh   
+      echo "rm -r ../.run* *.xyz *.log *.out *.cmd *.com TMP 2>/dev/null" >> run${scriptfilecommand}.sh   
     fi
   fi
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"

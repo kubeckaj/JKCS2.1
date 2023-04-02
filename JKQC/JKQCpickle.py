@@ -38,6 +38,7 @@ def print_help():
   print(" any .pkl (you can also use -in/-out)")
   print("\nARGUMENTS:")
   print(" -help       print this help")
+  print(" -info       information about a database")
   print(" -in X.pkl   read data from a database")
   print(" -out X.pkl  save data to XX.pkl (-noex = do not print example)")
   print(" -orcaext X  if ORCA has different extension than out")
@@ -86,8 +87,8 @@ def print_help():
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
   print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
-  print(" -cut/-pass X Y       filters values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
-  print(" -cutr/-passr X Y     filters rel. values from the lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
+  print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
+  print(" -cutr/-passr X Y     removes higher/lower rel. values compared to lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
@@ -2315,6 +2316,9 @@ if Qout > 0:
 output = []
 last = ''
 for i in Pout:
+  if i == "-info":
+    print(clusters_df.info())
+    continue
   if i == "-extra":
     last = "-extra"
     continue

@@ -27,15 +27,32 @@ queue2="longrun"
 ###########################################################################################################
 ## DO NOT MODIFY
 
-cat TOOLS/label_big
-
+QUpython=""
+QUmodulepython=""
 Qr=0
 ADD=""
+last=""
 for i in "$@"
 do 
   if [ "$i" == "-help" ]
   then
-    echo "see https://jkcs.readthedocs.io/en/latest/JKCSSetupAndInstallation.html"
+    echo """    sh setup.sh [:cluster:] [:arguments:]
+
+OPTIONS (cluster):
+  grendel (J.Elm AU), puhti/mahti (H.Vehkamaki UH)
+ 
+OPTIONS (arguments):
+  -qml ............ quantum machine learning program
+  -descriptors .... dscribe library
+  -nn ............. schnetpack [!needs: module load gcc]
+  -r .............. rewrite the old installation
+  -r2 ............. rewrite the old installation but skip Python installation
+  -python <str> ... define how do you call python (e.g. python3.9)
+  -module \"<str>\" . define python module (e.g. \"module load python/3.9.4\")
+
+EXAMPLE:
+    sh setup.sh grendel -r -qml -descriptors
+    """
     exit
   fi
   if [ "$i" == "grendel" ]
@@ -105,6 +122,11 @@ do
     ADD+=" -descriptors "
     continue
   fi
+  if [ "$i" == "-nn" ] || [ "$i" == "nn" ]
+  then
+    ADD+=" -nn "
+    continue
+  fi
   if [ "$i" == "-r" ]
   then
     Qr=1
@@ -115,9 +137,35 @@ do
     Qr=2
     continue
   fi 
+  if [ "$i" == "-python" ]
+  then
+    last="-python"
+    continue
+  fi
+  if [ "$last" == "-python" ]
+  then
+    QUpython="$i"
+    last=""
+    continue
+  fi
+  if [ "$i" == "-module" ]
+  then
+    last="-module"
+    continue
+  fi
+  if [ "$last" == "-module" ]
+  then
+    QUmodulepython="$i"
+    last=""
+    continue
+  fi
   echo "I do not understand argument: $i [EXITING]"
   exit
 done
+if [ ! -z "$QUpython" ]; then PYTHON="$QUpython"; fi
+if [ ! -z "$QUmodulepython" ]; then MODULE_PYTHON="$QUmodulepython"; fi
+
+cat TOOLS/label_big
 
 # JKCS python environment
 if [ ! -e JKQC/JKCS ] || [ "$Qr" == "1" ] 

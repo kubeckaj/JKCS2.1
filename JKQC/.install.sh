@@ -89,9 +89,17 @@ then
  #$PIP install cffi
  #$PIP install dscribe
  #ADD="--force-reinstall --upgrade"
- $PIP install install git+https://github.com/qmlcode/qml@develop $ADD
+ $PIP install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 $PIP install numpy==1.23.0
+if [[ "$*" == *"-qml"* ]]
+then
+  $PIP install torch
+  $PIP install lightning
+  $PIP install hydra-core
+  $PIP install schnetpack
+  $PIP install pytorch-lightning==1.9.0
+fi
 
 #NOT IMPORTANT FOR ALL BUT CHEAP TO INSTALL
 $PIP install xlsxwriter
