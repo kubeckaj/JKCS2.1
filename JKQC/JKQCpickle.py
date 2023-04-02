@@ -82,7 +82,7 @@ def print_help():
   print(" -v,-as [value]       anharmonicity scaling factor CITE: Grimme")
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
   print("\nFILTERING:")
-  print(" -sort <str>          sort by: g,gout,el")
+  print(" -sort <str>          sort by: g,gout,el,elout,<full name in database under log>")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
@@ -2085,6 +2085,10 @@ if str(Qsort) != "0":
     if ("out","electronic_energy") in clusters_df.columns:
       sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
       clusters_df = clusters_df.loc[sorted_indices]
+  if Qsort == "elout":
+    if ("out","electronic_energy") in clusters_df.columns:
+      sorted_indices = clusters_df["out"]["electronic_energy"].sort_values().index
+      clusters_df = clusters_df.loc[sorted_indices]
   if str(Qsort) != "no" and str(Qsort) != "gout":
     clusters_df = clusters_df.sort_values([("log",Qsort)])
 if str(Quniq) != "0":
@@ -2221,6 +2225,10 @@ if str(Qsort) != "0" and str(Qsort) != "no":
   if Qsort == "gout":
     if ("out","electronic_energy") in clusters_df.columns:
       sorted_indices = (clusters_df["log"]["gibbs_free_energy"]-clusters_df["log"]["electronic_energy"]+clusters_df["out"]["electronic_energy"]).sort_values().index
+      clusters_df = clusters_df.loc[sorted_indices]
+  elif Qsort == "elout":
+    if ("out","electronic_energy") in clusters_df.columns:
+      sorted_indices = clusters_df["out"]["electronic_energy"].sort_values().index
       clusters_df = clusters_df.loc[sorted_indices]
   else:
     clusters_df = clusters_df.sort_values([("log",Qsort)])
