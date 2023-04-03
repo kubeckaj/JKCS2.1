@@ -50,6 +50,7 @@ function help {
      OTHERS: -bs,-add,-addbase \"ATOM\", (-greasy,-con X = cores on node) 
              -array = does submit array instead of single jobs
              -arraymax X = max jobs per array
+             -add maxiter <inter> = max number of iteration in ORCA
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
