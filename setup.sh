@@ -41,7 +41,10 @@ do
     echo """    sh setup.sh [:cluster:] [:arguments:]
 
 OPTIONS (cluster):
-  grendel (J.Elm AU), puhti/mahti (H.Vehkamaki UH)
+  <empty> ...... an example setting
+  grendel ...... (J.Elm AU [Grendel])
+  molas ........ (N.Myllys UH [Puhti])
+  puhti/mahti .. (H.Vehkamaki UH [Puhti/Mahti])
  
 OPTIONS (arguments):
   -qml ............ quantum machine learning program
@@ -53,6 +56,7 @@ OPTIONS (arguments):
   -module \"<str>\" . define python module (e.g. \"module load python/3.9.4\")
 
 EXAMPLE:
+    sh setup.sh -python python3.9 -module "module load python"
     sh setup.sh grendel -r -qml -descriptors
     """
     exit
@@ -129,7 +133,7 @@ EXAMPLE:
     MODULE_ABC="module load gcc"
     PATH_XTB="/projappl/project_2006166/APP/XTB6.5.1"
     MODULE_XTB=""
-    PATH_CREST="/home/kubeckaj/Applications/crest"
+    PATH_CREST="/projappl/project_2006166/APP/crest"
     PATH_G16="/appl/soft/chem/gaussian/G16RevC.02/"
     MODULE_G16="module load gaussian"
     PATH_ORCA="/projappl/project_2006166/APP/ORCA5.0.3"
