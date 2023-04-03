@@ -9,9 +9,11 @@
 PYTHON="python3.9"    #Please modify this and use python version >3.8.0 but <4.0.0
 MODULE_PYTHON=""  #Is there some module required to load python?
 PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
+PATH_ABC3="/users/kubeckaj/ABCluster-3.1-Linux/"
 MODULE_ABC="module load gcc"
 PATH_XTB="/users/kubeckaj/XTB6.0/"
 MODULE_XTB=""
+PATH_CREST="/users/kubeckaj/crest/"
 PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
 MODULE_G16="module load gaussian/G16RevC.01"
 PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
@@ -60,9 +62,11 @@ EXAMPLE:
     PYTHON="python3.9"
     MODULE_PYTHON="module load python/3.9.4"
     PATH_ABC="/home/kubeckaj/Applications/ABCluster-2.0-Linux/"
+    PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.1-Linux/"
     MODULE_ABC="module load gcc"
     PATH_XTB="/home/kubeckaj/Applications/XTB6.4/"
     MODULE_XTB=""
+    PATH_CREST=""
     PATH_G16="/comm/groupstacks/gaussian/gaussian/gaussian16/Rev.B.01/"
     MODULE_G16="source /comm/groupstacks/gaussian/bin/modules.sh --silent; module load gaussian16/Rev.B.01;"
     #PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.3/"
@@ -82,9 +86,11 @@ EXAMPLE:
     PYTHON="python3.9"                             #Please modify this and use python version >3.8.0 but <4.0.0
     MODULE_PYTHON="module load python-data/3.9-3"    #Is there some module required to load python?
     PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
+    PATH_ABC3=$PATH_ABC"../ABCluster-3.1-Linux/"
     MODULE_ABC="module load gcc"
     PATH_XTB="/users/kubeckaj/XTB6.4/"
     MODULE_XTB=""
+    PATH_CREST=""
     PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
     MODULE_G16="module load gaussian/G16RevC.01"
     PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
@@ -99,14 +105,36 @@ EXAMPLE:
     PYTHON="python3.9"    #Please modify this and use python version >3.8.0 but <4.0.0
     MODULE_PYTHON="module load python-data/3.9-22.04"  #Is there some module required to load python?
     PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
+    PATH_ABC3=$PATH_ABC"../ABCluster-3.1-Linux/"
     MODULE_ABC="module load gcc"
     PATH_XTB="/users/kubeckaj/XTB6.0/"
     MODULE_XTB=""
+    PATH_CREST=""
     PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
     MODULE_G16="module load gaussian"
     PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
     MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
     project="hvehkama"
+    #project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
+    SBATCH_PREFIX="--account=$project "
+    WRKDIR="./"
+    continue
+  fi
+  if [ "$i" == "molas" ]
+  then
+    PYTHON="python3.9"    #Please modify this and use python version >3.8.0 but <4.0.0
+    MODULE_PYTHON=""  #Is there some module required to load python?
+    PATH_ABC="/projappl/project_2006166/APP/ABCluster3.1"
+    PATH_ABC3="/projappl/project_2006166/APP/ABCluster3.1"
+    MODULE_ABC="module load gcc"
+    PATH_XTB="/projappl/project_2006166/APP/XTB6.5.1"
+    MODULE_XTB=""
+    PATH_CREST="/home/kubeckaj/Applications/crest"
+    PATH_G16="/appl/soft/chem/gaussian/G16RevC.02/"
+    MODULE_G16="module load gaussian"
+    PATH_ORCA="/projappl/project_2006166/APP/ORCA5.0.3"
+    MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+    project="project_2006166"
     #project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
     SBATCH_PREFIX="--account=$project "
     WRKDIR="./"
@@ -226,9 +254,11 @@ then
   sed 's,REPLACE_jkcs_path,'"$PWD"',g' .help1 > .help2
   sed 's,REPLACE_python,'"$PYTHON"',g' .help2 > .help3
   sed 's,REPLACE_module_python,'"$MODULE_PYTHON"',g' .help3 > .help4
-  sed 's,REPLACE_abc,'"$PATH_ABC"',g' .help4 > .help5
+  sed 's,REPLACE_abc3,'"$PATH_ABC3"',g' .help4 > .help4b
+  sed 's,REPLACE_abc,'"$PATH_ABC"',g' .help4b > .help5
   sed 's,REPLACE_module_abc,'"$MODULE_ABC"',g' .help5 > .help6
-  sed 's,REPLACE_xtb,'"$PATH_XTB"',g' .help6 > .help7
+  sed 's,REPLACE_xtb,'"$PATH_XTB"',g' .help6 > .help6b
+  sed 's,REPLACE_crest,'"$PATH_CREST"',g' .help6b > .help7
   sed 's,REPLACE_module_xtb,'"$MODULE_XTB"',g' .help7 > .help8
   sed 's,REPLACE_g16,'"$PATH_G16"',g' .help8 > .help9
   sed 's,REPLACE_module_g16,'"$MODULE_G16"',g' .help9 > .help10

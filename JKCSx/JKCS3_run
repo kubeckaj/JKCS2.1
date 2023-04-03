@@ -275,7 +275,7 @@ do
     continue
   fi
   # Jobs per task !!! it is actually tasks per job -tpj
-  if [ "$iter" == "-tpj" ] [ "$iter" == "-jpt" ]
+  if [ "$iter" == "-tpj" ] || [ "$iter" == "-jpt" ]
   then
     last="-jpt"
     continue
