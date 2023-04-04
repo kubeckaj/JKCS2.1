@@ -13,12 +13,13 @@ def help():
   #print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
   print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
   print("OTHER: -split X, -startsplit X, -finishsplit X, -sampleeach X, -similarity X, -optimize, -forcemonomers", flush = True)
-  print("OTHER: -column <string> <string>", flush = True)
+  print("OTHER: -column <string> <string>, -qml, -nn, -epochs", flush = True)
   print("OUTPUTFILES: -out X.pkl [def = predicted_QML.pkl], -varsout X.pkl [def = vars.pkl]", flush = True)
   
 #PREDEFINED ARGUMENTS
 method = "direct"
 size = "full"
+seed = 42
 TRAIN_HIGH = ""
 TRAIN_LOW = ""
 TEST_DATABASE = ""
@@ -31,6 +32,8 @@ Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 2 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 Qsampleeach = 0
+Qmethod = "krr"
+Qrepresentation = "fchl"
 Qkernel = "Gaussian"
 Qforcemonomers = 0
 column_name_1 = "log"
@@ -54,8 +57,17 @@ lambdas = [1e-4]*len(sigmas)
 #            "fourier_order": 3}  
 kernel_args = {}
 
+#PREDEFINED NN - PaiNN
+nn_rbf = 20
+nn_tvv = 0.9
+nn_cutoff = 5.0
+nn_atom_basis = 256
+nn_interactions = 5
+nn_epochs = 20
+
+#OUTPUT FILES
 outfile="predicted_QML.pkl"
-varsoutfile="vars.pkl"
+varsoutfile="model.pkl"
 
 #TREATING ARGUMENTS
 last=""
@@ -269,6 +281,22 @@ for i in sys.argv[1:]:
       MONOMERS_LOW = i
       last = ""
       continue
+  #MODELS AND REPRESENTATIONS:
+  if i == "-painn" or i == "-nn":
+    Qmethod = "nn"
+    Qrepresentation = "painn"
+    continue
+  if i == "-nn_epochs" or i == "-epochs":
+    last = "-nn_epochs"
+    continue
+  if last == "-nn_epochs":
+    last = ""
+    nn_epochs = int(i)
+    continue
+  if i == "-krr" or i == "-fchl" or i == "-qml":
+    Qmethod = "krr"
+    Qrepresentation = "fchl"
+    continue
   #UNKNOWN ARGUMENT
   print("Sorry cannot understand this argument: "+i)
   exit()
@@ -292,8 +320,11 @@ if Qeval == 1 or Qeval == 2:
     exit()
   if method == "delta":
     if not os.path.exists(TEST_LOW):
-      print("Error reading file. + TEST_LOW = "+TEST_LOW)
-      exit()
+      if Qeval == 1:
+        TEST_LOW = TEST_HIGH
+      else:
+        print("Error reading file. + TEST_LOW = "+TEST_LOW)
+        exit()
 if Qmonomers == 1:
   if not os.path.exists(MONOMERS_HIGH):
     print("Error reading file. MONOMERS_HIGH = "+MONOMERS_HIGH)
@@ -309,8 +340,13 @@ from ase import Atoms
 from ase.io import read, write
 from sklearn.model_selection import train_test_split
 import pickle
-#import scipy
 import pandas as pd
+
+#LOADING THE DATABASES
+train_high_database = "none"
+train_low_database = "none"
+monomers_high_database = "none"
+monomers_low_database = "none"
 if Qtrain == 1:
   train_high_database = pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])
   if method == "delta":
@@ -324,27 +360,41 @@ if Qmonomers == 1:
   if method == "delta":
     monomers_low_database = pd.read_pickle(MONOMERS_LOW).sort_values([('info','file_basename')])
 
-
-#from qml import fchl
-#from qml import Compound
-from qml.fchl import generate_representation
-if Qkernel == "Gaussian":
-  from qml.fchl import get_local_symmetric_kernels
-  from qml.fchl import get_local_kernels
-  JKML_sym_kernel = get_local_symmetric_kernels
-  JKML_kernel = get_local_kernels
+#LIBRARIES FOR GIVEN METHOD AND REPRESENTATION
+if Qmethod == "krr" and Qrepresentation == "fchl":
+  from qml.fchl import generate_representation
+  if Qkernel == "Gaussian":
+    from qml.fchl import get_local_symmetric_kernels
+    from qml.fchl import get_local_kernels
+    JKML_sym_kernel = get_local_symmetric_kernels
+    JKML_kernel = get_local_kernels
+  else:
+    from qml.kernels import laplacian_kernel
+    from qml.kernels import laplacian_kernel_symmetric
+    JKML_sym_kernel = laplacian_kernel_symmetric
+    JKML_kernel = laplacian_kernel
+  #from qml.fchl import get_atomic_symmetric_kernels
+  #from qml.fchl import get_atomic_kernels
+  #from qml.fchl import get_global_symmetric_kernels
+  #from qml.fchl import get_global_kernels
+  #from qml.kernels import gaussian_kernel
+  from qml.math import cho_solve
+elif Qmethod == "nn" and Qrepresentation == "painn":
+  if Qtrain > 0:
+    from schnetpack.data import ASEAtomsData
+    from schnetpack.data import AtomsDataModule
+    import logging
+    import schnetpack.transform as trn
+    import torchmetrics
+    import pytorch_lightning as pl
+  if Qeval > 0 or Qopt > 0:
+    from ase.units import Ha, Bohr
+    from schnetpack.interfaces import SpkCalculator
+  import torch
+  import schnetpack as spk
 else:
-  from qml.kernels import laplacian_kernel
-  from qml.kernels import laplacian_kernel_symmetric
-  JKML_sym_kernel = laplacian_kernel_symmetric
-  JKML_kernel = laplacian_kernel
-#from qml.fchl import get_atomic_symmetric_kernels
-#from qml.fchl import get_atomic_kernels
-#from qml.fchl import get_global_symmetric_kernels
-#from qml.fchl import get_global_kernels
-#from qml.kernels import gaussian_kernel
-from qml.math import cho_solve
-#import matplotlib.pyplot as plt
+  print("Wrong method or representation chosen.")
+  exit()
 
 ####################################################################################################
 # THIS IS TAKEN FROM tool.py IN JKCS.py 
@@ -377,9 +427,41 @@ def df_add_iter(dataframe,label,name,indexs,variables):
   return dataframe
 ####################################################################################################
 
-######################
-###### TRAINING ######
-######################
+def substract_monomers(the_clusters_df,the_monomers_df):
+  if Qmonomers == 2: #no difference from monomers at all
+    the_ens_correction = [0]*len(the_clusters_df)
+  else:
+    if Qmonomers == 1:
+      clusters_df0 = the_monomers_df
+      ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
+      monomers_df = clusters_df0[ins_monomers]
+    else:
+      ins_monomers = [np.sum(the_clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(the_clusters_df))]
+      monomers_df = the_clusters_df[ins_monomers]
+    the_ens_correction = [0]*len(the_clusters_df)
+    n = 0
+    for i in np.transpose([the_clusters_df["info"]["components"].values,the_clusters_df["info"]["component_ratio"].values]):
+      nn = 0
+      for j in i[0]:
+        test = 0
+        for k in range(len(monomers_df)):
+          monomer_k = monomers_df.iloc[k]
+          monomer_k_name = monomer_k["info"]["components"]
+          if j == monomer_k_name[0]:
+            the_ens_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
+            test = 1
+            break
+        if test == 0:
+          print("OMG; monomer "+j+" was not found in:")
+          print(monomers_df["info"]["components"].values)
+          exit()
+        nn += 1
+      n += 1
+  return the_ens_correction
+
+###################################
+###### SAMPLEEACH/SIMILARITY ######
+###################################
 
 if Qtrain == 0:
   print("training option is missing [EXITING]", flush = True)
@@ -437,14 +519,8 @@ if Qsampleeach > 0:
     return mbtr.create(struct)["k2"][:][:]
 
   print("MBTR must be calculated (just once) for both train and test datasets", flush = True)
-  #mbtr_train = [cr_mbtr_k2(x) for x in pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])["xyz"]["structure"]]
-  #mbtr_test = [cr_mbtr_k2(x) for x in pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])["xyz"]["structure"]]
   from joblib import Parallel, delayed
   import multiprocessing
-  #from multiprocessing import Process
- 
-  #mbtr_train = np.empty(len(train_high_database), dtype=object)
-  #mbtr_test = np.empty(len(test_high_database), dtype=object)
   
   def task_train(arg):
     #mbtr_train[arg] = cr_mbtr_k2(train_database[arg])
@@ -457,27 +533,14 @@ if Qsampleeach > 0:
     return cr_mbtr_k2(arg)
   
   num_cores = multiprocessing.cpu_count()
-  #import subprocess
-  #num_cores = int(subprocess.check_output(["echo","$SLURM_CPUS_ON_NODE"]))
   print("Trying to use "+str(num_cores)+" CPUs for MBTR. (If less are available I hope that nothing gets fucked up.)")
   
   mbtr_train = Parallel(n_jobs=num_cores)(delayed(task_train)(i) for i in train_high_database["xyz"]["structure"])
   mbtr_test = Parallel(n_jobs=num_cores)(delayed(task_train)(i) for i in test_high_database["xyz"]["structure"])
-  #mbtr_train = Parallel(n_jobs=num_cores, require='sharedmem')(delayed(task_train)(i) for i in range(len(train_database)))
-  #mbtr_test = Parallel(n_jobs=num_cores, require='sharedmem')(delayed(test_train)(i) for i in range(len(test_database)))
-  #processes = [Process(target=task_train, args=(i,)) for i in range(len(train_database))]
-  #for process in processes:
-  #      process.start()
-  #for process in processes:
-  #      process.join()
-  #processes = [Process(target=task_test, args=(i,)) for i in range(len(test_database))]
-  #for process in processes:
-  #      process.start()
-  #for process in processes:
-  #      process.join()
   print("MBTR done", flush = True)
   sampleeach_all = range(len(mbtr_test))
 elif Qsampleeach < 0: 
+  #SAMLEEACH = SIMILARITY based on FCHL 
   from joblib import Parallel, delayed
   import multiprocessing
   def task(arg):
@@ -492,9 +555,9 @@ elif Qsampleeach < 0:
   fchl_train = Parallel(n_jobs=num_cores)(delayed(task)(i) for i in train_high_database["xyz"]["structure"])
   fchl_test = Parallel(n_jobs=num_cores)(delayed(task)(i) for i in test_high_database["xyz"]["structure"])
   sampleeach_all = range(len(fchl_test))
+  print("FCHL done", flush = True)
 else:
   sampleeach_all = ["once"]
-  print("FCHL done", flush = True)
 
 
 ########################################################################################################################
@@ -509,15 +572,8 @@ for sampleeach_i in sampleeach_all:
     sampledist = dist.argsort()[:Qsampleeach] 
   elif Qsampleeach < 0:
     simil = JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in fchl_train]), [0.001], **kernel_args)[0][0]
-    #simil = [ simil[i]/len(train_high_database["xyz"]["structure"][i].get_atomic_numbers()) for i in range(len(train_high_database))]
     simil = [ simil[i]/np.sqrt(JKML_kernel(np.array([m for m in [fchl_train[i]]]),np.array([m for m in [fchl_train[i]]]))[0][0][0]) for i in range(len(train_high_database))]
-    #me = np.sqrt(JKML_kernel(np.array([m for m in [fchl_test[sampleeach_i]]]), np.array([m for m in [fchl_test[sampleeach_i]]]), sigmas, **kernel_args)[0][0][0])
-    #me = np.sqrt(me)
-    #me = me/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers())
-    #me = [ me[i]/len(test_high_database["xyz"]["structure"][sampleeach_i].get_atomic_numbers()) for i in range(len(me))]
-    #dist = np.array([np.abs(m-me) for m in simil])
     dist = np.array([-m for m in simil])
-    
     sampledist = dist.argsort()[:-Qsampleeach]
 
   ### TRAININING
@@ -530,9 +586,6 @@ for sampleeach_i in sampleeach_all:
     if Qforcemonomers == 1:
       clusters_df0 = monomers_high_database
       clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
-    ### ENERGIES / VARIABLES
-    ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
-    strs = clusters_df["xyz"]["structure"]
     ## The low level of theory
     if method == "delta":
       clusters_df2 = train_low_database
@@ -541,18 +594,24 @@ for sampleeach_i in sampleeach_all:
       if Qforcemonomers == 1:
         clusters_df0l = monomers_low_database
         clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
+
+    #Do we take only subset for training?
+    if size != "full":
+      if len(clusters_df) <= int(size):
+        size = "full"
+    if size != "full":
+      clusters_df, clusters_df_trash, idx, idx_trash = train_test_split(clusters_df, range(len(clusters_df)), test_size=(len(clusters_df)-size)/len(clusters_df), random_state=seed)
+      if method == "delta":
+        clusters_df2 = clusters_df2.iloc[idx]
+      size = "full" #IT IS BECAUSE I DO NOT WANT TO MAKE MY TEST SET SMALLER
+
+    ### ENERGIES = VARIABLES / STRUCTURES
+    ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
+    strs = clusters_df["xyz"]["structure"]
+    if method == "delta":
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by principle
     
-    ### REPRESENTATION CALCULATION ###
-    repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
-    max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
-    for i in range(len(repres_dataframe)):
-      repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
-    fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
-  
-    #some info about the full representation
-    print(fchl_representations.shape, flush = True)
     print(ens.shape, flush = True)
     if method == "delta":
       print(ens2.shape, flush = True)
@@ -560,177 +619,268 @@ for sampleeach_i in sampleeach_all:
         print("The LOW and HIGH method train sizes do not match. [EXITING]")
         exit()
   
-    ### BINDING ENERGIES CALCULATION ###
-    if Qmonomers == 2: #no difference from monomers at all
-      ens_correction = [0]*len(ens)
-      if method == "delta":
-        ens2_correction = [0]*len(ens2)
-    else:
-      #HIGH LEVEL
-      if Qmonomers == 1:
-        clusters_df0 = monomers_high_database
-        ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
-        monomers_df = clusters_df0[ins_monomers]
-      else:
-        ins_monomers = [np.sum(clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df))]
-        monomers_df = clusters_df[ins_monomers]
-      ens_correction = [0]*len(ens)
-      n = 0
-      for i in np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
-        nn = 0
-        for j in i[0]:
-          test = 0
-          for k in range(len(monomers_df)):
-            monomer_k = monomers_df.iloc[k]
-            monomer_k_name = monomer_k["info"]["components"]
-            if j == monomer_k_name[0]:
-              ens_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
-              test = 1
-              break
-          if test == 0:
-            print("OMG; monomer "+j+" was not found in:")
-            print(monomers_df["info"]["components"].values)
-            exit()
-          nn += 1
-        n += 1
-      #LOW LEVEL
-      if method == "delta":
-        if Qmonomers == 1:
-          clusters_df0 = monomers_low_database
-          ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
-          monomers_df = clusters_df0[ins_monomers]
-        else:
-          ins_monomers = [np.sum(clusters_df2["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df2))]
-          monomers_df = clusters_df2[ins_monomers]
-        ens2_correction = [0]*len(ens2)
-        n = 0
-        for i in np.transpose([clusters_df2["info"]["components"].values,clusters_df2["info"]["component_ratio"].values]):
-          nn = 0
-          for j in i[0]:
-            test = 0
-            for k in range(len(monomers_df)):
-              monomer_k = monomers_df.iloc[k]
-              monomer_k_name = monomer_k["info"]["components"]
-              if j == monomer_k_name[0]:
-                ens2_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
-                test = 1
-                break
-            if test == 0:
-              print("OMG; monomer "+j+" was not found in:")
-              print(monomers_df["info"]["components"].values)
-              exit()
-            nn += 1
-          n += 1
+    ### BINDING PROPERTIES CALCULATION (i.e. relative to monomers) ###
+    #HIGH LEVEL
+    ens_correction = substract_monomers(clusters_df,monomers_high_database)
+    #LOW LEVEL
+    if method == "delta":
+      ens2_correction = substract_monomers(clusters_df2,monomers_low_database)
     
-    #The binding (formation) energy calculation
+    #The binding (formation) energy calculation (or final property)
     form_ens = ens - ens_correction
     #print(form_ens, flush = True)
     if method == "delta":
       form_ens2 = ens2 - ens2_correction
       #print(form_ens2, flush = True)
-  
-    ### DEFINING THE TRAINING Xs and Ys:  Y = QML(X) 
-    #the full set
-    X_train0 = fchl_representations
     if method == "delta":
-      Y_train0 = form_ens - form_ens2
-    else: 
-      Y_train0 = form_ens
-    #Do we take only subset for training?
-    if size != "full":
-      if len(X_train0) <= int(size):
-        size = "full"
-    if size != "full":
-      X_train, X_trash, idx, idx_trash = train_test_split(X_train0, range(len(X_train0)), test_size=(len(X_train0)-size)/len(X_train0), random_state=1)
-      Y_train = Y_train0[idx]
-      size = "full" #IT IS BECAUSE I DO WANT TO MAKE MY TEST SET SMALLER
+      Y_train = form_ens - form_ens2
     else:
-      X_train = X_train0
-      Y_train = Y_train0
+      Y_train = form_ens
     
-    ### QML TRAINING ###
-    #TODO if splitting is required include this:
-    #splits=int(sys.argv[3])
-    #split_taken_1=int(sys.argv[4])-1
-    #split_taken_2=int(sys.argv[5])-1
-    #X_train_1 = np.array_split(X_train,splits)[split_taken_1]
-    #X_train_2 = np.array_split(X_train,splits)[split_taken_2]
-    #Y_train_1 = np.array_split(Y_train,splits)[split_taken_1]
-    #Y_train_2 = np.array_split(Y_train,splits)[split_taken_2]
-    #if split_taken_1 == split_taken_2:
-    #  K = get_local_symmetric_kernels(X_train_2, sigmas, **kernel_args)
-    #  K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))]
-    #  #alpha = [cho_solve(Ki, Y_train_2) for Ki in K]
-    #else:
-    #  K = get_local_kernels(X_train_1,X_train_2, sigmas, **kernel_args)
-    
-    #ONLY FOR JOINING ALL THE SPLITS AND CHOLESKY DECOMPOSITION
-    if Qsplit == -1:
-      splits = Qsplit_i+1
-      K = [];
-      for i in range(0,splits):
-        Kx = []
-        for j in range(0,splits):
-          if i < j:
-            s1 = j
-            s2 = i
-          else:
-            s1 = i
-            s2 = j
-          f = open(varsoutfile.split(".pkl")[0]+"_"+str(splits)+"_"+str(s1)+"_"+str(s2)+".pkl","rb")
-          Kcell, Y_train = pickle.load(f)
-          if i > j:
-            Kcell = np.transpose(Kcell[0])
-          else:
-            Kcell = Kcell[0]
-          if len(Kx) == 0:
-            Kx = Kcell
-          else:
-            Kx = np.concatenate((Kx,Kcell))
-          f.close()
-        if len(K) == 0:
-          K = Kx
-        else:
-          K = np.concatenate((K,Kx),axis = 1)
-      alpha = [cho_solve(K, Y_train)]
-      #alpha = [cho_solve(Ki, Y_train_1) for Ki in K]
-      f = open(varsoutfile,"wb")
-      pickle.dump([X_train, sigmas, alpha],f)
-      f.close()
-      print("Training completed.", flush = True)
-    elif Qsplit == 1:
-      K = JKML_sym_kernel(X_train, sigmas, **kernel_args)       #calculates kernel
-      K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
-      alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
+    if Qmethod == "krr" and Qrepresentation == "fchl":
+      ### REPRESENTATION CALCULATION ###
+      repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
+      max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
+      for i in range(len(repres_dataframe)):
+        repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
+      fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
+      #some info about the full representation
+      print(fchl_representations.shape, flush = True)
   
-      #I will for now everytime save the trained QML
-      f = open(varsoutfile,"wb")
-      pickle.dump([X_train, sigmas, alpha],f)
-      f.close()
-      print("Training completed.", flush = True)
-    else:
-      X_train_i = np.array_split(X_train,Qsplit)[Qsplit_i]
-      X_train_j = np.array_split(X_train,Qsplit)[Qsplit_j]
-      if Qsplit_i == Qsplit_j:
-        K = JKML_sym_kernel(X_train_i, sigmas, **kernel_args)       #calculates kernel
+      ### DEFINING THE TRAINING X:  Y = QML(X) 
+      X_train = fchl_representations
+      
+      ### QML TRAINING ###
+      #TODO if splitting is required include this:
+      #splits=int(sys.argv[3])
+      #split_taken_1=int(sys.argv[4])-1
+      #split_taken_2=int(sys.argv[5])-1
+      #X_train_1 = np.array_split(X_train,splits)[split_taken_1]
+      #X_train_2 = np.array_split(X_train,splits)[split_taken_2]
+      #Y_train_1 = np.array_split(Y_train,splits)[split_taken_1]
+      #Y_train_2 = np.array_split(Y_train,splits)[split_taken_2]
+      #if split_taken_1 == split_taken_2:
+      #  K = get_local_symmetric_kernels(X_train_2, sigmas, **kernel_args)
+      #  K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))]
+      #  #alpha = [cho_solve(Ki, Y_train_2) for Ki in K]
+      #else:
+      #  K = get_local_kernels(X_train_1,X_train_2, sigmas, **kernel_args)
+      
+      #ONLY FOR JOINING ALL THE SPLITS AND CHOLESKY DECOMPOSITION
+      if Qsplit == -1:
+        splits = Qsplit_i+1
+        K = [];
+        for i in range(0,splits):
+          Kx = []
+          for j in range(0,splits):
+            if i < j:
+              s1 = j
+              s2 = i
+            else:
+              s1 = i
+              s2 = j
+            f = open(varsoutfile.split(".pkl")[0]+"_"+str(splits)+"_"+str(s1)+"_"+str(s2)+".pkl","rb")
+            Kcell, Y_train = pickle.load(f)
+            if i > j:
+              Kcell = np.transpose(Kcell[0])
+            else:
+              Kcell = Kcell[0]
+            if len(Kx) == 0:
+              Kx = Kcell
+            else:
+              Kx = np.concatenate((Kx,Kcell))
+            f.close()
+          if len(K) == 0:
+            K = Kx
+          else:
+            K = np.concatenate((K,Kx),axis = 1)
+        alpha = [cho_solve(K, Y_train)]
+        f = open(varsoutfile,"wb")
+        pickle.dump([X_train, sigmas, alpha],f)
+        f.close()
+        print("Training completed.", flush = True)
+      elif Qsplit == 1:
+        K = JKML_sym_kernel(X_train, sigmas, **kernel_args)       #calculates kernel
         K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
+        alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
+  
+        #I will for now everytime save the trained QML
+        f = open(varsoutfile,"wb")
+        pickle.dump([X_train, sigmas, alpha],f)
+        f.close()
+        print("Training completed.", flush = True)
       else:
-        K = JKML_kernel(X_train_i, X_train_j, sigmas, **kernel_args)
-      f = open(varsoutfile.split(".pkl")[0]+"_"+str(Qsplit)+"_"+str(Qsplit_i)+"_"+str(Qsplit_j)+".pkl","wb")
-      pickle.dump([K,Y_train],f)
-      f.close()
+        X_train_i = np.array_split(X_train,Qsplit)[Qsplit_i]
+        X_train_j = np.array_split(X_train,Qsplit)[Qsplit_j]
+        if Qsplit_i == Qsplit_j:
+          K = JKML_sym_kernel(X_train_i, sigmas, **kernel_args)       #calculates kernel
+          K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
+        else:
+          K = JKML_kernel(X_train_i, X_train_j, sigmas, **kernel_args)
+        f = open(varsoutfile.split(".pkl")[0]+"_"+str(Qsplit)+"_"+str(Qsplit_i)+"_"+str(Qsplit_j)+".pkl","wb")
+        pickle.dump([K,Y_train],f)
+        f.close()
+        exit()
+
+    #####################################
+    ### TRAINING NN #####################
+    #####################################
+    elif Qmethod == "nn" and Qrepresentation == "painn":
+      #PREPARING TRAINING DATABASE
+      temperary_file_name = "training.db"
+      if os.path.exists(temperary_file_name):
+        os.remove(temperary_file_name)
+      new_dataset = ASEAtomsData.create(temperary_file_name,
+          distance_unit='Ang',
+          #property_unit_dict={'energy':'kcal/mol', 'forces':'kcal/mol/Ang'}
+          property_unit_dict={'energy':'Ha', 'total_charge': 'e'},
+          atomrefs = {'energy': [0]*100}
+          )
+      properties = [{'energy': np.array([i]), 'total_charge': np.array([0], dtype=np.float32)} for i in Y_train]
+      new_dataset.add_systems(properties, strs)
+     
+      #TODO prepare forces too 
+      #target_properties = [spk.properties.energy, spk.properties.forces]
+      target_properties = [spk.properties.energy]
+      tradoffs = [1] #[0.1, 1]
+      n_train = int(np.round(nn_tvv*len(strs)))
+      n_val = len(strs) - n_train
+      pl.seed_everything(seed)
+      dataset = AtomsDataModule(temperary_file_name,
+          batch_size=16,
+          num_train=n_train,
+          num_val=n_val,
+          #num_test=n_test,
+          transforms=[
+              trn.ASENeighborList(cutoff=nn_cutoff),
+              trn.RemoveOffsets(spk.properties.energy, remove_mean=True, remove_atomrefs=False),
+              trn.CastTo32()
+          ],
+          num_workers=1,#TODO how does this work?
+          #split_file=split_file,
+          data_workdir="./"
+      )
+      dataset.prepare_data()
+      dataset.setup()
+      logging.info(f'Number of train-val-test data: {dataset.num_train} - {dataset.num_val}')
+      properties = dataset.dataset[0]
+      logging.info('Loaded properties:')
+      for k, v in properties.items():
+        logging.info(f'     {k:20s} : {v.shape}')      
+
+      # PainNN representation
+      pairwise_distance = spk.atomistic.PairwiseDistances()
+      radial_basis = spk.nn.GaussianRBF(n_rbf=nn_rbf, cutoff = nn_cutoff)
+      X_train = spk.representation.PaiNN(
+          n_atom_basis=nn_atom_basis,
+          n_interactions=nn_interactions,
+          radial_basis=radial_basis,
+          cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
+      )      
+
+      output_modules = []
+      output_losses = []
+      for p, w in zip(target_properties, tradoffs):
+          if p == spk.properties.energy:
+              pred = spk.atomistic.Atomwise(n_in=nn_atom_basis, output_key=p)
+          elif p == spk.properties.forces:
+              pred = spk.atomistic.Forces(energy_key=spk.properties.energy, force_key=spk.properties.forces)
+          elif p == spk.properties.dipole_moment:
+              pred = spk.atomistic.DipoleMoment(n_in=nn_atom_basis, return_charges=True)
+          else:
+              raise NotImplementedError(f'{p} property does not exist')
+      
+          loss = spk.task.ModelOutput(
+                  name=p,
+                  loss_fn=torch.nn.MSELoss(),
+                  loss_weight=w,
+                  metrics={
+                      "MAE": torchmetrics.MeanAbsoluteError(),
+                      "RMSE": torchmetrics.MeanSquaredError(squared=False)
+                  }
+              )
+          output_modules.append(pred)
+          output_losses.append(loss)
+
+      nnpot = spk.model.NeuralNetworkPotential(
+          representation=X_train,
+          input_modules=[pairwise_distance],
+          output_modules=output_modules,
+          postprocessors=[
+              trn.CastTo64(),
+              trn.AddOffsets(spk.properties.energy, add_mean=True, add_atomrefs=False)
+          ]
+      )
+ 
+      task = spk.task.AtomisticTask(
+          model=nnpot,
+          outputs=output_losses,
+          optimizer_cls=torch.optim.AdamW,
+          optimizer_args={"lr": 1e-4},
+          scheduler_cls=spk.train.ReduceLROnPlateau,
+          scheduler_args={'factor': 0.5, 'patience': 20, 'min_lr': 1e-7},
+          scheduler_monitor = 'val_loss'
+      )
+
+      logger = pl.loggers.TensorBoardLogger(save_dir="./")
+      #logger = pl.loggers.CSVLogger(save_dir=model_dir, flush_logs_every_n_steps=1)
+      callbacks = [
+          spk.train.ModelCheckpoint(
+              model_path=os.path.join("./", varsoutfile),
+              save_top_k=1,
+              monitor="val_loss",
+              save_last=True,
+          ),
+          pl.callbacks.EarlyStopping(
+              monitor="val_loss",
+              patience=200,
+          ),
+          pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+      ]
+
+      if torch.cuda.is_available():
+          device = 'gpu'
+          logging.info(torch.cuda.get_device_name(0))
+      else:
+          device = 'cpu'
+      logging.info(f'Using device {device}')
+      
+      trainer = pl.Trainer(
+          accelerator=device,
+          #devices=1,
+          callbacks=callbacks,
+          logger=logger,
+          default_root_dir="./",
+          max_epochs=nn_epochs,
+          #log_every_n_steps=1,
+      )
+
+      trainer.fit(task, datamodule=dataset)
+    ######################
+    #You should not get below this one to reach the error
+    else:
+      print("Wrong method or representation chosen.")
       exit()
+  
   
   #LOAD TRAINING
   #TODO collect splitting: /home/kubeckaj/ML_SA_B/ML/TRAIN/TEST/SEPARATE/cho_solve.pkl
   if Qtrain == 2:
-    f = open(VARS_PKL,"rb")
-    X_train, sigmas, alpha = pickle.load(f)
-    if len(alpha)!=1:
-      alpha = [alpha]
-    f.close()
-    print("Training loaded.", flush = True)
-  
+    if not os.path.exists(VARS_PKL):
+      print("Error reading trained model. VARS_PKL = "+VARS_PKL)
+      exit()
+    if Qmethod == "krr" and Qrepresentation == "fchl":
+      f = open(VARS_PKL,"rb")
+      X_train, sigmas, alpha = pickle.load(f)
+      if len(alpha)!=1:
+        alpha = [alpha]
+      f.close()
+      print("Trained model loaded.", flush = True)
+    elif Qmethod == "nn" and Qrepresentation == "painn":
+      print("Trained model found.")
+    else:
+      print("Wrong method or representation chosen.")
+      exit()
   
   ######################
   ###### EVALUATE ######
@@ -742,32 +892,30 @@ for sampleeach_i in sampleeach_all:
     clusters_df = test_high_database
     if Qsampleeach != 0:
       clusters_df = clusters_df.iloc[[sampleeach_i]]
+    if method == "delta":
+      clusters_df2 = test_low_database
+      if Qsampleeach != 0:
+        clusters_df2 = clusters_df2.iloc[[sampleeach_i]]
+
+    #Do we take only subset for testing?
+    if size != "full":
+      if len(clusters_df) <= int(size):
+        size = "full"
+    if size != "full":
+      clusters_df, clusters_df_trash, idx, idx_trash = train_test_split(clusters_df, range(len(clusters_df)), test_size=(len(clusters_df)-size)/len(clusters_df), random_state=seed)
+      if method == "delta":
+        clusters_df2 = clusters_df2.iloc[idx]
+
     try:
       ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
       Qeval = 2 #2=Compare ML prediction with QC
     except:
       Qeval = 1 #1=Only predicts
-    strs = clusters_df["xyz"]["structure"]
-    ## The low level of theory 
     if method == "delta":
-      if Qeval == 1:
-        clusters_df2 = clusters_df
-      else:
-        clusters_df2 = test_low_database
-        if Qsampleeach != 0:
-          clusters_df2 = clusters_df2.iloc[[sampleeach_i]]
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
+    strs = clusters_df["xyz"]["structure"]
       #str2 should be the same as str by princip
   
-    ### REPRESENTATION CALCULATION ###
-    repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
-    max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
-    for i in range(len(repres_dataframe)):
-      repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
-    fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
-   
-    #some info about the full representation
-    print(fchl_representations.shape, flush = True)
     if Qeval == 2:
       print(ens.shape, flush = True)
     if method == "delta":
@@ -776,8 +924,13 @@ for sampleeach_i in sampleeach_all:
         if ens.shape != ens2.shape:
           print("The LOW and HIGH method test sizes do not match. [EXITING]", flush = True)
           exit()
-   
-    ### BINDING ENERGIES CALCULATION ###
+  
+    ### BINDING PROPERTIES CALCULATION (i.e. relative to monomers) ###
+    #HIGH LEVEL
+    ens_correction = substract_monomers(clusters_df,monomers_high_database)
+    #LOW LEVEL
+    if method == "delta":
+      ens2_correction = substract_monomers(clusters_df2,monomers_low_database)
     #TODO clustername given as argument
     #monomers_df = pd.read_pickle("/home/kubeckaj/ML_SA_B/DATABASES/database_XTB_monomers_at_DFT.pkl")
     #import re
@@ -787,66 +940,6 @@ for sampleeach_i in sampleeach_all:
     #print(clustername)
     #print(clustername[0][0])
     #for i in clustername: #np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
-    if Qmonomers == 2: #no difference from monomers at all
-      ens_correction = [0]*len(clusters_df)
-      if method == "delta":
-        ens2_correction = [0]*len(ens2)
-    else:
-      #HIGH LEVEL
-      if Qmonomers == 1:
-        clusters_df0 = monomers_high_database
-        ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
-        monomers_df = clusters_df0[ins_monomers]
-      else:
-        ins_monomers = [np.sum(clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df))]
-        monomers_df = clusters_df[ins_monomers]
-      ens_correction = [0]*len(strs)
-      n = 0
-      for i in np.transpose([clusters_df["info"]["components"].values,clusters_df["info"]["component_ratio"].values]):
-        nn = 0
-        for j in i[0]:
-          test = 0
-          for k in range(len(monomers_df)):
-            monomer_k = monomers_df.iloc[k]
-            monomer_k_name = monomer_k["info"]["components"]
-            if j == monomer_k_name[0]:
-              ens_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
-              test = 1
-              break
-          if test == 0:
-            print("OMG; monomer "+j+" was not found in:", flush = True)
-            print(monomers_df["info"]["components"].values, flush = True)
-            exit()
-          nn += 1
-        n += 1
-      #LOW LEVEL
-      if method == "delta":
-        if Qmonomers == 1:
-          clusters_df0 = monomers_low_database
-          ins_monomers = [np.sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
-          monomers_df = clusters_df0[ins_monomers]
-        else:
-          ins_monomers = [np.sum(clusters_df2["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df2))]
-          monomers_df = clusters_df2[ins_monomers]
-        ens2_correction = [0]*len(ens2)
-        n = 0
-        for i in np.transpose([clusters_df2["info"]["components"].values,clusters_df2["info"]["component_ratio"].values]):
-          nn = 0
-          for j in i[0]:
-            test = 0
-            for k in range(len(monomers_df)):
-              monomer_k = monomers_df.iloc[k]
-              monomer_k_name = monomer_k["info"]["components"]
-              if j == monomer_k_name[0]:
-                ens2_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
-                test = 1
-                break
-            if test == 0:
-              print("OMG; monomer "+j+" was not found in:", flush = True)
-              print(monomers_df["info"]["components"].values, flush = True)
-              exit()
-            nn += 1
-          n += 1
         
     #The binding (formation) energy calculation
     if Qeval == 2:
@@ -855,46 +948,75 @@ for sampleeach_i in sampleeach_all:
     if method == "delta":
       form_ens2 = ens2 - ens2_correction
       #print(form_ens2, flush = True) 
+
+    ##################
+    ### KRR + FCHL ###
+    ################## 
+    if Qmethod == "krr" and Qrepresentation == "fchl": 
+      ### REPRESENTATION CALCULATION ###
+      repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
+      max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
+      for i in range(len(repres_dataframe)):
+        repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
+      fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
+      #some info about the full representation
+      print(fchl_representations.shape, flush = True)
+      
+      ### DEFINING THE EVALUATION Xs:  Y = QML(X) 
+      #the full set
+      X_test = fchl_representations
   
-    ### DEFINING THE EVALUATION Xs:  Y = QML(X) 
-    #the full set
-    X_test0 = fchl_representations
-    #TODO Do we take only subset for the testing?
-    if size != "full":
-      if len(X_test0) <= int(size):
-        size = "full"
-    if size != "full":
-      X_test, X_trash, idx, idx_trash = train_test_split(X_test0, range(len(X_test0)), test_size=(len(X_test0)-size)/len(X_test0))
-      clusters_df = clusters_df[idx]
-      ens_correction = ens_correction[idx]
-      if Qeval == 2:
-        form_ens = form_ens[idx]
-      if method == "delta":
-        form_ens2 = form_ens2[idx]
-    else:
-      X_test = X_test0
-  
-    ### CORRECTING THE FCHL MATRIX SIZES
-    #X_train = fchl_representations0
-    #IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
-    if X_train.shape[1] != X_test.shape[1]:
-      if X_train.shape[1] > X_test.shape[1]:
-        small = X_test
-        large = X_train
-      else:
-        small = X_train
-        large = X_test
-      newmatrix = np.zeros([small.shape[0],large.shape[1],5,large.shape[3]])
-      newmatrix[:,:,0,:] = 1e+100
-      newmatrix[0:small.shape[0],0:small.shape[1],0:5,0:small.shape[3]] = small
-      if X_train.shape[1] > X_test.shape[1]:
-        X_test = newmatrix
-      else:
-        X_train = newmatrix
+      ### CORRECTING THE FCHL MATRIX SIZES
+      #IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
+      if X_train.shape[1] != X_test.shape[1]:
+        if X_train.shape[1] > X_test.shape[1]:
+          small = X_test
+          large = X_train
+        else:
+          small = X_train
+          large = X_test
+        newmatrix = np.zeros([small.shape[0],large.shape[1],5,large.shape[3]])
+        newmatrix[:,:,0,:] = 1e+100
+        newmatrix[0:small.shape[0],0:small.shape[1],0:5,0:small.shape[3]] = small
+        if X_train.shape[1] > X_test.shape[1]:
+          X_test = newmatrix
+        else:
+          X_train = newmatrix
    
-    ### THE EVALUATION
-    Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
-    Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
+      ### THE EVALUATION
+      Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
+      Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
+    
+    ##################
+    ### NN + PaiNN ###
+    ##################
+    elif Qmethod == "nn" and Qrepresentation == "painn":
+      if torch.cuda.is_available():
+        device = 'cuda'
+      else:
+        device = 'cpu'
+      spk_calc = SpkCalculator(
+          model_file=VARS_PKL,
+          device=device,
+          neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
+          #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+          #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
+          energy_key='energy',
+          #force_key='forces',
+          energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
+          #force_unit="eV",
+          position_unit="Ang",
+      )
+      Y_predicted = []
+      for i in range(len(clusters_df)):
+        atoms = clusters_df["xyz"]["structure"].values[i]
+        atoms.calc = spk_calc
+        Y_predicted.append(atoms.get_potential_energy())
+      Y_predicted = [np.array(Y_predicted)]
+
+    else:
+      print("Wrong method or representation chosen.")
+      exit()
   
     ### PRINTING THE RESULTS
     #print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]])+"};")

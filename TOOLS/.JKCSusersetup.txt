@@ -100,7 +100,7 @@ function program_SBATCH {
   SBATCH_command+="--mem-per-cpu $5 " #NOTE: This line must be commented out on Mahti
   if [ ! -z "$6" ]                    
   then
-    SBATCH_command+="-n $6 "
+    SBATCH_command+="--ntasks-per-node=$6 "
   fi
   SBATCH_command+=$SBATCH_PREFIX" "
   echo $SBATCH_command  
@@ -143,6 +143,10 @@ function program_JKML {
   if [ ! -z "$SLURM_CPUS_ON_NODE" ]
   then 
     export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+  fi
+  if [[ "${@}" != *"-nn"* ]] || [[ "${@}" != *"-painn"* ]]
+  then
+    module load gcc
   fi
   currentdir=$PWD
   if [[ "${@}" != *"-finishsplit"* ]]
@@ -692,6 +696,7 @@ then
   module_orca_loaded=\"loaded\"
 fi
 export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
+REPLACE_extra_orca_lines
 
 #CREATING WORKING DIRECTORY
 if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
