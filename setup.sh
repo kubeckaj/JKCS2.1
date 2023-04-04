@@ -119,7 +119,7 @@ EXAMPLE:
     MODULE_G16="module load gaussian"
     PATH_ORCA="/users/ineefjes/Applications/orca_5_0_4_linux_x86-64_shared_openmpi411"
     MODULE_ORCA="module purge; module load gcc/11.3.0 openmpi/4.1.4 intel-oneapi-mkl/2022.1.0"
-    EXTRA_ORCA_LINES="ORTERUN=\\\`which orterun\\\`\nln -sf \\\${ORTERUN}  \\\${SLURM_SUBMIT_DIR}/mpirun\nexport PATH=\\\${SLURM_SUBMIT_DIR}:\\\${PATH}"
+    EXTRA_ORCA_LINES="ORTERUN=\\\\\`which orterun\\\\\`\nln -sf \\\\\${ORTERUN}  \\\\\${SLURM_SUBMIT_DIR}/mpirun\nexport PATH=\\\\\${SLURM_SUBMIT_DIR}:\\\\\${PATH}"
     project="hvehkama"
     #project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
     SBATCH_PREFIX="--account=$project "
