@@ -44,7 +44,7 @@ function help {
    -help ............ print this help and exit
    -orca ............ collects ORCA 
    -oc/-onlycollect . only collects pickle file
-   OTHERS: -JKQCclean,-JKQCcleanfull
+   OTHERS: -clean,-cleanfull
   
   ${cfMAGENTA}OUTPUTS:${cfDEF} 
     -collection[${cfBLUE}FOLDER${cfDEF}].pkl:

@@ -697,7 +697,6 @@ then
 fi
 export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
 REPLACE_extra_orca_lines
-
 #CREATING WORKING DIRECTORY
 if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
 ADD=\"\"

@@ -877,6 +877,7 @@ for sampleeach_i in sampleeach_all:
       f.close()
       print("Trained model loaded.", flush = True)
     elif Qmethod == "nn" and Qrepresentation == "painn":
+      varsoutfile = VARS_PKL
       print("Trained model found.")
     else:
       print("Wrong method or representation chosen.")
@@ -996,7 +997,7 @@ for sampleeach_i in sampleeach_all:
       else:
         device = 'cpu'
       spk_calc = SpkCalculator(
-          model_file=VARS_PKL,
+          model_file=varsoutfile,
           device=device,
           neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
           #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
