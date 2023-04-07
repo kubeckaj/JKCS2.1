@@ -98,7 +98,7 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
-  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>")
+  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 

@@ -295,7 +295,7 @@ function JKloaddirs {
       folders=`echo $folders | xargs`
       if [ -z "$folders" ]
       then
-        JKecho 0 "Neither ${cfYELLOW}$inputfile${cfDEF} nor ${cfBLUE}${folderbasename}${cfDEF}_ exist! ${cfRED}[NO - EXITING]${cfDEF}"
+        JKecho 0 "Neither ${cfYELLOW}$inputfile${cfDEF} nor ${cfBLUE}${folderbasename}${cfDEF} exist! ${cfYELLOW}[CONTINUIN ANYWAY]${cfDEF}"
         JKecho 2 "Continuing anyway."
         #exit
       else
