@@ -2,4 +2,8 @@ JKQC/JKCS
 output
 .log
 .test.sh
+.run
+.jobs.txt
+.run1
 TEST
+TMP

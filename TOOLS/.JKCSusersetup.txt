@@ -100,7 +100,7 @@ function program_SBATCH {
   SBATCH_command+="--mem-per-cpu $5 " #NOTE: This line must be commented out on Mahti
   if [ ! -z "$6" ]                    
   then
-    SBATCH_command+="--ntasks-per-node=$6 "
+    SBATCH_command+="-n $6 " #"--ntasks-per-node=$6 "
   fi
   SBATCH_command+=$SBATCH_PREFIX" "
   echo $SBATCH_command  
