@@ -1043,7 +1043,7 @@ for sampleeach_i in sampleeach_all:
         Y_validation = form_ens
       else:
         Y_validation = form_ens - form_ens2
-      # Calculate mean-absolute-error (MAE):
+      ### Calculate mean-absolute-error (MAE):
       if column_name_1 == "log" and column_name_2 == "electronic_energy":
         multiplier = 627.503
         units = " kcal/mol"
@@ -1051,10 +1051,29 @@ for sampleeach_i in sampleeach_all:
         multiplier = 1.0
         units = " [?]"
       mae = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation))  for i in range(len(sigmas))]
+      print("Mean Absolute Error:")
       print("mae = " + ",".join([str(i) for i in mae])+units, flush = True)
-      # Calculate root-mean-squared-error (RMSE):
+      ### Calculate root-mean-squared-error (RMSE):
       rmse = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation)**2))  for i in range(len(sigmas))]
+      print("Root Mean Squared Error")
       print("rmse = " + ",".join([str(i) for i in rmse])+units, flush = True)
+      ### Calculate mean-absolute-relative-error (MArE):
+      diff = [np.mean(Y_predicted[i]) - np.mean(Y_validation) for i in range(len(sigmas))]
+      mare = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i]))  for i in range(len(sigmas))]
+      print("Mean Absolute (mean-)Relative Error:")
+      print("mare = " + ",".join([str(i) for i in mare])+units, flush = True)
+      ### Calculate root-mean-squared-relative-error (RMSrE):
+      rmsre = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i])**2))  for i in range(len(sigmas))]
+      print("Root Mean Squared (mean-)Relative Error")
+      print("rmsre = " + ",".join([str(i) for i in rmsre])+units, flush = True)
+      diff = [np.median(Y_predicted[i]) - np.median(Y_validation) for i in range(len(sigmas))]
+      mare = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i]))  for i in range(len(sigmas))]
+      print("Mean Absolute (median-)Relative Error:")
+      print("mare = " + ",".join([str(i) for i in mare])+units, flush = True)
+      ### Calculate root-mean-squared-relative-error (RMSrE):
+      rmsre = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i])**2))  for i in range(len(sigmas))]
+      print("Root Mean Squared (median-)Relative Error")
+      print("rmsre = " + ",".join([str(i) for i in rmsre])+units, flush = True)
   
     ### PRINTING THE QML PICKLES
     clustersout_df = clusters_df.copy()

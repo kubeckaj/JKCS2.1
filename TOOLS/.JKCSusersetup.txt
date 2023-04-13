@@ -102,6 +102,10 @@ function program_SBATCH {
   then
     SBATCH_command+="-n $6 " #"--ntasks-per-node=$6 "
   fi
+  if [[ $(echo "$2" | grep -io "gpu") ]];
+  then
+    SBATCH_command+="--gres=gpu:1 "
+  fi
   SBATCH_command+=$SBATCH_PREFIX" "
   echo $SBATCH_command  
 }
