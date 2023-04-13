@@ -98,13 +98,12 @@ function program_SBATCH {
   SBATCH_command+="--time $3 "
   SBATCH_command+="-N $4 "
   SBATCH_command+="--mem-per-cpu $5 " #NOTE: This line must be commented out on Mahti
-  if [ ! -z "$6" ]                    
-  then
-    SBATCH_command+="-n $6 " #"--ntasks-per-node=$6 "
-  fi
   if [[ $(echo "$2" | grep -io "gpu") ]];
   then
+    if [ ! -z "$6" ]; then SBATCH_command+=" -n $6 --ntasks-per-node=$6 "; fi
     SBATCH_command+="--gres=gpu:1 "
+  else
+    if [ ! -z "$6" ]; then SBATCH_command+="-n $6 "; fi
   fi
   SBATCH_command+=$SBATCH_PREFIX" "
   echo $SBATCH_command  

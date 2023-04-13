@@ -99,6 +99,7 @@ then
   $PIP install hydra-core
   $PIP install schnetpack
   $PIP install pytorch-lightning==1.9.0
+  $PIP install tensorboard
 fi
 
 #NOT IMPORTANT FOR ALL BUT CHEAP TO INSTALL
