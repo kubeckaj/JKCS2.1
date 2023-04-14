@@ -24,10 +24,6 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
-function help {
-  program_PYTHON $scriptpath/../TOOLS/SCRIPTS/JKML.py -help
-  exit
-}
 
 arguments=("$@")       # arguments of this script
 arguments_help=()      # 
@@ -40,7 +36,26 @@ JKloadprint
 JKloadcolours           # some coloured output
 
 # check -help option
+function help { 
+  program_PYTHON $scriptpath/../TOOLS/SCRIPTS/JKML.py -help 
+  exit 
+}
+function help_adv { 
+  program_PYTHON $scriptpath/../TOOLS/SCRIPTS/JKML.py -help_adv 
+  exit 
+}
+function help_krr { 
+  program_PYTHON $scriptpath/../TOOLS/SCRIPTS/JKML.py -help_krr 
+  exit 
+}
+function help_nn { 
+  program_PYTHON $scriptpath/../TOOLS/SCRIPTS/JKML.py -help_nn
+  exit 
+}
 JKloadhelp             # check if user asks for -help
+JKloadhelp _adv         # check if user asks for -help
+JKloadhelp _krr         # check if user asks for -help
+JKloadhelp _nn         # check if user asks for -help
 
 # method 
 #JKloadprogram

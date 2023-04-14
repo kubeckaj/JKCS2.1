@@ -3,19 +3,88 @@ import os.path
 import subprocess
 
 def help():
-  #print("-method <str>                      direct|delta [default]", flush = True)
-  print("-train <file_HIGH> [<file_LOW>]    train on given pikled files", flush = True)
-  print("-size <int>                        random number of samples for training set", flush = True)
-  print("-trained <file_VARS-PKL>           take pre-trained ML model", flush = True)
-  print("-eval <file_STRS> [<file_LOW>]     evaluate energies of NEW structures in pickled file(s)", flush = True)
-  print("-test <file_HIGH> [<file_LOW>]     validate ML on energies of structures in pickled file(s)", flush = True)
-  print("-monomers <file_HIGH> [<file_LOW>] binding energies with respect to monomer(s) in in pickled file(s)", flush = True)
-  #print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
-  print("-sigma <X> -lambda <Y>             hyperparameters [default: sigma = 1.0 and lambda = 1e-4]", flush = True)
-  print("OTHER: -split X, -startsplit X, -finishsplit X, -sampleeach X, -similarity X, -optimize, -forcemonomers", flush = True)
-  print("OTHER: -column <string> <string>, -qml, -nn, -epochs", flush = True)
-  print("OUTPUTFILES: -out X.pkl [def = predicted_QML.pkl], -varsout X.pkl [def = vars.pkl]", flush = True)
+  print("#################################################################", flush = True)
+  word = "JKML"
+  colors = ["\033[34m", "\033[31m", "\033[32m", "\033[33m"]
+  # 31red, 32green, 33yellow, 34blue, 35magenta, 36cyan
+  def pJKML():
+    for i, letter in enumerate(word): 
+      color = colors[i % len(colors)]  # cycle through colors
+      print(f"{color}{letter}\033[0m", end="", flush = True)
+  pJKML();print(" HELP:", flush = True)
+  print("This script interfaces ML model and pickled structures.", flush = True)
+  print("", flush = True)
+  print(f"  ",end="");pJKML();print(" [OPTION(s)]", flush = True)
+  print("", flush = True)
+  print("  HELP OPTIONS:", flush = True)
+  print("    -help                            prints basic help", flush = True)
+  print("    -help_nn                         prints help for neural network methods (e.g. PaiNN,SchNet)", flush = True)
+  print("    -help_krr                        prints help for kernel ridge regression methods (e.g. FCHL)", flush = True)
+  print("    -help_adv                        print some advanced features")
+  print("", flush = True)
+  print("  OPTIONS:", flush = True)
+  print("    -qml                             use KRR with FCHL19 [set by default]", flush = True)
+  print("    -nn,-painn                       switch to NN = neural network with PaiNN", flush = True)
+  print("    -schnet                          switch to NN = neural network with SchNet", flush = True)
+  print("", flush = True)
+  print("  INPUT FILES:", flush = True)
+  print("    -train <HIGH.pkl> [<LOW.pkl>]    train on given pikled files", flush = True)
+  print("    -trained <model.pkl>             take pre-trained ML model", flush = True)
+  print("    -monomers <HIGH.pkl> [<LOW.pkl>] properties with respect to monomer(s) in pickled file(s)", flush = True)
+  print("    -test <HIGH.pkl> [<LOW.pkl>]     validate ML on energies of structures in pickled file(s)", flush = True)
+  print("    -eval <STRS.pkl> [<LOW.pkl>]     evaluate energies of NEW structures in pickled file(s)", flush = True)
+  print("", flush = True)
+  print("  OUTPUT FILES:", flush = True)
+  print("    -out <file.pkl>                  name of file with predicted values [def = predicted.pkl]", flush = True)
+  print("    -modelout <file.pkl>             name of file with saved model [def = model.pkl]", flush = True)
+  print("", flush = True)
+  print("  EXAMPLES:", flush = True)
+  print(f"    ",end="");pJKML();print(" -loc -train collected_structures.pkl -modelout trained_example.pkl", flush = True)
+  print(f"    ",end="");pJKML();print(" -par q64 -cpu 64 -train tr_high.pkl tr_low.pkl -test te_high.pkl te_low.pkl", flush = True)
+  print(f"    ",end="");pJKML();print(" -par qgpu -cpu 2 -nn -epochs 10000 -train x.pkl -eval str.pkl -monomers monomers.pkl", flush = True)
+  print(f"    ",end="");pJKML();print(" -loc -trained model_for_atomization_en.pkl -eval diff_molecules.pkl -monomers atoms.pkl ", flush = True)
+  print("", flush = True)
+
+  #SO FAR I WANT THE MONOMERS SEPARATELY: print("    /or/  none                     training directly on el.energies (not good for mix of clusters)", flush = True)
+  #METHOD IS NOT NECESSARY: print("-method <str>                      direct|delta [default]", flush = True)
+
+def help_adv():
+  print("  ADVANCED OPTIONS:", flush = True)
+  print("    -column <str> <str> selects a different column from the pickled files (e.g. log entropy)", flush = True)
+  print("    -size <int>         randomly selects only portion of the trainin database (e.g. 200)", flush = True)
+  print("    -seed <int>         seed for random number generators [def = 42]")
+  print("    -sampleeach <int>   selects structures with similar MBTR (our similarity definition)", flush = True)
+  print("    -similarity <int>   selects structures with similar FCHL (uses kernel)", flush = True)
+  print("    -forcemonomers      adds (extra) monomers to sampleeach/selection", flush = True)
+  print("    -optimize           optimize structure based on model !!! NOT TESTED !!!", flush = True)
+  print("", flush = True)
+  print("  EXTRA ADVANCED OPTIONS:", flush = True)
+  print("    -so3net             switch to NN = neural network with SO3net (from SchNetPack)", flush = True)
+  print("    -split x y z        only with -krr how many splits of KRR matrix do you do", flush = True)
+  #print("   -startsplit <int>  the same like above", flush = True)
+  print("    -finishsplit x y z  (see -split) combines the splitted kernel and creates model", flush = True)
+  print("", flush = True)
+
+def help_krr():
+  print("  OPTIONS FOR KERNEL RIDGE REGRESSION:", flush = True)
+  print("    -sigma <int>        Gaussian width hyperparameter [def = 1.0]", flush = True)
+  print("    -lambda <int>       numerical stability (for matrix inv.) hyperparameter [def = 1e-4]")
+  print("    -laplacian          switch to Laplacian kernel")
+  print("", flush = True)
   
+def help_nn():
+  print("  OPTIONS FOR NEURAL NETWORKS:", flush = True)
+  print("    -epochs <int>       number of epochs [def = 1000]", flush = True)
+  print("    -nn_train <float>   portion of training data (exlc. validation) [def = 0.9]", flush = True)
+  print("", flush = True)
+  print("  OPTIONS FOR REPRESENTATION:", flush = True)
+ 
+  print("    -nn_ab <int>     number of atom basis/features/size of embeding vector [def = 256]", flush = True)
+  print("    -nn_int <int>    number of interaction blocks [def = 5]", flush = True)
+  print("    -nn_rb <int>     number of radial basis for exp. int. dist. [def = 20]", flush = True)
+  print("    -nn_cutoff <int> cutoff function (Angstrom) [def = 5.0]", flush = True)
+  print("", flush = True)
+
 #PREDEFINED ARGUMENTS
 method = "direct"
 size = "full"
@@ -32,14 +101,18 @@ Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
 Qmonomers = 2 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 Qsampleeach = 0
-Qmethod = "krr"
-Qrepresentation = "fchl"
-Qkernel = "Gaussian"
 Qforcemonomers = 0
 column_name_1 = "log"
 column_name_2 = "electronic_energy" 
 
+#krr : fchl
+#nn : painn
+#nn : 
+Qmethod = "krr"
+Qrepresentation = "fchl"
+
 #PREDEFINED QML
+Qkernel = "Gaussian"
 sigmas = [1.0]
 lambdas = [1e-4]*len(sigmas)
 #kernel_args = {
@@ -63,21 +136,29 @@ nn_tvv = 0.9
 nn_cutoff = 5.0
 nn_atom_basis = 256
 nn_interactions = 5
-nn_epochs = 20
+nn_epochs = 1000
+nw = 1
 
 #OUTPUT FILES
-outfile="predicted_QML.pkl"
+outfile="predicted.pkl"
 varsoutfile="model.pkl"
 
 #TREATING ARGUMENTS
 last=""
 for i in sys.argv[1:]:
   #HELP
-  if i == "-help":
+  if i == "-help" or i == "-help_nn" or i == "-help_adv" or i == "-help_krr":
     help()
+    if i == "-help_nn":
+      help_nn()
+    if i == "-help_adv":
+      help_adv()
+    if i == "-help_krr":
+      help_krr()
+    print("#################################################################", flush = True)
     exit()
   #VARS OUT FILE
-  if i == "-varsout":
+  if i == "-varsout" or i == "-modelout":
     last = "-varsout"
     continue
   if last == "-varsout": 
@@ -112,6 +193,10 @@ for i in sys.argv[1:]:
   #FORCE MONOMERS
   if i == "-forcemonomers":
     Qforcemonomers = 1
+    continue
+  #SEED
+  if i == "-seed":
+    seed = int(i)
     continue
   #COLUMN
   if i == "-column":
@@ -286,6 +371,15 @@ for i in sys.argv[1:]:
     Qmethod = "nn"
     Qrepresentation = "painn"
     continue
+  if i == "-schnet":
+    Qmethod = "nn"
+    Qrepresentation = "schnet"
+    continue
+  if i == "-so3net":
+    Qmethod = "nn"
+    Qrepresentation = "so3net"
+    continue
+  #EPOCHS
   if i == "-nn_epochs" or i == "-epochs":
     last = "-nn_epochs"
     continue
@@ -293,6 +387,63 @@ for i in sys.argv[1:]:
     last = ""
     nn_epochs = int(i)
     continue
+  #EPOCHS
+  if i == "-nn_tvv" or i == "-nn_train":
+    last = "-nn_tvv"
+    continue
+  if last == "-nn_tvv":
+    last = ""
+    nn_tvv = float(i)
+    continue
+  #RADIAL BASIS
+  if i == "-nn_rbf" or i == "-nn_rb":
+    last = "-nn_rbf"
+    continue
+  if last == "-nn_rbf":
+    last = ""
+    nn_rbf = int(i)
+    continue
+  #NN CUTOFF
+  if i == "-nn_cutoff":
+    last = "-nn_cutoff"
+    continue
+  if last == "-nn_cutoff":
+    last = ""
+    nn_cutoff = float(i)
+    continue
+  #ATOM BASIS
+  if i == "-nn_ab" or i == "-nn_atom_basis":
+    last = "-nn_ab"
+    continue
+  if last == "-nn_ab":
+    last = ""
+    nn_atom_basis = int(i)
+    continue
+  #NN INTERACTIONS
+  if i == "-nn_int" or i == "-nn_interctions":
+    last = "-nn_int"
+    continue
+  if last == "-nn_int":
+    last = ""
+    nn_interactions = int(i)
+    continue
+  #NN INTERACTIONS
+  if i == "-nw":
+    last = "-nw"
+    continue
+  if last == "-nw":
+    last = ""
+    nw = int(i)
+    continue
+  #EPOCHS
+  if i == "-nn_epochs" or i == "-epochs":
+    last = "-nn_epochs"
+    continue
+  if last == "-nn_epochs":
+    last = ""
+    nn_epochs = int(i)
+    continue
+  #KRR (by default)
   if i == "-krr" or i == "-fchl" or i == "-qml":
     Qmethod = "krr"
     Qrepresentation = "fchl"
@@ -725,7 +876,7 @@ for sampleeach_i in sampleeach_all:
     #####################################
     ### TRAINING NN #####################
     #####################################
-    elif Qmethod == "nn" and Qrepresentation == "painn":
+    elif Qmethod == "nn":
       #PREPARING TRAINING DATABASE
       temperary_file_name = "training.db"
       if os.path.exists(temperary_file_name):
@@ -756,7 +907,7 @@ for sampleeach_i in sampleeach_all:
               trn.RemoveOffsets(spk.properties.energy, remove_mean=True, remove_atomrefs=False),
               trn.CastTo32()
           ],
-          num_workers=1,#TODO how does this work?
+          num_workers=nw,#TODO how does this work?
           #split_file=split_file,
           data_workdir="./"
       )
@@ -771,12 +922,31 @@ for sampleeach_i in sampleeach_all:
       # PainNN representation
       pairwise_distance = spk.atomistic.PairwiseDistances()
       radial_basis = spk.nn.GaussianRBF(n_rbf=nn_rbf, cutoff = nn_cutoff)
-      X_train = spk.representation.PaiNN(
-          n_atom_basis=nn_atom_basis,
-          n_interactions=nn_interactions,
-          radial_basis=radial_basis,
-          cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
-      )      
+       
+      if Qrepresentation == "painn": 
+        X_train = spk.representation.PaiNN(
+            n_atom_basis=nn_atom_basis,
+            n_interactions=nn_interactions,
+            radial_basis=radial_basis,
+            cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
+        )      
+      elif Qrepresentation == "schnet":
+        X_train = spk.representation.SchNet(
+            n_atom_basis=nn_atom_basis,
+            n_interactions=nn_interactions,
+            radial_basis=radial_basis,
+            cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
+        )
+      elif Qrepresentation == "so3net":
+        X_train = spk.representation.SO3net(
+            n_atom_basis=nn_atom_basis,
+            n_interactions=nn_interactions,
+            radial_basis=radial_basis,
+            cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
+        )
+      else:
+        print("You have probably enetered some weird molecular representation. [EXIT]")
+        exit()
 
       output_modules = []
       output_losses = []
@@ -802,6 +972,7 @@ for sampleeach_i in sampleeach_all:
           output_modules.append(pred)
           output_losses.append(loss)
 
+      #MODEL (this could be for instance also Atomistic Model)
       nnpot = spk.model.NeuralNetworkPotential(
           representation=X_train,
           input_modules=[pairwise_distance],
@@ -876,7 +1047,7 @@ for sampleeach_i in sampleeach_all:
         alpha = [alpha]
       f.close()
       print("Trained model loaded.", flush = True)
-    elif Qmethod == "nn" and Qrepresentation == "painn":
+    elif Qmethod == "nn":
       varsoutfile = VARS_PKL
       print("Trained model found.")
     else:
@@ -907,11 +1078,12 @@ for sampleeach_i in sampleeach_all:
       if method == "delta":
         clusters_df2 = clusters_df2.iloc[idx]
 
-    try:
-      ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
-      Qeval = 2 #2=Compare ML prediction with QC
-    except:
-      Qeval = 1 #1=Only predicts
+    if Qeval == 2:
+      try:
+        ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
+        #Qeval = 2 #2=Compare ML prediction with QC
+      except:
+        Qeval = 1 #1=Only predicts
     if method == "delta":
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
     strs = clusters_df["xyz"]["structure"]
@@ -991,7 +1163,7 @@ for sampleeach_i in sampleeach_all:
     ##################
     ### NN + PaiNN ###
     ##################
-    elif Qmethod == "nn" and Qrepresentation == "painn":
+    elif Qmethod == "nn":
       if torch.cuda.is_available():
         device = 'cuda'
       else:

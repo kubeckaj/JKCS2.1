@@ -265,6 +265,10 @@ function program_ABC {
   then
     $MODULE_ABC 2>/dev/null
     module_abc_loaded="loaded"
+    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    then
+      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+    fi
   fi
   
   #performing the calculation
