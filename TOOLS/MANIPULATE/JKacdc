@@ -497,7 +497,7 @@ echo """
 ACDCinit(temp);                    %adjust ACDCinit
 ACDCsource($variable) %adjust ACDCsource
 [T,C,J_out]=ACDCrun();
-fprintf(\"\nJ_out = %f\n\", J_out(end))
+fprintf(\"\nJ_out = %f = %e\n\", J_out(end),J_out(end))
 
 %get_evap; get_coll; get_wl; get_cs;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

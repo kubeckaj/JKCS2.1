@@ -653,7 +653,7 @@ do
     echo  "GREASY: eval '`tail -n $i commands_TODO.txt | head -n 1`'" >> output
     echo  "$toolspath/SCRIPTS/JKsend '`tail -n $i commands_TODO.txt | head -n 1`'" >> .runLIST
   else
-    echo "`tail -n $i commands_TODO.txt | head -n 1`" > .run$i
+    #echo "`tail -n $i commands_TODO.txt | head -n 1`" > .run$i
     if [ $Qarray -eq 1 ]
     then
       if [ $i -eq 1 ]
@@ -665,16 +665,22 @@ do
           arraymax=""
         fi
         SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
-        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
-        echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
+        #TODO
+        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> output
+        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" > .run
+        #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
+        #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
         job=$(/bin/bash .run)
         if [ ! -z "$job" ] ;then echo $job;fi
         echo $job | awk '{print $4}'  >> .jobs.txt
       fi
     else
-      echo  "$SC_command sh .run$i" >> output
-      echo  "$SC_command sh .run$i" > .run
+      #TODO
+      echo "$SC_command \`tail -n $i commands_TODO.txt | head -n 1\`" >> output
+      echo "$SC_command \`tail -n $i commands_TODO.txt | head -n 1\`" > .run
+      #echo  "$SC_command sh .run$i" >> output
+      #echo  "$SC_command sh .run$i" > .run
       #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
       job=$(/bin/bash .run)
       #job=$(eval `cat .run`)

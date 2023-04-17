@@ -56,13 +56,16 @@ def help_adv():
   print("    -sampleeach <int>   selects structures with similar MBTR (our similarity definition)", flush = True)
   print("    -similarity <int>   selects structures with similar FCHL (uses kernel)", flush = True)
   print("    -forcemonomers      adds (extra) monomers to sampleeach/selection", flush = True)
-  print("    -optimize           optimize structure based on model !!! NOT TESTED !!!", flush = True)
+  print("    -printforces        print out all forces (this might be a lot of numbers)", flush = True)
+  print("    -opt <STRS.pkl>     optimize structure based on model !!! NOT TESTED !!!", flush = True)
+  print("    -md <STRS.pkl>      run md starting from provided structure(s) based on model !!! NOT TESTED !!!", flush = True)
   print("", flush = True)
   print("  EXTRA ADVANCED OPTIONS:", flush = True)
   print("    -so3net             switch to NN = neural network with SO3net (from SchNetPack)", flush = True)
   print("    -split x y z        only with -krr how many splits of KRR matrix do you do", flush = True)
   #print("   -startsplit <int>  the same like above", flush = True)
   print("    -finishsplit x y z  (see -split) combines the splitted kernel and creates model", flush = True)
+  print("    -wolfram            prints {} instead of []", flush = True)
   print("", flush = True)
 
 def help_krr():
@@ -76,6 +79,8 @@ def help_nn():
   print("  OPTIONS FOR NEURAL NETWORKS:", flush = True)
   print("    -epochs <int>       number of epochs [def = 1000]", flush = True)
   print("    -nn_train <float>   portion of training data (exlc. validation) [def = 0.9]", flush = True)
+  print("    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]", flush = True)
+  print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.1]")
   print("", flush = True)
   print("  OPTIONS FOR REPRESENTATION:", flush = True)
  
@@ -99,6 +104,8 @@ Qsplit = 1 #1=no split, how many splits to do; ONLY FOR TRAINING
 Qsplit_i = 1; Qsplit_j = 1; 
 Qeval = 0 #0=nothing (possible), 1=validate, 2=eval
 Qopt = 0 #0=nothing (possible), 1=optimize
+Qwolfram = 0 #1 means that {} will be printed insead of []
+Qprintforces = 0 #print forces?
 Qmonomers = 2 #0=monomers taken from database, 1=monomers in separate files, 2=no monomer subtraction
 Qsampleeach = 0
 Qforcemonomers = 0
@@ -137,6 +144,8 @@ nn_cutoff = 5.0
 nn_atom_basis = 256
 nn_interactions = 5
 nn_epochs = 1000
+Qearlystop = 200
+Qenergytradoff = 0.1 #if forces are trained on: [energy, force] = [X, 1]
 nw = 1
 
 #OUTPUT FILES
@@ -198,6 +207,14 @@ for i in sys.argv[1:]:
   if i == "-seed":
     seed = int(i)
     continue
+  #WOLFRAM
+  if i == "-wolfram":
+    Qwolfram = 1
+    continue
+  #PRINT FORCES
+  if i == "-printforces":
+    Qprintforces = 1
+    continue
   #COLUMN
   if i == "-column":
     last = "-column"
@@ -248,7 +265,12 @@ for i in sys.argv[1:]:
   if i == "-eval":
     last = "-eval"
     continue
-  if i == "-opt":
+  if i == "-opt" or i == "-optimize":
+    Qopt = 1
+    last = "-opt"
+    continue
+  if i == "-md":
+    Qopt = 2
     last = "-opt"
     continue
   if i == "-monomers":
@@ -331,17 +353,16 @@ for i in sys.argv[1:]:
   #TEST/EVAL/OPT DATABASE(S)
   if last == "-eval":
     TEST_HIGH = i
-    Qeval = 2
+    Qeval = 1
     last = "-test2"
     continue
   if last == "-test":
     TEST_HIGH = i
-    Qeval = 1
+    Qeval = 2
     last = "-test2"
     continue
   if last == "-opt":
     TEST_HIGH = i
-    Qopt = 1
     last = "-test2"
     continue
   if last == "-test2":
@@ -443,6 +464,22 @@ for i in sys.argv[1:]:
     last = ""
     nn_epochs = int(i)
     continue
+  #ENERGY TRADEOFF
+  if i == "-nn_energytradeoff":
+    last = "-nn_energytradeoff"
+    continue
+  if last == "-nn_energytradeoff":
+    last = ""
+    nn_energytradeoff = float(i)
+    continue
+  #EARLY STOP
+  if i == "-nn_ESpatience" or i == "-nn_espatience":
+    last = "-nn_espatience"
+    continue
+  if last == "-nn_espatience":
+    last = ""
+    Qearlytop = int(i)
+    continue
   #KRR (by default)
   if i == "-krr" or i == "-fchl" or i == "-qml":
     Qmethod = "krr"
@@ -502,7 +539,7 @@ if Qtrain == 1:
   train_high_database = pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])
   if method == "delta":
     train_low_database = pd.read_pickle(TRAIN_LOW).sort_values([('info','file_basename')])
-if Qeval == 1 or Qeval == 2:
+if Qeval == 1 or Qeval == 2 or Qopt == 1:
   test_high_database = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
   if method == "delta":
     test_low_database = pd.read_pickle(TEST_LOW).sort_values([('info','file_basename')])  
@@ -538,7 +575,7 @@ elif Qmethod == "nn" and Qrepresentation == "painn":
     import schnetpack.transform as trn
     import torchmetrics
     import pytorch_lightning as pl
-  if Qeval > 0 or Qopt > 0:
+  if Qeval > 0 or Qopt > 0 or Qopt > 0:
     from ase.units import Ha, Bohr
     from schnetpack.interfaces import SpkCalculator
   import torch
@@ -762,6 +799,13 @@ for sampleeach_i in sampleeach_all:
     if method == "delta":
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by principle
+
+    ### FORCES 
+    if ("extra","forces") in clusters_df.columns:
+      F_train = clusters_df["extra"]["forces"].values
+      Qforces = 1
+    else:
+      Qforces = 0
     
     print(ens.shape, flush = True)
     if method == "delta":
@@ -881,24 +925,31 @@ for sampleeach_i in sampleeach_all:
       temperary_file_name = "training.db"
       if os.path.exists(temperary_file_name):
         os.remove(temperary_file_name)
-      new_dataset = ASEAtomsData.create(temperary_file_name,
+      if Qforces == 0:
+        new_dataset = ASEAtomsData.create(temperary_file_name,
           distance_unit='Ang',
-          #property_unit_dict={'energy':'kcal/mol', 'forces':'kcal/mol/Ang'}
-          property_unit_dict={'energy':'Ha', 'total_charge': 'e'},
+          property_unit_dict={'energy':'eV', 'total_charge': 'e'},
           atomrefs = {'energy': [0]*100}
           )
-      properties = [{'energy': np.array([i]), 'total_charge': np.array([0], dtype=np.float32)} for i in Y_train]
+        properties = [{'energy': np.array([i]), 'total_charge': np.array([0], dtype=np.float32)} for i in Y_train]
+        target_properties = [spk.properties.energy]
+        tradoffs = [1]
+      else:
+        new_dataset = ASEAtomsData.create(temperary_file_name,
+          distance_unit='Ang',
+          property_unit_dict={'energy':'eV', 'forces': 'eV/bohr', 'total_charge': 'e'},
+          atomrefs = {'energy': [0]*100}
+          )
+        properties = [{'energy': np.array([Y_train[i]]), 'forces': 27.2114*1.88973*np.array(F_train[i]), 'total_charge': np.array([0], dtype=np.float32)} for i in range(len(Y_train))]
+        target_properties = [spk.properties.energy, spk.properties.forces]
+        tradoffs = [Qenergytradoff, 1]
       new_dataset.add_systems(properties, strs)
      
-      #TODO prepare forces too 
-      #target_properties = [spk.properties.energy, spk.properties.forces]
-      target_properties = [spk.properties.energy]
-      tradoffs = [1] #[0.1, 1]
       n_train = int(np.round(nn_tvv*len(strs)))
       n_val = len(strs) - n_train
       pl.seed_everything(seed)
       dataset = AtomsDataModule(temperary_file_name,
-          batch_size=16,
+          batch_size=64,
           num_train=n_train,
           num_val=n_val,
           #num_test=n_test,
@@ -1004,7 +1055,7 @@ for sampleeach_i in sampleeach_all:
           ),
           pl.callbacks.EarlyStopping(
               monitor="val_loss",
-              patience=200,
+              patience=Qearlystop,
           ),
           pl.callbacks.LearningRateMonitor(logging_interval='epoch')
       ]
@@ -1089,6 +1140,13 @@ for sampleeach_i in sampleeach_all:
     strs = clusters_df["xyz"]["structure"]
       #str2 should be the same as str by princip
   
+    ### FORCES 
+    if ("extra","forces") in clusters_df.columns:
+      F_test = clusters_df["extra"]["forces"].values
+      Qforces = 1
+    else:
+      Qforces = 0
+
     if Qeval == 2:
       print(ens.shape, flush = True)
     if method == "delta":
@@ -1168,35 +1226,63 @@ for sampleeach_i in sampleeach_all:
         device = 'cuda'
       else:
         device = 'cpu'
-      spk_calc = SpkCalculator(
+      if Qforces == 0:
+        spk_calc = SpkCalculator(
           model_file=varsoutfile,
           device=device,
           neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
           #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
           #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
           energy_key='energy',
-          #force_key='forces',
           energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
-          #force_unit="eV",
           position_unit="Ang",
-      )
+          )
+      else:
+        spk_calc = SpkCalculator(
+          model_file=varsoutfile,
+          device=device,
+          neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
+          #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+          #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
+          energy_key='energy',
+          force_key='forces',
+          energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
+          force_unit="eV/bohr",#YEAH I have no idea what the output is :-D
+          position_unit="Ang",
+          )
       Y_predicted = []
+      F_predicted = []
       for i in range(len(clusters_df)):
         atoms = clusters_df["xyz"]["structure"].values[i]
         atoms.calc = spk_calc
         Y_predicted.append(atoms.get_potential_energy())
+        if Qforces == 1:
+          F_predicted.append(atoms.get_forces())
       Y_predicted = [np.array(Y_predicted)]
+      if Qforces == 1:
+        F_predicted = [0.0367493*np.array(F_predicted)]
 
     else:
       print("Wrong method or representation chosen.")
       exit()
   
     ### PRINTING THE RESULTS
+    if Qwolfram == 0:
+      lb = "["
+      rb = "]"
+    else:
+      lb = "{"
+      rb = "}"
     #print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]])+"};")
     if Qeval == 2:
-      print("Ytest = {" + ",".join([str(i) for i in ens])+"};", flush = True)
+      print("Ytest = " + lb + ",".join([str(i) for i in ens]) + rb + ";", flush = True)
+      if Qforces == 1:
+        if Qprintforces == 0:
+          print("Ftest = I will not print the forces becuase it would be too many numbers. (Use -printforces)", flush = True)
+        else:
+          print("Ftest = " + lb + ",".join([lb+",".join([lb+",".join([str(k) for k in j])+rb for j in i])+rb for i in F_test])+rb+";", flush = True)
     if method != "delta":
-      print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]+ens_correction])+"};", flush = True)
+      print("Ypredicted = "+ lb + ",".join([str(i) for i in Y_predicted[0]+ens_correction])+rb+";", flush = True)
     else:
       #print("TEST",flush=True)
       #print(Y_predicted[0],flush=True)
@@ -1205,9 +1291,14 @@ for sampleeach_i in sampleeach_all:
       #print("TEST",flush=True)
       #print(ens_correction,flush=True)
       #print("TEST",flush=True)
-      print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]+form_ens2+ens_correction])+"};", flush = True)
+      print("Ypredicted = "+ lb + ",".join([str(i) for i in Y_predicted[0]+form_ens2+ens_correction])+rb+";", flush = True)
     #print("formensval = {" + ",".join([str(i) for i in form_ens[idx]])+"};")
     #print("ens_correction = {" + ",".join([str(i) for i in ens_correction])+"};")
+    if Qforces == 1:
+      if Qprintforces == 0:
+        print("Fpredicted = I will not print the forces becuase it would be too many numbers. (Use -printforces)", flush = True)
+      else:
+        print("Fpredicted = "+lb + ",".join([lb+",".join([lb+",".join([str(k) for k in j])+rb for j in i])+rb for i in F_predicted[0]])+rb+";", flush = True)
    
     # If possible print MAE and RMSE
     if Qeval == 2:
@@ -1222,30 +1313,39 @@ for sampleeach_i in sampleeach_all:
       else:
         multiplier = 1.0
         units = " [?]"
+      print("", flush = True)
+      print("Results:", flush = True)
       mae = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation))  for i in range(len(sigmas))]
-      print("Mean Absolute Error:")
+      print("Mean Absolute Error:", flush = True)
       print("mae = " + ",".join([str(i) for i in mae])+units, flush = True)
       ### Calculate root-mean-squared-error (RMSE):
       rmse = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation)**2))  for i in range(len(sigmas))]
-      print("Root Mean Squared Error")
+      print("Root Mean Squared Error", flush = True)
       print("rmse = " + ",".join([str(i) for i in rmse])+units, flush = True)
       ### Calculate mean-absolute-relative-error (MArE):
       diff = [np.mean(Y_predicted[i]) - np.mean(Y_validation) for i in range(len(sigmas))]
       mare = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i]))  for i in range(len(sigmas))]
-      print("Mean Absolute (mean-)Relative Error:")
+      print("Mean Absolute (mean-)Relative Error:", flush = True)
       print("mare = " + ",".join([str(i) for i in mare])+units, flush = True)
       ### Calculate root-mean-squared-relative-error (RMSrE):
       rmsre = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i])**2))  for i in range(len(sigmas))]
-      print("Root Mean Squared (mean-)Relative Error")
+      print("Root Mean Squared (mean-)Relative Error", flush = True)
       print("rmsre = " + ",".join([str(i) for i in rmsre])+units, flush = True)
       diff = [np.median(Y_predicted[i]) - np.median(Y_validation) for i in range(len(sigmas))]
       mare = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i]))  for i in range(len(sigmas))]
-      print("Mean Absolute (median-)Relative Error:")
+      print("Mean Absolute (median-)Relative Error:", flush = True)
       print("mare = " + ",".join([str(i) for i in mare])+units, flush = True)
       ### Calculate root-mean-squared-relative-error (RMSrE):
       rmsre = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i])**2))  for i in range(len(sigmas))]
-      print("Root Mean Squared (median-)Relative Error")
+      print("Root Mean Squared (median-)Relative Error", flush = True)
       print("rmsre = " + ",".join([str(i) for i in rmsre])+units, flush = True)
+      if Qforces == 1:
+        print("", flush = True)
+        print("Results for forces:", flush = True)
+        mae = [np.mean(np.abs(np.array([np.array(j) for j in F_predicted[i]]).flatten() - np.array([np.array(j) for j in F_test]).flatten()))  for i in range(len(sigmas))]
+        print("MAE = " + ",".join([str(i) for i in mae])+" [Eh/Angstrom]", flush = True)
+        rmse = [np.sqrt(np.mean(np.abs(np.array([np.array(j) for j in F_predicted[i]]).flatten() - np.array([np.array(j) for j in F_test]).flatten())**2))  for i in range(len(sigmas))]
+        print("RMSE = " + ",".join([str(i) for i in rmse])+" [Eh/Angstrom]", flush = True)
   
     ### PRINTING THE QML PICKLES
     clustersout_df = clusters_df.copy()
@@ -1266,155 +1366,224 @@ for sampleeach_i in sampleeach_all:
   ###### OPTIMIZE ######
   ######################
   
-  if Qopt == 1:
+  if Qopt > 0:
     ### DATABASE LOADING ###
     ## The high level of theory
     clusters_df = test_high_database
     strs = clusters_df["xyz"]["structure"]
-   
-    print("Preparing optimization", flush = True) 
-    xyz=strs[0].get_positions()
-    #F=np.zeros_like(xyz)
-    #for i in range(len(xyz)):
-    #      for j in range(3):
-    #            F[i,j]=float(13.0)
-    #print(F[0,0], flush = True)
-    #print(xyz[0,0]+0.23, flush = True)
-    #print(type(xyz), flush = True)
-    maxsteps=8
-    xyzdeviation=0.05
-    shift=0.3  
-    print("Starting optimization", flush = True)
-    for step in range(maxsteps):
-      ### GENERATE SHIFTED STRUCTURES
-      
-      R=[xyz]
-      if step != maxsteps-1:
-        for i in range(len(xyz)):
-          for j in range(3):
-            ch=np.zeros_like(xyz)
-            ch[i,j]=+xyzdeviation #THIS IS THE SHIFT OF 0.05 Angstrom
-            R.append(xyz+ch)
-            #ch=-ch
-            #R.append(xyz+ch)
-      
-      RR=pd.DataFrame(np.zeros(len(R)),index=range(len(R)))
-      RR[0]=R
-      #print(RR, flush = True)  
-  
-      if method == "delta":
-        for RR_iter in range(len(RR[0])): 
-          #print(RR_iter,flush = True)
-          os.system("mkdir test;")
-          tocalc = strs[0].copy()
-          tocalc.set_positions(RR[0][RR_iter])
-          write("test/test.xyz",tocalc)
-          os.system("cd test;xtb test.xyz --sp --gfn 1 > test.log 2>&1 ;cd ..;JKQC -folder test -out JKMLtest.pkl -noex;rm -r test")
-          os.system("JKQC JKMLtest.pkl -el > .en")
-          with open(".en", "r") as ping:
-            en=float(ping.read().rstrip())
-          #print(en, flush=True)
-          if RR_iter == 0:
-            all_ens = [en]
-          else:
-            all_ens.append(en)
-          #print(all_ens, flush = True)
-        #print(all_ens, flush = True)
-  
-      #print(RR.values[0][0], flush = True)
-      ### REPRESENTATION CALCULATION ###
-      repres_dataframe = pd.DataFrame(index = RR.index, columns = ["xyz"])
-      max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
-      for i in range(len(repres_dataframe)):#TODO strs[0] cannot be define like that for different molecules, i.e. I can optimize only 1 molecule
-        repres_dataframe["xyz"][i] = generate_representation(RR.values[i][0], strs[0].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
-      fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
     
-      #some info about the full representation
-      #print(fchl_representations.shape, flush = True)
-    
-      ### DEFINING THE EVALUATION Xs:  Y = QML(X) 
-      #the full set
-      X_test = fchl_representations
-    
-      ### CORRECTING THE FCHL MATRIX SIZES
-      #X_train = fchl_representations0
-      #IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
-      if X_train.shape[1] != X_test.shape[1]:
-        if X_train.shape[1] > X_test.shape[1]:
-          small = X_test
-          large = X_train
-        else:
-          small = X_train
-          large = X_test
-        newmatrix = np.zeros([small.shape[0],large.shape[1],5,large.shape[3]])
-        newmatrix[:,:,0,:] = 1e+100
-        newmatrix[0:small.shape[0],0:small.shape[1],0:5,0:small.shape[3]] = small
-        if X_train.shape[1] > X_test.shape[1]:
-          X_test = newmatrix
-        else:
-          X_train = newmatrix
-    
-      ### THE EVALUATION
-      Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
-      Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
-  
-      if method == "delta":
-        new_save_energy = Y_predicted[0][0]+all_ens[0]
-      else:
-        new_save_energy = Y_predicted[0][0]
-      if step != 0:
-        if new_save_energy > save_energy:     
-          xyz = xyz + change
-          shift = shift/2
-          continue
-  
-      xyzold = xyz
-      F=np.zeros_like(xyz)
-      if step != maxsteps-1:
-        Fp=np.zeros_like(xyz)
-        #Fm=np.zeros_like(xyz)
-        for i in range(len(xyz)):
-          for j in range(3):
-            if method == "delta":
-              #print(Y_predicted[0][0])
-              #print(all_ens[0])
-              #print(wtf1)
-              #print(F[i,j])
-              F[i,j]=Y_predicted[0][0]+all_ens[0]
-              #print(F[i,j])
-              Fp[i,j]=Y_predicted[0][1+j+3*i]+all_ens[1+j+3*i]
-            else:
-              F[i,j]=Y_predicted[0][0]
-              Fp[i,j]=Y_predicted[0][1+j+3*i]
-            #Fp[i,j]=Y_predicted[0][1+2*j+6*i]
-            #Fm[i,j]=Y_predicted[0][2+2*j+6*i]
-    
+    ##################
+    ### KRR + FCHL ###
+    ################## 
+    if Qmethod == "krr" and Qrepresentation == "fchl":
+      print("Preparing optimization", flush = True) 
+      xyz=strs[0].get_positions()
+      #F=np.zeros_like(xyz)
+      #for i in range(len(xyz)):
+      #      for j in range(3):
+      #            F[i,j]=float(13.0)
+      #print(F[0,0], flush = True)
+      #print(xyz[0,0]+0.23, flush = True)
+      #print(type(xyz), flush = True)
+      maxsteps=8
+      xyzdeviation=0.05
+      shift=0.3  
+      print("Starting optimization", flush = True)
+      for step in range(maxsteps):
+        ### GENERATE SHIFTED STRUCTURES
         
-        #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
-        #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
-        change=(Fp-F)/xyzdeviation*shift
-        xyz = xyz - change
-        #print("TEST:",flush = True)
-        #print(change, flush = True)
-        #print(change*change, flush = True)
-        #print(np.transpose(change*change),flush=True)
-        #print(sum(np.transpose(change*change)),flush=True)
-        #print(np.sqrt(sum(np.transpose(change*change))),flush = True)
-        maxdev=max(np.sqrt(sum(np.transpose(change*change))))
+        R=[xyz]
+        if step != maxsteps-1:
+          for i in range(len(xyz)):
+            for j in range(3):
+              ch=np.zeros_like(xyz)
+              ch[i,j]=+xyzdeviation #THIS IS THE SHIFT OF 0.05 Angstrom
+              R.append(xyz+ch)
+              #ch=-ch
+              #R.append(xyz+ch)
+        
+        RR=pd.DataFrame(np.zeros(len(R)),index=range(len(R)))
+        RR[0]=R
+        #print(RR, flush = True)  
   
-      if step == 0:
-        print("step \tenergy [Eh]        \tmax.shift [A]", flush = True)
-        clustersout_df = pd.DataFrame()
-      save_energy = new_save_energy
-      cluster_id = len(clustersout_df)
-      clustersout_df = df_add_append(clustersout_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
-      clustersout_df = df_add_iter(clustersout_df, column_name_1, column_name_2, [str(cluster_id)], [save_energy])
-      newxyz = strs[0].copy()
-      newxyz.set_positions(xyzold)
-      clustersout_df = clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
-      print(str(step)+" \t"+str(save_energy)+" \t"+str(maxdev),flush = True)
-      #print(xyz, flush = True)
+        if method == "delta":
+          for RR_iter in range(len(RR[0])): 
+            #print(RR_iter,flush = True)
+            os.system("mkdir test;")
+            tocalc = strs[0].copy()
+            tocalc.set_positions(RR[0][RR_iter])
+            write("test/test.xyz",tocalc)
+            os.system("cd test;xtb test.xyz --sp --gfn 1 > test.log 2>&1 ;cd ..;JKQC -folder test -out JKMLtest.pkl -noex;rm -r test")
+            os.system("JKQC JKMLtest.pkl -el > .en")
+            with open(".en", "r") as ping:
+              en=float(ping.read().rstrip())
+            #print(en, flush=True)
+            if RR_iter == 0:
+              all_ens = [en]
+            else:
+              all_ens.append(en)
+            #print(all_ens, flush = True)
+          #print(all_ens, flush = True)
+  
+        #print(RR.values[0][0], flush = True)
+        ### REPRESENTATION CALCULATION ###
+        repres_dataframe = pd.DataFrame(index = RR.index, columns = ["xyz"])
+        max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
+        for i in range(len(repres_dataframe)):#TODO strs[0] cannot be define like that for different molecules, i.e. I can optimize only 1 molecule
+          repres_dataframe["xyz"][i] = generate_representation(RR.values[i][0], strs[0].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
+        fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
       
+        #some info about the full representation
+        #print(fchl_representations.shape, flush = True)
+      
+        ### DEFINING THE EVALUATION Xs:  Y = QML(X) 
+        #the full set
+        X_test = fchl_representations
+      
+        ### CORRECTING THE FCHL MATRIX SIZES
+        #X_train = fchl_representations0
+        #IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
+        if X_train.shape[1] != X_test.shape[1]:
+          if X_train.shape[1] > X_test.shape[1]:
+            small = X_test
+            large = X_train
+          else:
+            small = X_train
+            large = X_test
+          newmatrix = np.zeros([small.shape[0],large.shape[1],5,large.shape[3]])
+          newmatrix[:,:,0,:] = 1e+100
+          newmatrix[0:small.shape[0],0:small.shape[1],0:5,0:small.shape[3]] = small
+          if X_train.shape[1] > X_test.shape[1]:
+            X_test = newmatrix
+          else:
+            X_train = newmatrix
+      
+        ### THE EVALUATION
+        Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
+        Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
+  
+        if method == "delta":
+          new_save_energy = Y_predicted[0][0]+all_ens[0]
+        else:
+          new_save_energy = Y_predicted[0][0]
+        if step != 0:
+          if new_save_energy > save_energy:     
+            xyz = xyz + change
+            shift = shift/2
+            continue
+  
+        xyzold = xyz
+        F=np.zeros_like(xyz)
+        if step != maxsteps-1:
+          Fp=np.zeros_like(xyz)
+          #Fm=np.zeros_like(xyz)
+          for i in range(len(xyz)):
+            for j in range(3):
+              if method == "delta":
+                #print(Y_predicted[0][0])
+                #print(all_ens[0])
+                #print(wtf1)
+                #print(F[i,j])
+                F[i,j]=Y_predicted[0][0]+all_ens[0]
+                #print(F[i,j])
+                Fp[i,j]=Y_predicted[0][1+j+3*i]+all_ens[1+j+3*i]
+              else:
+                F[i,j]=Y_predicted[0][0]
+                Fp[i,j]=Y_predicted[0][1+j+3*i]
+              #Fp[i,j]=Y_predicted[0][1+2*j+6*i]
+              #Fm[i,j]=Y_predicted[0][2+2*j+6*i]
+      
+          
+          #print(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)))
+          #print(xyz+0.5*np.matmul(np.linalg.inv((Fm+Fp-2*F)/(2*xyzdeviation)),(Fp-Fm)/(2*xyzdeviation)), flush = True)
+          change=(Fp-F)/xyzdeviation*shift
+          xyz = xyz - change
+          #print("TEST:",flush = True)
+          #print(change, flush = True)
+          #print(change*change, flush = True)
+          #print(np.transpose(change*change),flush=True)
+          #print(sum(np.transpose(change*change)),flush=True)
+          #print(np.sqrt(sum(np.transpose(change*change))),flush = True)
+          maxdev=max(np.sqrt(sum(np.transpose(change*change))))
+  
+        if step == 0:
+          print("step \tenergy [Eh]        \tmax.shift [A]", flush = True)
+          clustersout_df = pd.DataFrame()
+        save_energy = new_save_energy
+        cluster_id = len(clustersout_df)
+        clustersout_df = df_add_append(clustersout_df, "info", "folder_path", [str(cluster_id)], os.path.abspath(TEST_HIGH)[::-1].split("/",1)[1][::-1]+"/")
+        clustersout_df = df_add_iter(clustersout_df, column_name_1, column_name_2, [str(cluster_id)], [save_energy])
+        newxyz = strs[0].copy()
+        newxyz.set_positions(xyzold)
+        clustersout_df = clustersout_df = df_add_iter(clustersout_df, "xyz", "structure", [str(cluster_id)], [newxyz])
+        print(str(step)+" \t"+str(save_energy)+" \t"+str(maxdev),flush = True)
+        #print(xyz, flush = True)
+
+    ##################
+    ### NN + PaiNN ###
+    ##################
+    elif Qmethod == "nn":
+      if torch.cuda.is_available():
+        device = 'cuda'
+      else:
+        device = 'cpu'
+      spk_calc = SpkCalculator(
+        model_file=varsoutfile,
+        device=device,
+        neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
+        #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+        #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
+        energy_key='energy',
+        force_key='forces',
+        energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
+        force_unit="eV",#YEAH I have no idea what the output is :-D
+        position_unit="Ang",
+        )
+      Y_predicted = []
+      F_predicted = []
+      from ase.optimize import BFGS
+      from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+      #from ase.md.verlet import VelocityVerlet
+      from ase.md.langevin import Langevin
+      from ase import units
+      from ase.io import read,write
+      for i in range(len(clusters_df)):
+        atoms = clusters_df["xyz"]["structure"].values[i]
+        atoms.calc = spk_calc
+        if Qopt == 1:
+          dyn = BFGS(atoms,maxstep=0.02)
+          def printenergy(a=atoms):
+            write("opt.xyz", a, append = True)
+          dyn.attach(printenergy, interval=1)
+          dyn.run(fmax=1e-2)
+        else: 
+          # Set the momenta corresponding to T=300K
+          MaxwellBoltzmannDistribution(atoms, temperature_K=298)
+          # We want to run MD with constant energy using the VelocityVerlet algorithm.
+          #dyn = VelocityVerlet(atoms, 5 * units.fs)  # 5 fs time step.
+          dyn = Langevin(atoms, 5*units.fs, 298*units.kB, 0.5) #friction coeffitient 0.002
+          def printenergy(a=atoms):  # store a reference to atoms in the definition.
+            """Function to print the potential, kinetic and total energy."""
+            epot = a.get_potential_energy() / len(a)
+            ekin = a.get_kinetic_energy() / len(a)
+            write("opt.xyz", a, append = True)
+            print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
+                  'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
+          # Now run the dynamics
+          dyn.attach(printenergy, interval=10)
+          printenergy()
+          dyn.run(200)
+ 
+      #  Y_predicted.append(atoms.get_potential_energy())
+      #  if Qforces == 1:
+      #    F_predicted.append(atoms.get_forces())
+      #Y_predicted = [np.array(Y_predicted)]
+      #if Qforces == 1:
+      #  F_predicted = [np.array(F_predicted)]
+
+    else:
+      print("Wrong method or representation chosen.")
+      exit()  
   
     ### PRINTING THE RESULTS
     #print("Ypredicted = {" + ",".join([str(i) for i in save_energy])+"};", flush = True)

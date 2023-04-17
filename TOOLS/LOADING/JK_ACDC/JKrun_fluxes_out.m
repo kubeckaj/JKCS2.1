@@ -71,7 +71,7 @@ fprintf("\nNext collision outgrowing fluxes (distinguish monomers and clusters):
 for i = 1:size(out2,1)
   fprintf("%20s (%.2f %s)\n",out2(i,1),out2(i,3),"%")
 end
-fprintf("\nTotal flux is %f cm-3s-1\n\n",total/10^6)
+fprintf("\nTotal flux is %f cm-3s-1 = %e cm-3s-1\n\n",total/10^6,total/10^6)
 
 %%
 num_monomers=0;

@@ -98,7 +98,7 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
-  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx")
+  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx, -forces [Eh/Ang]")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -108,6 +108,7 @@ Qrecursive = False
 files = []  
 input_pkl = []
 output_pkl = "mydatabase.pkl"
+Qforces = 0 #should I collect forces? 0/1
 
 addcolumn = []
 Qmodify = 0 #Do I want to somehow modify the input dataframe or names?
@@ -220,6 +221,10 @@ for i in argv[1:]:
       if Qout == 0:
         Qout = 1
       continue
+  #FORCES
+  if i == "-forces":
+    Qforces = 1
+    continue
   #ORCA EXTENSION
   if i == "-orcaext" or i == "-orca":
     last = "-orcaext"
@@ -838,6 +843,7 @@ for file_i in files:
   file_i_BASE = file_i[:-4][::-1].split("/",1)[0][::-1]
   file_i_ABC  = folder+file_i_BASE+".log"
   file_i_XTB  = folder+file_i_BASE+".log"
+  file_i_XTBengrad  = folder+file_i_BASE+".engrad"
   file_i_G16  = folder+file_i_BASE+".log"
   file_i_XYZ  = folder+file_i_BASE+".xyz"
   file_i_ORCA = folder+file_i_BASE+"."+orcaext
@@ -1006,6 +1012,21 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "mulliken_charges", [str(cluster_id)], [out_mulliken_charges]) #O4
       clusters_df = df_add_iter(clusters_df, "log", "NAtoms", [str(cluster_id)], [out_NAtoms]) #I3
     file.close()
+    if Qforces == 1:
+      if path.exists(file_i_XTBengrad):
+        file = open(file_i_XTBengrad, "r")
+        for gradi in range(11):
+          file.readline()
+        try:
+          save_forces = []
+          for gradi in range(3*out_NAtoms):
+            save_forces.append(float(file.readline())/0.529177)
+          out_forces = [np.array([save_forces[i],save_forces[i+1],save_forces[i+2]]) for i in range(0,len(save_forces),3)]
+        except:
+          out_forces = missing
+        clusters_df = df_add_iter(clusters_df, "extra", "forces", [str(cluster_id)], [out_forces]) #F1
+        file.close()
+        
 
   ###############
   ### G16 #######
@@ -1046,6 +1067,8 @@ for file_i in files:
       out_enthalpy_energy = missing                      #T8
       out_gibbs_free_energy = missing                    #T9
       out_entropy = missing                              #E1
+      if Qforces == 1:
+        out_forces = missing                             #F1
       search=-1
       save_mulliken_charges=0
       save_something=""
@@ -1272,6 +1295,23 @@ for file_i in files:
               out_entropy = missing
             search += 1 
             continue
+        if Qforces == 1:
+          if re.search("Center     Atomic                   Forces", line): #F1
+            save_something = "forces"
+            save_forces = -2
+            out_forces = []
+            continue
+          if save_something == "forces":
+            save_forces = save_forces + 1
+            if save_forces > 0:
+              try:
+                out_forces.append(np.array([float(line.split()[2])/0.529177,float(line.split()[3])/0.529177,float(line.split()[4])/0.529177]))
+              except:
+                out_forces = missing
+                save_something = ""
+            if save_forces == out_NAtoms:
+              save_something = ""
+            continue
       #SAVE
       clusters_df = df_add_iter(clusters_df, "log", "time", [str(cluster_id)], [out_time]) #TIME
       clusters_df = df_add_iter(clusters_df, "log", "termination", [str(cluster_id)], [out_termination]) #TERMINATION
@@ -1301,6 +1341,8 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "enthalpy_energy", [str(cluster_id)], [out_enthalpy_energy]) #T8
       clusters_df = df_add_iter(clusters_df, "log", "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy]) #T9
       clusters_df = df_add_iter(clusters_df, "log", "entropy", [str(cluster_id)], [out_entropy]) #E1
+      if Qforces == 1:
+        clusters_df = df_add_iter(clusters_df, "extra", "forces", [str(cluster_id)], [out_forces]) #F1
     file.close()
 
   ###############
@@ -1353,6 +1395,8 @@ for file_i in files:
       out_enthalpy_energy = missing                      #T8
       out_gibbs_free_energy = missing                    #T9
       out_entropy = missing                              #E1
+      if Qforces == 1:
+        out_forces = missing                             #F1
       search=-1
       save_mulliken_charges=0
       save_something=""
@@ -1506,6 +1550,23 @@ for file_i in files:
             except:
               out_enthalpy_energy = missing
             continue
+        if Qforces == 1: 
+          if re.search("CARTESIAN GRADIENT", line): #F1
+            save_something = "forces"
+            save_forces = -2
+            out_forces = []
+            continue
+          if save_something == "forces":
+            save_forces = save_forces + 1
+            if save_forces > 0:
+              try:
+                out_forces.append(np.array([float(line.split()[3])/0.529177,float(line.split()[4])/0.529177,float(line.split()[5])/0.529177]))
+              except:
+                out_forces = missing
+                save_something = ""
+            if save_forces == out_NAtoms:
+              save_something = ""
+            continue
       #FINISH MISSING
       try:
         out_energy_thermal_correction = out_internal_energy - out_electronic_energy
@@ -1553,6 +1614,8 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, orcaextname, "enthalpy_energy", [str(cluster_id)], [out_enthalpy_energy]) #T8
       clusters_df = df_add_iter(clusters_df, orcaextname, "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy]) #T9
       clusters_df = df_add_iter(clusters_df, orcaextname, "entropy", [str(cluster_id)], [out_entropy]) #E1
+      if Qforces == 1:
+        clusters_df = df_add_iter(clusters_df, "extra", "forces", [str(cluster_id)], [out_forces]) #F1
     file.close()
 
   ###############

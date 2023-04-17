@@ -11,4 +11,4 @@ JKconstants %Na,R,kB,pres_atm
             
 %RUN folder
 %if not(isfolder("RUN")); mkdir('RUN'); end; cd RUN; 
-pwdf=pwd;if pwdf(end-2:end)~='RUN';if not(isfolder("RUN")); mkdir('RUN'); end; cd RUN;end
+pwdf=pwd;if not(strcmp(pwdf(end-2:end),'RUN'));if not(isfolder("RUN")); mkdir('RUN'); end; cd RUN;end

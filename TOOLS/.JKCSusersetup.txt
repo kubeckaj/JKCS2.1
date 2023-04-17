@@ -98,12 +98,10 @@ function program_SBATCH {
   SBATCH_command+="--time $3 "
   SBATCH_command+="-N $4 "
   SBATCH_command+="--mem-per-cpu $5 " #NOTE: This line must be commented out on Mahti
-  if [[ $(echo "$2" | grep -io "gpu") ]];
+  if [ ! -z "$6" ]; then SBATCH_command+=" -n $6 --ntasks-per-node=$6 "; fi
+  if [[ $(echo "$2" | grep -io "gpu") ]] || [ "$2" == "qa100" ];
   then
-    if [ ! -z "$6" ]; then SBATCH_command+=" -n $6 --ntasks-per-node=$6 "; fi
     SBATCH_command+="--gres=gpu:1 "
-  else
-    if [ ! -z "$6" ]; then SBATCH_command+="-n $6 "; fi
   fi
   SBATCH_command+=$SBATCH_PREFIX" "
   echo $SBATCH_command  
@@ -206,6 +204,7 @@ function program_JKML {
         cp $i $currentdir/
       fi
     done
+    cp *.xyz $currentdir/ 2>/dev/null
     cd ../
     rm -r JKML$SLURM_JOBID
     cd $currentdir
@@ -535,6 +534,11 @@ function program_XTB {
   else							     
     cp calc.xyz $DIR/$base.xyz
   fi  
+  #COPY GRADIENT FOR FORCES
+  for i in $method $args
+  do
+    if [ "$i" == "-grad" ] || [ "$i" == "--grad" ]; then cp *.engrad $DIR/${base}.engrad; fi
+  done
 
   #CLEANING
   cd $DIR
@@ -629,11 +633,11 @@ $PATH_G16/g16/g16 < $inputCOM >& $DIR/$output
 #  mv $DIR/$output $DIR/${base}O.log
 #fi
 #cp $output $DIR/
+JKlog2xyz $output
+cp ${base}.xyz $DIR/ 2>/dev/null
 cp *.err $DIR/ 2>/dev/null
 cp *.out $DIR/ 2>/dev/null
 cd $DIR
-wait
-JKlog2xyz $output >> output 2>>output
 
 #CLEANING
 rm -rf \$CALC_NAME""" > $base.cmd
