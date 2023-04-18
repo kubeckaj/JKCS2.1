@@ -2089,6 +2089,7 @@ if Qqha == 1:
         mi = np.mean(structure.get_moments_of_inertia())
       except:
         mi = missing
+      
       #print(mu)
       #print(mi)
       Sr = [R*(0.5+np.log((8*np.pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K

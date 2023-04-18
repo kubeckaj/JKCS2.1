@@ -937,10 +937,10 @@ for sampleeach_i in sampleeach_all:
       else:
         new_dataset = ASEAtomsData.create(temperary_file_name,
           distance_unit='Ang',
-          property_unit_dict={'energy':'eV', 'forces': 'eV/bohr', 'total_charge': 'e'},
+          property_unit_dict={'energy':'eV', 'forces': 'eV/Ang', 'total_charge': 'e'},
           atomrefs = {'energy': [0]*100}
           )
-        properties = [{'energy': np.array([Y_train[i]]), 'forces': 27.2114*1.88973*np.array(F_train[i]), 'total_charge': np.array([0], dtype=np.float32)} for i in range(len(Y_train))]
+        properties = [{'energy': np.array([Y_train[i]]), 'forces': 27.2114*np.array(F_train[i]), 'total_charge': np.array([0], dtype=np.float32)} for i in range(len(Y_train))]
         target_properties = [spk.properties.energy, spk.properties.forces]
         tradoffs = [Qenergytradoff, 1]
       new_dataset.add_systems(properties, strs)
@@ -1247,7 +1247,7 @@ for sampleeach_i in sampleeach_all:
           energy_key='energy',
           force_key='forces',
           energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
-          force_unit="eV/bohr",#YEAH I have no idea what the output is :-D
+          force_unit="eV/Ang",#YEAH I have no idea what the output is :-D
           position_unit="Ang",
           )
       Y_predicted = []
@@ -1260,7 +1260,7 @@ for sampleeach_i in sampleeach_all:
           F_predicted.append(atoms.get_forces())
       Y_predicted = [np.array(Y_predicted)]
       if Qforces == 1:
-        F_predicted = [0.0367493*np.array(F_predicted)]
+        F_predicted = [0.0367493*np.array(F_predicted)] #Hartree/Ang
 
     else:
       print("Wrong method or representation chosen.")
@@ -1536,7 +1536,7 @@ for sampleeach_i in sampleeach_all:
         energy_key='energy',
         force_key='forces',
         energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
-        force_unit="eV",#YEAH I have no idea what the output is :-D
+        force_unit="eV/Ang",#YEAH I have no idea what the output is :-D
         position_unit="Ang",
         )
       Y_predicted = []

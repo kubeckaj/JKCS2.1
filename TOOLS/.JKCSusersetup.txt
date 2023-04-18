@@ -633,7 +633,7 @@ $PATH_G16/g16/g16 < $inputCOM >& $DIR/$output
 #  mv $DIR/$output $DIR/${base}O.log
 #fi
 #cp $output $DIR/
-JKlog2xyz $output
+JKlog2xyz $DIR/$output
 cp ${base}.xyz $DIR/ 2>/dev/null
 cp *.err $DIR/ 2>/dev/null
 cp *.out $DIR/ 2>/dev/null
