@@ -52,6 +52,9 @@ function help {
    sa ........... sulphuric acid
    msa .......... methanesulfonic acid
    fa ........... formic acid
+   aca .......... acetic acid
+   cla .......... chloric acid
+   pcla ......... perchloric acid
 
    am ........... ammonia
    ma ........... methylamine
@@ -242,6 +245,15 @@ function add {
   "fa")  echo "  fa     0   $path2/fa.xyz"          >> $userinputfile
          echo "  fa    -1   $path2/fa-.xyz"         >> $userinputfile
          ;;
+  "aca") echo "  aca    0   $path2/aca.xyz"         >> $userinputfile
+         echo "  aca   -1   $path2/acc.xyz"         >> $userinputfile
+         ;;
+  "cla") echo "  cla    0   $path2/cla.xyz"         >> $userinputfile
+         echo "  cla   -1   $path2/cla-.xyz"        >> $userinputfile
+         ;;
+  "pcla") echo "  pcla   0   $path2/pcla.xyz"       >> $userinputfile
+          echo "  pcla  -1   $path2/pcla-.xyz"      >> $userinputfile
+         ;;
   "ma") echo  "  ma     0   $path2/ma.xyz"          >> $userinputfile
         echo  "  ma     1   $path2/mah.xyz"         >> $userinputfile
         ;;
@@ -333,6 +345,9 @@ do
     add "SA"
     add "MSA"
     add "FA"
+    add "ACA"
+    add "CLA"
+    add "PCLA"
 
     add "A"
     add "GD"

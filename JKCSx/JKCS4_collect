@@ -560,10 +560,10 @@ do
         else
           arraymax=""
         fi
-        SC_command0=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
+        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
+        JKecho 2 "$SC_command"
         #TODO
-        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> ou
-tput
+        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> output
         echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" > .run
         #echo  "$SC_command0 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         #echo  "$SC_command0 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
@@ -571,6 +571,7 @@ tput
         #echo  "$SC_command0 'sh .run1'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
         job=$(/bin/bash .run)
+        JKecho 2 "submitted"
         if [ ! -z "$job" ] ;then echo $job;fi
         echo $job | awk '{print $4}'  >> .jobs.txt
       fi
@@ -590,13 +591,14 @@ tput
 done
 cd $currentdirpath
 
+JKecho 2 "Sending collector."
 if [ "$Qperform" != 2 ]
 then
   JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
   echo  "$SC_command '$commandTODO'" >> output
   JKecho 3 "Submitting CONTROL command"
-  echo  "$SC_command '$commandTODO'" > .run
-  job=$(/bin/bash .run)
+  echo  "$SC_command '$commandTODO'" > .runC
+  job=$(/bin/bash .runC)
   #job=$(eval $SC_command "$commandTODO")
   if [ ! -z "$job" ];then echo $job; fi
   if [ "$METHODsupercomputer" != "loc" ]

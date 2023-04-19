@@ -539,7 +539,7 @@ if Qtrain == 1:
   train_high_database = pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])
   if method == "delta":
     train_low_database = pd.read_pickle(TRAIN_LOW).sort_values([('info','file_basename')])
-if Qeval == 1 or Qeval == 2 or Qopt == 1:
+if Qeval == 1 or Qeval == 2 or Qopt > 0:
   test_high_database = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
   if method == "delta":
     test_low_database = pd.read_pickle(TEST_LOW).sort_values([('info','file_basename')])  

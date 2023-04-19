@@ -2486,10 +2486,15 @@ for i in Pout:
   if i == "-movie":
     f = open("movie.xyz","w")
     for ind in clusters_df.index:
-      write(".movie.xyz",clusters_df["xyz"]["structure"][ind])
-      f2 = open(".movie.xyz", 'r')
-      f.write(f2.read())
-      f2.close()
+      try:
+        write(".movie.xyz",clusters_df["xyz"]["structure"][ind])
+        with open(".movie.xyz", 'r') as f2:
+          lines = f2.readlines()
+          lines[1] = clusters_df["info"]["file_basename"][ind]+"\n"
+        f.writelines(lines)
+        f2.close()
+      except:
+        continue
     f.close()
     continue
   #Rg
