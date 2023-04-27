@@ -259,6 +259,9 @@ do
 	NewGTO I \"aug-cc-pVTZ-PP\" end
 	NewECP I \"SK-MCDHF-RSC\" end
 end""" >> $(basename $i .xyz).inp
+    elif [ -e "$Qextrainput" ]
+    then
+      cat "$Qextrainput" >> $(basename $i .xyz).inp
     fi
     if [ "$Qextrainput" == "I" ] || [ "$Qextrainput" == "maxiter" ]
     then

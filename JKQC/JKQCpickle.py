@@ -1399,6 +1399,7 @@ for file_i in files:
         out_forces = missing                             #F1
       search=-1
       save_mulliken_charges=0
+      skip_0_freq=1
       save_something=""
       for line in file:
         #TIME
@@ -1491,6 +1492,10 @@ for file_i in files:
         if search==2:
           #VIBRATIONAL FREQUENCIES
           if re.search("cm\*\*-1", line): #V1
+            if re.search("0.00 cm\*\*-1", line) and skip_0_freq == 1: 
+              continue
+            else:
+              skip_0_freq = 0
             if np.all(np.isnan(out_vibrational_frequencies)):
               out_vibrational_frequencies = []
             try:
