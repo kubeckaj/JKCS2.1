@@ -62,9 +62,9 @@ def help_adv():
   print("", flush = True)
   print("  EXTRA ADVANCED OPTIONS:", flush = True)
   print("    -so3net             switch to NN = neural network with SO3net (from SchNetPack)", flush = True)
-  print("    -split x y z        only with -krr how many splits of KRR matrix do you do", flush = True)
-  #print("   -startsplit <int>  the same like above", flush = True)
-  print("    -finishsplit x y z  (see -split) combines the splitted kernel and creates model", flush = True)
+  print("    -split <int>        only with -krr how many splits of KRR matrix do you do", flush = True)
+  print("    -startsplit <int>   the same like above but only construct kernels", flush = True)
+  print("    -finishsplit <int>  (see -split) combines the splitted kernel and creates model", flush = True)
   print("    -wolfram            prints {} instead of []", flush = True)
   print("", flush = True)
 
@@ -77,17 +77,16 @@ def help_krr():
   
 def help_nn():
   print("  OPTIONS FOR NEURAL NETWORKS:", flush = True)
-  print("    -epochs <int>       number of epochs [def = 1000]", flush = True)
-  print("    -nn_train <float>   portion of training data (exlc. validation) [def = 0.9]", flush = True)
+  print("    -epochs <int>              number of epochs [def = 1000]", flush = True)
+  print("    -nn_train <float>          portion of training data (exlc. validation) [def = 0.9]", flush = True)
   print("    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]", flush = True)
-  print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.1]")
+  print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]")
   print("", flush = True)
   print("  OPTIONS FOR REPRESENTATION:", flush = True)
- 
-  print("    -nn_ab <int>     number of atom basis/features/size of embeding vector [def = 256]", flush = True)
-  print("    -nn_int <int>    number of interaction blocks [def = 5]", flush = True)
-  print("    -nn_rb <int>     number of radial basis for exp. int. dist. [def = 20]", flush = True)
-  print("    -nn_cutoff <int> cutoff function (Angstrom) [def = 5.0]", flush = True)
+  print("    -nn_ab <int>       number of atom basis/features/size of embeding vector [def = 256]", flush = True)
+  print("    -nn_int <int>      number of interaction blocks [def = 5]", flush = True)
+  print("    -nn_rb <int>       number of radial basis for exp. int. dist. [def = 20]", flush = True)
+  print("    -nn_cutoff <float> cutoff function (Angstrom) [def = 5.0]", flush = True)
   print("", flush = True)
 
 #PREDEFINED ARGUMENTS
@@ -145,7 +144,7 @@ nn_atom_basis = 256
 nn_interactions = 5
 nn_epochs = 1000
 Qearlystop = 200
-Qenergytradoff = 0.1 #if forces are trained on: [energy, force] = [X, 1]
+Qenergytradoff = 0.01 #if forces are trained on: [energy, force] = [X, 1]
 nw = 1
 
 #OUTPUT FILES
@@ -940,7 +939,7 @@ for sampleeach_i in sampleeach_all:
           property_unit_dict={'energy':'eV', 'forces': 'eV/Ang', 'total_charge': 'e'},
           atomrefs = {'energy': [0]*100}
           )
-        properties = [{'energy': np.array([Y_train[i]]), 'forces': 27.2114*np.array(F_train[i]), 'total_charge': np.array([0], dtype=np.float32)} for i in range(len(Y_train))]
+        properties = [{'energy': 27.2107*np.array([Y_train[i]]), 'forces': 27.2114*np.array(F_train[i]), 'total_charge': np.array([0], dtype=np.float32)} for i in range(len(Y_train))]
         target_properties = [spk.properties.energy, spk.properties.forces]
         tradoffs = [Qenergytradoff, 1]
       new_dataset.add_systems(properties, strs)
@@ -949,7 +948,7 @@ for sampleeach_i in sampleeach_all:
       n_val = len(strs) - n_train
       pl.seed_everything(seed)
       dataset = AtomsDataModule(temperary_file_name,
-          batch_size=64,
+          batch_size=16,
           num_train=n_train,
           num_val=n_val,
           #num_test=n_test,
@@ -1128,6 +1127,7 @@ for sampleeach_i in sampleeach_all:
       clusters_df, clusters_df_trash, idx, idx_trash = train_test_split(clusters_df, range(len(clusters_df)), test_size=(len(clusters_df)-size)/len(clusters_df), random_state=seed)
       if method == "delta":
         clusters_df2 = clusters_df2.iloc[idx]
+    clustersout_df = clusters_df.copy()
 
     if Qeval == 2:
       try:
@@ -1230,7 +1230,7 @@ for sampleeach_i in sampleeach_all:
         spk_calc = SpkCalculator(
           model_file=varsoutfile,
           device=device,
-          neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
+          neighbor_list=spk.transform.ASENeighborList(cutoff=nn_cutoff),
           #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
           #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
           energy_key='energy',
@@ -1241,7 +1241,7 @@ for sampleeach_i in sampleeach_all:
         spk_calc = SpkCalculator(
           model_file=varsoutfile,
           device=device,
-          neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
+          neighbor_list=spk.transform.ASENeighborList(cutoff=nn_cutoff),
           #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
           #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
           energy_key='energy',
@@ -1253,14 +1253,17 @@ for sampleeach_i in sampleeach_all:
       Y_predicted = []
       F_predicted = []
       for i in range(len(clusters_df)):
-        atoms = clusters_df["xyz"]["structure"].values[i]
+        atoms = clusters_df["xyz"]["structure"].values[i].copy()
+        #Y_predicted.append(-4540.0)
         atoms.calc = spk_calc
         Y_predicted.append(atoms.get_potential_energy())
         if Qforces == 1:
           F_predicted.append(atoms.get_forces())
-      Y_predicted = [np.array(Y_predicted)]
       if Qforces == 1:
+        Y_predicted = [0.0367493*np.array(Y_predicted)] #Hartree
         F_predicted = [0.0367493*np.array(F_predicted)] #Hartree/Ang
+      else:
+        Y_predicted = [np.array(Y_predicted)]
 
     else:
       print("Wrong method or representation chosen.")
@@ -1348,7 +1351,9 @@ for sampleeach_i in sampleeach_all:
         print("RMSE = " + ",".join([str(i) for i in rmse])+" [Eh/Angstrom]", flush = True)
   
     ### PRINTING THE QML PICKLES
-    clustersout_df = clusters_df.copy()
+    #print(type(clustersout_df["xyz"]["structure"].values[0]))
+    #print(type(Y_predicted[0][0]))
+    #print(type(ens_correction[0]))
     for i in range(len(clustersout_df)):
       if method != "delta":
         clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]+ens_correction[i]
@@ -1543,12 +1548,12 @@ for sampleeach_i in sampleeach_all:
       F_predicted = []
       from ase.optimize import BFGS
       from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-      #from ase.md.verlet import VelocityVerlet
+      from ase.md.verlet import VelocityVerlet
       from ase.md.langevin import Langevin
       from ase import units
       from ase.io import read,write
       for i in range(len(clusters_df)):
-        atoms = clusters_df["xyz"]["structure"].values[i]
+        atoms = clusters_df["xyz"]["structure"].values[i].copy
         atoms.calc = spk_calc
         if Qopt == 1:
           dyn = BFGS(atoms,maxstep=0.02)
@@ -1558,21 +1563,21 @@ for sampleeach_i in sampleeach_all:
           dyn.run(fmax=1e-2)
         else: 
           # Set the momenta corresponding to T=300K
-          MaxwellBoltzmannDistribution(atoms, temperature_K=298)
+          MaxwellBoltzmannDistribution(atoms, temperature_K=300)
           # We want to run MD with constant energy using the VelocityVerlet algorithm.
-          #dyn = VelocityVerlet(atoms, 5 * units.fs)  # 5 fs time step.
-          dyn = Langevin(atoms, 5*units.fs, 298*units.kB, 0.5) #friction coeffitient 0.002
+          #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
+          dyn = Langevin(atoms, 1*units.fs, 300*units.kB, 0.002) #friction coeffitient 0.002
           def printenergy(a=atoms):  # store a reference to atoms in the definition.
             """Function to print the potential, kinetic and total energy."""
             epot = a.get_potential_energy() / len(a)
             ekin = a.get_kinetic_energy() / len(a)
-            write("opt.xyz", a, append = True)
+            write("traj.xyz", a, append = True)
             print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
                   'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
           # Now run the dynamics
           dyn.attach(printenergy, interval=10)
           printenergy()
-          dyn.run(200)
+          dyn.run(2000)
  
       #  Y_predicted.append(atoms.get_potential_energy())
       #  if Qforces == 1:
@@ -1592,7 +1597,7 @@ for sampleeach_i in sampleeach_all:
     #clustersout_df = clusters_df.copy()
     #for i in range(len(clustersout_df)):
     #  clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]
-    clustersout_df.to_pickle(outfile)
+    #clustersout_df.to_pickle(outfile)
   ########
 
 

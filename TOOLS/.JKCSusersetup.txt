@@ -223,7 +223,7 @@ function program_JKML {
       varstest=0
       while [ $varstest -eq 0 ]
       do
-        found=`ls vars_*_*_*.pkl | wc -w`
+        found=`ls *_*_*_*.pkl | wc -w`
         if [ $found -eq $expected_files ]
         then
           varstest=1
@@ -232,7 +232,7 @@ function program_JKML {
         fi
       done
       time program_PYTHON ${@} -finishsplit
-      rm vars_*_*_*.pkl
+      rm *_*_*_*.pkl
     fi
   fi
   ##
@@ -248,8 +248,9 @@ function program_JKML {
 # abcluster uses OpenMP. Use all available CPU, unless OMP_NUM_THREADS is specified.
 ##########################################################################################
 function program_ABC {
-  input=$1                             # $name.inp
-  output=$(basename $input .inp).out   # $name.out
+  input=$1                      # $name.inp
+  base=$(basename $input .inp)  # $name
+  output=${base}.out            # $name.out
  
   #script full path
   if [ -e $PATH_ABC/rigidmol-optimizer ]
@@ -269,9 +270,35 @@ function program_ABC {
       export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
     fi
   fi
-  
+
+  #CREATING WORKING DIRECTORY
+  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  ADD=""
+  test=0
+  while [ $test -eq 0 ]
+  do
+    CALC_NAME=$WRKDIR/TMP/ABC${SLURM_JOBID}_$base${ADD}
+    if [ -d $CALC_NAME ]; then ADD="_${RANDOM}"
+    else test=1;fi
+  done
+
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  mkdir $CALC_NAME
+  cd $CALC_NAME
+  cp $DIR/$input .
+  cp $DIR/${base}.cluster . 
+
   #performing the calculation
-  $rigidmoloptimizer $input > $output 
+  $rigidmoloptimizer $input > $DIR/$output 
+
+  #COPYING RESULTS BACK
+  #cp $output $DIR/$output
+  cp -r ${base}-LM $DIR
+
+  #CLEANING
+  cd $DIR
+  rm -rf $CALC_NAME  
 }
 function program_GEOM {
   input=$1                             # $name.inp
@@ -524,7 +551,8 @@ function program_XTB {
   fi
   if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
 
-  $XTBPATH/bin/xtb calc.xyz $method $args > $DIR/$output 2>&1
+  $XTBPATH/bin/xtb calc.xyz $method $args > $output 2>&1
+  cp $output $DIR/$output
   
   #COPYING RESULTS BACK
   #cp $output $DIR/$output
