@@ -564,11 +564,11 @@ do
         else
           arraymax=""
         fi
-        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
+        SC_command_array=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
         JKecho 2 "$SC_command"
         #TODO
-        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> output
-        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" > .run
+        echo "$SC_command_array 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> output
+        echo "$SC_command_array 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" > .run
         #echo  "$SC_command0 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         #echo  "$SC_command0 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #echo  "$SC_command0 'sh .run1'" >> output

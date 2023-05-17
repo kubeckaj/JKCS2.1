@@ -129,7 +129,7 @@ then
     done
   else
     o=`cat $resultfile | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $2}' | xargs | sed "s/ /,/g"`;
-    JKQC $(basename $savefile .txt).pkl -extract $o -movie #-noname
+    JKQC $(basename $savefile .txt).pkl -extract $o -movie -noname
     mv movie.xyz $movie
   fi
   
