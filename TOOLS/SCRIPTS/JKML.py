@@ -24,6 +24,7 @@ def help():
   print("", flush = True)
   print("  OPTIONS:", flush = True)
   print("    -qml                             use KRR with FCHL19 [set by default]", flush = True)
+  print("    -mbdf                            use KRR with MBDF", flush = True)
   print("    -nn,-painn                       switch to NN = neural network with PaiNN", flush = True)
   print("    -schnet                          switch to NN = neural network with SchNet", flush = True)
   print("", flush = True)
@@ -57,12 +58,14 @@ def help_adv():
   print("    -similarity <int>   selects structures with similar FCHL (uses kernel)", flush = True)
   print("    -forcemonomers      adds (extra) monomers to sampleeach/selection", flush = True)
   print("    -printforces        print out all forces (this might be a lot of numbers)", flush = True)
-  print("    -opt <STRS.pkl>     optimize structure based on model !!! NOT TESTED !!!", flush = True)
-  print("    -md <STRS.pkl>      run md starting from provided structure(s) based on model !!! NOT TESTED !!!", flush = True)
+  print("    -opt <STRS.pkl>     optimize structure based on model [NN]", flush = True)
+  print("    -opt_maxs <float>   max step in Angstrom in optimization [def = 0.02]")
+  print("    -md <STRS.pkl>      run md starting from provided structure(s) based on model [NN]", flush = True)
+  print("    -md_temperature     temperature of the simulation [def = 300.0]", flush = True)
   print("", flush = True)
   print("  EXTRA ADVANCED OPTIONS:", flush = True)
   print("    -so3net             switch to NN = neural network with SO3net (from SchNetPack)", flush = True)
-  print("    -split <int>        only with -krr how many splits of KRR matrix do you do", flush = True)
+  print("    -split <int>        only with -krr/-fchl how many splits of KRR matrix do you do", flush = True)
   print("    -startsplit <int>   the same like above but only construct kernels", flush = True)
   print("    -finishsplit <int>  (see -split) combines the splitted kernel and creates model", flush = True)
   print("    -wolfram            prints {} instead of []", flush = True)
@@ -72,7 +75,8 @@ def help_krr():
   print("  OPTIONS FOR KERNEL RIDGE REGRESSION:", flush = True)
   print("    -sigma <int>        Gaussian width hyperparameter [def = 1.0]", flush = True)
   print("    -lambda <int>       numerical stability (for matrix inv.) hyperparameter [def = 1e-4]")
-  print("    -laplacian          switch to Laplacian kernel")
+  print("    -laplacian          switch to Laplacian kernel (FCHL)")
+  print("    -krr_cutoff <float> cutoff function (Angstrom) [def = 10.0]", flush = True)
   print("", flush = True)
   
 def help_nn():
@@ -121,6 +125,7 @@ Qrepresentation = "fchl"
 Qkernel = "Gaussian"
 sigmas = [1.0]
 lambdas = [1e-4]*len(sigmas)
+krr_cutoff = 10.0
 #kernel_args = {
 #            "cut_distance": 1e1,
 #            "cut_start": 1.0,
@@ -146,6 +151,10 @@ nn_epochs = 1000
 Qearlystop = 200
 Qenergytradoff = 0.01 #if forces are trained on: [energy, force] = [X, 1]
 nw = 1
+
+#OPT/MD
+md_temperature = 300.0
+opt_maxstep = 0.02
 
 #OUTPUT FILES
 outfile="predicted.pkl"
@@ -204,6 +213,10 @@ for i in sys.argv[1:]:
     continue
   #SEED
   if i == "-seed":
+    last = "-seed"
+    continue
+  if last == "-seed":
+    last = ""
     seed = int(i)
     continue
   #WOLFRAM
@@ -424,12 +437,21 @@ for i in sys.argv[1:]:
     nn_rbf = int(i)
     continue
   #NN CUTOFF
-  if i == "-nn_cutoff":
-    last = "-nn_cutoff"
+  if i == "-nn_cutoff" or i == "-krr_cutoff" or i == "-cutoff":
+    last = "-cutoff"
     continue
-  if last == "-nn_cutoff":
+  if last == "-cutoff":
     last = ""
     nn_cutoff = float(i)
+    krr_cutoff = float(i)
+    continue
+  #OPT MAXSTEP
+  if i == "-opt_maxstep" or i == "-opt_maxs":
+    last = "-opt_maxstep"
+    continue
+  if last == "-opt_maxstep":
+    last = ""
+    opt_maxstep = float(i)
     continue
   #ATOM BASIS
   if i == "-nn_ab" or i == "-nn_atom_basis":
@@ -479,10 +501,22 @@ for i in sys.argv[1:]:
     last = ""
     Qearlytop = int(i)
     continue
+  #MD temperature
+  if i == "-md_temperature" or i == "-temperature":
+    last = "-md_temperature"
+    continue
+  if last == "-md_temperature":
+    last = ""
+    md_temperature = float(i)
+    continue
   #KRR (by default)
   if i == "-krr" or i == "-fchl" or i == "-qml":
     Qmethod = "krr"
     Qrepresentation = "fchl"
+    continue
+  if i == "-mbdf":
+    Qmethod = "krr"
+    Qrepresentation = "mbdf"
     continue
   #UNKNOWN ARGUMENT
   print("Sorry cannot understand this argument: "+i)
@@ -548,24 +582,31 @@ if Qmonomers == 1:
     monomers_low_database = pd.read_pickle(MONOMERS_LOW).sort_values([('info','file_basename')])
 
 #LIBRARIES FOR GIVEN METHOD AND REPRESENTATION
-if Qmethod == "krr" and Qrepresentation == "fchl":
-  from qml.fchl import generate_representation
-  if Qkernel == "Gaussian":
-    from qml.fchl import get_local_symmetric_kernels
-    from qml.fchl import get_local_kernels
-    JKML_sym_kernel = get_local_symmetric_kernels
-    JKML_kernel = get_local_kernels
-  else:
-    from qml.kernels import laplacian_kernel
-    from qml.kernels import laplacian_kernel_symmetric
-    JKML_sym_kernel = laplacian_kernel_symmetric
-    JKML_kernel = laplacian_kernel
+if Qmethod == "krr":
+  from qml.math import cho_solve
+  if Qrepresentation == "fchl":
+    from qml.fchl import generate_representation
+    if Qkernel == "Gaussian":
+      from qml.fchl import get_local_symmetric_kernels
+      from qml.fchl import get_local_kernels
+      JKML_sym_kernel = get_local_symmetric_kernels
+      JKML_kernel = get_local_kernels
+    else:
+      from qml.kernels import laplacian_kernel
+      from qml.kernels import laplacian_kernel_symmetric
+      JKML_sym_kernel = laplacian_kernel_symmetric
+      JKML_kernel = laplacian_kernel
+  elif Qrepresentation == "mbdf":
+    from MBDF import generate_mbdf
+    generate_representation = generate_mbdf
+    from qml.kernels import get_local_symmetric_kernel_mbdf, get_local_kernel_mbdf
+    JKML_sym_kernel = get_local_symmetric_kernel_mbdf
+    JKML_kernel = get_local_kernel_mbdf
   #from qml.fchl import get_atomic_symmetric_kernels
   #from qml.fchl import get_atomic_kernels
   #from qml.fchl import get_global_symmetric_kernels
   #from qml.fchl import get_global_kernels
   #from qml.kernels import gaussian_kernel
-  from qml.math import cho_solve
 elif Qmethod == "nn" and Qrepresentation == "painn":
   if Qtrain > 0:
     from schnetpack.data import ASEAtomsData
@@ -731,7 +772,7 @@ elif Qsampleeach < 0:
   from joblib import Parallel, delayed
   import multiprocessing
   def task(arg):
-    return generate_representation(arg.get_positions(),arg.get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
+    return generate_representation(arg.get_positions(),arg.get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
 
   num_cores = multiprocessing.cpu_count()
   print("Trying to use "+str(num_cores)+" CPUs for FCHL. (If less are available I hope that nothing gets fucked up.)")
@@ -831,18 +872,23 @@ for sampleeach_i in sampleeach_all:
     else:
       Y_train = form_ens
     
-    if Qmethod == "krr" and Qrepresentation == "fchl":
+    if Qmethod == "krr":
       ### REPRESENTATION CALCULATION ###
-      repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
-      max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
-      for i in range(len(repres_dataframe)):
-        repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
-      fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
+      if Qrepresentation == "fchl":
+        repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
+        max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
+        for i in range(len(repres_dataframe)):
+          repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
+        representations = np.array([mol for mol in repres_dataframe["xyz"]])
+      elif Qrepresentation == "mbdf":
+        X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+        representations = generate_representation(np.array([i.get_atomic_numbers() for i in strs]), np.array([i.get_positions() for i in strs]), cutoff_r = krr_cutoff, normalized = False)
+      
       #some info about the full representation
-      print(fchl_representations.shape, flush = True)
+      print(representations.shape, flush = True)
   
       ### DEFINING THE TRAINING X:  Y = QML(X) 
-      X_train = fchl_representations
+      X_train = representations
       
       ### QML TRAINING ###
       #TODO if splitting is required include this:
@@ -894,13 +940,19 @@ for sampleeach_i in sampleeach_all:
         f.close()
         print("Training completed.", flush = True)
       elif Qsplit == 1:
-        K = JKML_sym_kernel(X_train, sigmas, **kernel_args)       #calculates kernel
+        if Qrepresentation == "fchl":
+          K = JKML_sym_kernel(X_train, sigmas, **kernel_args)       #calculates kernel
+        elif Qrepresentation == "mbdf":
+          K = [JKML_sym_kernel(X_train, X_atoms, sigmas[0], **kernel_args)]  #calculates kernel
         K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
         alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
   
         #I will for now everytime save the trained QML
         f = open(varsoutfile,"wb")
-        pickle.dump([X_train, sigmas, alpha],f)
+        if Qrepresentation == "fchl":
+          pickle.dump([X_train, sigmas, alpha],f)
+        elif Qrepresentation == "mbdf":
+          pickle.dump([X_train, X_atoms, sigmas, alpha],f)
         f.close()
         print("Training completed.", flush = True)
       else:
@@ -1090,9 +1142,12 @@ for sampleeach_i in sampleeach_all:
     if not os.path.exists(VARS_PKL):
       print("Error reading trained model. VARS_PKL = "+VARS_PKL)
       exit()
-    if Qmethod == "krr" and Qrepresentation == "fchl":
+    if Qmethod == "krr":
       f = open(VARS_PKL,"rb")
-      X_train, sigmas, alpha = pickle.load(f)
+      if Qrepresentation == "fchl":
+        X_train, sigmas, alpha = pickle.load(f)
+      elif Qrepresentation == "mbdf":
+        X_train, X_atoms, sigmas, alpha = pickle.load(f)
       if len(alpha)!=1:
         alpha = [alpha]
       f.close()
@@ -1144,6 +1199,8 @@ for sampleeach_i in sampleeach_all:
     if ("extra","forces") in clusters_df.columns:
       F_test = clusters_df["extra"]["forces"].values
       Qforces = 1
+    elif Qprintforces == 1 and Qeval == 1:
+      Qforces = 1
     else:
       Qforces = 0
 
@@ -1183,39 +1240,49 @@ for sampleeach_i in sampleeach_all:
     ##################
     ### KRR + FCHL ###
     ################## 
-    if Qmethod == "krr" and Qrepresentation == "fchl": 
+    if Qmethod == "krr": 
       ### REPRESENTATION CALCULATION ###
-      repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
-      max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
-      for i in range(len(repres_dataframe)):
-        repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
-      fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
+      if Qrepresentation == "fchl":
+        repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
+        max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
+        for i in range(len(repres_dataframe)):
+          repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
+        representations = np.array([mol for mol in repres_dataframe["xyz"]])
+      elif Qrepresentation == "mbdf":
+        X_test_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+        representations = generate_representation(np.array([i.get_atomic_numbers() for i in strs]), np.array([i.get_positions() for i in strs]), cutoff_r = krr_cutoff, normalized = False)
+
       #some info about the full representation
-      print(fchl_representations.shape, flush = True)
+      print(representations.shape, flush = True)
       
       ### DEFINING THE EVALUATION Xs:  Y = QML(X) 
       #the full set
-      X_test = fchl_representations
+      X_test = representations
   
       ### CORRECTING THE FCHL MATRIX SIZES
       #IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
-      if X_train.shape[1] != X_test.shape[1]:
-        if X_train.shape[1] > X_test.shape[1]:
-          small = X_test
-          large = X_train
-        else:
-          small = X_train
-          large = X_test
-        newmatrix = np.zeros([small.shape[0],large.shape[1],5,large.shape[3]])
-        newmatrix[:,:,0,:] = 1e+100
-        newmatrix[0:small.shape[0],0:small.shape[1],0:5,0:small.shape[3]] = small
-        if X_train.shape[1] > X_test.shape[1]:
-          X_test = newmatrix
-        else:
-          X_train = newmatrix
+      if Qrepresentation == "fchl":
+        if X_train.shape[1] != X_test.shape[1]:
+          if X_train.shape[1] > X_test.shape[1]:
+            small = X_test
+            large = X_train
+          else:
+            small = X_train
+            large = X_test
+          newmatrix = np.zeros([small.shape[0],large.shape[1],5,large.shape[3]])
+          newmatrix[:,:,0,:] = 1e+100
+          newmatrix[0:small.shape[0],0:small.shape[1],0:5,0:small.shape[3]] = small
+          if X_train.shape[1] > X_test.shape[1]:
+            X_test = newmatrix
+          else:
+            X_train = newmatrix
    
       ### THE EVALUATION
-      Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
+      if Qrepresentation == "fchl":
+        Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
+      elif Qrepresentation == "mbdf":
+        #Ks = [JKML_kernel(X_test, X_train, X_test_atoms, X_atoms, sigmas[0], **kernel_args)]
+        Ks = [JKML_kernel(X_train, X_test, X_atoms, X_test_atoms, sigmas[0], **kernel_args)]
       Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
     
     ##################
@@ -1254,7 +1321,6 @@ for sampleeach_i in sampleeach_all:
       F_predicted = []
       for i in range(len(clusters_df)):
         atoms = clusters_df["xyz"]["structure"].values[i].copy()
-        #Y_predicted.append(-4540.0)
         atoms.calc = spk_calc
         Y_predicted.append(atoms.get_potential_energy())
         if Qforces == 1:
@@ -1359,6 +1425,8 @@ for sampleeach_i in sampleeach_all:
         clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]+ens_correction[i]
       else:
         clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]+form_ens2[i]+ens_correction[i]
+      if Qforces == 1:
+        clustersout_df = df_add_iter(clustersout_df, "extra", "forces", [clustersout_df.iloc[i].index], [F_predicted[i]])
     clustersout_df.to_pickle(outfile)
     if Qsampleeach > 0:
       if sampleeach_i == 0:
@@ -1435,7 +1503,7 @@ for sampleeach_i in sampleeach_all:
         repres_dataframe = pd.DataFrame(index = RR.index, columns = ["xyz"])
         max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
         for i in range(len(repres_dataframe)):#TODO strs[0] cannot be define like that for different molecules, i.e. I can optimize only 1 molecule
-          repres_dataframe["xyz"][i] = generate_representation(RR.values[i][0], strs[0].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
+          repres_dataframe["xyz"][i] = generate_representation(RR.values[i][0], strs[0].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
         fchl_representations = np.array([mol for mol in repres_dataframe["xyz"]])
       
         #some info about the full representation
@@ -1535,7 +1603,7 @@ for sampleeach_i in sampleeach_all:
       spk_calc = SpkCalculator(
         model_file=varsoutfile,
         device=device,
-        neighbor_list=spk.transform.ASENeighborList(cutoff=5.0),
+        neighbor_list=spk.transform.ASENeighborList(cutoff=nn_cutoff),
         #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
         #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
         energy_key='energy',
@@ -1553,20 +1621,20 @@ for sampleeach_i in sampleeach_all:
       from ase import units
       from ase.io import read,write
       for i in range(len(clusters_df)):
-        atoms = clusters_df["xyz"]["structure"].values[i].copy
+        atoms = clusters_df["xyz"]["structure"].values[i].copy()
         atoms.calc = spk_calc
         if Qopt == 1:
-          dyn = BFGS(atoms,maxstep=0.02)
+          dyn = BFGS(atoms,maxstep=opt_maxstep)
           def printenergy(a=atoms):
             write("opt.xyz", a, append = True)
           dyn.attach(printenergy, interval=1)
           dyn.run(fmax=1e-2)
         else: 
-          # Set the momenta corresponding to T=300K
-          MaxwellBoltzmannDistribution(atoms, temperature_K=300)
+          # Set the momenta corresponding to T
+          MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
           # We want to run MD with constant energy using the VelocityVerlet algorithm.
           #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
-          dyn = Langevin(atoms, 1*units.fs, 300*units.kB, 0.002) #friction coeffitient 0.002
+          dyn = Langevin(atoms, 1*units.fs, md_temperature*units.kB, 0.02) #friction coeffitient 0.002
           def printenergy(a=atoms):  # store a reference to atoms in the definition.
             """Function to print the potential, kinetic and total energy."""
             epot = a.get_potential_energy() / len(a)
@@ -1577,7 +1645,7 @@ for sampleeach_i in sampleeach_all:
           # Now run the dynamics
           dyn.attach(printenergy, interval=10)
           printenergy()
-          dyn.run(2000)
+          dyn.run(100000)
  
       #  Y_predicted.append(atoms.get_potential_energy())
       #  if Qforces == 1:

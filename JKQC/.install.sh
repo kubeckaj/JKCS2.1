@@ -83,21 +83,53 @@ then
  #ADD="--force-reinstall --upgrade"
  #$PIP install install git+https://github.com/qmlcode/qml@develop $ADD
 fi
-if [[ "$*" == *"-qml"* ]]
+if [[ "$*" == *"-qml "* ]]
 then
- #$PIP install sklearn
- #$PIP install cffi
- #$PIP install dscribe
- #ADD="--force-reinstall --upgrade"
- $PIP install git+https://github.com/qmlcode/qml@develop $ADD
+  #$PIP install sklearn
+  #$PIP install cffi
+  #$PIP install dscribe
+  #ADD="--force-reinstall --upgrade"
+  $PIP install git+https://github.com/qmlcode/qml@develop $ADD
+fi
+if [[ "$*" == *"-mbdf"* ]]
+then
+  currdir=$PWD
+  cd JKCS/lib64/py*/site-packages/
+  git clone https://github.com/dkhan42/MBDF.git
+  cp MBDF/MBDF.py .
+  git clone https://github.com/dkhan42/qml2.git
+  cd qml2
+  cp readme.rst README.rst
+  $PYTHON setup.py install 
+  cd $currdir
+fi
+if [[ "$*" == *"-qml-lightning"* ]]
+then
+  currdir=$PWD
+  cd JKCS/lib64/py*/site-packages/
+  git clone https://github.com/nickjbrowning/qml-lightning.git
+  #LDFLAGS=-L/usr/local/cuda-11.4
+  $PYTHON setup.py build
+  cd $currdir
+fi
+if [[ "$*" == *"-xtb"* ]]
+then
+  export CC=gcc
+  $PIP install tblite
+  ## Use following in Python script:
+  #from tblite.ase import TBLite 
+  #atoms.calc = TBLite(method="GFN1-xTB")
 fi
 $PIP install numpy==1.23.0
-if [[ "$*" == *"-qml"* ]]
+if [[ "$*" == *"-nn"* ]]
 then
   $PIP install torch
   $PIP install lightning
   $PIP install hydra-core
   $PIP install schnetpack
+  #AGOX was not able to use schnet calculator, this will resolve it:
+  sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib64/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
+  sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
   $PIP install pytorch-lightning==1.9.0
   $PIP install tensorboard
 fi

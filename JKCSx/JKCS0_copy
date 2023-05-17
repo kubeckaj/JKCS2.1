@@ -53,6 +53,7 @@ function help {
    msa .......... methanesulfonic acid
    fa ........... formic acid
    aca .......... acetic acid
+   pyru ......... pytuvic acid
    cla .......... chloric acid
    pcla ......... perchloric acid
 
@@ -248,6 +249,11 @@ function add {
   "aca") echo "  aca    0   $path2/aca.xyz"         >> $userinputfile
          echo "  aca   -1   $path2/acc.xyz"         >> $userinputfile
          ;;
+  "pyru") echo "  pyru   0   $path2/PyA_Cc.xyz"     >> $userinputfile
+          echo "  pyru   0   $path2/PyA_Ct.xyz"     >> $userinputfile
+          echo "  pyru   0   $path2/PyA_Tc.xyz"     >> $userinputfile
+          echo "  pyru   0   $path2/PyA_Tt.xyz"     >> $userinputfile
+          ;;
   "cla") echo "  cla    0   $path2/cla.xyz"         >> $userinputfile
          echo "  cla   -1   $path2/cla-.xyz"        >> $userinputfile
          ;;
@@ -346,6 +352,7 @@ do
     add "MSA"
     add "FA"
     add "ACA"
+    add "PYRU"
     add "CLA"
     add "PCLA"
 

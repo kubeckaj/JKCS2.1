@@ -98,7 +98,8 @@ def print_help():
   print(" <input_file> -formation print formations for the input file (no averaging though)")
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
-  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx, -forces [Eh/Ang]")
+  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
+  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -115,6 +116,7 @@ Qmodify = 0 #Do I want to somehow modify the input dataframe or names?
 Qrename = 0 #Do I want to rename some monomer? 
 QrenameWHAT = [] #Do I want to rename some monomer? 
 Qrebasename = 0 #change names if they are the same 
+Qunderscore = 0 #underscore to dash
 
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
@@ -137,6 +139,7 @@ Qfc = 0 #Run QHA with vib. frequency cutoff
 Qanh = 1
 
 Qpresplit = 0 #Do I want to take only part of the data?
+Qsplit = 1 #should I split the base on several parts
 Qindex = "-1"#
 
 Qsort = 0 # 0=no sorting, otherwise string
@@ -146,6 +149,7 @@ Qarbalign = 0 #use ArbAlign with float parameter
 formation_input_file = ""
 Qthreshold = 0 #cut/pass something
 Qcut = [] #what will be cutted
+Qshuffle = 0 #shuffle rows
 
 Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
 Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
@@ -279,6 +283,10 @@ for i in argv[1:]:
     last = ""
     Qindex = str(i)
     continue
+  #UNDERSCORE
+  if i == "-undersocre":
+   Qunderscore = 1
+   continue
   #RENAME
   if i == "-rename":
     Qmodify = 1
@@ -313,6 +321,14 @@ for i in argv[1:]:
   #NOEXAMPLE
   if i == "-noexample" or i == "-noex":
     Qout = 2
+    continue
+  #SPLIT
+  if i == "-split":
+    last = "-split"
+    continue
+  if last == "-split":
+    Qsplit = int(i)
+    last = ""
     continue
   #EXTRACT
   if i == "-extract":
@@ -414,6 +430,10 @@ for i in argv[1:]:
   if last == "-arbalign":
     last = ""
     Qarbalign = float(i)
+    continue
+  #SHUFFLE
+  if i == "-shuffle":
+    Qshuffle = 1
     continue
   ########
   # INFO
@@ -1676,6 +1696,15 @@ if Qindex != "-1":
 ####################################################################################################
 ####################################################################################################
 ## HERE I MODIFY THE INPUT
+if Qunderscore == 1:
+  def replace_first_occurrence(string, old_char, new_char):
+    index = string.find(old_char)  # Find the index of the first occurrence
+    if index != -1:  # If the character is found
+     string = string[:index] + new_char + string[index+1:]  # Replace the character
+    return string
+  
+  for cluster_id in clusters_df.index:
+    clusters_df.loc[cluster_id]['info']['file_basename'] = replace_first_occurrence(clusters_df.loc[cluster_id]['info']['file_basename'],"_","-")
 
 if Qmodify > 0:
   if Qrename == 1:
@@ -2356,6 +2385,9 @@ if str(Qselect) != "0":
   if Qout == 1:
     print("Selecting/Sampling: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
+### SHUFFLE
+if Qshuffle == 1:
+  clusters_df = clusters_df.sample(frac=1)
 
 #x = clusters_df["info"]["file_basename"].astype("category")
 #print(x.astype("category").categories)
@@ -2379,15 +2411,33 @@ if Qout > 0:
   #print(len(clusters_df.index))
   #print(len(clusters_df.index))
   #print(len(tosave))
-  tosave.to_pickle(output_pkl)
-  if Qout == 1:
+  if Qsplit == 1:
+    tosave.to_pickle(output_pkl)
+    if Qout == 1:
+      if len(tosave) == 0:
+        print(tosave)
+        print("No files in the input!")
+      else:
+        print("Example output:")
+        print(tosave.iloc[0])
+        print("Number of files in "+output_pkl+": "+str(len(tosave)))
+  else:
     if len(tosave) == 0:
-      print(tosave)
-      print("No files in the input!")
+      if Qout ==1:
+        print(tosave)
+        print("No files in the input!")
     else:
-      print("Example output:")
-      print(tosave.iloc[0])
-      print("Number of files in "+output_pkl+": "+str(len(tosave)))
+      lengths = -(-len(tosave)//Qsplit)
+      for split in range(Qsplit):
+        output_pkl_split = output_pkl[:-4]+"_s"+str(split+1)+".pkl"
+        start=split*lengths
+        end=(split+1)*lengths
+        if end > len(tosave):
+          end = len(tosave)
+        tosave[start:end].to_pickle(output_pkl_split)
+        if Qout == 1:
+          print("Number of files in "+output_pkl_split+": "+str(len(tosave[start:end])))
+    
 
 ## EXTRACT DATA ##
 output = []

@@ -148,9 +148,19 @@ EXAMPLE:
     WRKDIR="./"
     continue
   fi
+  if [ "$i" == "-all" ]
+  then
+    ADD+=" -qml -mbdf -descriptors -nn "
+    continue
+  fi
   if [ "$i" == "-qml" ] || [ "$i" == "qml" ]
   then
     ADD+=" -qml "
+    continue
+  fi
+  if [ "$i" == "-mbdf" ] || [ "$i" == "mbdf" ]
+  then
+    ADD+=" -mbdf "
     continue
   fi
   if [ "$i" == "-descriptors" ] || [ "$i" == "descriptors" ]
@@ -207,7 +217,7 @@ cat TOOLS/label_big
 if [ ! -e JKQC/JKCS ] || [ "$Qr" == "1" ] 
 then
   cd JKQC
-  rm -r JKCS 
+  rm -rf JKCS 
   sh .install.sh "$PYTHON" "$MODULE_PYTHON" "$ADD"
   if [ ! -e JKCS ]
   then

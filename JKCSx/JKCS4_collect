@@ -41,9 +41,9 @@ function help {
   $scriptfile ${cfCYAN}[OPTIONS(s)] [FOLDER]${cfDEF}
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
-   -help ............ print this help and exit
-   -orca ............ collects ORCA 
+   -help ............ print this help and exit 
    -oc/-onlycollect . only collects pickle file
+   -orca ............ if you collect results from ORCA runs
    OTHERS: -clean,-cleanfull
   
   ${cfMAGENTA}OUTPUTS:${cfDEF} 
@@ -542,6 +542,10 @@ fi
 ##fi
 
 ### THE SUBMITTING ITSELF
+if [ $SCtasks -eq 1 ]
+then
+  Qarray=0
+fi
 for i in `seq $SCtasks -1 1`
 do
   if [ "$Qperform" == 2 ]
@@ -577,8 +581,8 @@ do
       fi
     else
       #TODO
-      echo "$SC_command \`tail -n $i commands_TODO.txt | head -n 1\`" >> output
-      echo "$SC_command \`tail -n $i commands_TODO.txt | head -n 1\`" > .run
+      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" >> output
+      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" > .run
       #echo  "$SC_command sh .run$i" >> output
       #echo  "$SC_command sh .run$i" > .run
       #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")

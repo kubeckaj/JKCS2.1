@@ -150,6 +150,10 @@ if [ "$Qsplitargument" == "-finishsplit" ]
 then 
   SCtasks=1
 fi
+if [ $SCtasks -eq 1 ]
+then
+  Qarray=0
+fi
 for i in `seq 1 $Qsplit`
 do
   for j in `seq 1 $i`

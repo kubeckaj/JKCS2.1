@@ -173,7 +173,7 @@ function program_JKML {
         files+=" $i"
       else
         args+=" $i"
-        if [ "$i" == "-varsout" ] || [ "$i" == "-out" ]
+        if [ "$i" == "-varsout" ] || [ "$i" == "-out" ] || [ "$i" == "-modelout" ]
         then
           donottakenext=1
         fi

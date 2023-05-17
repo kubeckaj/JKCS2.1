@@ -595,7 +595,10 @@ fi
 ##    echo "LINK 1 $currentdirpath/ABC" > ../commands_TODO.txt
 ##  fi
 ##fi
-
+if [ $SCtasks -eq 1 ]
+then
+  Qarray=0
+fi
 for i in `seq $SCtasks -1 1`
 do
   if [ "$Qperform" == 2 ]
@@ -627,8 +630,8 @@ do
       fi
     else
       #TODO
-      echo "$SC_command \`tail -n $i commands_TODO.txt | head -n 1\`" >> output
-      echo "$SC_command \`tail -n $i commands_TODO.txt | head -n 1\`" > .run  
+      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" >> output
+      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" > .run  
       #echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" >> output 
       #echo  "$SC_command '`tail -n $i commands_TODO.txt | head -n 1`'" > .run
       job=$(/bin/bash .run)
