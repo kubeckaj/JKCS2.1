@@ -253,6 +253,7 @@ function add {
           echo "  pyru   0   $path2/PyA_Ct.xyz"     >> $userinputfile
           echo "  pyru   0   $path2/PyA_Tc.xyz"     >> $userinputfile
           echo "  pyru   0   $path2/PyA_Tt.xyz"     >> $userinputfile
+          echo "  pyru  -1   $path2/PyAte.xyz"      >> $userinputfile
           ;;
   "cla") echo "  cla    0   $path2/cla.xyz"         >> $userinputfile
          echo "  cla   -1   $path2/cla-.xyz"        >> $userinputfile

@@ -52,6 +52,7 @@ def help():
 def help_adv():
   print("  ADVANCED OPTIONS:", flush = True)
   print("    -column <str> <str> selects a different column from the pickled files (e.g. log entropy)", flush = True)
+  print("    -noforces           forces are not trained/tested even if it is possible")
   print("    -size <int>         randomly selects only portion of the trainin database (e.g. 200)", flush = True)
   print("    -seed <int>         seed for random number generators [def = 42]")
   print("    -sampleeach <int>   selects structures with similar MBTR (our similarity definition)", flush = True)
@@ -114,6 +115,7 @@ Qsampleeach = 0
 Qforcemonomers = 0
 column_name_1 = "log"
 column_name_2 = "electronic_energy" 
+Qifforces = 1 #IF forces exist use them in calculations
 
 #krr : fchl
 #nn : painn
@@ -325,6 +327,10 @@ for i in sys.argv[1:]:
     if Qeval == 0:
       Qeval = 1
     Qsampleeach = int(i)
+    continue
+  #NO FORCES
+  if i == "-noforces":
+    Qifforces = 0
     continue
   #SIMILARITY
   if i == "-similarity" or i == "-sim":
@@ -841,7 +847,7 @@ for sampleeach_i in sampleeach_all:
       #str2 should be the same as str by principle
 
     ### FORCES 
-    if ("extra","forces") in clusters_df.columns:
+    if ("extra","forces") in clusters_df.columns and Qifforces == 1:
       F_train = clusters_df["extra"]["forces"].values
       Qforces = 1
     else:
@@ -1196,10 +1202,10 @@ for sampleeach_i in sampleeach_all:
       #str2 should be the same as str by princip
   
     ### FORCES 
-    if ("extra","forces") in clusters_df.columns:
+    if ("extra","forces") in clusters_df.columns and Qifforces == 1:
       F_test = clusters_df["extra"]["forces"].values
       Qforces = 1
-    elif Qprintforces == 1 and Qeval == 1:
+    elif Qprintforces == 1 and Qeval == 1 and Qifforces == 1:
       Qforces = 1
     else:
       Qforces = 0
