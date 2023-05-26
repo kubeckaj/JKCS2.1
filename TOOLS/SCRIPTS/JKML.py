@@ -287,7 +287,7 @@ for i in sys.argv[1:]:
     Qopt = 2
     last = "-opt"
     continue
-  if i == "-monomers":
+  if i == "-monomers" or i == "-mon":
     last = "-monomers"
     continue
   if i == "-trained":

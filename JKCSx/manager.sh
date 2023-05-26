@@ -35,6 +35,7 @@ function check_if_all_finished {
       continue
     fi
     test=1
+    ### TESTING VIA JKcheck
     JKcheck -num -this > .test 2>>output
     testlines=`wc -l .test | awk '{print $1}'`
     for l in `seq 1 $testlines`
@@ -45,6 +46,14 @@ function check_if_all_finished {
         test=0
       fi
     done
+    ### TESTING WHETHER FOLDER IS IN QUEUE
+    thisfolder=$(basename "$PWD")
+    check2=$(squeue --format="%.100j %.1T" -u $USER | grep "$thisfolder ")
+    if  [ ! -z "$check2" ]
+    then
+      test=0
+    fi
+    ###
     end=`date +%s`;runtime=$((end-start))
     if [ $runtime -gt $walltime_cutoff ]
     then 
