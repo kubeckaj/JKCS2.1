@@ -511,7 +511,7 @@ do
   echo \"ABC\" > \${base}.log
   echo \"ABC energy: \$energy\" >> \${base}.log
 done
-program_JKQCpickle *.xyz -noex $addexploded
+program_JKQCpickle -folder ./ -collect xyz -noex $addexploded
 rm *.xyz *.log
 cd ..""" >> rename.sh
     fi
