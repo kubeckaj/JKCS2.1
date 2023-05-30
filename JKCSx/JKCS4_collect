@@ -93,7 +93,7 @@ JKloadhelp             # check if user asks for -help
 
 # program 
 program=XTB
-method=XTB
+method=none #THERE WAS A PROBLEM THAT PEOPLE WERE USING FROM NAME FOR FOLDERS AND THEN IT COLLECTED XTB
 #JKloadprogram
 
 # check for folderbasename_something arguments and in case enter directories
@@ -226,6 +226,11 @@ arguments=("${arguments_help[@]}")
 ###############################################################################
 
 #FILES AND FOLDER NAMES DECLARATION
+if [ ! -e "$method" ]
+then
+  JKecho 0 "Please specify the name of an existing folder properly (even if it is XTB). [${cfRED}EXITING${cfDEF}]"
+  exit
+fi
 JKecho 1 "Collecting data from ${cfBLUE}${method}${cfDEF} folder."
 #files
 savefile="$collectionfile${method}.txt"
