@@ -75,7 +75,7 @@ def print_help():
   print(" -xyz      save all XYZ files                 -rg          radius of gyration [Angstrom]")
   print(" -movie    save all XYZs to movie.xyz         -radius      approx. radius of cluster size [Angstrom]")
   print(" -charges  save all Mulliken .charges files   -radius0.5   radius with +0.5 Angstrom correction")
-  print(" -mass     prints molecular mass [g/mol]")
+  print(" -mass     prints molecular mass [g/mol]      -level       program version and method used")
   print("\nPOST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies CITE: Grimme")
   print(" -temp [value in K]   recalculate for different temperature")
@@ -99,7 +99,7 @@ def print_help():
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
-  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore")
+  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -changeall <column> <column> <value>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -117,6 +117,7 @@ Qrename = 0 #Do I want to rename some monomer?
 QrenameWHAT = [] #Do I want to rename some monomer? 
 Qrebasename = 0 #change names if they are the same 
 Qunderscore = 0 #underscore to dash
+Qchangeall = 0 #do I want to some column to all
 
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
@@ -611,6 +612,9 @@ for i in argv[1:]:
   if i == "-rsn" or i == "--rsn":
     Pout.append("-rsn")
     continue
+  if i == "-level" or i == "-lvl":
+    Pout.append("-level")
+    continue
   if i == "-t" or i == "--t" or i == "-time" or i == "--time":
     Pout.append("-t")
     continue
@@ -858,6 +862,7 @@ else:
 ####################################################################################################
 
 # Reading the new files in
+rem_orcaextname = orcaextname
 for file_i in files:
   folder = path.abspath(file_i)[::-1].split("/",1)[1][::-1]+"/"
   file_i_BASE = file_i[:-4][::-1].split("/",1)[0][::-1]
@@ -866,7 +871,22 @@ for file_i in files:
   file_i_XTBengrad  = folder+file_i_BASE+".engrad"
   file_i_G16  = folder+file_i_BASE+".log"
   file_i_XYZ  = folder+file_i_BASE+".xyz"
-  file_i_ORCA = folder+file_i_BASE+"."+orcaext
+  #ORCA
+  orcaextname = rem_orcaextname
+  if not path.exists(folder+file_i_BASE+".log"):
+    file_i_ORCA = folder+file_i_BASE+"."+orcaext
+    orcaextname = "log"
+  else:
+    if orcaext == "out":
+      if not path.exists(folder+file_i_BASE+"."+orcaext):
+        file_i_ORCA = folder+file_i_BASE+".log"
+        orcaextname = "log"
+      else:
+        file_i_ORCA = folder+file_i_BASE+"."+orcaext
+    else:
+      file_i_ORCA = folder+file_i_BASE+"."+orcaext
+      orcaextname = "log"
+  ##
   file_i_TURBOMOLE = folder+file_i_BASE+"."+turbomoleext
   file_i_INFO = folder+"info.txt" 
  
@@ -929,6 +949,8 @@ for file_i in files:
         testXTB = 1
         break
     if testXTB == 1:
+      out_program = missing                              #PROGRAM
+      out_method = missing                               #METHOD
       out_NAtoms = missing
       out_dipole_moment = missing      #0
       out_electronic_energy = missing  #1
@@ -938,6 +960,18 @@ for file_i in files:
       out_mulliken_charges = missing           
       save_something = ""
       for line in file:
+        ## PROGRAM
+        if re.search("xtb version", line):
+          try: 
+            out_program = "XTB_" + str(line.split()[3])
+          except:
+            out_program = missing
+        ## METHOD
+        if re.search(":  Hamiltonian", line):
+          try:
+            out_method = str(line.split()[2]).lower()
+          except:
+            out_method = missing
         ## NAtoms
         if re.search("number of atoms", line):
           try:
@@ -1024,6 +1058,8 @@ for file_i in files:
           except:
             out_gibbs_free_energy = missing
           continue
+      clusters_df = df_add_iter(clusters_df, "log", "program", [str(cluster_id)], [out_program]) #PROGRAM
+      clusters_df = df_add_iter(clusters_df, "log", "method", [str(cluster_id)], [out_method]) #METHOD
       clusters_df = df_add_iter(clusters_df, "log", "dipole_moment", [str(cluster_id)], [out_dipole_moment])
       clusters_df = df_add_iter(clusters_df, "log", "electronic_energy", [str(cluster_id)], [out_electronic_energy])
       clusters_df = df_add_iter(clusters_df, "log", "gibbs_free_energy", [str(cluster_id)], [out_gibbs_free_energy])
@@ -1059,6 +1095,8 @@ for file_i in files:
         testG16 = 1
         break
     if testG16 == 1:
+      out_program = missing                              #PROGRAM
+      out_method = missing                               #METHOD
       out_time = missing                                 #TIME
       out_termination = 0                                #TERMINATION
       out_charge = missing                               #I1
@@ -1108,6 +1146,23 @@ for file_i in files:
           continue
         #INITIAL SEARCH
         if search==-1:
+          #PROGRAM
+          if re.search(" Gaussian.*, Revision.*,", line): #PROGRAM
+            try: 
+              out_program = "G" + str(line.split(",")[0].split()[1]) + "_" + str(line.split(",")[1].split()[1]) 
+            except:
+              out_program = missing
+          #METHOD
+          if re.search("^ \#", line): #PROGRAM
+            try:
+              presaved = line.lower().split()
+              if presaved[1] in ["am1", "pm7", "pm6", "pm3"]:
+                out_method = "_".join(presaved[0:2])
+              else: 
+                out_method = "_".join(presaved[0:3])
+            except:
+              out_method = missing
+          #Charge
           if re.search(" Charge = ", line): #I1/I2
             try:
               out_charge = int(line.split()[2])
@@ -1333,6 +1388,8 @@ for file_i in files:
               save_something = ""
             continue
       #SAVE
+      clusters_df = df_add_iter(clusters_df, "log", "program", [str(cluster_id)], [out_program]) #PROGRAM
+      clusters_df = df_add_iter(clusters_df, "log", "method", [str(cluster_id)], [out_method]) #METHOD
       clusters_df = df_add_iter(clusters_df, "log", "time", [str(cluster_id)], [out_time]) #TIME
       clusters_df = df_add_iter(clusters_df, "log", "termination", [str(cluster_id)], [out_termination]) #TERMINATION
       clusters_df = df_add_iter(clusters_df, "log", "charge", [str(cluster_id)], [out_charge]) #I1
@@ -1388,6 +1445,8 @@ for file_i in files:
         testORCA = 1
         break
     if testORCA == 1:
+      out_program = missing                              #PROGRAM
+      out_method = missing                               #METHOD
       out_time = missing                                 #TIME
       out_termination = 0                                #TERMINATION
       out_charge = missing                               #I1
@@ -1437,6 +1496,17 @@ for file_i in files:
           continue
         #INITIAL SEARCH
         if search==-1:
+          if re.search("Program Version", line): #PROGRAM
+            try:
+              out_program = "ORCA_" + str(line.split()[2])
+            except:
+              out_program = missing
+            continue
+          if re.search(r"^\|.*>.*!", line): #METHOD
+            try:
+              out_method = "_".join(sorted(line.split(">")[1].lower().split()))
+            except:
+              out_method = missing
           if re.search("Number of atoms", line): #I3
             try:
               out_NAtoms = int(line.split()[4])
@@ -1612,7 +1682,8 @@ for file_i in files:
       out_moments_of_inertia = missing
       out_polarizability = missing
       #SAVE
-      clusters_df = df_add_iter(clusters_df, orcaextname, "time", [str(cluster_id)], [out_time]) #TIME
+      clusters_df = df_add_iter(clusters_df, orcaextname, "program", [str(cluster_id)], [out_program]) #PROGRAM
+      clusters_df = df_add_iter(clusters_df, orcaextname, "method", [str(cluster_id)], [out_method]) #METHOD
       clusters_df = df_add_iter(clusters_df, orcaextname, "termination", [str(cluster_id)], [out_termination]) #TERMINATION
       clusters_df = df_add_iter(clusters_df, orcaextname, "charge", [str(cluster_id)], [out_charge]) #I1
       clusters_df = df_add_iter(clusters_df, orcaextname, "multiplicity", [str(cluster_id)], [out_multiplicity]) #I2
@@ -2551,6 +2622,7 @@ for i in Pout:
       except:
         continue
     f.close()
+    remove(".movie.xyz")
     continue
   #Rg
   if i == "-rg":
@@ -2799,6 +2871,15 @@ for i in Pout:
         lowestfreq.append(missing)
     output.append(lowestfreq)
     continue
+  if i == "-level":
+    levels = []
+    for ind in clusters_df.index:
+      try:
+        levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])  
+      except:
+        levels.append(missing)
+    output.append(levels)
+    continue
   if i == "-f":
     try:
       output.append(clusters_df["log"]["vibrational_frequencies"].values)
@@ -2983,14 +3064,19 @@ if not len(output) == 0:
     
     output = [[myif(l,np.sum([portions[i][j]*output[l,indexes[i][j]] for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]
 
-  fn = ".help"+str(np.random.randint(100000,size=1)[0])+".txt" 
-  f = open(fn, "w")
-  [f.write(" ".join(map(str,row))+"\n") for row in list(zip(*output))]
-  f.close()
-  #TODO can you make this working using only python?
-  if Qout != 2 or Qformation == 0:
-    system("cat "+fn+" | column -t")
-    remove(fn)
+  #fn = ".help"+str(np.random.randint(100000,size=1)[0])+".txt" 
+  #f = open(fn, "w")
+  #[f.write(" ".join(map(str,row))+"\n") for row in list(zip(*output))]
+  #f.close()
+  ##TODO can you make this working using only python?
+  #if Qout != 2 or Qformation == 0:
+  #  system("cat "+fn+" | column -t")
+  #  remove(fn)
+  toprint = list(zip(*output)) #[row for row in list(zip(*output))]
+  column_widths = [max(len(str(row[i])) for row in toprint) for i in range(len(toprint[0]))]
+  for row in toprint:
+    formatted_row = [str(row[i]).ljust(column_widths[i]) for i in range(len(row))]
+    print(" ".join(formatted_row),flush = True)
 
 def myFunc(e):
   try:

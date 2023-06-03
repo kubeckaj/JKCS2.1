@@ -28,6 +28,16 @@ function check_if_all_finished {
   test=0
   while [ $test -eq 0 ]
   do
+    ### Resubmit myself if I am running too long
+    end=`date +%s`;runtime=$((end-start))
+    if [ $runtime -gt $walltime_cutoff ]
+    then
+      submitME
+      exit
+    else
+      sleep 5
+    fi
+    ###
     runningcpus=`squeue -u $USER --array -o "%C" | awk 'BEGIN{j=-1;c=0}{j+=1;if (j>0) c+=$1}END{print c}'`
     if [ $runningcpus -gt 3600 ]
     then
@@ -54,14 +64,6 @@ function check_if_all_finished {
       test=0
     fi
     ###
-    end=`date +%s`;runtime=$((end-start))
-    if [ $runtime -gt $walltime_cutoff ]
-    then 
-      submitME
-      exit
-    else 
-      sleep 5
-    fi
   done
   return
 }
