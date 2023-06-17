@@ -261,6 +261,13 @@ writetobashrc "$command2"
 Qcolours=1
 source TOOLS/LOADING/colours.txt
 
+if [ ! -e TOOLS/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl ]
+then 
+  cd TOOLS/LOADING/JK_ACDC/ACDC_input
+  tar -xzf acdc_2020_07_20.pl.tar.gz
+  cd -
+fi
+
 printf "${cfGREEN}Write following command:${cfDEF}\n"
 printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}\n"
 echo "-----------------------"

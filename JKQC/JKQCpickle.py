@@ -7,7 +7,7 @@ import numpy as np
 #from numpy import nan, array, mod, isnan, linalg, matrix, all, dtype, loadtxt, unique, sqrt, sum, asarray, sort, log, exp, pi, mean, tile, floor, transpose, min, errstate, delete, round, dot, prod, random, apply_along_axis
 
 #Attach command to the output
-cmd="".join(["echo COMMAND: JKQC "," ".join(argv[1:])," >> output"])
+cmd="".join(["echo COMMAND: JKQC "," ".join(argv[1:])," >> output 2>/dev/null"])
 system(cmd)
 
 def listToString(s,spaces): 
@@ -99,7 +99,7 @@ def print_help():
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
-  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -changeall <column> <column> <value>")
+  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -108,6 +108,7 @@ Qcollect = "log" #what extension am I collecting?
 Qrecursive = False
 files = []  
 input_pkl = []
+input_pkl_sp = []
 output_pkl = "mydatabase.pkl"
 Qforces = 0 #should I collect forces? 0/1
 
@@ -208,6 +209,18 @@ for i in argv[1:]:
     last = ""
     if path.exists(i):    
       input_pkl.append(i)
+      continue
+    else:
+      print("File "+i+" does not exist. Sorry [EXITING]")
+      exit()
+  #INPKL SP
+  if i == "-addSP":
+    last = "-addSP"
+    continue
+  if last == "-addSP":
+    last = ""
+    if path.exists(i):
+      input_pkl_sp.append(i)
       continue
     else:
       print("File "+i+" does not exist. Sorry [EXITING]")
@@ -858,6 +871,23 @@ else:
       len_clusters_df = len(clusters_df)
       newclusters_df.index = [str(j+len_clusters_df) for j in range(len(newclusters_df))]
       clusters_df = clusters_df.append(newclusters_df)
+
+#addSP
+if len(input_pkl_sp) > 0:
+  for i in range(len(input_pkl_sp)):
+    newclusters_df_sp = pd.read_pickle(input_pkl_sp[i])
+    if Qout == 1:
+      print("Number of files in "+input_pkl_sp[i]+": "+str(len(newclusters_df_sp)))
+    newclusters_df_sp = newclusters_df_sp.rename(columns={"log": "out"}) 
+    #newclusters_df_sp = pd.concat([newclusters_df_sp[("info","file_basename")],newclusters_df_sp["out"]],axis = 1)
+    newclusters_df_sp.set_index(('info', 'file_basename'), inplace=True)
+    #newclusters_df_sp = newclusters_df_sp
+    clusters_df.set_index(('info', 'file_basename'), inplace=True)
+    #print(clusters_df.join(newclusters_df_sp,how='left'))
+    clusters_df = pd.concat([clusters_df, newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out']], axis=1)
+    #print(clusters_df.merge(newclusters_df_sp, on=('info', 'file_basename')))
+    #clusters_df.index = [str(j) for j in range(len(clusters_df))]
+    clusters_df.reset_index(inplace=True)
 
 ####################################################################################################
 
@@ -2338,7 +2368,7 @@ if str(Quniq) != "0":
                gout.append(missing)
            values = [np.floor(myNaN(o)*10**jj) for o in gout]
          else:  
-           values = [np.floor(myNaN(o)*10**jj) for o in preselected_df["log"][j].values]
+           values = [np.floor(float(myNaN(o))*10**jj) for o in preselected_df["log"][j].values]
          tocompare.append(values)
        tocompare = np.transpose(tocompare)
        uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
