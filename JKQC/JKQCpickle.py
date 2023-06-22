@@ -1251,11 +1251,11 @@ for file_i in files:
             continue
           if save_something == "dipole_moment":
             try:
-              out_dipole_moment = str(line.split()[7])
+              out_dipole_moment = float(line.split()[7])
             except:
               out_dipole_moment = missing
             try:
-              out_dipole_moments = [str(line.split()[1]), str(line.split()[3]), str(line.split()[5])]
+              out_dipole_moments = [float(line.split()[1]), float(line.split()[3]), float(line.split()[5])]
             except:
               out_dipole_moments = missing
             save_something = ""
