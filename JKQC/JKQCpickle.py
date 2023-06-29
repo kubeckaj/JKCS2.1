@@ -99,7 +99,7 @@ def print_help():
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (use -cnt for self-consistent dG)")
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
-  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>")
+  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -120,6 +120,7 @@ Qiamifo = 0 #This is calling renaming only for Ivo Neefjes
 Qrebasename = 0 #change names if they are the same 
 Qunderscore = 0 #underscore to dash
 Qchangeall = 0 #do I want to some column to all
+Qcomplement = 0 #subtract these from the list base on basename of the new pickle file
 
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
@@ -293,6 +294,14 @@ for i in argv[1:]:
   if last == "-presplit":
     last = ""
     Qpresplit = int(i)
+    continue
+  #COMPLEMENT
+  if i == "-complement":
+    last = "-complement"
+    continue
+  if last == "-complement":
+    last = ""
+    Qcomplement = str(i)
     continue
   #INDEX
   if i == "-i" or i == "-index":
@@ -876,6 +885,11 @@ else:
       len_clusters_df = len(clusters_df)
       newclusters_df.index = [str(j+len_clusters_df) for j in range(len(newclusters_df))]
       clusters_df = clusters_df.append(newclusters_df)
+
+#Complement
+if Qcomplement != 0:
+  newclusters_df = pd.read_pickle(Qcomplement)
+  clusters_df = clusters_df.merge(newclusters_df, on = [('info', 'file_basename')], how = "outer", indicator = True).loc[lambda x: x['_merge'] == 'left_only'].drop('_merge', axis=1)
 
 #addSP
 if len(input_pkl_sp) > 0:
