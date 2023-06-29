@@ -116,6 +116,7 @@ addcolumn = []
 Qmodify = 0 #Do I want to somehow modify the input dataframe or names?
 Qrename = 0 #Do I want to rename some monomer? 
 QrenameWHAT = [] #Do I want to rename some monomer? 
+Qiamifo = 0 #This is calling renaming only for Ivo Neefjes
 Qrebasename = 0 #change names if they are the same 
 Qunderscore = 0 #underscore to dash
 Qchangeall = 0 #do I want to some column to all
@@ -239,6 +240,10 @@ for i in argv[1:]:
       if Qout == 0:
         Qout = 1
       continue
+  #IamIfo
+  if i == "-IamIfo":
+    Qiamifo = 1
+    continue
   #FORCES
   if i == "-forces":
     Qforces = 1
@@ -1843,6 +1848,18 @@ if Qmodify > 0:
       clusters_df =  df_add_iter(clusters_df, "info", "component_ratio", [str(missing)], l3)
       clusters_df =  df_add_iter(clusters_df, "info", "file_basename", [str(missing)], l4)
       #print(clusters_df)   
+
+if Qiamifo > 0:
+  predashstrings = [i.split("-")[0] for i in clusters_df["info"]["file_basename"].values]
+  #uniquestrings = list(set(predashstrings))
+  #import string,random
+  #randomstrings = ["1"+''.join(random.choices(string.ascii_lowercase, k=4)) for _ in range(len(uniquestrings))]
+  #newlist = [missing for i in range(len(predashstrings))]
+  #for i in uniquestrings:
+  #  positions = [index for index, value in enumerate(predashstrings) if value == i]
+  #  for position in positions:
+  #    newlist[position] = randomstrings[uniquestrings.index(i)]
+  clusters_df = df_add_append(clusters_df, "info", "cluster_type", clusters_df.index, predashstrings) 
 
 ####################################################################################################
 ####################################################################################################
