@@ -986,6 +986,7 @@ for file_i in files:
     if testXTB == 1:
       out_program = missing                              #PROGRAM
       out_method = missing                               #METHOD
+      out_time = missing                                 #TIME
       out_NAtoms = missing
       out_dipole_moment = missing      #0
       out_electronic_energy = missing  #1
@@ -1093,6 +1094,17 @@ for file_i in files:
           except:
             out_gibbs_free_energy = missing
           continue
+        if re.search("wall-time", line): #2
+          if np.isnan(out_time):
+            out_time = 0
+          else:
+            continue
+          try:
+            out_time += float(line.split()[2])*24*60+float(line.split()[4])*60+float(line.split()[6])+float(line.split()[8])/60
+          except:
+            out_time = missing
+          continue
+      clusters_df = df_add_iter(clusters_df, "log", "time", [str(cluster_id)], [out_time]) #TIME
       clusters_df = df_add_iter(clusters_df, "log", "program", [str(cluster_id)], [out_program]) #PROGRAM
       clusters_df = df_add_iter(clusters_df, "log", "method", [str(cluster_id)], [out_method]) #METHOD
       clusters_df = df_add_iter(clusters_df, "log", "dipole_moment", [str(cluster_id)], [out_dipole_moment])
@@ -1719,6 +1731,7 @@ for file_i in files:
       #SAVE
       clusters_df = df_add_iter(clusters_df, orcaextname, "program", [str(cluster_id)], [out_program]) #PROGRAM
       clusters_df = df_add_iter(clusters_df, orcaextname, "method", [str(cluster_id)], [out_method]) #METHOD
+      clusters_df = df_add_iter(clusters_df, orcaextname, "time", [str(cluster_id)], [out_time]) #TIME
       clusters_df = df_add_iter(clusters_df, orcaextname, "termination", [str(cluster_id)], [out_termination]) #TERMINATION
       clusters_df = df_add_iter(clusters_df, orcaextname, "charge", [str(cluster_id)], [out_charge]) #I1
       clusters_df = df_add_iter(clusters_df, orcaextname, "multiplicity", [str(cluster_id)], [out_multiplicity]) #I2
