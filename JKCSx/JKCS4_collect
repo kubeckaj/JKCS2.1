@@ -357,7 +357,7 @@ else
   fi
   if [ $logsouts -eq 0 ]
   then
-    JKecho 2 "I cannot recollect if there is nothing to collect (xyz/logs/outs)"
+    JKecho 2 "I cannot recollect if there is anything to collect (xyz/logs/outs)"
     Qrecollect=0
   fi
   if [ $Qrecollect -eq 1 ] #&& [[ "$method" != *"ABC"* ]]
