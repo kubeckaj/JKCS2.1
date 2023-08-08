@@ -40,7 +40,7 @@ function help {
   
   ${cfMAGENTA}OPTIONS:${cfDEF}
     -help ............ print this help and exit
-    -s,-select \"X\" ... select at maximum X number of combinations
+    -s,-select \"X\" ... select a maximum number of X combinations
     -o,-overwrite .... overwrite parameters.txt also in existing folders
 
   ${cfMAGENTA}SYMBOLS:${cfDEF}

@@ -267,9 +267,9 @@ JKecho 2 "Is everything done there?"
 testdone=`JKcheck $method | awk '{print $5}'`
 if [ "$testdone" != "100.00" ] && [ "$testdone" != "" ]
 then
-  JKecho 0 "Apparently the subfolder ${cfBLUE}${method}${cfDEF} is still running."
-  JKecho 0 "   some jobs or was not finished correctly. Do you want to shut down"
-  JKecho 0 "   Do not await these jobs and collect the data? [yes/no] "
+  JKecho 0 "The subfolder ${cfBLUE}${method}${cfDEF} still has jobs running."
+  JKecho 0 "If you continue to collect, the collected data may be incomplete."
+  JKecho 0 "Do you want to continue anyway and collect the data? [yes/no]"
   read answer
   if [ "$answer" == "y" ] || [ "$answer" == "yes" ] || [ "$answer" == "Y" ] || [ "$answer" == "YES" ] || [ "$answer" == "Yes" ]
   then
@@ -277,7 +277,7 @@ then
     rm $method/.* 2>/dev/null
     #rm ./.* 2>/dev/null
   else 
-    JKecho 0 "Collection will not be performed here! [${cfRED}EXITING${cfDEF}]"
+    JKecho 0 "Collection will not be performed [${cfRED}EXITING${cfDEF}]"
     exit
   fi
 else
@@ -357,7 +357,7 @@ else
   fi
   if [ $logsouts -eq 0 ]
   then
-    JKecho 2 "I cannot recollect if there is nothing what to collect (xyz/logs/outs)"
+    JKecho 2 "I cannot recollect if there is nothing to collect (xyz/logs/outs)"
     Qrecollect=0
   fi
   if [ $Qrecollect -eq 1 ] #&& [[ "$method" != *"ABC"* ]]
@@ -519,7 +519,7 @@ then
 else
   if [ "$Qperform" != 2 ]  && [ "$METHODsupercomputer" != "loc" ]
   then
-    JKecho 0 "Max number of jobs to be sent is greater then allowed."
+    JKecho 0 "Max number of jobs to be sent is greater than allowed."
     JKecho 0 "Either use [${cfCYAN}-maxtasks${cfDEF} ${cfBLUE}$jobscount${cfDEF}] option or use ${cfCYAN}JKperform2${cfDEF} option."
     exit
   fi
