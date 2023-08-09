@@ -42,7 +42,7 @@ function help {
   ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ................ print this help
    -nf,-newfolder \"X\" ... name of the new folder [def=XTB]
-   -of,-oldfolder \"X\" ... name of the olf folder containing XYZs [def=ABC]
+   -of,-oldfolder \"X\" ... name of the old folder containing XYZs [def=ABC]
    -rf,-resultsfile \"X\" . uses 1. column of results\"X\"{_FILTERED}.dat
    -m,-method \"X\" ....... method used by 3rd party quantum program
    -p,-program \"X\" ...... 3rd party quantum program 
@@ -325,7 +325,7 @@ fi
 #some controlling
 if [ $Qtestboth -gt 1 ]
 then 
-  JKecho 0 "Do not understand input ... use just one of -rf or -of. [${cfRED}EXITING${cfDEF}]"
+  JKecho 0 "I do not understand input ... use just one of -rf or -of. [${cfRED}EXITING${cfDEF}]"
   exit
 fi
 
@@ -572,7 +572,7 @@ then
 else
   if [ "$Qperform" != 2 ] && [ "$METHODsupercomputer" != "loc" ]
   then
-    JKecho 0 "Max number of jobs to be sent is greater then allowed."
+    JKecho 0 "Max number of jobs to be sent is greater than allowed."
     JKecho 0 "Use [${cfCYAN}-maxtasks${cfDEF} ${cfBLUE}$jobscount${cfDEF}] option!"
     exit
   fi
