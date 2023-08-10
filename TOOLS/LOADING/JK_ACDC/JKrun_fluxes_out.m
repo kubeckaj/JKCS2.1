@@ -130,7 +130,7 @@ if 1==0
         %idx=idx1+num_monomers;
         idx=idx1;
         %display(idx); 
-        output=[output,")",num2str(max_flux_in_coll/tot_flux_in_coll*100),",",num2str(max_flux_in_coll/10^6),"("," -> ",clust_acdc(idx)];
+        output=[output,")",num2str(max_flux_in_coll/tot_flux_in_coll*100),",",num2str(max_flux_in_coll/10^6),"(","] -> ",num2str(idx),"[",clust_acdc(idx)];
       end
     end
     fprintf(join([join(output(end:-1:1)),"\n"]));

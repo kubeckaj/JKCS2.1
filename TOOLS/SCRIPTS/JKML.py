@@ -86,6 +86,7 @@ def help_nn():
   print("    -nn_train <float>          portion of training data (exlc. validation) [def = 0.9]", flush = True)
   print("    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]", flush = True)
   print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]")
+  print("    -nn_lr                     learning rate [def = 1e-4]", flush = True)
   print("", flush = True)
   print("  OPTIONS FOR REPRESENTATION:", flush = True)
   print("    -nn_ab <int>       number of atom basis/features/size of embeding vector [def = 256]", flush = True)
@@ -150,6 +151,7 @@ nn_cutoff = 5.0
 nn_atom_basis = 256
 nn_interactions = 5
 nn_epochs = 1000
+Qlearningrate = 1e-4
 Qearlystop = 200
 Qenergytradoff = 0.01 #if forces are trained on: [energy, force] = [X, 1]
 nw = 1
@@ -505,7 +507,15 @@ for i in sys.argv[1:]:
     continue
   if last == "-nn_espatience":
     last = ""
-    Qearlytop = int(i)
+    Qearlystop = int(i)
+    continue
+  #LEARNING RATE
+  if i == "-nn_lr":
+    last = "-nn_lr"
+    continue
+  if last == "-nn_lr":
+    last = ""
+    Qlearningrate = float(i)
     continue
   #MD temperature
   if i == "-md_temperature" or i == "-temperature":
@@ -1095,7 +1105,7 @@ for sampleeach_i in sampleeach_all:
           model=nnpot,
           outputs=output_losses,
           optimizer_cls=torch.optim.AdamW,
-          optimizer_args={"lr": 1e-4},
+          optimizer_args={"lr": Qlearningrate},
           scheduler_cls=spk.train.ReduceLROnPlateau,
           scheduler_args={'factor': 0.5, 'patience': 20, 'min_lr': 1e-7},
           scheduler_monitor = 'val_loss'

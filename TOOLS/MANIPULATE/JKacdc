@@ -184,7 +184,7 @@ function lowerclusters {
 function properties {
   case $1 in
     #1monomer 2charge 30 4-1 5+1 6mass 7density 8bs 9as 
-    "sa")  echo "sa  0 - - - 98.08  1830.0 -1 2"  | awk -v V=$2 '{print $V}'
+    "sa")  echo "sa  0 - - - 98.08  1830.0 -1  2"  | awk -v V=$2 '{print $V}'
           ;;
     "am")  echo "am  0 - - - 17.04  696.0  1  -1" | awk -v V=$2 '{print $V}'
           ;;
@@ -196,13 +196,17 @@ function properties {
           ;;
     "eda") echo "eda 0 - - - 60.10  900.0  4  -4" | awk -v V=$2 '{print $V}'
           ;;
-    "msa") echo "msa 0 - - - 96.10  1480.0 -1 1"  | awk -v V=$2 '{print $V}'
+    "msa") echo "msa 0 - - - 96.10  1480.0 -1  1"  | awk -v V=$2 '{print $V}'
           ;;
-    "fa")  echo "fa  0 - - - 46.03  1220.0 -1 1"  | awk -v V=$2 '{print $V}'
+    "fa")  echo "fa  0 - - - 46.03  1220.0 -1  1"  | awk -v V=$2 '{print $V}'
           ;;
-    "nta") echo "nta 0 - - - 63.01  1513.0 -1 1"  | awk -v V=$2 '{print $V}'
+    "nta") echo "nta 0 - - - 63.01  1513.0 -1  1"  | awk -v V=$2 '{print $V}'
           ;;
-    *)    echo  "$1  0 - - - XXXXX  XXXXXX 0  0"  | awk -v V=$2 '{print $V}'
+    "ca")  echo "ca  0 - - - 84.459 1282.0 -1  1"  | awk -v V=$2 '{print $V}'
+          ;;
+    "pa")  echo "pa  0 - - - 100.4  1830.0 -1  1"  | awk -v V=$2 '{print $V}'
+          ;;
+    *)    echo  "$1  0 - - - XXXXX  XXXXXX 0   0"  | awk -v V=$2 '{print $V}'
           ;;
   esac
 }

@@ -205,6 +205,7 @@ function program_JKML {
       fi
     done
     cp *.xyz $currentdir/ 2>/dev/null
+    cp -r * $currentdir/ 2>/dev/null #TODO This is only test; remove after test
     cd ../
     rm -r JKML$SLURM_JOBID
     cd $currentdir
@@ -662,6 +663,7 @@ $PATH_G16/g16/g16 < $inputCOM >& $DIR/$output
 #fi
 #cp $output $DIR/
 JKlog2xyz $DIR/$output
+cp ${base}.grad $DIR/ 2>/dev/null
 cp ${base}.xyz $DIR/ 2>/dev/null
 cp *.err $DIR/ 2>/dev/null
 cp *.out $DIR/ 2>/dev/null
