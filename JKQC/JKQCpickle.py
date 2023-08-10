@@ -3146,7 +3146,7 @@ if not len(output) == 0:
   #if Qout != 2 or Qformation == 0:
   #  system("cat "+fn+" | column -t")
   #  remove(fn)
-  if Qout != 2 and Qformation==1:
+  if not(Qout == 2 and Qformation==1):
     toprint = list(zip(*output)) #[row for row in list(zip(*output))]
     column_widths = [max(len(str(row[i])) for row in toprint) for i in range(len(toprint[0]))]
     for row in toprint:
