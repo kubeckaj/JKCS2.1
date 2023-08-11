@@ -1217,10 +1217,11 @@ for file_i in files:
           if re.search("^ \#", line): #PROGRAM
             try:
               presaved = line.lower().split()
-              if presaved[1] in ["am1", "pm7", "pm6", "pm3"]:
-                out_method = "_".join(presaved[0:2])
-              else: 
-                out_method = "_".join(presaved[0:3])
+              out_method = "_".join(presaved)
+              #if presaved[1] in ["am1", "pm7", "pm6", "pm3"]:
+              #  out_method = "_".join(presaved[0:2])
+              #else: 
+              #  out_method = "_".join(presaved[0:3])
             except:
               out_method = missing
           #Charge
@@ -2949,7 +2950,10 @@ for i in Pout:
     levels = []
     for ind in clusters_df.index:
       try:
-        levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])  
+        try:
+          levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind]+"__"+clusters_df["out"]["program"][ind]+"_"+clusters_df["out"]["method"][ind])
+        except:
+          levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])  
       except:
         levels.append(missing)
     output.append(levels)

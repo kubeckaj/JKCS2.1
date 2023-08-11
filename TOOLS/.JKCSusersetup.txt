@@ -764,6 +764,7 @@ $PATH_ORCA/orca $inputINP > $DIR/$output 2> $DIR/$output
 #  mv $DIR/$output $DIR/${base}O.out
 #fi
 #cp $output $DIR/
+cp trajectory.xyz $DIR/${base}_traj.xyz 2>/dev/null #only for MD
 cp ${base}.xyz $DIR/${base}.xyz 2>/dev/null
 cp *.err $DIR/ 2>/dev/null
 cd $DIR
