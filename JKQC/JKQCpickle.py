@@ -100,6 +100,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
+  print(" -column <COL1> <COL2>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -121,6 +122,8 @@ Qrebasename = 0 #change names if they are the same
 Qunderscore = 0 #underscore to dash
 Qchangeall = 0 #do I want to some column to all
 Qcomplement = 0 #subtract these from the list base on basename of the new pickle file
+QcolumnDO = 0
+Qcolumn = []
 
 Qclustername = 1 #Analyse file names for cluster definition?
 Qextract = 0 #Do I want to extarct only some cluster_type(s)?
@@ -266,6 +269,20 @@ for i in argv[1:]:
     last = ""
     turbomoleext = str(i)
     turbomoleextname = "log"
+    continue
+  #COLUMN 
+  if i == "-column":
+    last = "-column"
+    QcolumnDO += 1
+    Pout.append("-column")
+    continue
+  if last == "-column":
+    last = "-column1"
+    QcolumnADD = str(i)
+    continue
+  if last == "-column1":
+    last = ""
+    Qcolumn.append([QcolumnADD, str(i)])
     continue
   #ADD EXTRA COLUMN
   if i == "-add" or i == "-addcolumn":
@@ -3057,6 +3074,12 @@ for i in Pout:
   if i == "-termination":
     try: 
       output.append(clusters_df["log"]["termination"].values)
+    except:
+      output.append([missing]*len(clusters_df))
+    continue
+  if i == "-column":
+    try:
+      output.append(clusters_df[Qcolumn[0][0]][Qcolumn[0][1]].values)
     except:
       output.append([missing]*len(clusters_df))
     continue
