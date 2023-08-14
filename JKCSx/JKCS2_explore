@@ -50,9 +50,8 @@ function help {
     -repeat \"X\" ....... each simulation is repeated X-times [def=1]
  
     OTHERS: -box [def=7+M]
-    OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
-    OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
-    OTHERS: -pickle,-JKQC,-expl/-exploded (>50A; must be with -JKQC)
+    OTHERS: -pickle,-JKQC,-expl/-exploded (removes >50 Angstrom)
+    OTHERS: -components <file>
  
   ${cfMAGENTA}SYMBOLS:${cfDEF}
     M .... number of molecules
@@ -70,6 +69,8 @@ function help {
             $scriptfile -pop 1000 -gen 100 -lm 3000
             $scriptfile -pop 1000*M -gen 100 -lm 4000/NoC
             $scriptfile -wtc 3h -pop 2000*M/NoC\n""" 
+  #OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
+  #OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
   printf "#################################################################\n"
   exit
 }
