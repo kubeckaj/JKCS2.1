@@ -168,6 +168,7 @@ Qrepeat=1 #How many times I want to repeat each simulation?
 Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 Qremoveexploded=0 #Do I want to get rid of exploded. only with JKQC
+Qcomponents="" #If I want to overwrite components for ABCXTB calculations
 
 last=""
 # loop over all arguments
@@ -304,6 +305,23 @@ do
   then
     GFN="$iter"
     last=""
+    continue
+  fi
+  # COMPONENTS
+  if [ "$iter" == "-components" ]
+  then
+    last="-components"
+    continue
+  fi
+  if [ "$last" == "-components" ]
+  then
+    last=""
+    Qcomponents="$( cd "$(dirname "$iter")" ; pwd -P )/$(basename $iter)"
+    if [ ! -e "$Qcomponents" ]
+    then
+      JKecho 0 "Component file not found.[EXITING]"
+      exit
+    fi
     continue
   fi
   # 
@@ -454,22 +472,29 @@ num_calcs $GEN
 do_coarse_opt yes
 min_energy_gap  1.E-5
 max_geom_iters  0
+       """ >> $F2
 
-components""" >> $F2
-      for var in `seq 1 $Nfiles`
-      do
-        num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
-        path=`echo $files | awk -v var0=$var '{print $var0}'`
-        if [ "$num" != "0" ]
-        then
-          echo "   $path $num" >> $F2
-          echo "   random -$BOX -$BOX -$BOX $BOX $BOX $BOX" >> $F2
-          echo "   * *" >> $F2
-          echo "   ****" >> $F2
-        fi
-      done
-      echo """end
-
+      if [ -z "$Qcomponents" ]
+      then
+        echo "components" >> $F2
+        for var in `seq 1 $Nfiles`
+        do
+          num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
+          path=`echo $files | awk -v var0=$var '{print $var0}'`
+          if [ "$num" != "0" ]
+          then
+            echo "   $path $num" >> $F2
+            echo "   random -$BOX -$BOX -$BOX $BOX $BOX $BOX" >> $F2
+            echo "   * *" >> $F2
+            echo "   ****" >> $F2
+          fi
+        done
+        echo "end" >> $F2
+      else
+        cat $Qcomponents >> $F2
+      fi
+ 
+      echo """
 xtb # charge, uhf, gfn
   $CHARGE `echo $MULTIPLICITY-1 | bc` $GFN
 end

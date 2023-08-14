@@ -2967,9 +2967,9 @@ for i in Pout:
     levels = []
     for ind in clusters_df.index:
       try:
-        try:
+        if ("out","method") in clusters_df:
           levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind]+"__"+clusters_df["out"]["program"][ind]+"_"+clusters_df["out"]["method"][ind])
-        except:
+        else:
           levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])  
       except:
         levels.append(missing)
