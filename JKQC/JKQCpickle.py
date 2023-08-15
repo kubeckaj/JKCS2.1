@@ -728,7 +728,7 @@ for i in argv[1:]:
     continue
   if last == "-conc2":
     last = ""
-    conc.append(np.array([remember, float(i)]))
+    conc.append(np.array([remember, i]))
     continue
   if path.exists(i):
     formation_input_file = i
@@ -3284,7 +3284,8 @@ if Qformation == 1:
                         Qp = 101325.0*float(clusters_df["log","pressure"].values[i])
                       except:
                         Qp = 101325.0
-                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor/cluster_total_number) * R/1000/627.503 * Qt * np.log( float(conc[conc_j][1]) / Qp)
+                    conc_mon=float(eval(conc[conc_j][1].replace("ppt","*10**-9*"+str(Qp)).replace("ppb","*10**-6*"+str(Qp)).replace("^","**").replace("cmmc","*10**6*1.380662*10**-23*"+str(Qt)) ))
+                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor/cluster_total_number) * R/1000/627.503 * Qt * np.log( conc_mon / Qp)
             except:
               line[line_i] = missing
           test_monomer = 1
