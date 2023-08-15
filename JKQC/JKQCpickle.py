@@ -1708,7 +1708,7 @@ for file_i in files:
             continue
           if re.search("Final entropy term", line): #E1
             try:
-              out_entropy = float(line.split()[4])/out_temperature
+              out_entropy = float(line.split()[4])*1000*627.503/out_temperature
             except:
               out_entropy = missing
             continue
