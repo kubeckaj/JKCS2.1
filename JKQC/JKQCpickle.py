@@ -101,7 +101,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
-  print(" -column <COL1> <COL2>")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -149,6 +149,8 @@ Qanh = 1
 Qpresplit = 0 #Do I want to take only part of the data?
 Qsplit = 1 #should I split the base on several parts
 Qindex = "-1"#
+Qdrop = "0" #drop some column
+Qout2log = 0 #change column name
 
 Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
@@ -313,6 +315,14 @@ for i in argv[1:]:
     last = ""
     Qpresplit = int(i)
     continue
+  # DROP
+  if i == "-drop":
+    last = "-drop"
+    continue
+  if last == "-drop":
+    last = ""
+    Qdrop = i
+    continue
   #COMPLEMENT
   if i == "-complement":
     last = "-complement"
@@ -331,8 +341,12 @@ for i in argv[1:]:
     continue
   #UNDERSCORE
   if i == "-undersocre":
-   Qunderscore = 1
-   continue
+    Qunderscore = 1
+    continue
+  # OUT 2 LOG
+  if i == "-out2log":
+    Qout2log = 1
+    continue
   #RENAME
   if i == "-rename":
     Qmodify = 1
@@ -902,7 +916,10 @@ else:
     else:
       len_clusters_df = len(clusters_df)
       newclusters_df.index = [str(j+len_clusters_df) for j in range(len(newclusters_df))]
-      clusters_df = clusters_df.append(newclusters_df)
+      #clusters_df = clusters_df.reset_index().append(newclusters_df.reset_index())
+      clusters_df = pd.concat([clusters_df,newclusters_df],axis=0, ignore_index=True)
+      #clusters_df = pd.concat([clusters_df,newclusters_df],axis=0,ignore_index=True)
+      #clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
 
 #Complement
 if Qcomplement != 0:
@@ -1584,7 +1601,10 @@ for file_i in files:
             continue
           if re.search(r"^\|.*>.*!", line): #METHOD
             try:
-              out_method = "_".join(sorted(line.split(">")[1].lower().split()))
+              if pd.isna(out_method):
+                out_method = "_".join(sorted(line.split(">")[1].lower().split()))
+              else:
+                out_method += "_"+"_".join(sorted(line.split(">")[1].lower().split()))
             except:
               out_method = missing
           if re.search("Number of atoms", line): #I3
@@ -1905,7 +1925,13 @@ if Qiamifo > 0:
   #  positions = [index for index, value in enumerate(predashstrings) if value == i]
   #  for position in positions:
   #    newlist[position] = randomstrings[uniquestrings.index(i)]
-  clusters_df = df_add_append(clusters_df, "info", "cluster_type", clusters_df.index, predashstrings) 
+  clusters_df = df_add_append(clusters_df, "info", "cluster_type", clusters_df.index, predashstrings)
+
+if Qdrop != "0":
+  clusters_df = clusters_df.drop([Qdrop], axis=1, level=0) 
+
+if Qout2log == 1:
+  clusters_df = clusters_df.rename({'out': 'log'}, axis='columns')
 
 ####################################################################################################
 ####################################################################################################
@@ -2968,8 +2994,11 @@ for i in Pout:
     levels = []
     for ind in clusters_df.index:
       try:
-        if ("out","method") in clusters_df:
-          levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind]+"__"+clusters_df["out"]["program"][ind]+"_"+clusters_df["out"]["method"][ind])
+        if ("out","method") in clusters_df and ("out","program") in clusters_df:
+          if not pd.isna(clusters_df["out"]["program"][ind]):
+            levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind]+"__"+clusters_df["out"]["program"][ind]+"_"+clusters_df["out"]["method"][ind])
+          else:
+            levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])
         else:
           levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])  
       except:
@@ -3286,7 +3315,7 @@ if Qformation == 1:
                       except:
                         Qp = 101325.0
                     conc_mon=float(eval(conc[conc_j][1].replace("ppt","*10**-9*"+str(Qp)).replace("ppb","*10**-6*"+str(Qp)).replace("^","**").replace("cmmc","*10**6*1.380662*10**-23*"+str(Qt)) ))
-                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor/cluster_total_number) * R/1000/627.503 * Qt * np.log( conc_mon / Qp)
+                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor*float(cluster_molecule_number)/cluster_total_number) * R/1000/627.503 * Qt * np.log( conc_mon / Qp)
             except:
               line[line_i] = missing
           test_monomer = 1

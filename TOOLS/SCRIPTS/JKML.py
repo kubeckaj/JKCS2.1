@@ -87,6 +87,7 @@ def help_nn():
   print("    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]", flush = True)
   print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]")
   print("    -nn_lr                     learning rate [def = 1e-4]", flush = True)
+  print("    -nw                        number of workers for database manipulation [def = 1]")
   print("", flush = True)
   print("  OPTIONS FOR REPRESENTATION:", flush = True)
   print("    -nn_ab <int>       number of atom basis/features/size of embeding vector [def = 256]", flush = True)
@@ -1650,7 +1651,7 @@ for sampleeach_i in sampleeach_all:
           MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
           # We want to run MD with constant energy using the VelocityVerlet algorithm.
           #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
-          dyn = Langevin(atoms, 1*units.fs, md_temperature*units.kB, 0.02) #friction coeffitient 0.002
+          dyn = Langevin(atoms, 0.5*units.fs, md_temperature*units.kB, 0.02) #friction coeffitient 0.002
           def printenergy(a=atoms):  # store a reference to atoms in the definition.
             """Function to print the potential, kinetic and total energy."""
             epot = a.get_potential_energy() / len(a)
@@ -1659,9 +1660,9 @@ for sampleeach_i in sampleeach_all:
             print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
                   'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
           # Now run the dynamics
-          dyn.attach(printenergy, interval=10)
+          dyn.attach(printenergy, interval=1)
           printenergy()
-          dyn.run(100000)
+          dyn.run(10000)
  
       #  Y_predicted.append(atoms.get_potential_energy())
       #  if Qforces == 1:
