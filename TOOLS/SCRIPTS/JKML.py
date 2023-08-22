@@ -1645,13 +1645,13 @@ for sampleeach_i in sampleeach_all:
           def printenergy(a=atoms):
             write("opt.xyz", a, append = True)
           dyn.attach(printenergy, interval=1)
-          dyn.run(fmax=1e-2)
+          dyn.run(fmax=1e-6)
         else: 
           # Set the momenta corresponding to T
           MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
           # We want to run MD with constant energy using the VelocityVerlet algorithm.
           #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
-          dyn = Langevin(atoms, 0.5*units.fs, md_temperature*units.kB, 0.02) #friction coeffitient 0.002
+          dyn = Langevin(atoms, 0.1*units.fs, md_temperature*units.kB, 0.002) #friction coeffitient 0.002
           def printenergy(a=atoms):  # store a reference to atoms in the definition.
             """Function to print the potential, kinetic and total energy."""
             epot = a.get_potential_energy() / len(a)
@@ -1662,7 +1662,7 @@ for sampleeach_i in sampleeach_all:
           # Now run the dynamics
           dyn.attach(printenergy, interval=1)
           printenergy()
-          dyn.run(10000)
+          dyn.run(1000000)
  
       #  Y_predicted.append(atoms.get_potential_energy())
       #  if Qforces == 1:

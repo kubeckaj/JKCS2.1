@@ -101,7 +101,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log", "-levels")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -286,6 +286,10 @@ for i in argv[1:]:
   if last == "-column1":
     last = ""
     Qcolumn.append([QcolumnADD, str(i)])
+    continue
+  #LEVELS
+  if i == "-levels":
+    Pout.append("-levels")
     continue
   #ADD EXTRA COLUMN
   if i == "-add" or i == "-addcolumn":
@@ -1862,8 +1866,12 @@ if Qindex != "-1":
   try:
     clusters_df = eval(f"clusters_df[{Qindex}]")
   except:
-    print("Error selecting given index")
-    exit()
+    try: 
+      Qindex = Qindex+":"+str(int(Qindex)+1)
+      clusters_df = eval(f"clusters_df[{Qindex}]")
+    except:
+      print("Error selecting given index")
+      exit()
 
 ####################################################################################################
 ####################################################################################################
@@ -1928,7 +1936,8 @@ if Qiamifo > 0:
   clusters_df = df_add_append(clusters_df, "info", "cluster_type", clusters_df.index, predashstrings)
 
 if Qdrop != "0":
-  clusters_df = clusters_df.drop([Qdrop], axis=1, level=0) 
+  if Qdrop in clusters_df:
+    clusters_df = clusters_df.drop([Qdrop], axis=1, level=0) 
 
 if Qout2log == 1:
   clusters_df = clusters_df.rename({'out': 'log'}, axis='columns')
@@ -2635,6 +2644,18 @@ last = ''
 for i in Pout:
   if i == "-info":
     print(clusters_df.info())
+    continue
+  if i == "-levels":
+    pd.set_option('display.max_colwidth', -1)
+    if not pd.isna(clusters_df["log"]["program"]).any():
+      print("# LOG #")
+      print(clusters_df["log"][["program","method"]].drop_duplicates())
+      print("#######")   
+    if "out" in clusters_df:
+      if not pd.isna(clusters_df["out"]["program"]).any():
+        print("# OUT #")
+        print(clusters_df["out"][["program","method"]].drop_duplicates())
+        print("#######")   
     continue
   if i == "-extra":
     last = "-extra"
