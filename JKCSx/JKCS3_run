@@ -397,7 +397,7 @@ PARTITION=$SCpar
 NODES=$SCnodes
 TIME=$SCtime
 CPU=$SCcpu""" > arguments.txt
-if [ ! -z "$Qxtbhome" ]; then echo "XTBPATH=$Qxtbhome" >> arguments.txt; fi 
+if [ ! -z "$Qxtbhome" ]; then echo "export XTBPATH=$Qxtbhome" >> arguments.txt; fi 
 }
 
 if [ "$METHODsupercomputer" == "loc" ]
