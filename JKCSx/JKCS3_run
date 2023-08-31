@@ -51,6 +51,7 @@ function help {
              -array = does submit array instead of single jobs
              -arraymax X = max jobs per array
              -add maxiter <inter> = max number of iteration in ORCA
+             -xtbpath
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
@@ -221,6 +222,19 @@ do
     last=""
     continue
   fi
+  # XTBHOME XTBPATH
+  if [ "$iter" == "-xtbhome" ] || [ "$iter" == "-xtbpath" ]
+  then
+    last="-xtbhome"
+    Qarray=1
+    continue
+  fi
+  if [ "$last" == "-xtbhome" ] 
+  then
+    Qxtbhome="$( cd "$iter"; pwd -P )"
+    last=""
+    continue
+  fi
   ### -oldfolder "X"
   if [ "$last" == "-of" ]
   then
@@ -383,6 +397,7 @@ PARTITION=$SCpar
 NODES=$SCnodes
 TIME=$SCtime
 CPU=$SCcpu""" > arguments.txt
+if [ ! -z "$Qxtbhome" ]; then echo "XTBPATH=$Qxtbhome" >> arguments.txt; fi 
 }
 
 if [ "$METHODsupercomputer" == "loc" ]
@@ -603,7 +618,7 @@ then
     one_node_tasks=`echo $cores_in_node/$SCcpu | bc` 
     one_node_cores=`echo $SCcpu*$one_node_tasks | bc`
     nodes_required=`echo "($jobscount+$one_node_tasks-1)/$one_node_tasks" | bc`
-    JKecho 2 "GREASY: nodes = $SCnodes, 1-node-tasks = $one_node_tasks, 1-node-utilized-cores = $one_node_cores"
+  JKecho 2 "GREASY: nodes = $SCnodes, 1-node-tasks = $one_node_tasks, 1-node-utilized-cores = $one_node_cores"
     if [ $nodes_required -gt $SCnodes ]
     then
       JKecho 0 "Sorry I need at least ${cfBLUE}$nodes_required${cfDEF} nodes, but you offered me just ${cfBLUE}$SCnodes${cfDEF} node(s). [${cfRED}EXIT${cfDEF}]"

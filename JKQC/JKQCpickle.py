@@ -816,7 +816,7 @@ def df_add_iter(dataframe,label,name,indexs,variables):
   else:
     dataframe[label,name] = pd.DataFrame(index = indexs, columns = pd.MultiIndex.from_tuples([(label,name)]) )
     for i in range(len(variables)):
-      dataframe[label,name][i] = variables[i]
+      dataframe[label,name][-1-i] = variables[-1-i]
 
   return dataframe
 ####################################################################################################
@@ -942,7 +942,7 @@ if len(input_pkl_sp) > 0:
     #newclusters_df_sp = newclusters_df_sp
     clusters_df.set_index(('info', 'file_basename'), inplace=True)
     #print(clusters_df.join(newclusters_df_sp,how='left'))
-    clusters_df = pd.concat([clusters_df, newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out']], axis=1)
+    clusters_df = pd.concat([clusters_df.sort_index(), newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out'].sort_index()], axis=1)
     #print(clusters_df.merge(newclusters_df_sp, on=('info', 'file_basename')))
     #clusters_df.index = [str(j) for j in range(len(clusters_df))]
     clusters_df.reset_index(inplace=True)
@@ -1037,6 +1037,7 @@ for file_i in files:
         testXTB = 1
         break
     if testXTB == 1:
+      out_vibrational_frequencies = missing
       out_program = missing                              #PROGRAM
       out_method = missing                               #METHOD
       out_time = missing                                 #TIME
@@ -1131,11 +1132,47 @@ for file_i in files:
             out_enthalpy_energy = out_electronic_energy + float(line.split()[1])
           except:
             out_enthalpy_energy = missing
+        if re.search("TOTAL ENTHALPY", line): #T8
+          try:
+            out_enthalpy_energy = float(line.split()[3])
+          except:
+            out_enthalpy_energy = missing
         if re.search("^T\*S ", line): #E1
           try:
             out_entropy = float(line.split()[1])*1000*627.503/298.15
           except:
             out_entropy = missing
+        if re.search("T\*S/Eh ", line): #E1
+          save_something = "entropy"
+          save_entropy = 1
+          continue
+        if save_something == "entropy":
+          if save_entropy == 1:
+            save_entropy -= 1
+            continue
+          try:
+            out_entropy = float(line.split()[3])*1000*627.503/298.15
+          except:
+            out_entropy = missing
+          save_something = ""
+          continue
+        if re.search("S\(FR\)/kcal", line):
+          save_something = "vibs"
+          save_vibs = 0
+          out_vibrational_frequencies = []
+          continue
+        if save_something == "vibs":
+          if re.search("----", line):
+            save_vibs += 1
+            continue
+          if save_vibs == 1:
+            try:
+              out_vibrational_frequencies += [float(line.split()[1])]
+            except:
+              out_vibrational_frequencies = missing
+          if save_vibs == 2:
+            save_something = ""
+          continue
         #if re.search("^G\(T\)", line): 
         #  try:
         #    out_gibbs_free_energy = out_electronic_energy + float(line.split()[1])
@@ -1167,6 +1204,7 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "entropy", [str(cluster_id)], [out_entropy])
       clusters_df = df_add_iter(clusters_df, "log", "mulliken_charges", [str(cluster_id)], [out_mulliken_charges]) #O4
       clusters_df = df_add_iter(clusters_df, "log", "NAtoms", [str(cluster_id)], [out_NAtoms]) #I3
+      clusters_df = df_add_iter(clusters_df, "log", "vibrational_frequencies", [str(cluster_id)], [out_vibrational_frequencies]) 
     file.close()
     if Qforces == 1:
       if path.exists(file_i_XTBengrad):
@@ -2118,8 +2156,10 @@ if Qreacted > 0:
     indexes = clusters_df.index.values
     cluster_subsets.append(indexes)   
   for k0 in range(len(cluster_subsets)):
+    #print(k0)
     all_molecules = []
     for k in range(len(cluster_subsets[k0])):
+      #print(k)
       b = clusters_df["xyz"]["structure"][cluster_subsets[k0][k]]
       if pd.isna(b):
         all_molecules.append(str(missing))
@@ -2141,6 +2181,10 @@ if Qreacted > 0:
           elif xA == "S" and xB == "O" and x < 1.9:
             return 1
           elif xA == "O" and xB == "S" and x < 1.9:
+            return 1
+          elif xA == "O" and xB == "N" and x < 1.9:
+            return 1
+          elif xA == "N" and xB == "O" and x < 1.9:
             return 1
           elif xA == "H" or xB == "H":
             if xA == "H" and xB == "H" and x < 0.8:
@@ -2174,7 +2218,7 @@ if Qreacted > 0:
             #print([chosen,j,len(selected)-1,"checking",choosing_list])
             for i in choosing_list:
               
-              if bm[chosen][i] == 1 and choosing_list[j] != i and (not (i in selected)):
+              if bm[chosen][i] == 1 and chosen != i and (not (i in selected)):
                 selected.append(i)
                 #print([i,j,selected,len(selected),bm[choosing_list[j]][i],choosing_list[j],choosing_list,(i in selected)])
             #print("I am here")
@@ -2245,13 +2289,21 @@ if Qqha == 1:
         clusters_df["log","zero_point_correction"][i] = missing
         clusters_df["log","zero_point_energy"][i] = missing
         continue
-      Sv_OLD = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K
-      Ev_OLD = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
+      try:
+        Sv_OLD = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K
+        Ev_OLD = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
+      except:
+        Sv_OLD = missing
+        Ev_OLD = missing
       #
       clusters_df["log","vibrational_frequencies"][i] = [Qanh * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
       #
-      Sv = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K  
-      Ev = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
+      try:
+        Sv = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K  
+        Ev = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
+      except:
+        Sv = missing
+        Ev = missing
       ###
       clusters_df["log","zero_point_correction"][i] = np.sum([0.5*h*vib*2.99793*10**10 for vib in clusters_df["log","vibrational_frequencies"][i]])*0.00038088*6.022*10**23/1000
       clusters_df["log","zero_point_energy"][i] = clusters_df["log","electronic_energy"][i] + clusters_df["log","zero_point_correction"][i]  
@@ -2320,21 +2372,25 @@ if Qqha == 1:
       mu = [float(h/(8*np.pi**2*2.99793*10**10*vib)) for vib in vibs]
       try:
         mi = np.mean(structure.get_moments_of_inertia())
+        Sr = [R*(0.5+np.log((8*np.pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K
+        Sv = [R*h*vib*2.99793*10**10/k/Qt/(np.exp(h*vib*2.99793*10**10/k/Qt)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/Qt)) for vib in vibs] #cal/mol/K
+        w = [1/(1+(Qfc/vib)**4) for vib in vibs]
+        Sv_corr = np.sum([w[j]*Sv[j]+(1-w[j])*Sr[j] for j in range(len(w))])
+        Sv_each = np.sum(Sv)  #cal/mol/K
+        clusters_df["log","entropy"][i] = clusters_df["log","entropy"][i]+(Sv_corr-Sv_each)
       except:
         mi = missing
+        clusters_df["log","entropy"][i] = missing
       
       #print(mu)
       #print(mi)
-      Sr = [R*(0.5+np.log((8*np.pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K
       #print(Sr,flush=True)
       #print(vibs)
-      Sv = [R*h*vib*2.99793*10**10/k/Qt/(np.exp(h*vib*2.99793*10**10/k/Qt)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/Qt)) for vib in vibs] #cal/mol/K
-      w = [1/(1+(Qfc/vib)**4) for vib in vibs]
-      Sv_corr = np.sum([w[j]*Sv[j]+(1-w[j])*Sr[j] for j in range(len(w))])
-      Sv_each = np.sum(Sv)  #cal/mol/K
+      #print(Sv,flush=True)
+      #print(w,flush=True)
       #St_each = [R*np.log((2*np.pi*0.001*np.sum(structure.get_masses())*k**2/8.31441*Qt/h**2)**(3/2)*k*Qt/101325)+5/2 for structure in clusters_df["xyz"]["structure"].values]
       ###
-      clusters_df["log","entropy"][i] = clusters_df["log","entropy"][i]+(Sv_corr-Sv_each)
+      #print(Sv_each)
     ###
 
 #  if Qfc > 0:
@@ -2535,6 +2591,8 @@ if Qthreshold != 0:
       what = 627.503*clusters_df["log"]["electronic_energy"].values
     elif Qcut[i][2] == "g":
       what = 627.503*clusters_df["log"]["gibbs_free_energy"].values
+    elif Qcut[i][2] == "elout":
+      what = 627.503*clusters_df["out"]["electronic_energy"].values
     elif Qcut[i][2] == "lf":
       #print([len(i) for i in clusters_df["log"]["vibrational_frequencies"].values])
       #what = np.array([np.array([ii]) if pd.isna([ii]).any() else np.array(ii) for ii in clusters_df["log"]["vibrational_frequencies"].values])[:,0]
@@ -2646,13 +2704,13 @@ for i in Pout:
     print(clusters_df.info())
     continue
   if i == "-levels":
-    pd.set_option('display.max_colwidth', -1)
-    if not pd.isna(clusters_df["log"]["program"]).any():
+    pd.set_option('display.max_colwidth', None)
+    if not pd.isna(clusters_df["log"]["program"]).all():
       print("# LOG #")
       print(clusters_df["log"][["program","method"]].drop_duplicates())
       print("#######")   
     if "out" in clusters_df:
-      if not pd.isna(clusters_df["out"]["program"]).any():
+      if not pd.isna(clusters_df["out"]["program"]).all():
         print("# OUT #")
         print(clusters_df["out"][["program","method"]].drop_duplicates())
         print("#######")   
@@ -3226,10 +3284,11 @@ if not len(output) == 0:
   #  remove(fn)
   if not(Qout == 2 and Qformation==1):
     toprint = list(zip(*output)) #[row for row in list(zip(*output))]
-    column_widths = [max(len(str(row[i])) for row in toprint) for i in range(len(toprint[0]))]
-    for row in toprint:
-      formatted_row = [str(row[i]).ljust(column_widths[i]) for i in range(len(row))]
-      print(" ".join(formatted_row),flush = True)
+    if len(toprint) > 0:
+      column_widths = [max(len(str(row[i])) for row in toprint) for i in range(len(toprint[0]))]
+      for row in toprint:
+        formatted_row = [str(row[i]).ljust(column_widths[i]) for i in range(len(row))]
+        print(" ".join(formatted_row),flush = True)
 
 def myFunc(e):
   try:

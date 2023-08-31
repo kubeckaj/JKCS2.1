@@ -71,7 +71,7 @@ EXAMPLE:
     MODULE_ABC="module load gcc"
     PATH_XTB="/home/kubeckaj/Applications/XTB6.4/"
     MODULE_XTB=""
-    PATH_CREST=""
+    PATH_CREST="/home/kubeckaj/Applications/crest/"
     PATH_G16="/comm/groupstacks/gaussian/gaussian/gaussian16/Rev.B.01/"
     MODULE_G16="source /comm/groupstacks/gaussian/bin/modules.sh --silent; module load gaussian16/Rev.B.01;"
     #PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.3/"

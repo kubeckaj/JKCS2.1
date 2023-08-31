@@ -55,7 +55,7 @@ def help_adv():
   print("    -noforces           forces are not trained/tested even if it is possible")
   print("    -size <int>         randomly selects only portion of the trainin database (e.g. 200)", flush = True)
   print("    -seed <int>         seed for random number generators [def = 42]")
-  print("    -sampleeach <int>   selects structures with similar MBTR (our similarity definition)", flush = True)
+  print("    -categorize <int>   selects structures with similar MBTR (our similarity definition)", flush = True)
   print("    -similarity <int>   selects structures with similar FCHL (uses kernel)", flush = True)
   print("    -forcemonomers      adds (extra) monomers to sampleeach/selection", flush = True)
   print("    -printforces        print out all forces (this might be a lot of numbers)", flush = True)
@@ -320,7 +320,7 @@ for i in sys.argv[1:]:
     Qsplit_j = int(i)-1
     continue
   #SAMPLEEACH 
-  if i == "-sampleeach" or i == "-se":
+  if i == "-sampleeach" or i == "-se" or i == "-categorize":
     last = "-sampleeach"
     continue
   if last == "-sampleeach":

@@ -381,6 +381,7 @@ function program_CREST {
     $MODULE_XTB 2>/dev/null
     if [ ! -z "$SLURM_CPUS_ON_NODE" ]
     then
+      ulimit -s unlimited
       export OMP_STACKSIZE=1G
       export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
     fi
@@ -480,8 +481,8 @@ function program_XTB {
     source ../arguments.txt
   fi
   
-  #loading module  
-  export XTBPATH=$PATH_XTB
+  #loading module
+  if [ -z "$XTBPATH" ]; then export XTBPATH=$PATH_XTB; fi
   if [[ "$PATH" != *"$XTBBPATH"* ]]; then
     export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
   fi
