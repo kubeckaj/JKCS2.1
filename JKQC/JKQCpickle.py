@@ -986,7 +986,7 @@ for file_i in files:
   clusters_df = df_add_iter(clusters_df, "info", "file_basename", [str(cluster_id)], [file_i_BASE])
   # sorted cluster type
   if Qclustername == 1:
-    cluster_type_array = seperate_string_number(file_i_BASE.split("-")[0]) 
+    cluster_type_array = seperate_string_number(file_i_BASE.split("-")[0].split("_")[0]) 
     #if np.mod(len(cluster_type_array),2) == 0:
     if is_nameable(cluster_type_array):
       cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])

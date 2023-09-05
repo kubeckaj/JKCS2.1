@@ -1028,6 +1028,7 @@ for sampleeach_i in sampleeach_all:
           ],
           num_workers=nw,#TODO how does this work?
           #split_file=split_file,
+          #pin_memory = True
           data_workdir="./"
       )
       dataset.prepare_data()
@@ -1143,6 +1144,7 @@ for sampleeach_i in sampleeach_all:
           default_root_dir="./",
           max_epochs=nn_epochs,
           #log_every_n_steps=1,
+          #accumulate_grad_batches = 10,
       )
 
       trainer.fit(task, datamodule=dataset)
