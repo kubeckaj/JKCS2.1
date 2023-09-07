@@ -816,7 +816,7 @@ def df_add_iter(dataframe,label,name,indexs,variables):
   else:
     dataframe[label,name] = pd.DataFrame(index = indexs, columns = pd.MultiIndex.from_tuples([(label,name)]) )
     for i in range(len(variables)):
-      dataframe[label,name][-1-i] = variables[-1-i]
+      dataframe[label,name].iloc[-1-i] = variables[-1-i]
 
   return dataframe
 ####################################################################################################
@@ -994,7 +994,7 @@ for file_i in files:
       cluster_type_string = zeros(cluster_type_array_sorted)
       clusters_df = df_add_iter(clusters_df, "info", "cluster_type", [str(cluster_id)], [cluster_type_string])
       #
-      components = re.split('(\d+)', file_i_BASE.split("-")[0])[1:][1::2]
+      components = re.split('(\d+)', file_i_BASE.split("-")[0].split("_")[0])[1:][1::2]
       clusters_df = df_add_iter(clusters_df, "info", "components", [str(cluster_id)], [components])
       component_ratio = [int(i) for i in re.split('(\d+)', file_i_BASE.split("-")[0])[1:][0::2]]
       clusters_df = df_add_iter(clusters_df, "info", "component_ratio", [str(cluster_id)], [component_ratio])

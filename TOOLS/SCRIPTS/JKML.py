@@ -32,8 +32,8 @@ def help():
   print("    -train <HIGH.pkl> [<LOW.pkl>]    train on given pikled files", flush = True)
   print("    -trained <model.pkl>             take pre-trained ML model", flush = True)
   print("    -monomers <HIGH.pkl> [<LOW.pkl>] properties with respect to monomer(s) in pickled file(s)", flush = True)
-  print("    -test <HIGH.pkl> [<LOW.pkl>]     validate ML on energies of structures in pickled file(s)", flush = True)
-  print("    -eval <STRS.pkl> [<LOW.pkl>]     evaluate energies of NEW structures in pickled file(s)", flush = True)
+  print("    -test <HIGH.pkl> [<LOW.pkl>]     predict energies of structures in pickled file(s) with known truth", flush = True)
+  print("    -eval <STRS.pkl> [<LOW.pkl>]     predict energies of structures in pickled file(s) with uknown truth (no verification)", flush = True)
   print("", flush = True)
   print("  OUTPUT FILES:", flush = True)
   print("    -out <file.pkl>                  name of file with predicted values [def = predicted.pkl]", flush = True)
@@ -83,6 +83,7 @@ def help_krr():
 def help_nn():
   print("  OPTIONS FOR NEURAL NETWORKS:", flush = True)
   print("    -epochs <int>              number of epochs [def = 1000]", flush = True)
+  print("    -batch_size,-bs <int>      batch size [def = 16]", flush = True)
   print("    -nn_train <float>          portion of training data (exlc. validation) [def = 0.9]", flush = True)
   print("    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]", flush = True)
   print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]")
@@ -156,6 +157,7 @@ Qlearningrate = 1e-4
 Qearlystop = 200
 Qenergytradoff = 0.01 #if forces are trained on: [energy, force] = [X, 1]
 nw = 1
+Qbatch_size=16
 
 #OPT/MD
 md_temperature = 300.0
@@ -517,6 +519,14 @@ for i in sys.argv[1:]:
   if last == "-nn_lr":
     last = ""
     Qlearningrate = float(i)
+    continue
+  #BATCH SIZE
+  if i == "-batch_size" or "-bs":
+    last = "-bs"
+    continue
+  if last == "-bs":
+    last = ""
+    Qbatch_size = int(i)
     continue
   #MD temperature
   if i == "-md_temperature" or i == "-temperature":
@@ -1017,7 +1027,7 @@ for sampleeach_i in sampleeach_all:
       n_val = len(strs) - n_train
       pl.seed_everything(seed)
       dataset = AtomsDataModule(temperary_file_name,
-          batch_size=16,
+          batch_size=Qbatch_size,
           num_train=n_train,
           num_val=n_val,
           #num_test=n_test,
@@ -1198,7 +1208,8 @@ for sampleeach_i in sampleeach_all:
       if len(clusters_df) <= int(size):
         size = "full"
     if size != "full":
-      clusters_df, clusters_df_trash, idx, idx_trash = train_test_split(clusters_df, range(len(clusters_df)), test_size=(len(clusters_df)-size)/len(clusters_df), random_state=seed)
+      #clusters_df, clusters_df_trash, idx, idx_trash = train_test_split(clusters_df, range(len(clusters_df)), test_size=(len(clusters_df)-size)/len(clusters_df), random_state=seed)
+      clusters_df_trash, clusters_df, idx_trash, idx = train_test_split(clusters_df, range(len(clusters_df)), test_size=size/len(clusters_df), random_state=seed)
       if method == "delta":
         clusters_df2 = clusters_df2.iloc[idx]
     clustersout_df = clusters_df.copy()
