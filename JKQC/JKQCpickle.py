@@ -1000,7 +1000,7 @@ for file_i in files:
       #
       components = re.split('(\d+)', file_i_BASE.split("-")[0].split("_")[0])[1:][1::2]
       clusters_df = df_add_iter(clusters_df, "info", "components", [str(cluster_id)], [components])
-      component_ratio = [int(i) for i in re.split('(\d+)', file_i_BASE.split("-")[0])[1:][0::2]]
+      component_ratio = [int(i) for i in re.split('(\d+)', file_i_BASE.split("-")[0].split("_")[0])[1:][0::2]]
       clusters_df = df_add_iter(clusters_df, "info", "component_ratio", [str(cluster_id)], [component_ratio])
   if path.exists(file_i_INFO):
     file = open(file_i_INFO, "r")  
