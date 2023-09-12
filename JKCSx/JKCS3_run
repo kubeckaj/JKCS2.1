@@ -51,7 +51,7 @@ function help {
              -array = does submit array instead of single jobs
              -arraymax X = max jobs per array
              -add maxiter <inter> = max number of iteration in ORCA
-             -xtbpath
+             -xtbpath,-char,-mult
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
@@ -323,6 +323,30 @@ do
     Qpickle=1
     continue
   fi
+  # CHARGE 
+  if [ "$iter" == "-chrg" ] || [ "$iter" == "-char" ]
+  then
+    last="-char"
+    continue
+  fi
+  if [ "$last" == "-char" ]
+  then
+    CHARGE=$iter
+    last=""
+    continue
+  fi
+  # MULTIPLICITY
+  if [ "$iter" == "-mult" ]
+  then
+    last="-mult"
+    continue
+  fi
+  if [ "$last" == "-mult" ]
+  then
+    MULTIPLICITY=$iter
+    last=""
+    continue
+  fi
   ###
   arguments_help+=( "${arguments[i]}" )
 done
@@ -352,6 +376,17 @@ JKecho 1 "${cfGREEN}$program${cfDEF} calculations will be performed."
 #checking old folder or results file
 if [ $QfromfolderOLD -eq 0 ]
 then
+  ending=`echo ${resultsaddition} | rev | cut -c-3 | rev`
+  if [ "$ending" == "xyz" ]
+  then
+    echo "$( cd "$(dirname "${resultsaddition}")" ; pwd -P )"/${resultsaddition} > toexecute.txt
+    resultsaddition=toexecute.txt
+  fi   
+  if [ "$ending" == "pkl" ]
+  then
+    JKQC ${resultsaddition} -ePKL > toexecute.txt
+    resultsaddition=toexecute.txt
+  fi
   renamcheck="$(basename ${resultsaddition} .dat)_FILTERED.dat"
   if [ -f $renamcheck ]
   then

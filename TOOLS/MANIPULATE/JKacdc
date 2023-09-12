@@ -519,7 +519,7 @@ echo "    module load matlab/R2022b"
 echo "    ulimit -s unlimited"
 echo "    matlab -batch JKrun_single"
 echo "or:"
-echo "    cd $folder;sbatch JKsend 'module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single"
+echo "    cd $folder;sbatch JKsend 'module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single'"
 
 if [ "$Qrun" == "1" ]
 then

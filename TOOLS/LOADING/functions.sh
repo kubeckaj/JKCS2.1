@@ -102,9 +102,9 @@ function JKloadCHARM {
     CHARGE=`grep "TotalCharge" $inputfile | awk '{print $2}'`
     MULTIPLICITY=`grep "TotalMultiplicity" $inputfile | awk '{print $2}'`
   else
-    JKecho 1 "Using charge 0 and multiplicity 1"
-    CHARGE=0
-    MULTIPLICITY=1
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    JKecho 1 "Using charge $CHARGE and multiplicity $MULTIPLICITY"
   fi
   JKecho 2 "Loading charge ($CHARGE) and multiplicity ($MULTIPLICITY)"
 }

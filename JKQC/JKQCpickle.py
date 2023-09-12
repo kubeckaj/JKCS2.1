@@ -101,7 +101,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log", "-levels")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log", "-levels", "-atoms")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -507,6 +507,10 @@ for i in argv[1:]:
   # CITE
   if i == "-cite" or i == "--cite":
     Pout.append("-cite")
+    continue
+  # ATOMS
+  if i == "-atoms":
+    Pout.append("-atoms")
     continue
   # XYZ
   if i == "-xyz" or i == "--xyz" or i == "-XYZ" or i == "--XYZ":
@@ -2821,6 +2825,18 @@ for i in Pout:
         continue
     f.close()
     remove(".movie.xyz")
+    continue
+  #Atoms
+  if i == "-atoms":
+    atoms = []
+    for ind in clusters_df.index:
+      try:
+        aseCL=clusters_df["xyz"]["structure"][ind]
+        #print(aseCL.get_atomic_numbers())
+        atoms.extend(aseCL.get_atomic_numbers())
+      except:
+        continue
+    print(" ".join([str(i) for i in np.unique(atoms)]))
     continue
   #Rg
   if i == "-rg":
