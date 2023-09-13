@@ -521,7 +521,7 @@ for i in sys.argv[1:]:
     Qlearningrate = float(i)
     continue
   #BATCH SIZE
-  if i == "-batch_size" or "-bs":
+  if i == "-batch_size" or i == "-bs":
     last = "-bs"
     continue
   if last == "-bs":

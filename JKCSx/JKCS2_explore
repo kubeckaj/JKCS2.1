@@ -506,7 +506,7 @@ end""" >> $F2
     fi
     ######################
     ### CREATE rename.sh
-    echo """rm abc*.gjf abc*.cluster abc*.xyz 2>/dev/null
+    echo """rm abc*.gjf abc*.log abc*.cluster abc*.xyz 2>/dev/null
 cd $name-LM
 rm *.gjf *.cluster 2>/dev/null
 for i in \`ls *.xyz\`
