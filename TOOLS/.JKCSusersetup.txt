@@ -553,7 +553,7 @@ function program_XTB {
   fi
   if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
 
-  $XTBPATH/bin/xtb calc.xyz $method $args > $output 2>&1
+  $PATH_XTB/bin/xtb calc.xyz $method $args > $output 2>&1
   cp $output $DIR/$output
   
   #COPYING RESULTS BACK

@@ -400,6 +400,7 @@ function JKloadprint {
 
 #loading -nocolours from argument
 function JKloadcolours {
+  numJK=$1
   arguments_help=()
   # first search for -nocolours
   for i in "${!arguments[@]}"
@@ -417,7 +418,12 @@ function JKloadcolours {
   source $toolspath/LOADING/colours.txt
   # re-set scriptfile
   scriptfilecommand=$scriptfile
-  scriptfile="${cfBLUE}J${cfRED}K${cfGREEN}C${cfYELLOW}S${cfDEF}"`echo $scriptfile | cut -c5-`
+  if [ "$numJK" == "2" ]
+  then
+    scriptfile="${cfBLUE}J${cfRED}K${cfDEF}"`echo $scriptfile | cut -c3-`
+  else
+    scriptfile="${cfBLUE}J${cfRED}K${cfGREEN}C${cfYELLOW}S${cfDEF}"`echo $scriptfile | cut -c5-`
+  fi
   JKecho 2 "Colours loaded."
 }
 

@@ -101,7 +101,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log", "-levels", "-atoms")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log", "-levels", "-atoms", "-natoms")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -583,6 +583,9 @@ for i in argv[1:]:
   if i == "-pop" or i == "--pop":
     Pout.append("-pop")
     continue
+  if i == "-natoms":
+    Pout.append("-natoms")
+    continue
   if i == "-h" or i == "-enthalpy" or i == "--h" or i == "--enthalpy":
     Pout.append("-h")
     continue
@@ -776,6 +779,10 @@ if len(files) == 0:
     if len(files) == 0:
       print("No inputs. No *.log files. [EXITING]")
       exit()
+  if len(input_pkl) == 1 and Qsplit != 1 and output_pkl == "mydatabase.pkl":
+    output_pkl = input_pkl[0]
+    if Qout == 0:
+      Qout = 1
   if len(input_pkl) > 1:
     if Qout == 0:
       Qout = 1
@@ -2944,10 +2951,19 @@ for i in Pout:
     masses = []  
     for ind in clusters_df.index:
       try:
-        masses.append(np.sum(clusters_df["xyz"]["structure"][ind].get_masses()))
+        masses.append(str(np.sum(clusters_df["xyz"]["structure"][ind].get_masses())))
       except:
         masses.append(missing)
     output.append(masses)
+    continue
+  if i == "-natoms":
+    natoms = []
+    for ind in clusters_df.index:
+      try:
+        natoms.append(str(len(clusters_df["xyz"]["structure"][ind].get_atomic_numbers())))
+      except:
+        natoms.append(missing)
+    output.append(natoms)
     continue
   if i == "-elsp":
     try:
@@ -3373,14 +3389,35 @@ if Qformation == 1:
   monomers = np.array([np.sum([int(j) for j in np.array(i)[:,0]]) for i in cluster_types_sorted]) == 1
   dt = np.dtype(object)
   #print(np.array(cluster_types,dtype=dt)[monomers])
-  monomer_types = [i[1] for i in np.array(cluster_types,dtype=dt)[monomers]]
-  #print(monomer_types)
+  monomer_nonunique_types = [i[1] for i in np.array(cluster_types,dtype=dt)[monomers]]
+  monomer_types = list(np.unique(monomer_nonunique_types))
+  #monomers = []
+  for i in monomer_types:
+    found = 0
+    for j in range(len(monomer_nonunique_types)):
+      if i == monomer_nonunique_types[j]:
+        found += 1
+        if found > 1:
+          monomers[j] = False
+  #    if i == monomer_nonunique_types[j]:
+  #      monomers.append(PRE_monomers[j])
+  #      break
+  #monomers = np.array(monomers)    
+  #print(monomers)
   if Qout != 2:
     print("MONOMERS: " + " ".join(monomer_types),flush = True)
   f = open(".help.txt", "w")
+  #TODO
+  
   for i in range(len(output[0])):
+    #print(i)
+      
+
+    #continue
+    #TODO
     line = np.array(output)[:,i]
     cluster_total_number = np.sum([int(sel[0]) for sel in cluster_types_sorted[i]])
+    #print(cluster_types_sorted[i])
     for j in range(len(cluster_types_sorted[i])):
       cluster_molecule = cluster_types_sorted[i][j][1]
       cluster_molecule_number = cluster_types_sorted[i][j][0]
@@ -3394,26 +3431,27 @@ if Qformation == 1:
         #print(cluster_molecule)
         if cluster_molecule == selected_monomer:
           for line_i in range(1,len(line)):
-            try:
-              line[line_i] = float(line[line_i]) - float(cluster_molecule_number) * float(np.array(output)[:,monomers][line_i,k])
-              if Qconc > 0:
-                for conc_j in range(len(conc)):
-                  if conc[conc_j][0] == selected_monomer:         
-                    R = 1.987 #cal/mol/K #=8.31441
-                    if np.isnan(Qt):
-                      try:
-                        Qt = clusters_df["log","temperature"].values[i]
-                      except:
-                        Qt = 298.15
-                    if np.isnan(Qp):
-                      try:
-                        Qp = 101325.0*float(clusters_df["log","pressure"].values[i])
-                      except:
-                        Qp = 101325.0
-                    conc_mon=float(eval(conc[conc_j][1].replace("ppt","*10**-9*"+str(Qp)).replace("ppb","*10**-6*"+str(Qp)).replace("^","**").replace("cmmc","*10**6*1.380662*10**-23*"+str(Qt)) ))
-                    line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor*float(cluster_molecule_number)/cluster_total_number) * R/1000/627.503 * Qt * np.log( conc_mon / Qp)
-            except:
-              line[line_i] = missing
+            if type(line[line_i]) != type("str"):
+              try:
+                line[line_i] = float(line[line_i]) - float(cluster_molecule_number) * float(np.array(output)[:,monomers][line_i,k])
+                if Qconc > 0:
+                  for conc_j in range(len(conc)):
+                    if conc[conc_j][0] == selected_monomer:         
+                      R = 1.987 #cal/mol/K #=8.31441
+                      if np.isnan(Qt):
+                        try:
+                          Qt = clusters_df["log","temperature"].values[i]
+                        except:
+                          Qt = 298.15
+                      if np.isnan(Qp):
+                        try:
+                          Qp = 101325.0*float(clusters_df["log","pressure"].values[i])
+                        except:
+                          Qp = 101325.0
+                      conc_mon=float(eval(conc[conc_j][1].replace("ppt","*10**-9*"+str(Qp)).replace("ppb","*10**-6*"+str(Qp)).replace("^","**").replace("cmmc","*10**6*1.380662*10**-23*"+str(Qt)) ))
+                      line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor*float(cluster_molecule_number)/cluster_total_number) * R/1000/627.503 * Qt * np.log( conc_mon / Qp)
+              except:
+                line[line_i] = missing
           test_monomer = 1
       if test_monomer == 0:
         line[1:] = missing 

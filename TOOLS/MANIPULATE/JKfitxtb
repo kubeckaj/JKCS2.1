@@ -1,0 +1,178 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2023                                     ##
+## Uses pickle files with e.g. DFT to reparametrize GFN1  ##
+## To understand program run help:                        ##
+##       for help use arguement -help                     ##
+############################################################
+## "Yosef is good student but also sucks."                ##
+##                                          Jakub Kubecka ##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+# print inserted command
+echoCOMMAND COMMAND: $scriptfile "$@" >> output
+
+### THIS IS HELP
+function help {
+  printf "#################################################################\n"
+  printf "$scriptfile HELP:\n"
+  printf "Reparametrize XTB parameters\n"
+  printf """
+  $scriptfile ${cfCYAN}<input.pkl> ${cfCYAN}[OPTIONS(s)]${cfDEF}
+
+  ${cfMAGENTA}OPTIONS:${cfDEF}
+   -help ................ prints this help
+
+  ${cfMAGENTA}EXAMPLES:${cfDEF}
+    $scriptfile DFT.pkl -cpu 32 -par q64 -time 48:00:00
+"""
+  printf "#################################################################\n"
+  exit
+}
+
+###############################################################################
+################################  USER INPUT  #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      #
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours 2        # some coloured output
+
+# check -help option
+JKloadhelp             # check if user asks for -help
+
+# load charge and multiplicity
+JKloadCHARM
+
+# -loc or load supercomputer parameters
+JKloadsupercomputer
+
+folder="XTB_REP" 
+
+# loop over all arguments
+arguments_help=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  # CHARGE
+  if [ "$iter" == "-chrg" ] || [ "$iter" == "-char" ]
+  then
+    last="-char"
+    continue
+  fi
+  if [ "$last" == "-char" ]
+  then
+    CHARGE=$iter
+    last=""
+    continue
+  fi
+  # MULTIPLICITY
+  if [ "$iter" == "-mult" ]
+  then
+    last="-mult"
+    continue
+  fi
+  if [ "$last" == "-mult" ]
+  then
+    MULTIPLICITY=$iter
+    last=""
+    continue
+  fi
+  # FOLDER 
+  if [ "$iter" == "-nf" ]
+  then
+    last="-nf"
+    continue
+  fi
+  if [ "$last" == "-nf" ]
+  then
+    folder=$iter
+    last=""
+    continue
+  fi
+  ###
+  last3=`echo XXX${iter} | rev | cut -c-4 | rev`
+  if [ "$last3" == ".pkl" ]
+  then
+    inputfile=${iter}
+    continue
+  fi
+  arguments_help+=( "${arguments[i]}" )
+done
+arguments=("${arguments_help[@]}")
+
+# there should not be more arguments
+therest=${arguments[@]}
+if [ ! -z "$therest" ]
+then
+  JKecho 0 "Some argument(s) is/are not understood: ${therest}. [${cfRED}EXITING${cfDEF}]"
+  exit
+fi
+
+if [ -z "$inputfile" ]
+then
+  JKecho 0 "Missing input file. [${cfRED}EXITING${cfDEF}]"
+  exit
+fi
+
+###############################################################################
+################################ MAIN PROGRAM #################################
+################################ DO NOT TOUCH #################################
+###############################################################################
+JKecho 1 "Let us begin."
+
+if [ -e $folder ]; 
+then 
+  JKecho 0 "${cfBLUE}XTB_REP${cfDEF} already exists. [${cfRED}EXITING${cfDEF}]"
+  exit
+fi 
+mkdir $folder
+cp $inputfile $folder/input.pkl
+cd $folder
+
+echo """#!/bin/bash
+
+source ~/.JKCSusersetup.txt
+
+sh $toolspath/SCRIPTS/XTB1_prepare_parameter_file.sh input.pkl
+JKQC input.pkl -b -el -unit > B_El.txt
+cp $toolspath/SCRIPTS/XTB2_* .
+sed "s/AAAcoresAAA/$SCcpu/" $toolspath/SCRIPTS/XTB3_runXTB.sh > XTB3_runXTB.sh
+
+program_PYTHON XTB2_optimizer.py
+""" > opt.sh
+echo "$SC_command sh INPUTFILE" > submit
+echo "$SC_command 'sh opt.sh'" >> output
+echo "$SC_command 'sh opt.sh'" > .run
+job=$(/bin/bash .run)
+if [ ! -z "$job" ] ;then echo $job;fi
+echo $job | awk '{print $4}'  >> .jobs.txt
+
+cd $currentdirpath
+JKecho 1 "Performing calculations/Calculations submitted or calculation done (-loc)."
+exit
+
+
+
