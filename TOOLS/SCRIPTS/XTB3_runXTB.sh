@@ -72,6 +72,7 @@ then
         exit
 else
 	echo $t_MAE > ../result
+        printf "."
         #echo "$test"
         #echo MAE = $t_MAE kcal/mol >> ../output
 fi
