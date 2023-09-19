@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Kubecka"
+  given-names: "Jakub"
+  orcid: "https://orcid.org/0000-0002-8002-0911"
+title: "Jammy Key for Configurational Sampling"
+version: 2.1
+doi: 10.1021/acs.jpca.9b03853
+date-released: 2019
+url: "https://github.com/kubeckaj/JKCS2.1"
