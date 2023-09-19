@@ -1664,7 +1664,7 @@ for sampleeach_i in sampleeach_all:
           MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
           # We want to run MD with constant energy using the VelocityVerlet algorithm.
           #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
-          dyn = Langevin(atoms, 0.1*units.fs, md_temperature*units.kB, 0.002) #friction coeffitient 0.002
+          dyn = Langevin(atoms, 0.1*units.fs, md_temperature, 0.002) #friction coeffitient 0.002
           def printenergy(a=atoms):  # store a reference to atoms in the definition.
             """Function to print the potential, kinetic and total energy."""
             epot = a.get_potential_energy() / len(a)

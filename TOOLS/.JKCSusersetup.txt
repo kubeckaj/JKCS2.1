@@ -273,7 +273,7 @@ function program_ABC {
   fi
 
   #CREATING WORKING DIRECTORY
-  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  if [ ! -d $WRKDIR/TMP ]; then mkdir -p $WRKDIR/TMP; fi
   ADD=""
   test=0
   while [ $test -eq 0 ]
@@ -389,7 +389,7 @@ function program_CREST {
   fi
 
   #CREATING WORKING DIRECTORY
-  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  if [ ! -d $WRKDIR/TMP ]; then mkdir -p $WRKDIR/TMP; fi
   ADD=""
   test=0
   while [ $test -eq 0 ]
@@ -499,7 +499,7 @@ function program_XTB {
   fi  
 
   #CREATING WORKING DIRECTORY
-  if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+  if [ ! -d $WRKDIR/TMP ]; then mkdir -p $WRKDIR/TMP; fi
   ADD=""
   test=0
   while [ $test -eq 0 ]
@@ -640,7 +640,7 @@ export GAUSS_EXEDIR=$PATH_G16/g16/
 export g16root=$PATH_G16
 
 #CREATING WORKING DIRECTORY
-if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+if [ ! -d $WRKDIR/TMP ]; then mkdir -p $WRKDIR/TMP; fi
 ADD=\"\"
 test=0
 while [ \$test -eq 0 ]
@@ -740,7 +740,7 @@ fi
 export LD_LIBRARY_PATH=$PATH_ORCA:$LD_LIBRARY_PATH
 REPLACE_extra_orca_lines
 #CREATING WORKING DIRECTORY
-if [ ! -d $WRKDIR/TMP ]; then mkdir $WRKDIR/TMP; fi
+if [ ! -d $WRKDIR/TMP ]; then mkdir -p $WRKDIR/TMP; fi
 ADD=\"\"
 test=0
 while [ \$test -eq 0 ]

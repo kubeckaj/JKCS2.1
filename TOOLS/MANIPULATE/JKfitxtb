@@ -37,6 +37,11 @@ function help {
 
   ${cfMAGENTA}OPTIONS:${cfDEF}
    -help ................ prints this help
+   -input, -restart ..... start from these parameters
+   
+   -cpu 3 = runnin upto 3 parallel xtb calculations with 1 cpu/XTB job
+   -cpu 10 -parallel 28 = running upto 10 gradient component parallelizations 
+                          with each using 28 to run  XTB jobs (1 cpu/XTB job) 
 
   ${cfMAGENTA}EXAMPLES:${cfDEF}
     $scriptfile DFT.pkl -cpu 32 -par q64 -time 48:00:00
@@ -70,12 +75,43 @@ JKloadCHARM
 JKloadsupercomputer
 
 folder="XTB_REP" 
+Qpar=28
 
 # loop over all arguments
 arguments_help=()
 for i in "${!arguments[@]}"
 do
   iter="${arguments[$i]}"
+  # INPUT / RESTART
+  if [ "$iter" == "-restart" ] || [ "$iter" == "-input" ]
+  then
+    last="-input"
+    continue
+  fi
+  if [ "$last" == "-input" ]
+  then
+    INPUT=$iter
+    if [ ! -e "$INPUT" ]
+    then
+      JKecho 0 "Input ${cfBLUE}$INPUT${cfDEF} does not exist. [${cfRED}EXITING${cfDEF}]"
+      exit
+    fi
+    INPUT="$( cd "$(dirname "$iter")" ; pwd -P )"/$(basename $iter)
+    last=""
+    continue
+  fi
+  # PARALLEL
+  if [ "$iter" == "-parallel" ] 
+  then
+    last="-parallel"
+    continue
+  fi
+  if [ "$last" == "-parallel" ]
+  then
+    Qpar=$iter
+    last=""
+    continue
+  fi
   # CHARGE
   if [ "$iter" == "-chrg" ] || [ "$iter" == "-char" ]
   then
@@ -145,23 +181,31 @@ JKecho 1 "Let us begin."
 
 if [ -e $folder ]; 
 then 
-  JKecho 0 "${cfBLUE}XTB_REP${cfDEF} already exists. [${cfRED}EXITING${cfDEF}]"
+  JKecho 0 "${cfBLUE}${folder}${cfDEF} already exists. [${cfRED}EXITING${cfDEF}]"
   exit
 fi 
 mkdir $folder
 cp $inputfile $folder/input.pkl
 cd $folder
 
+if [ "$METHODsupercomputer" == "loc" ]
+then
+  loc=" -loc"
+else
+  loc=""
+fi
+
 echo """#!/bin/bash
 
-source ~/.JKCSusersetup.txt
+source ~/.JKCSusersetup.txt$loc
 
 sh $toolspath/SCRIPTS/XTB1_prepare_parameter_file.sh input.pkl
+if [ ! -z \"$INPUT\" ]; then cp \"$INPUT\" initial.txt; fi
 JKQC input.pkl -b -el -unit > B_El.txt
 cp $toolspath/SCRIPTS/XTB2_* .
-sed "s/AAAcoresAAA/$SCcpu/" $toolspath/SCRIPTS/XTB3_runXTB.sh > XTB3_runXTB.sh
+cat $toolspath/SCRIPTS/XTB3_runXTB.sh | sed \"s/AAAlocAAA/$loc/\" > XTB3_runXTB.sh
 
-program_PYTHON XTB2_optimizer.py
+program_PYTHON XTB2_optimizer.py $SCcpu $Qpar
 """ > opt.sh
 echo "$SC_command sh INPUTFILE" > submit
 echo "$SC_command 'sh opt.sh'" >> output
