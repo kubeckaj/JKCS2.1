@@ -373,7 +373,7 @@ function program_CREST {
  
   #loading module  
   if [ -z "$XTBPATH" ]; then export XTBPATH=$PATH_XTB; fi  
-  if [[ "$PATH" != *"$XTBBPATH"* ]]; then
+  if [[ "$PATH" != *"$XTBPATH"* ]]; then
     export PATH=$PATH:${XTBPATH}/bin:${XTBPATH}/scripts
   fi
   if [ "$module_xtb_loaded" != "loaded" ]

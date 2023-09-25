@@ -130,7 +130,7 @@ then
   #AGOX was not able to use schnet calculator, this will resolve it:
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib64/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
-  $PIP install pytorch-lightning==1.9.0
+  $PIP install pytorch-lightning==2.0.6
   $PIP install tensorboard
 fi
 

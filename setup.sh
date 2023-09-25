@@ -39,7 +39,7 @@ for i in "$@"
 do 
   if [ "$i" == "-help" ]
   then
-    echo """    sh setup.sh [:cluster:] [:arguments:]
+    echo """    sh setup.sh [:cluster:] [:arguments:] [:extra packages:]
 
 OPTIONS (cluster):
   <empty> ...... an example setting
@@ -48,13 +48,18 @@ OPTIONS (cluster):
   puhti/mahti .. (H.Vehkamaki UH [Puhti/Mahti])
  
 OPTIONS (arguments):
-  -qml ............ quantum machine learning program
-  -descriptors .... dscribe library
-  -nn ............. schnetpack [!needs: module load gcc]
   -r .............. rewrite the old installation
   -r2 ............. rewrite the old installation but skip Python installation
   -python <str> ... define how do you call python (e.g. python3.9)
   -module \"<str>\" . define python module (e.g. \"module load python/3.9.4\")
+
+OPTIONS (extra packages):
+  -qml ............ quantum machine learning program
+  -nn ............. schnetpack [!needs: module load gcc]
+  -descriptors .... dscribe library
+  -mbdf ........... MBDF for categorization trick
+  -all ............ all above
+  experimental: -qml-lightning, -xtb
 
 EXAMPLE:
     sh setup.sh -python python3.9 -module "module load python"

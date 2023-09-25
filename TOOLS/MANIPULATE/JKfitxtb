@@ -179,6 +179,7 @@ fi
 ###############################################################################
 JKecho 1 "Let us begin."
 
+currentdirpath=$PWD
 if [ -e $folder ]; 
 then 
   JKecho 0 "${cfBLUE}${folder}${cfDEF} already exists. [${cfRED}EXITING${cfDEF}]"

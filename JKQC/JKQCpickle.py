@@ -935,6 +935,9 @@ else:
       clusters_df = pd.concat([clusters_df,newclusters_df],axis=0, ignore_index=True)
       #clusters_df = pd.concat([clusters_df,newclusters_df],axis=0,ignore_index=True)
       #clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
+  #clusters_df.reindex([str(j) for j in range(len(clusters_df))])
+  #print(clusters_df.index)
+  #exit()
 
 #Complement
 if Qcomplement != 0:
@@ -1991,6 +1994,7 @@ if Qdrop != "0":
 if Qout2log == 1:
   clusters_df = clusters_df.rename({'out': 'log'}, axis='columns')
 
+
 ####################################################################################################
 ####################################################################################################
 ## HERE I MANUPILATE WHICH CLUSTERS PASSES THROUGH!! NOT THE SAME AS FILTERING
@@ -2130,8 +2134,11 @@ if Qextract > 0:
       if len(newclusters_df) == 0:
         newclusters_df = extracted_df.copy()
       else:
-        #print(newclusters_df)
-        newclusters_df = newclusters_df.append(extracted_df.copy())
+        #print(newclusters_df.index)
+        #print(newclusters_df["info","file_basename"])
+        #newclusters_df = newclusters_df.append(extracted_df.copy())
+        newclusters_df = pd.concat([newclusters_df, extracted_df.copy()], axis=0, ignore_index=True)
+        # pd.concat([clusters_df,newclusters_df],axis=0, ignore_index=True)
         #try:
         #print(newclusters_df.loc['19268'])
         #print(extracted_df)
@@ -2150,6 +2157,7 @@ if Qextract > 0:
     clusters_df = newclusters_df.copy()
   if Qout == 1:
     print("Extracting: "+str(prelen)+" --> "+str(len(clusters_df)))
+  #clusters_df.reindex([str(j) for j in range(len(clusters_df))])
 
 
 ### REACTED ###
@@ -2270,6 +2278,10 @@ if Qreacted > 0:
   ### END OF REACTED ###
 
 ## SAVE OUTPUT.pkl ##
+#print(clusters_df.index)
+#exit()
+#new_clusters_df = clusters_df.reindex([str(j) for j in range(len(clusters_df))], copy=False)
+#print(new_clusters_df)
 if Qout > 0:
   original_clusters_df = clusters_df.copy()
 
@@ -2392,7 +2404,9 @@ if Qqha == 1:
       except:
         mi = missing
         clusters_df["log","entropy"][i] = missing
-      
+    #print(clusters_df.index)
+    #print(clusters_df["log","entropy"])  
+    #exit()
       #print(mu)
       #print(mi)
       #print(Sr,flush=True)
