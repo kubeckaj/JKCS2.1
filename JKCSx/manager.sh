@@ -35,13 +35,13 @@ function check_if_all_finished {
       submitME
       exit
     else
-      sleep 5
+      sleep 120
     fi
     ###
     runningcpus=`squeue -u $USER --array -o "%C" | awk 'BEGIN{j=-1;c=0}{j+=1;if (j>0) c+=$1}END{print c}'`
     if [ $runningcpus -gt 3600 ]
     then
-      sleep 90
+      sleep 120
       continue
     fi
     test=1
