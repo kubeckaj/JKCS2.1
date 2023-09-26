@@ -339,6 +339,9 @@ if Qparallel > QSCcpu:
   og_cost = parr_cost_function(initial0)
 else:
   og_cost = cost_function(initial0)
+if np.isnan(og_cost):
+  print("For the initial parameters, XTB returns NaN. Buuuuuuu [EXITING]")
+  exit()
 final, og_cost = lets_optimize(parr,initial0,diff_step,og_cost)
 print('DONE Cost function: ',og_cost, " kcal/mol/atom ", flush = True)
 

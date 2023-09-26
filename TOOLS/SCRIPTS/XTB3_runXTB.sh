@@ -105,9 +105,9 @@ JKQC *.log -add HIGH ../B_El.txt -ct -el -extra HIGH -natoms -formation -noex -u
 t_MAE=`cat FORM.txt | awk 'BEGIN{n=0;sum=0}{sum+=sqrt(($2-$3)^2)/$4;n++}END{print (sum/n)}'`
 f_MAE=`grep "GRADIENT NORM " *.log | awk '{print $5}' | awk 'BEGIN{n=0;sum=0}{sum+=($1);n++}END{print (sum/n)}'`
 tf_MAE=`echo $t_MAE+$f_MAE | bc -l`
+#echo "$t_MAE + $f_MAE = $tf_MAE"
 t_Failed=`grep -c "nan" FORM.txt`
 t_Failed2=`grep "GRADIENT NORM " *.log | awk '{print $5}' | grep -c "NaN"`
-#echo "$t_MAE + $f_MAE = $tf_MAE"
 
 if [ "$t_Failed" -gt 0 ] || [ "$t_Failed2" -gt 0 ]
 then
