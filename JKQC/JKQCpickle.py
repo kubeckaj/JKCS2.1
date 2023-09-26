@@ -3365,18 +3365,10 @@ if Qformation == 1:
     chosen_cluster_type = cluster_types[i]
     if "p" in chosen_cluster_type:
       protonated_base = ""
-      if "gd" in chosen_cluster_type:
-        protonated_base = "gd"
-      elif "eda" in chosen_cluster_type:
-        protonated_base = "eda"
-      elif "tma" in chosen_cluster_type:
-        protonated_base = "tma"
-      elif "dma" in chosen_cluster_type:
-        protonated_base = "dma"
-      elif "am" in chosen_cluster_type:
-        protonated_base = "am"
-      elif "w" in chosen_cluster_type:
-        protonated_base = "w"
+      for base in ["gd","eda","tma","dma","am","buta","dbma","dea","dhexa","dmea","dpenta","dpropa","ibuta","IIebuta","ipropa","ipropea","mea","nona","propa","sbuta","tbuta","tea","tibuta","tpropa","w"]:
+        if base in chosen_cluster_type:
+          protonated_base = base
+          break
       new_cluster_type = []
       for j in range(1,len(chosen_cluster_type),2):
         if chosen_cluster_type[j] == protonated_base:
