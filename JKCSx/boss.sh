@@ -41,7 +41,7 @@ function check_if_all_finished {
       submitME
       exit
     else 
-      sleep 5
+      sleep 120
     fi
   done
   return
