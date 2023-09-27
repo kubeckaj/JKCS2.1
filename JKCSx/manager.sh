@@ -14,9 +14,14 @@ start_line=$2
 if [ -z "$start_line" ];then start_line=1;fi
 line_num=$start_line
 
+#boss.sh: export BOSS_PATH=$PWD
+if [ ! -z "$BOSS_PATH" ];then BOSS_PATH_PROPAGATE=$BOSS_PATH; fi
+if [ ! -z "$4" ]; then BOSS_PATH_PROPAGATE=$4; fi 
+if [ -z "$BOSS_PATH_PROPAGATE" ]; then BOSS_PATH_PROPAGATE="./"; fi
+
 function submitME {
   #sbatch -p q24,q36,q40,q48 --time 30:00 -n 1 -J "manager" JKsend 
-  submit_MANAGER sh $scriptpath/manager.sh $input $line_num "SUB"
+  submit_MANAGER sh $scriptpath/manager.sh $input $line_num "SUB" $BOSS_PATH_PROPAGATE
 }
 if [ -z "$3" ]; then submitME; exit; fi
 
@@ -91,4 +96,5 @@ do
   last_ID=`echo -e "$job" | grep "Submitted batch job" | awk '{print $4}' | xargs | sed "s/ /,/g"`
   rm commandsNOW.txt
 done
-
+cd $original_directory
+echo "MANAGER DONE" >> $BOSS_PATH_PROPAGATE/.manager.txt
