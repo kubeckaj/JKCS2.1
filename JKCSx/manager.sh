@@ -72,14 +72,23 @@ lines=`wc -l $input | awk '{print $1}'`
 original_directory=$PWD
 for line_num in `seq $start_line $lines`
 do
+  if [ $line_num -ne $start_line ] && [ ! -z "$last_ID" ]
+  then
+    SBATCH_PREFIX+=" --dependency=afterok:$last_ID "
+    echo $SBATCH_PREFIX
+    submit_MANAGER sh $scriptpath/manager.sh $input $line_num "SUB"
+    exit
+  fi
   cd $original_directory
-  check_if_all_finished
+  #check_if_all_finished
   line=`head -n $line_num $input | tail -n 1`
   echo $line > commandsNOW.txt
   echo $line >> commandsSENT.txt
   job=$(/bin/bash commandsNOW.txt)
   #if [ ! -z "$job" ] ;then echo $job;fi
   #echo $job | awk '{print $4}'  >> .jobs.txt
+  echo -e "$job" >> output
+  last_ID=`echo -e "$job" | grep "Submitted batch job" | awk '{print $4}' | xargs | sed "s/ /,/g"`
   rm commandsNOW.txt
 done
 
