@@ -75,7 +75,7 @@ do
   if [ $line_num -ne $start_line ] && [ ! -z "$last_ID" ]
   then
     SBATCH_PREFIX+=" --dependency=afterok:$last_ID "
-    echo $SBATCH_PREFIX
+    #echo $SBATCH_PREFIX
     submit_MANAGER sh $scriptpath/manager.sh $input $line_num "SUB"
     exit
   fi
