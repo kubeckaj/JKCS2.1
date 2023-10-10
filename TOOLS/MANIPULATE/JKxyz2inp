@@ -275,26 +275,26 @@ end""" >> $(basename $i .xyz).inp
   " >> $(basename $i .xyz).inp
 done
 
-for i in $filesin;
-do 
-echo "#!/bin/bash -l
-#SBATCH -p $partition
-#SBATCH -N 1              # Number of nodes
-#SBATCH -n $prossu            # total nuber of cores
-#SBATCH -t $aika        # time as hh:mm:ss
-#SBATCH -J $(basename $i .xyz)
-#SBATCH --mem-per-cpu=$muisti2  # requested memory per process in MB
-#SBATCH -e jobfile-$(basename $i .xyz).err%J
-#SBATCH -o $(basename $i .xyz).out
-
-mkdir $(basename $i .xyz)
-cp $(basename $i .xyz).inp $(basename $i .xyz).xyz $(basename $i .xyz)
-cd $(basename $i .xyz)
-$Morca
-$orca $(basename $i .xyz).inp > $(basename $i .xyz).out
-cp $(basename $i .xyz).out ..
-cd ..
-
-" > $(basename $i .xyz).job; done
+#for i in $filesin;
+#do 
+#echo "#!/bin/bash -l
+##SBATCH -p $partition
+##SBATCH -N 1              # Number of nodes
+##SBATCH -n $prossu            # total nuber of cores
+##SBATCH -t $aika        # time as hh:mm:ss
+##SBATCH -J $(basename $i .xyz)
+##SBATCH --mem-per-cpu=$muisti2  # requested memory per process in MB
+##SBATCH -e jobfile-$(basename $i .xyz).err%J
+##SBATCH -o $(basename $i .xyz).out
+#
+#mkdir $(basename $i .xyz)
+#cp $(basename $i .xyz).inp $(basename $i .xyz).xyz $(basename $i .xyz)
+#cd $(basename $i .xyz)
+#$Morca
+#$orca $(basename $i .xyz).inp > $(basename $i .xyz).out
+#cp $(basename $i .xyz).out ..
+#cd ..
+#
+#" > $(basename $i .xyz).job; done
 
 

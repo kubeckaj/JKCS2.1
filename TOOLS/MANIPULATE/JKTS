@@ -1,0 +1,8 @@
+#!/bin/bash
+source ~/.JKCSusersetup.txt
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+program_PYTHON $toolspath/SCRIPTS/DATS.py ${@}

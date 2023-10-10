@@ -1642,6 +1642,19 @@ for sampleeach_i in sampleeach_all:
         force_unit="eV/Ang",#YEAH I have no idea what the output is :-D
         position_unit="Ang",
         )
+      #TODO following added for testing
+      #from schnetpack.md.calculators import SchNetPackCalculator
+      #from schnetpack import properties
+      #md_calculator = SchNetPackCalculator(
+      #  model_path,  # path to stored model
+      #  "forces",  # force key
+      #  "eV/Ang",  # energy units
+      #  "Angstrom",  # length units
+      #  md_neighborlist,  # neighbor list
+      #  energy_key="energy",  # name of potential energies
+      #  required_properties=[],  # additional properties extracted from the model
+      #)
+      #######
       Y_predicted = []
       F_predicted = []
       from ase.optimize import BFGS
@@ -1659,23 +1672,88 @@ for sampleeach_i in sampleeach_all:
             write("opt.xyz", a, append = True)
           dyn.attach(printenergy, interval=1)
           dyn.run(fmax=1e-6)
-        else: 
-          # Set the momenta corresponding to T
-          MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
-          # We want to run MD with constant energy using the VelocityVerlet algorithm.
-          #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
-          dyn = Langevin(atoms, 0.1*units.fs, md_temperature, 0.002) #friction coeffitient 0.002
-          def printenergy(a=atoms):  # store a reference to atoms in the definition.
-            """Function to print the potential, kinetic and total energy."""
-            epot = a.get_potential_energy() / len(a)
-            ekin = a.get_kinetic_energy() / len(a)
-            write("traj.xyz", a, append = True)
-            print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
-                  'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
-          # Now run the dynamics
-          dyn.attach(printenergy, interval=1)
-          printenergy()
-          dyn.run(1000000)
+        else:
+          #TODO recently added
+          from schnetpack.md import Simulator
+          md_system = System()
+          md_system.load_molecules(
+            atoms,
+            1,
+            position_unit_input="Angstrom"
+          )
+          md_system = atoms
+          from schnetpack.md.simulation_hooks import LangevinThermostat
+          # Set temperature and thermostat constant
+          bath_temperature = 300  # K
+          time_constant = 100  # fs
+          # Initialize the thermostat
+          langevin = LangevinThermostat(bath_temperature, time_constant)
+          simulation_hooks = [
+            langevin
+          ]
+          md_simulator = Simulator(
+            md_system,
+            md_integrator,
+            md_calculator
+          )
+
+          # use and set single precision
+          md_simulator = md_simulator.to(torch.float32)
+          # move everything to target device
+          #md_simulator = md_simulator.to(md_device)
+          n_steps = 100
+          md_simulator.simulate(n_steps)
+          from schnetpack.md.simulation_hooks import callback_hooks
+
+          # Path to database
+          log_file = os.path.join(md_workdir, "simulation.hdf5")
+          
+          # Size of the buffer
+          buffer_size = 100
+          
+          # Set up data streams to store positions, momenta and the energy
+          data_streams = [
+              callback_hooks.MoleculeStream(store_velocities=True),
+              callback_hooks.PropertyStream(target_properties=[properties.energy]),
+          ]
+          
+          # Create the file logger
+          file_logger = callback_hooks.FileLogger(
+              log_file,
+              buffer_size,
+              data_streams=data_streams,
+              every_n_steps=1,  # logging frequency
+              precision=32,  # floating point precision used in hdf5 database
+          )
+          
+          # Update the simulation hooks
+          simulation_hooks.append(file_logger)
+          #Set the path to the checkpoint file
+          chk_file = os.path.join(md_workdir, 'simulation.chk')
+          
+          # Create the checkpoint logger
+          checkpoint = callback_hooks.Checkpoint(chk_file, every_n_steps=100)
+          
+          # Update the simulation hooks
+          simulation_hooks.append(checkpoint)
+          
+      
+          #### Set the momenta corresponding to T
+          ###MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
+          #### We want to run MD with constant energy using the VelocityVerlet algorithm.
+          ####dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
+          ###dyn = Langevin(atoms, 0.1*units.fs, md_temperature, 0.002) #friction coeffitient 0.002
+          ###def printenergy(a=atoms):  # store a reference to atoms in the definition.
+          ###  """Function to print the potential, kinetic and total energy."""
+          ###  epot = a.get_potential_energy() / len(a)
+          ###  ekin = a.get_kinetic_energy() / len(a)
+          ###  write("traj.xyz", a, append = True)
+          ###  print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
+          ###        'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
+          #### Now run the dynamics
+          ###dyn.attach(printenergy, interval=1)
+          ###printenergy()
+          ###dyn.run(1000000)
  
       #  Y_predicted.append(atoms.get_potential_energy())
       #  if Qforces == 1:

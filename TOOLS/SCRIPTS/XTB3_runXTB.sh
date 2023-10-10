@@ -108,6 +108,7 @@ tf_MAE=`echo $t_MAE+$f_MAE | bc -l`
 #echo "$t_MAE + $f_MAE = $tf_MAE"
 t_Failed=`grep -c "nan" FORM.txt`
 t_Failed2=`grep "GRADIENT NORM " *.log | awk '{print $5}' | grep -c "NaN"`
+rm *.log *.xyz
 
 if [ "$t_Failed" -gt 0 ] || [ "$t_Failed2" -gt 0 ]
 then

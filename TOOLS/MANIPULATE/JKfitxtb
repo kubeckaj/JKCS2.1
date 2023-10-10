@@ -75,7 +75,7 @@ JKloadCHARM
 JKloadsupercomputer
 
 folder="XTB_REP" 
-Qpar=28
+Qpar=0
 
 # loop over all arguments
 arguments_help=()
@@ -203,10 +203,9 @@ source ~/.JKCSusersetup.txt$loc
 sh $toolspath/SCRIPTS/XTB1_prepare_parameter_file.sh input.pkl
 if [ ! -z \"$INPUT\" ]; then cp \"$INPUT\" initial.txt; fi
 JKQC input.pkl -b -el -unit > B_El.txt
-cp $toolspath/SCRIPTS/XTB2_* .
 cat $toolspath/SCRIPTS/XTB3_runXTB.sh | sed \"s/AAAlocAAA/$loc/\" > XTB3_runXTB.sh
 
-program_PYTHON XTB2_optimizer.py $SCcpu $Qpar
+program_PYTHON $toolspath/SCRIPTS/JKoptimizer.py -cpu $SCcpu -parallel $Qpar
 """ > opt.sh
 echo "$SC_command sh INPUTFILE" > submit
 echo "$SC_command 'sh opt.sh'" >> output

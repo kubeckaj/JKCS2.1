@@ -1,0 +1,4 @@
+#/bin/bash
+source ~/.JKCSusersetup.txt
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+program_PYTHON $scriptpath/../SCRIPTS/JKoptimizer.py ${@}
