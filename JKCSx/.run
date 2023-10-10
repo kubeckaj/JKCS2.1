@@ -1,1 +1,0 @@
-sbatch -J 'JKCSx' -p small --time 24:00:00 -N 1 --mem-per-cpu 4000mb -n 1 --ntasks-per-node=1 /home/danayo/JKCS2.1/JKCSx/../TOOLS/SCRIPTS/JKsend  "source ~/.JKCSusersetup.txt;program_JKML /home/danayo/JKCS2.1/JKCSx/../TOOLS/SCRIPTS/JKML.py  "
