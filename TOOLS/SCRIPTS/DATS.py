@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-
-
+'''Dynamic Approach for Transition State'''
 ###############################LIBRARIES#####################################
 import numpy as np
-import sys
 import argparse
+import os
 
 ###########################VECTOR MANIPULATION################################
 def calculate_vector(coord1, coord2):
@@ -18,8 +17,8 @@ def atom_distance(atom1, atom2):
 
 def normalize_vector(vector):
     norm = np.linalg.norm(vector)
-    if norm < 1e-8:  # A small threshold to handle very small or zero norms
-        return np.zeros_like(vector)  # Return a zero vector if the norm is very small
+    if norm < 1e-8: 
+        return np.zeros_like(vector)
     return vector / norm
 
 def rotate_vector(vector, axis, angle):
@@ -32,13 +31,6 @@ def rotate_vector(vector, axis, angle):
     return rotated_vector
 
 #########################################FILES MANIPULATION#############################
-# if len(sys.argv) > 6:
-#     print("Usage: python3 TS_generation.py -reactant1 structure.xyz C=C(bond length) -reactant2 peroxy.xyz ROO()")
-#     sys.exit(1)
-
-# file_in = sys.argv[2]
-# file_in_strip_xyz = file_in.split(".")[0]
-
 def read_xyz_file(file_path):
     with open(file_path, 'r') as f:
         lines = f.readlines()[2:]
@@ -82,10 +74,9 @@ def find_atom_to_constrain(file, desired_distance=1.25):
 
 
 ######################################################################################
-def OH_addition(file, distance=1.45, double_bond_distance=1.36):
+def OH_addition(file, distance=1.45, double_bond_distance=1.36, dist_OH=0.97):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
-    dist_OH = 0.97
     count = 1
 
     for i in range(num_atoms):
@@ -114,14 +105,15 @@ def OH_addition(file, distance=1.45, double_bond_distance=1.36):
                         new_coords.append(['O', *oxygen_coords])
                         new_coords.append(['H', *hydrogen_coords])
 
-                        write_xyz_file(f"{file_in_strip_xyz}_H{count}.xyz", new_coords)
+                        base_file_name = os.path.splitext(os.path.basename(file))[0]
+                        write_xyz_file(f"{base_file_name}_H{count}.xyz", new_coords)
+
                         count += 1
 
 
-def OH_abstraction(file, distance=1.35):
+def H_abstraction(file, distance=1.35, dist_OH=0.97, constraint=False):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
-    dist_OH = 0.97
     count = 1
 
     for i in range(num_atoms):
@@ -160,24 +152,30 @@ def OH_abstraction(file, distance=1.35):
                         # Update XYZ file
                         new_coords.append(['O', *oxygen_coords])
                         new_coords.append(['H', *hydrogen_coords])
-                        write_xyz_file(f"{file_in_strip_xyz}_H{count}.xyz", new_coords)
-                        C_index = j+1
-                        H_index = i+1
-                        O_index = len(new_coords)-1
-                        OH_index = len(new_coords)
-                        write_constrain(f"constraints_{count}.inp",C_index, H_index, O_index, OH_index)
+
+                        base_file_name = os.path.splitext(os.path.basename(file))[0]
+                        write_xyz_file(f"{base_file_name}_H{count}.xyz", new_coords)
+
+                        if constraint:
+                            C_index = j+1
+                            H_index = i+1
+                            O_index = len(new_coords)-1
+                            OH_index = len(new_coords)
+                            write_constrain(f"constraints_{count}.inp",C_index, H_index, O_index, OH_index)
+
                         count += 1
-                       
 
-
+def reaction(file1, file2):
+    pass
 
 def main():
-    parser = argparse.ArgumentParser(description='TS Generation Tool')
-    
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-reactant1', help='First reactant XYZ file')
-    group.add_argument('-reactant2', help='Second reactant XYZ file')
-    group.add_argument('-constrain', action='store_true', help='Find atoms for constraining')
+    parser = argparse.ArgumentParser(description='TS Generation Tool',
+                                     prog="JKTS")
+
+    parser.add_argument('-R1', dest='reactant1', metavar='reactant1.xyz', help='First reactant XYZ file (e.g., pinonaldehyde.xyz)')
+    parser.add_argument('-R2', dest='reactant2', metavar='reactant2.xyz', help='Second reactant XYZ file (e.g., peroxy.xyz)')
+    parser.add_argument('-H', action='store_true', help='Perform H abstraction')
+    parser.add_argument('-C_C', action='store_true', help='Perform addition to C=C')
 
     args = parser.parse_args()
 
@@ -185,16 +183,22 @@ def main():
         file_in = args.reactant1
     elif args.reactant2:
         file_in = args.reactant2
+    elif args.reactant1 and args.reactant2:
+        file1 = args.reactant1
+        file2 = args.reactant2
+    else:
+        parser.error('Please provide either -R1 and/or -R2 for reactants.')
 
-    file_in_strip_xyz = file_in.split(".")[0]
 
-    if args.reactant1 or args.reactant2:
-        if 'C=C' in sys.argv:
-            OH_addition(file_in)
-        elif 'OH' in sys.argv:
-            OH_abstraction(file_in)
-    elif args.constrain:
-        find_atom_to_constrain(file_in)
+    if args.H and args.reactant1:
+        H_abstraction(file_in)
+    elif args.C_C and args.reactant2:
+        OH_addition(file_in)
+    elif args.reactant1 and args.reactant2:
+        reaction(file1, file2)
+    else:
+        parser.error('Please specify either -OH or -C=C.')
 
 if __name__ == "__main__":
     main()
+
