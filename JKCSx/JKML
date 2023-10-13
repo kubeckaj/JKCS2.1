@@ -204,6 +204,6 @@ do
   done
 done
 
-JKecho 1 "Calculations submitted or calculations done (-loc)."
+echo "JKML: Calculations submitted or calculations done (-loc)."
 exit
 
