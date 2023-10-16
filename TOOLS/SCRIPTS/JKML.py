@@ -1236,8 +1236,19 @@ for sampleeach_i in sampleeach_all:
             self.state_val = []		
             #with open("epoch_loss.txt", "a") as f:
             #  Â±print(str(trainer.current_epoch)+" "+str(23.060541945329334*outputs["val_loss"].item()), flush = True, file=f)
-            print(all_outputs_val)
-            print("TRAIN: "+str(np.round(np.mean(all_outputs_train),0.0001))+" Â "+str(np.round(np.std(all_outputs_train),0.0001)))
+            def mean_std(arr):
+              if len(arr) == 0:
+                return np.nan, np.nan
+              elif len(arr) == 1:
+                return arr[0], np.nan
+              else:
+                return np.mean(arr), np.std(arr)
+            #print(all_outputs_val)
+            #print(all_outputs_train)
+            tr_m, tr_s = mean_std(all_outputs_train)
+            val_m, val_s = mean_std(all_outputs_val)
+            ep = trainer.current_epoch
+            print(f"\nEPOCH: %i TRAIN: %.4f +- %.4f kcal/mol VAL: %.4f +- %.4f kcal/mol LR: %e "%(ep, tr_m, tr_s, val_m, val_s, task.lr))
           
  
       #MyPrintingCallback = pl.callbacks.LearningRateMonitor
@@ -1262,7 +1273,7 @@ for sampleeach_i in sampleeach_all:
               monitor="val_loss",
               patience=Qearlystop,
           ),
-          pl.callbacks.LearningRateMonitor(logging_interval='epoch'),#Useless
+          #pl.callbacks.LearningRateMonitor(logging_interval='epoch'),#Useless
           #MyPrintingCallback(logging_interval='epoch')
       ]
 
