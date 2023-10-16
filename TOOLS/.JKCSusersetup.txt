@@ -160,8 +160,11 @@ function program_JKML {
     donottakenext=0
     for i in ${@}
     do
-      test=`echo $i | grep -c ".pkl"`
-      if [ $test -eq 1 ] 
+      test1=`echo $i | grep -c "\.pkl"`
+      test2=`echo $i | grep -c "\.ckpt"`
+      test3=`echo $i | grep -c "\.chkp"`
+      test4=`echo $i | grep -c "\.db"`
+      if [ $test1 -eq 1 ] || [ $test2 -eq 1 ] || [ $test3 -eq 1 ] || [ $test4 -eq 1 ]
       then
         args+=" "$(basename $i)
         #WHAT TO SAVE  

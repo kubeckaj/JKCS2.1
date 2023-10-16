@@ -2,6 +2,63 @@ import sys
 import os.path
 import subprocess
 
+def import_other_libraries1():
+  import numpy as np
+  from ase import Atoms
+  from ase.io import read, write
+  from sklearn.model_selection import train_test_split
+  import pickle
+  import pandas as pd
+  globals().update(locals())
+  return
+
+def import_other_libraries2():
+  # KRR
+  if Qmethod == "krr":
+    from qml.math import cho_solve
+    if Qrepresentation == "fchl":
+      from qml.fchl import generate_representation
+      if Qkernel == "Gaussian":
+        from qml.fchl import get_local_symmetric_kernels
+        from qml.fchl import get_local_kernels
+        JKML_sym_kernel = get_local_symmetric_kernels
+        JKML_kernel = get_local_kernels
+      else:
+        from qml.kernels import laplacian_kernel
+        from qml.kernels import laplacian_kernel_symmetric
+        JKML_sym_kernel = laplacian_kernel_symmetric
+        JKML_kernel = laplacian_kernel
+    elif Qrepresentation == "mbdf":
+      from MBDF import generate_mbdf
+      generate_representation = generate_mbdf
+      from qml.kernels import get_local_symmetric_kernel_mbdf, get_local_kernel_mbdf
+      JKML_sym_kernel = get_local_symmetric_kernel_mbdf
+      JKML_kernel = get_local_kernel_mbdf
+  # SchNetPack
+  elif Qmethod == "nn" and Qrepresentation == "painn":
+    global ASEAtomsData, AtomsDataModule, trn, pl, Ha, Bohr, SpkCalculator, spk
+    if Qtrain > 0:
+      from schnetpack.data import ASEAtomsData
+      from schnetpack.data import AtomsDataModule
+      import logging
+      import warnings
+      import schnetpack.transform as trn
+      import torchmetrics
+      import pytorch_lightning as pl
+    if Qeval > 0 or Qopt > 0 or Qopt > 0:
+      from ase.units import Ha, Bohr
+      print("Test", flush = True)
+      from schnetpack.interfaces import SpkCalculator
+      print("Test", flush = True)
+    import torch
+    import schnetpack as spk
+  else:
+    print("Wrong method or representation chosen.")
+    exit()
+  globals().update(locals())
+  return 
+
+
 def help():
   print("#################################################################", flush = True)
   word = "JKML"
@@ -89,6 +146,7 @@ def help_nn():
   print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]")
   print("    -nn_lr                     learning rate [def = 1e-4]", flush = True)
   print("    -nw                        number of workers for database manipulation [def = 1]")
+  print("    -ckpt,-chkp <file>         resume from last check point [def = None]")
   print("", flush = True)
   print("  OPTIONS FOR REPRESENTATION:", flush = True)
   print("    -nn_ab <int>       number of atom basis/features/size of embeding vector [def = 256]", flush = True)
@@ -158,6 +216,7 @@ Qearlystop = 200
 Qenergytradoff = 0.01 #if forces are trained on: [energy, force] = [X, 1]
 nw = 1
 Qbatch_size=16
+Qcheckpoint=None
 
 #OPT/MD
 md_temperature = 300.0
@@ -504,6 +563,18 @@ for i in sys.argv[1:]:
     last = ""
     nn_energytradeoff = float(i)
     continue
+  #CHECKPOINT
+  if i == "-ckpt" or i == "-chkp":
+    last = "-ckpt"
+    continue
+  if last == "-ckpt":
+    last = ""
+    if os.path.isfile(i):
+      Qcheckpoint = i
+    else:
+      print("Path to the checkpoint does not exist")
+      exit()
+    continue
   #EARLY STOP
   if i == "-nn_ESpatience" or i == "-nn_espatience":
     last = "-nn_espatience"
@@ -582,13 +653,11 @@ if Qmonomers == 1:
       print("Error reading file. MONOMERS_LOW = "+MONOMERS_LOW)
       exit()
 
+print("JKML has started", flush = True)
+
 #IMPORTING THE REST OF LIBRARIES
-import numpy as np
-from ase import Atoms
-from ase.io import read, write
-from sklearn.model_selection import train_test_split
-import pickle
-import pandas as pd
+import_other_libraries1()
+print("JKML some libraries loaded.", flush=True)
 
 #LOADING THE DATABASES
 train_high_database = "none"
@@ -609,47 +678,8 @@ if Qmonomers == 1:
     monomers_low_database = pd.read_pickle(MONOMERS_LOW).sort_values([('info','file_basename')])
 
 #LIBRARIES FOR GIVEN METHOD AND REPRESENTATION
-if Qmethod == "krr":
-  from qml.math import cho_solve
-  if Qrepresentation == "fchl":
-    from qml.fchl import generate_representation
-    if Qkernel == "Gaussian":
-      from qml.fchl import get_local_symmetric_kernels
-      from qml.fchl import get_local_kernels
-      JKML_sym_kernel = get_local_symmetric_kernels
-      JKML_kernel = get_local_kernels
-    else:
-      from qml.kernels import laplacian_kernel
-      from qml.kernels import laplacian_kernel_symmetric
-      JKML_sym_kernel = laplacian_kernel_symmetric
-      JKML_kernel = laplacian_kernel
-  elif Qrepresentation == "mbdf":
-    from MBDF import generate_mbdf
-    generate_representation = generate_mbdf
-    from qml.kernels import get_local_symmetric_kernel_mbdf, get_local_kernel_mbdf
-    JKML_sym_kernel = get_local_symmetric_kernel_mbdf
-    JKML_kernel = get_local_kernel_mbdf
-  #from qml.fchl import get_atomic_symmetric_kernels
-  #from qml.fchl import get_atomic_kernels
-  #from qml.fchl import get_global_symmetric_kernels
-  #from qml.fchl import get_global_kernels
-  #from qml.kernels import gaussian_kernel
-elif Qmethod == "nn" and Qrepresentation == "painn":
-  if Qtrain > 0:
-    from schnetpack.data import ASEAtomsData
-    from schnetpack.data import AtomsDataModule
-    import logging
-    import schnetpack.transform as trn
-    import torchmetrics
-    import pytorch_lightning as pl
-  if Qeval > 0 or Qopt > 0 or Qopt > 0:
-    from ase.units import Ha, Bohr
-    from schnetpack.interfaces import SpkCalculator
-  import torch
-  import schnetpack as spk
-else:
-  print("Wrong method or representation chosen.")
-  exit()
+import_other_libraries2()
+print("JKML libraries and your databases are loaded")
 
 ####################################################################################################
 # THIS IS TAKEN FROM tool.py IN JKCS.py 
@@ -833,6 +863,25 @@ for sampleeach_i in sampleeach_all:
 
   ### TRAININING
   if Qtrain == 1:
+    print("JKML is preparing things for training.")
+    #RANDOM SEED:
+    def seed_everything(seed=42):
+      #random.seed(seed)
+      os.environ['PYTHONHASHSEED'] = str(seed)
+      np.random.seed(seed)
+      try:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        pl.seed_everything(seed)
+      except:
+        print("Failed to setup seed")
+        return
+      return
+    seed_everything(seed=seed)
+
     ### DATABASE LOADING ###
     ## The high level of theory
     clusters_df = train_high_database
@@ -874,7 +923,7 @@ for sampleeach_i in sampleeach_all:
     else:
       Qforces = 0
     
-    print(ens.shape, flush = True)
+    print("JKML: data length = "+str(ens.shape[0]), flush = True)
     if method == "delta":
       print(ens2.shape, flush = True)
       if ens.shape != ens2.shape:
@@ -999,6 +1048,15 @@ for sampleeach_i in sampleeach_all:
     ### TRAINING NN #####################
     #####################################
     elif Qmethod == "nn":
+      print("JKML: Setting up NN.")
+      
+      warnings.filterwarnings(
+        "ignore", ".*Trying to infer the `batch_size` from an ambiguous collection.*"
+      )
+      warnings.filterwarnings(
+        "ignore", ".*Attribute 'model' is an instance of `nn.Module` and is already saved during checkpointing. It is recommended to ignore them using*"
+      )
+
       #PREPARING TRAINING DATABASE
       temperary_file_name = "training.db"
       if os.path.exists(temperary_file_name):
@@ -1025,7 +1083,11 @@ for sampleeach_i in sampleeach_all:
      
       n_train = int(np.round(nn_tvv*len(strs)))
       n_val = len(strs) - n_train
-      pl.seed_everything(seed)
+       
+      if torch.cuda.is_available():
+          pin_memory = True
+      else:
+          pin_memory = False
       dataset = AtomsDataModule(temperary_file_name,
           batch_size=Qbatch_size,
           num_train=n_train,
@@ -1036,18 +1098,22 @@ for sampleeach_i in sampleeach_all:
               trn.RemoveOffsets(spk.properties.energy, remove_mean=True, remove_atomrefs=False),
               trn.CastTo32()
           ],
-          num_workers=nw,#TODO how does this work?
+          num_workers=nw,#use 2-4
           #split_file=split_file,
-          #pin_memory = True
+          pin_memory = pin_memory,
           data_workdir="./"
       )
+      print("JKML is preparing database for NN.", flush = True)
       dataset.prepare_data()
       dataset.setup()
-      logging.info(f'Number of train-val-test data: {dataset.num_train} - {dataset.num_val}')
-      properties = dataset.dataset[0]
-      logging.info('Loaded properties:')
-      for k, v in properties.items():
-        logging.info(f'     {k:20s} : {v.shape}')      
+      print("JKML is preparing for training.", flush = True)
+      
+      #This just prints out some stuff about the NN
+      #logging.info(f'Number of train-val-test data: {dataset.num_train} - {dataset.num_val}')
+      #properties = dataset.dataset[0]
+      #logger.info('Loaded properties:')
+      #for k, v in properties.items():
+      #  logger.info(f'     {k:20s} : {v.shape}')      
 
       # PainNN representation
       pairwise_distance = spk.atomistic.PairwiseDistances()
@@ -1112,7 +1178,15 @@ for sampleeach_i in sampleeach_all:
               trn.AddOffsets(spk.properties.energy, add_mean=True, add_atomrefs=False)
           ]
       )
- 
+
+      #if Qcheckpoint is not None:
+      #  print("JKML reads checkpoint.")
+      #  checkpoint = torch.load(Qcheckpoint)
+      #  #print(checkpoint)
+      #  JKepoch=checkpoint["epoch"]
+      #  nnpot.load_state_dict(checkpoint['nnpot_state_dict'],strict=False)
+      #  #task.load_state_dict(checkpoint['task_state_dict'],strict=False) 
+
       task = spk.task.AtomisticTask(
           model=nnpot,
           outputs=output_losses,
@@ -1122,9 +1196,71 @@ for sampleeach_i in sampleeach_all:
           scheduler_args={'factor': 0.5, 'patience': 20, 'min_lr': 1e-7},
           scheduler_monitor = 'val_loss'
       )
-
+     
+      os.makedirs("lightning_logs") 
       logger = pl.loggers.TensorBoardLogger(save_dir="./")
+      #logger.propagate = False
       #logger = pl.loggers.CSVLogger(save_dir=model_dir, flush_logs_every_n_steps=1)
+
+      class MyPrintingCallback(pl.callbacks.LearningRateMonitor):
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+            self.state_train = []
+            self.state_val = []
+            pl.seed_everything(seed)
+            print("Training is starting", flush = True)
+            
+        def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, unused=0):
+            super().on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)
+            self.state_train.append(23.060541945329334*outputs["loss"].item())
+            print(".",end="", flush = True)
+            
+        #def on_train_epoch_end(self, trainer, pl_module):
+        #    super().on_train_epoch_end(trainer, pl_module)
+ 
+        def on_train_end(self, trainer, pl_module):
+            super().on_train_end(trainer, pl_module)
+            print("Training is ending", flush = True)
+
+        def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+            super().on_validation_batch_end(trainer, pl_module, outputs, batch, batch_idx)
+            self.state_val.append(23.060541945329334*outputs["val_loss"].item())
+            print("_",end="", flush = True)            
+ 
+        def on_validation_epoch_end(self, trainer, pl_module):
+            super().on_validation_epoch_end(trainer, pl_module)
+            # access output using state
+            all_outputs_train = self.state_train
+            all_outputs_val = self.state_val
+            self.state_train = []		
+            self.state_val = []		
+            #with open("epoch_loss.txt", "a") as f:
+            #  ±print(str(trainer.current_epoch)+" "+str(23.060541945329334*outputs["val_loss"].item()), flush = True, file=f)
+            def mean_std(arr):
+              if len(arr) == 0:
+                return np.nan, np.nan
+              elif len(arr) == 1:
+                return arr[0], np.nan
+              else:
+                return np.mean(arr), np.std(arr)
+            #print(all_outputs_val)
+            #print(all_outputs_train)
+            tr_m, tr_s = mean_std(all_outputs_train)
+            val_m, val_s = mean_std(all_outputs_val)
+            ep = trainer.current_epoch
+            print(f"\nEPOCH: %i TRAIN: %.4f +- %.4f kcal/mol VAL: %.4f +- %.4f kcal/mol LR: %e "%(ep, tr_m, tr_s, val_m, val_s, task.lr))
+          
+ 
+      #MyPrintingCallback = pl.callbacks.LearningRateMonitor
+      #MyPrintingCallback = pl.callbacks.EarlyStopping
+      #MyPrintingCallback.__init__ = __init__
+      #MyPrintingCallback.on_train_start = on_train_start
+      #MyPrintingCallback.on_train_end = on_train_end
+      ##MyPrintingCallback.on_train_batch_start = on_train_batch_start
+      ##MyPrintingCallback.on_train_batch_end = on_train_batch_end
+      ##MyPrintingCallback.on_validation_batch_end = on_validation_batch_end 
+      #MyPrintingCallback.on_validation_epoch_end = on_validation_epoch_end
+
       callbacks = [
           spk.train.ModelCheckpoint(
               model_path=os.path.join("./", varsoutfile),
@@ -1132,11 +1268,13 @@ for sampleeach_i in sampleeach_all:
               monitor="val_loss",
               save_last=True,
           ),
-          pl.callbacks.EarlyStopping(
+          #pl.callbacks.EarlyStopping(
+          MyPrintingCallback(
               monitor="val_loss",
               patience=Qearlystop,
           ),
-          pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+          #pl.callbacks.LearningRateMonitor(logging_interval='epoch'),#Useless
+          #MyPrintingCallback(logging_interval='epoch')
       ]
 
       if torch.cuda.is_available():
@@ -1144,26 +1282,41 @@ for sampleeach_i in sampleeach_all:
           logging.info(torch.cuda.get_device_name(0))
       else:
           device = 'cpu'
-      logging.info(f'Using device {device}')
+      #logging.info(f'Using device {device}')
       
       trainer = pl.Trainer(
           accelerator=device,
           #devices=1,
-          callbacks=callbacks,
-          logger=logger,
-          default_root_dir="./",
+          enable_progress_bar=False, #TODO testing
+          log_every_n_steps=1, #np.round(n_train/Qbatch_size/10),
+          callbacks=callbacks,   #checks for early stopping and checkpoints
+          logger=logger,         #This is the logger for tensorboard 
+          default_root_dir="./lightning_logs",
           max_epochs=nn_epochs,
+          #max_time="00:12:00:00"
+          #resume_from_checkpoint=model_checkpoint,
           #log_every_n_steps=1,
           #accumulate_grad_batches = 10,
+          #TODO: gpus=2
+          #TODO: precision=16
       )
 
-      trainer.fit(task, datamodule=dataset)
+      print("JKML has started the training.", flush=True)
+     
+      if Qcheckpoint is None: 
+        trainer.fit(task, datamodule=dataset)
+      else:
+        trainer.fit(task, datamodule=dataset, ckpt_path=Qcheckpoint)
+      #torch.save({
+      #      'epoch': JKepoch,
+      #      'nnpot_state_dict': nnpot.state_dict(),
+      #      'task_state_dict': task.state_dict(),
+      #      }, "./checkpoint.chkp")
     ######################
     #You should not get below this one to reach the error
     else:
       print("Wrong method or representation chosen.")
       exit()
-  
   
   #LOAD TRAINING
   #TODO collect splitting: /home/kubeckaj/ML_SA_B/ML/TRAIN/TEST/SEPARATE/cho_solve.pkl
@@ -1354,10 +1507,11 @@ for sampleeach_i in sampleeach_all:
         atoms.calc = spk_calc
         Y_predicted.append(atoms.get_potential_energy())
         if Qforces == 1:
-          F_predicted.append(atoms.get_forces())
+          F_predicted.append(0.0367493*atoms.get_forces()) #Hartree/Ang
       if Qforces == 1:
         Y_predicted = [0.0367493*np.array(Y_predicted)] #Hartree
-        F_predicted = [0.0367493*np.array(F_predicted)] #Hartree/Ang
+        F_predicted = [F_predicted]
+        #F_predicted = np.array([0.0367493*np.array(F_predicted)]) #Hartree/Ang
       else:
         Y_predicted = [np.array(Y_predicted)]
 
@@ -1438,13 +1592,18 @@ for sampleeach_i in sampleeach_all:
       rmsre = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation - diff[i])**2))  for i in range(len(sigmas))]
       print("Root Mean Squared (median-)Relative Error", flush = True)
       print("rmsre = " + ",".join([str(i) for i in rmsre])+units, flush = True)
+  
+      def flatten(matrix):
+        return np.array([item for row in matrix for item in row])
       if Qforces == 1:
+        multiplier = 627.503
+        units = " [kcal/mol]"
         print("", flush = True)
         print("Results for forces:", flush = True)
-        mae = [np.mean(np.abs(np.array([np.array(j) for j in F_predicted[i]]).flatten() - np.array([np.array(j) for j in F_test]).flatten()))  for i in range(len(sigmas))]
-        print("MAE = " + ",".join([str(i) for i in mae])+" [Eh/Angstrom]", flush = True)
-        rmse = [np.sqrt(np.mean(np.abs(np.array([np.array(j) for j in F_predicted[i]]).flatten() - np.array([np.array(j) for j in F_test]).flatten())**2))  for i in range(len(sigmas))]
-        print("RMSE = " + ",".join([str(i) for i in rmse])+" [Eh/Angstrom]", flush = True)
+        mae = [multiplier*np.mean(np.abs(flatten(F_predicted[i]) - flatten(F_test))) for i in range(len(sigmas))]
+        print("MAE = " + ",".join([str(i) for i in mae])+units, flush = True)
+        rmse = [multiplier*np.sqrt(np.mean(np.abs(flatten(F_predicted[i]) - flatten(F_test))**2))  for i in range(len(sigmas))]
+        print("RMSE = " + ",".join([str(i) for i in rmse])+units, flush = True)
   
     ### PRINTING THE QML PICKLES
     #print(type(clustersout_df["xyz"]["structure"].values[0]))

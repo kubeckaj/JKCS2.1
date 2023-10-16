@@ -24,7 +24,6 @@ source $toolspath/LOADING/functions.sh
 # load user setup
 source ~/.JKCSusersetup.txt
 
-
 arguments=("$@")       # arguments of this script
 arguments_help=()      # 
 arguments_help_pass=() # arguments which are passed if all arguments are passed
@@ -85,6 +84,8 @@ Qarraymax=0 #max jobs per array
 Qsplit=1 #HOW much is split the K, 1 = no split
 Qsplitargument=""
 
+Qmd=0
+
 last=""
 # loop over all arguments
 arguments_help=()
@@ -124,6 +125,12 @@ do
     last=""
     continue
   fi
+  #MD 
+  if [ "$iter" == "-md" ]
+  then
+    Qmd=1
+    continue
+  fi
   #
   arguments_help+=( "${arguments[i]}" )
 done
@@ -154,6 +161,7 @@ if [ $SCtasks -eq 1 ]
 then
   Qarray=0
 fi
+#TODO this must go inside
 for i in `seq 1 $Qsplit`
 do
   for j in `seq 1 $i`
@@ -172,7 +180,12 @@ do
     if [ $Qarray -eq 1 ]
     then
       calc=`echo $calc+1 | bc`
-      echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit" > .run$calc
+      if [ $Qmd -eq 1 ]
+      then
+        echo "source ~/.JKCSusersetup.txt$loc;program_PYTHON -V >/dev/null; spkmd simulation_dir=SIM system.molecule_file=0sa10w-05_05.xyz calculator.model_file=model.pkl calculator.neighbor_list.cutoff=5.0 device=cpu dynamics.n_steps=200 dynamics/integrator=rpmd system.n_replicas=4 $therest" > .run$calc
+      else
+        echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit" > .run$calc
+      fi
       if [ $calc -eq $SCtasks ] 
       then
         if [ $Qarraymax -gt 0 ]
@@ -189,8 +202,25 @@ do
         echo $job | awk '{print $4}'  >> .jobs.txt 
       fi
     else
-      echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" >> output
-      echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" > .run
+      if [ $Qmd -eq 1 ]
+      then
+        #md_folder="SIM"
+        #md_structure="0sa10w-05_05.xyz"
+        #md_model="model.pkl"
+        #md_cutoff="5.0"
+        #md_device="cpu"
+        #md_steps=200
+        #md_rpmd/md_langevin/md_verlet 
+        echo """from schnetpack.md.data import HDF5Loader
+        data = HDF5Loader(\"simulation.hdf5\")
+         
+        """
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_PYTHON -V >/dev/null; spkmd simulation_dir=SIM system.molecule_file=0sa10w-05_05.xyz calculator.model_file=model.pkl calculator.neighbor_list.cutoff=5.0 device=cpu dynamics.n_steps=200 dynamics/integrator=rpmd system.n_replicas=4 $therest\"" >> output
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_PYTHON -V >/dev/null; spkmd simulation_dir=SIM system.molecule_file=0sa10w-05_05.xyz calculator.model_file=model.pkl calculator.neighbor_list.cutoff=5.0 device=cpu dynamics.n_steps=200 dynamics/integrator=rpmd system.n_replicas=4 $therest\"" > .run
+      else 
+        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" >> output
+        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" > .run
+      fi
 
       if [ $METHODsupercomputer == "loc" ]
       then
@@ -204,6 +234,7 @@ do
   done
 done
 
-JKecho 1 "Calculations submitted or calculations done (-loc)."
+
+echo "JKML: Calculations submitted or calculations done (-loc)."
 exit
 
