@@ -280,19 +280,30 @@ def addition(file1, file2, distance = 1.55, double_bond_distance=1.36, elongatio
 def rate_constant_gauss(file1):
     with open (file1, "r") as file:
         content = file.read()
-        match = re.search(r"Sum of electronic and zero-point Energies=\s+([-+]?\d*\.\d+|\d+)", content) 
-    if match:
-        float_value = float(match.group(1))
+        E_ZPE = re.search(r"Sum of electronic and zero-point Energies=\s+([-+]?\d*\.\d+|\d+)", content) 
+    if E_ZPE:
+        float_value = float(E_ZPE.group(1))
         print(float_value)
 
 
 
 
 def main():
+    ascii_art = '''
+     ______   _______ _________ _______ 
+    (  __  \\ (  ___  )\\__   __/(  ____ \\
+    | (  \\  )| (   ) |   ) (   | (    \\/
+    | |   ) || (___) |   | |   | (_____ 
+    | |   | ||  ___  |   | |   (_____  )
+    | |   ) || (   ) |   | |         ) |
+    | (__/  )| )   ( |   | |   /\\____) |
+    (______/ |/     \\|   )_(   \\_______)
+    '''
+    
     parser = argparse.ArgumentParser(description='TS Generation Tool',
                                      prog="JKTS",
                                      epilog="")
-
+    
     parser.add_argument('reactant1', metavar='file1.xyz', help='First reactant XYZ file (e.g., pinonaldehyde.xyz)')
     parser.add_argument('reactant2', nargs='?', metavar='file2.xyz', help='Second reactant XYZ file (e.g., peroxy.xyz)')
     parser.add_argument('-CC', action='store_true', help='Perform addition to C=C')
