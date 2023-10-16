@@ -3296,7 +3296,15 @@ if not len(output) == 0:
     def is_averagable(input_array): # :-D
       try:
         [float(i) for i in input_array]
-        return True
+        test = 0
+        for i in range(len(input_array)):
+          if input_array[i] != input_array[0]:
+            test = 1
+            break
+        if test == 0:
+          return False
+        else:
+          return True
       except ValueError:
         return False
     def is_the_same(input_array):
@@ -3317,8 +3325,8 @@ if not len(output) == 0:
         return opt3
       else:
         return opt1
-    
-    output = [[myif(l,np.sum([portions[i][j]*output[l,indexes[i][j]] for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]
+   
+    output = [[myif(l,np.sum([float(portions[i][j])*float(output[l,indexes[i][j]]) for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]
 
   #fn = ".help"+str(np.random.randint(100000,size=1)[0])+".txt" 
   #f = open(fn, "w")
