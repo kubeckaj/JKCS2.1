@@ -1593,8 +1593,12 @@ for file_i in files:
   if path.exists(file_i_ORCA):
     file = open(file_i_ORCA, "r")
     testORCA = 0
-    for i in range(5):
-      if re.search("O   R   C   A", file.readline()):
+    for i in range(130):
+      line = file.readline()
+      if re.search("O   R   C   A", line):
+        testORCA = 1
+        break
+      if re.search("ORCA", line):
         testORCA = 1
         break
     if testORCA == 1:

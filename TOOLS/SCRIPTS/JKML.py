@@ -9,6 +9,7 @@ def import_other_libraries1():
   from sklearn.model_selection import train_test_split
   import pickle
   import pandas as pd
+  import time
   globals().update(locals())
   return
 
@@ -217,6 +218,8 @@ Qenergytradoff = 0.01 #if forces are trained on: [energy, force] = [X, 1]
 nw = 1
 Qbatch_size=16
 Qcheckpoint=None
+Qtime=None
+parentdir="./"
 
 #OPT/MD
 md_temperature = 300.0
@@ -277,6 +280,35 @@ for i in sys.argv[1:]:
   if i == "-forcemonomers":
     Qforcemonomers = 1
     continue
+  #TIME
+  if i == "-time":
+    last = "-time"
+    continue
+  if last == "-time":
+    last = ""
+    from datetime import timedelta
+    def parse_duration(s):
+      if "-" in s:
+        days, time_str = s.split('-')
+      else:
+        days = 0
+        time_str = s
+      time_str_split = time_str.split(':')
+      if len(time_str_split) == 3:
+        hours, minutes, seconds = map(int, time_str_split)
+      elif len(time_str_split) == 4:
+        days, hours, minutes, seconds = map(int, time_str_split)
+      elif len(time_str_split) == 1:
+        print("it is too short time")
+        exit()
+      else:
+        hours = 0
+        minutes, seconds = map(int, time_str_split)
+      return timedelta(days=int(days), hours=hours, minutes=minutes, seconds=seconds) -  timedelta(days=0, hours=0, minutes=9, seconds=0)
+    if i is not None:
+      Qtime=parse_duration(i)
+      #print(f"JKML will stop training after: {Qtime} [valid for -nn]")
+    continue
   #SEED
   if i == "-seed":
     last = "-seed"
@@ -284,6 +316,14 @@ for i in sys.argv[1:]:
   if last == "-seed":
     last = ""
     seed = int(i)
+    continue
+  #Parent dir
+  if i == "-dir":
+    last = "-dir"
+    continue
+  if last == "-dir":
+    last = ""
+    parentdir = str(i)
     continue
   #WOLFRAM
   if i == "-wolfram":
@@ -1208,6 +1248,8 @@ for sampleeach_i in sampleeach_all:
             self.state_train = []
             self.state_val = []
             pl.seed_everything(seed)
+            global start_time
+            start_time = time.time()    
             print("Training is starting", flush = True)
             
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, unused=0):
@@ -1248,7 +1290,10 @@ for sampleeach_i in sampleeach_all:
             tr_m, tr_s = mean_std(all_outputs_train)
             val_m, val_s = mean_std(all_outputs_val)
             ep = trainer.current_epoch
-            print(f"\nEPOCH: %i TRAIN: %.4f +- %.4f kcal/mol VAL: %.4f +- %.4f kcal/mol LR: %e "%(ep, tr_m, tr_s, val_m, val_s, task.lr))
+            run_time = time.time() - start_time
+            print(f"\nEPOCH: %i TRAIN: %.4f +- %.4f kcal/mol VAL: %.4f +- %.4f kcal/mol LR: %.2e T: %.1f s "%(ep, tr_m, tr_s, val_m, val_s, task.lr, run_time))
+            with open(parentdir+"/epoch_trE_trS_valE_valS_lr_t.txt", "a") as f:
+              print(f"%i %.4f %.4f %.4f %.4f %e"%(ep, tr_m, tr_s, val_m, val_s, task.lr), file = f)
           
  
       #MyPrintingCallback = pl.callbacks.LearningRateMonitor
@@ -1293,7 +1338,7 @@ for sampleeach_i in sampleeach_all:
           logger=logger,         #This is the logger for tensorboard 
           default_root_dir="./lightning_logs",
           max_epochs=nn_epochs,
-          #max_time="00:12:00:00"
+          max_time=Qtime #90% e.g."00:12:00:00"
           #resume_from_checkpoint=model_checkpoint,
           #log_every_n_steps=1,
           #accumulate_grad_batches = 10,
@@ -1302,7 +1347,7 @@ for sampleeach_i in sampleeach_all:
       )
 
       print("JKML has started the training.", flush=True)
-     
+      
       if Qcheckpoint is None: 
         trainer.fit(task, datamodule=dataset)
       else:
@@ -1830,7 +1875,7 @@ for sampleeach_i in sampleeach_all:
           def printenergy(a=atoms):
             write("opt.xyz", a, append = True)
           dyn.attach(printenergy, interval=1)
-          dyn.run(fmax=1e-6)
+          dyn.run(fmax=1e-6, steps=30)
         else:
           #TODO recently added
           from schnetpack.md import Simulator
