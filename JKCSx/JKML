@@ -204,22 +204,24 @@ do
     else
       if [ $Qmd -eq 1 ]
       then
-        #md_folder="SIM"
-        #md_structure="0sa10w-05_05.xyz"
-        #md_model="model.pkl"
-        #md_cutoff="5.0"
-        #md_device="cpu"
-        #md_steps=200
-        #md_rpmd/md_langevin/md_verlet 
+        md_folder="SIM"
+        md_structure="5sa5a-98_9.xyz"
+        md_model="model.pkl"
+        md_cutoff="5.0"
+        md_device="cpu"
+        md_steps=200
+        md_what="dynamics/integrator=rpmd system.n_replicas=4"
+        md_what="+dynamics/thermostat=langevin"
+        #md_rpmd/md_langevin/md_verlet"
         echo """from schnetpack.md.data import HDF5Loader
         data = HDF5Loader(\"simulation.hdf5\")
          
         """
-        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_PYTHON -V >/dev/null; spkmd simulation_dir=SIM system.molecule_file=0sa10w-05_05.xyz calculator.model_file=model.pkl calculator.neighbor_list.cutoff=5.0 device=cpu dynamics.n_steps=200 dynamics/integrator=rpmd system.n_replicas=4 $therest\"" >> output
-        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_PYTHON -V >/dev/null; spkmd simulation_dir=SIM system.molecule_file=0sa10w-05_05.xyz calculator.model_file=model.pkl calculator.neighbor_list.cutoff=5.0 device=cpu dynamics.n_steps=200 dynamics/integrator=rpmd system.n_replicas=4 $therest\"" > .run
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff device=$md_device dynamics.n_steps=$md_steps $md_what $therest\"" >> output
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff device=$md_device dynamics.n_steps=$md_steps $md_what $therest\"" > .run
       else 
-        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" >> output
-        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit\"" > .run
+        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit -dir $PWD -time $SCtime\"" >> output
+        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit -dir $PWD -time $SCtime\"" > .run
       fi
 
       if [ $METHODsupercomputer == "loc" ]

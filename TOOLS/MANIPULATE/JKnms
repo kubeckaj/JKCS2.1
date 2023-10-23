@@ -1,0 +1,71 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then echo No input; exit; fi
+if [ -e "STRS" ]; then echo STRS already exists; exit; fi
+mkdir STRS
+for file in $*
+do
+  n=`head -n 1 $file`
+  n2=`echo $n+2 | bc`
+  atom_names=`head -n $n2 $file | tail -n $n | awk '{print $1}'`
+  lines=`head -n $n2 $file | tail -n $n | awk '{print $2 " " $3 " " $4}'`
+  
+  function coordinates {
+    atom_idx=$1
+    x=`echo "($atom_idx-1)*3+1" | bc`
+    y=`echo "($atom_idx-1)*3+2" | bc`
+    z=`echo "($atom_idx-1)*3+3" | bc`
+    echo $lines | awk -v x=$x -v y=$y -v z=$z '{print $x " " $y " " $z}'
+  }
+  
+  function vector {
+    atom1_idx=$1
+    atom2_idx=$2
+    mult=$3
+    atom1_coord=`coordinates $atom1_idx`
+    atom2_coord=`coordinates $atom2_idx`
+    #echo $atom1_coord $atom2_coord
+    echo $atom1_coord $atom2_coord | awk -v m=$mult '{print m*($4-$1)/2 " " m*($5-$2)/2 " " m*($6-$3)/2}'
+  }
+  
+  function add {
+    vec1="$1 $2 $3"
+    vec2="$4 $5 $6"
+    echo $vec1 $vec2 | awk '{print $4+$1 " " $5+$2 " " $6+$3}'
+  }
+  
+  function substract {
+    vec1="$1 $2 $3"
+    vec2="$4 $5 $6"
+    echo $vec1 $vec2 | awk '{print $1-$4 " " $2-$5 " " $3-$6}'
+  }
+  
+  
+  for i in `seq 1 $n`
+  do
+    i1=`echo $i+1 | bc`
+    for j in `seq $i1 $n`
+    do
+      extr=0.1
+      incr=0.005
+      for mult in `seq -$extr $incr -$incr` `seq $incr $incr $extr`
+      do
+        out=STRS/$(basename $file .xyz)-${i}-${j}_$mult.xyz
+        echo "$n" > $out
+        echo "modified" >> $out
+        vec=`vector $i $j $mult`
+        #echo $vec
+        for atom in `seq 1 $n`
+        do
+          atom_name=`echo $atom_names | awk -v a_idx=$atom '{print $a_idx}'`
+          xyz_coordinates=`coordinates $atom`
+          if [ $atom -eq $i ]; then xyz_coordinates=`add $xyz_coordinates $vec`; fi
+          if [ $atom -eq $j ]; then xyz_coordinates=`substract $xyz_coordinates $vec`; fi
+          echo $atom_name $xyz_coordinates | awk '{printf("%2s %.5f %.5f %.5f\n",$1,$2,$3,$4)}' >> $out
+        done
+      done
+    done
+  done
+done
+JKQC -folder STRS -collect xyz -out strs.pkl -noex
+#JKCS3_run -p G16 -nf FORCES -rf strs.pkl -m "# wb97xd 6-31++g** force" -par q64,q48,q28,q20 -cpu 1 -maxtasks 1500 -time 10:00
