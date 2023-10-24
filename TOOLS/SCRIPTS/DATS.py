@@ -57,7 +57,7 @@ def crest_constrain(file_path, C_index, H_index, O_index, force_constant=0.25):
         f.write("$end\n")
 
 
-def orca_input(file_path, coords, C_index, H_index, O_index, constrain, TS, method="wB97X-D3", basis_set="6-31+G(d,p)"):
+def orca_input(file_path, coords, TS,constrain, C_index=None, H_index=None, O_index=None, method="wB97X-D3", basis_set="6-31+G(d,p)"):
     with open(file_path, "w") as f:
         if TS:
             f.write(f"! {method} {basis_set} OptTS freq\n")
@@ -79,7 +79,7 @@ def orca_input(file_path, coords, C_index, H_index, O_index, constrain, TS, meth
         f.write("*")
 
 
-def gauss_input(file_path, coords, C_index, H_index, O_index, constrain, TS, method="wb97xd", basis_set="6-31+G(d,p)"):
+def gauss_input(file_path, coords, TS, constrain, C_index=None, H_index=None, O_index=None, method="wb97xd", basis_set="6-31+G(d,p)"):
     with open(file_path, "w") as f:
         f.write("%nprocshared=4\n")
         f.write("%mem=4GB\n")
@@ -87,6 +87,8 @@ def gauss_input(file_path, coords, C_index, H_index, O_index, constrain, TS, met
             f.write(f"# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant) freq\n\n") # freq may be redundant
         elif TS and constrain is False:
             f.write(f"# {method} {basis_set} opt=(calcfc,ts,noeigen) freq\n\n")
+        elif TS is False and constrain:
+            f.write(f"# {method} {basis_set} opt=modredundant\n\n")
         else:
             f.write(f"# {method} {basis_set} opt\n\n")
         f.write("Title\n\n")
@@ -110,7 +112,7 @@ def get_terminal_O(coords, distance=1.5):
                 O_index.append(i)
     return O_index[0]
 
-def molecule_controid(coords):
+def molecule_centroid(coords):
     coords = np.array(coords)
     
     x_coords = coords[:, 1].astype(float)
@@ -125,6 +127,20 @@ def molecule_controid(coords):
 
 
 #####################################MAIN FUNCTIONS####################################
+def prepare_file(file, method, basis_set, TS, XYZ=False, program=None, constrain=False):
+    coords = read_xyz_file(file)
+    file_name = file.split(".")[0] 
+
+    if program == "gauss" or program == None: 
+        gauss_input(file_path=f"{file_name}.com", coords=coords, constrain=constrain, TS=TS, method=method, basis_set=basis_set)
+    elif program == "orca":
+        orca_input(file_path=f"{file_name}.inp", coords=coords, constrain=constrain, TS=TS, method=method, basis_set=basis_set)
+    # elif program == "crest":
+    #     crest_constrain(file_path=f"{file}.inp")
+
+
+
+
 def H_abstraction(file, method, basis_set, TS, XYZ, program=None, distance=1.35, dist_OH=0.97, constrain=False):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
@@ -178,7 +194,7 @@ def H_abstraction(file, method, basis_set, TS, XYZ, program=None, distance=1.35,
                             O_index = len(new_coords)-1
                             OH_index = len(new_coords)
                             # Default program if nothing specified is Gaussian
-                            if program == None: 
+                            if program == "gauss" or program == None: 
                                 gauss_input(file_path=f"{base_file_name}_H{count}.com", coords=new_coords,C_index=C_index, H_index=H_index, O_index=O_index, constrain=constrain, TS=TS, method=method, basis_set=basis_set)
                             elif program == "orca":
                                 orca_input(file_path=f"{base_file_name}_H{count}.inp", coords=new_coords, C_index=C_index, H_index=H_index, O_index=O_index, constrain=constrain, TS=TS, method=method, basis_set=basis_set)
@@ -226,7 +242,7 @@ def OH_addition(file, distance=1.45, double_bond_distance=1.36, dist_OH=0.97):
                         count += 1
 
 
-def addition(file1, file2, distance = 1.55, double_bond_distance=1.36, elongation_factor=0.1):
+def addition(file1, file2, method, basis_set, TS, XYZ, program=None, constrain=False, distance = 1.55, double_bond_distance=1.36, elongation_factor=0.1):
     coords1 = read_xyz_file(file1)
     coords2 = read_xyz_file(file2)
     num_atoms1 = len(coords1)
@@ -291,14 +307,28 @@ def addition(file1, file2, distance = 1.55, double_bond_distance=1.36, elongatio
 
                         
 
-def rate_constant_gauss(file1):
-    with open (file1, "r") as file:
-        content = file.read()
-        E_ZPE = re.search(r"Sum of electronic and zero-point Energies=\s+([-+]?\d*\.\d+|\d+)", content) 
-    if E_ZPE:
-        float_value = float(E_ZPE.group(1))
-        print(float_value)
+##################################THERMOCHEMISTRY##############################
+def rate_constant(files, T=293.15, program=None):
+    k_b = 1.380649*10**-23 # J/K
+    h = 6.62607*10**-34 # J*s
+    R = 8.314 # J/mol*K 
 
+    files_energies = []
+    count = 0
+# Loop over inp file and determine whether reactant or TS. Append to respective Bolztmann sumation. Exit loop and start list comprehension to calculate the Bolztmann summation factor. Lastly a list comprehension for the rate constant looping over the E_TS - E_R in the exponential.
+    for file in files:
+        dic = {}
+        with open (file, "r") as f:
+            content = f.read()
+            ee_zpe = re.search(r"Sum of electronic and zero-point Energies=\s+([-+]?\d*\.\d+|\d+)", content) 
+
+        if ee_zpe:
+            dic[file] = count
+            dic["Sum of eletronic and ZPE"] = float(ee_zpe.group(1))
+            files_energies.append(dic)
+            count += 1
+        else: print(f"No energies in {file}. Check if calculation has converged")
+    print(files_energies)
 
 
 
@@ -312,21 +342,24 @@ def main():
     | |   ) || (   ) |   | |         ) |
     | (__/  )| )   ( |   | |   /\\____) |
     (______/ |/     \\|   )_(   \\_______)
-    '''
+'''
     
-    parser = argparse.ArgumentParser(description='TS Generation Tool',
+    parser = argparse.ArgumentParser(description='''    'Dynamic Approach for Transition State'
+Automated tool for generating input files, primarily 
+for transition state geometry optimization. 
+Calculation of tunneling corrected multi-configurational 
+rate constants can also be calculated from log files.''',
                                      prog="JKTS",
+                                     formatter_class=argparse.RawTextHelpFormatter,
                                      epilog='''
-
-                                     Examples of use:\n
-
-                                     JKTS file.xyz -H -orca -method R2SCAN-3C\n
-                                     JKTS reactant.log product.log -k\n 
-
+Examples of use:
+                JKTS file.xyz -H -orca -method R2SCAN-3C
+                JKTS *.xyz -basis def2-TZVPPD --no-xyz
+                JKTS reactant.log product.log -k
                                      ''')
-    
-    parser.add_argument('reactant1', metavar='file1.xyz', help='First reactant XYZ file (e.g., pinonaldehyde.xyz)')
-    parser.add_argument('reactant2', nargs='?', metavar='file2.xyz', help='Second reactant XYZ file (e.g., peroxy.xyz)')
+
+
+    parser.add_argument('input_files', metavar='file.xyz', nargs='+', help='XYZ files (e.g., pinonaldehyde.xyz or even *.xyz)')
 
     parser.add_argument('-CC', action='store_true', help='Perform addition to C=C')
     parser.add_argument('-H', action='store_true', help='Perform H abstraction')
@@ -338,23 +371,16 @@ def main():
     additional_options = parser.add_argument_group("Additional arguments")
 
     additional_options.add_argument('--no-TS',action='store_true', help='Input files for normal geometry relaxation are generated')
-    additional_options.add_argument('--no-XYZ',action='store_true', help='No XYZ files generated')
+    additional_options.add_argument('--no-xyz',action='store_true', help='No XYZ files generated')
     additional_options.add_argument('-k', action='store_true', help='Write me later')
     additional_options.add_argument('-method', dest='method_name', help='Specify the QC method [def = wB97X-D]')
-    additional_options.add_argument('-basis', dest='basis_name', help='Specify the basis set used [def = 6-31+G(d,p)]')
-
+    additional_options.add_argument('-basis', dest='basis_name', help='Specify the basis set used [def = 6-311+G(d,p)]')
 
     args = parser.parse_args()
-
-    if args.reactant1 and args.reactant2 == None:
-        file1 = args.reactant1
-    elif args.reactant1 and args.reactant2:
-        file1 = args.reactant1
-        file2 = args.reactant2
-    else:
-        parser.error('Please provide xyz file(s) of reactant(s)')
     
-    # Program specification
+
+    ################################ARGUMENT SPECIFICATIONS############################
+    # Program 
     if args.gauss:
         program = "gauss"
     elif args.orca:
@@ -363,19 +389,19 @@ def main():
         program = "crest"
     else: program = None # Just produce XYZ-file
 
-    # Method specification
+    # Method
     if args.method_name:
         method = args.method_name
     elif args.method_name not in args and program == "orca":
-        method = "WB97X-D3" 
-    else: method = "wb97xd"
+        method = "WB97X-D3" # ORCA 
+    else: method = "wb97xd" # Gaussian
 
-    # Basis set specification
+    # Basis set
     if args.basis_name:
         basis_set = args.basis_name
     else: basis_set = "6-31+G(d,p)"
 
-    # Constrain specification
+    # Constrain 
     if args.constrain:
         constrain = True
     else: constrain = False
@@ -384,23 +410,25 @@ def main():
         TS = False
     else: TS = True
 
-    if args.no_XYZ is True:
+    if args.no_xyz is True:
         XYZ = False
     else: XYZ = True
 
-    if args.reactant1 and args.reactant2 not in args:
-        if args.H:
-            H_abstraction(file1, constrain=constrain, TS=TS, program=program, method=method, basis_set=basis_set, XYZ=XYZ)
-        else:
-            parser.error("Please specify either -H, -CC or another xyz-file")
 
-    elif args.reactant1 and args.reactant2:
-        if args.CC:
-            addition(file1, file2, constrain=constrain, program=program, method=method, basis_set=basis_set)
+    for n, input_file in enumerate(args.input_files):
+        if len(args.input_files) == 2 and args.CC:
+            addition(args.input_files[n], args.input_files[n+1], constrain=constrain, program=program, method=method, TS=TS, XYZ=XYZ, basis_set=basis_set)
+            break
+        elif len(args.input_files) > 0 and args.H:
+            H_abstraction(input_file, constrain=constrain, TS=TS, program=program, method=method, basis_set=basis_set, XYZ=XYZ)
+        elif len(args.input_files) > 0 and args.H==False and args.CC==False and args.k==False:
+            prepare_file(input_file, constrain=constrain, TS=TS, program=program, method=method, basis_set=basis_set, XYZ=XYZ)
+        elif len(args.input_files) > 0 and args.k:
+            rate_constant(args.input_files)
+            break
         else:
-            parser.error("Please specify either -H, -CC or another xyz-file")
-
-            
+            parser.error("No input file given")
+   
 
 if __name__ == "__main__":
     main()
