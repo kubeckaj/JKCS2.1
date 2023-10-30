@@ -78,7 +78,7 @@ def help():
   print("    -help                            prints basic help", flush = True)
   print("    -help_nn                         prints help for neural network methods (e.g. PaiNN,SchNet)", flush = True)
   print("    -help_krr                        prints help for kernel ridge regression methods (e.g. FCHL)", flush = True)
-  print("    -help_adv                        print some advanced features")
+  print("    -help_adv                        print some advanced features (e.g., OPT, MD, seed, splits)")
   print("", flush = True)
   print("  OPTIONS:", flush = True)
   print("    -qml                             use KRR with FCHL19 [set by default]", flush = True)
@@ -117,10 +117,29 @@ def help_adv():
   print("    -similarity <int>   selects structures with similar FCHL (uses kernel)", flush = True)
   print("    -forcemonomers      adds (extra) monomers to sampleeach/selection", flush = True)
   print("    -printforces        print out all forces (this might be a lot of numbers)", flush = True)
+  print("   OPT:",flush = True)
   print("    -opt <STRS.pkl>     optimize structure based on model [NN]", flush = True)
   print("    -opt_maxs <float>   max step in Angstrom in optimization [def = 0.02]")
-  print("    -md <STRS.pkl>      run md starting from provided structure(s) based on model [NN]", flush = True)
-  print("    -md_temperature     temperature of the simulation [def = 300.0]", flush = True)
+  print("    -opt_steps <int>    maximal number of the optimization steps [def = 100]", flush = True)
+  print("    -opt_dump <int>                 dump structure every n-th step [def = 1]", flush = True)
+  print("   MD:",flush = True)
+  print("    -md <STRS.pkl>                 run md starting from provided structure(s) based on model [NN]", flush = True)
+  print("    -md_temperature <float>        temperature of the simulation [def = 300.0]", flush = True)
+  print("    -md_timestep <int>             integration time step [def = 0.1]", flush = True)
+  print("    -md_thermostatfriction <float> strength of the themrostat [def = 0.002]", flush = True)
+  print("    -md_steps <int>                number of steps [def = 2000]", flush = True)
+  print("    -md_dump <int>                 dump structure every n-th step [def = 1]", flush = True)
+  print("    -nn_cutoff <float>             cutoff function (Angstrom) [def = 5.0]", flush = True)
+  print("   SPKMD:",flush = True)
+  print("    -spkmd                         use spkmd script",flush = True)
+  print("    -langevin                      use langevin thermostat",flush = True)
+  print("    -rpmd <int>                    run ring polymer MD with n simulations",flush = True)
+  print("    -md <STRS.xyz>                 run md starting from provided structure(s) based on model [NN]", flush = True)
+  print("    -md_timestep <int>             integration time step [def = 0.1]", flush = True)
+  print("    -md_thermostatconstant <float> frequency of the themrostat [def = 100]", flush = True)
+  print("    -md_steps <int>                number of steps [def = 2000]", flush = True)
+  print("    -spkmd_extra <string>          extra arguments based on spkmd", flush = True)
+  print("    -nn_cutoff <float>             cutoff function (Angstrom) [def = 5.0]", flush = True)
   print("", flush = True)
   print("  EXTRA ADVANCED OPTIONS:", flush = True)
   print("    -so3net             switch to NN = neural network with SO3net (from SchNetPack)", flush = True)
@@ -222,8 +241,14 @@ Qtime=None
 parentdir="./"
 
 #OPT/MD
-md_temperature = 300.0
 opt_maxstep = 0.02
+opt_steps = 100
+opt_dump = 1
+md_temperature = 300.0
+md_timestep = 0.1
+md_thermostatfriction = 0.002
+md_steps = 2000
+md_dump = 1
 
 #OUTPUT FILES
 outfile="predicted.pkl"
@@ -304,7 +329,7 @@ for i in sys.argv[1:]:
       else:
         hours = 0
         minutes, seconds = map(int, time_str_split)
-      return timedelta(days=int(days), hours=hours, minutes=minutes, seconds=seconds) -  timedelta(days=0, hours=0, minutes=9, seconds=0)
+      return timedelta(days=int(days), hours=hours, minutes=minutes, seconds=seconds) -  timedelta(days=0, hours=0, minutes=20, seconds=0)
     if i is not None:
       Qtime=parse_duration(i)
       #print(f"JKML will stop training after: {Qtime} [valid for -nn]")
@@ -528,7 +553,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-nn_epochs":
     last = ""
-    nn_epochs = int(i)
+    nn_epochs = int(float(i))
     continue
   #EPOCHS
   if i == "-nn_tvv" or i == "-nn_train":
@@ -544,7 +569,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-nn_rbf":
     last = ""
-    nn_rbf = int(i)
+    nn_rbf = int(float(i))
     continue
   #NN CUTOFF
   if i == "-nn_cutoff" or i == "-krr_cutoff" or i == "-cutoff":
@@ -563,13 +588,61 @@ for i in sys.argv[1:]:
     last = ""
     opt_maxstep = float(i)
     continue
+  #OPT DUMP
+  if i == "-opt_dump":
+    last = "-opt_dump"
+    continue
+  if last == "-opt_dump":
+    last = ""
+    opt_dump = int(i)
+    continue
+  #OPT STEPS
+  if i == "-opt_steps":
+    last = "-opt_steps"
+    continue
+  if last == "-opt_steps":
+    last = ""
+    opt_steps = int(i)
+    continue
+  #MD TIME STEP
+  if i == "-md_timestep":
+    last = "-md_timestep"
+    continue
+  if last == "-md_timestep":
+    last = ""
+    md_timestep = float(i)
+    continue
+  #MD THERMOSTATFRICTION
+  if i == "-md_thermostatfriction":
+    last = "-md_thermostatfriction"
+    continue
+  if last == "-md_thermostatfriction":
+    last = ""
+    md_thermostatfriction = float(i)
+    continue
+  #MD STEPS
+  if i == "-md_steps":
+    last = "-md_steps"
+    continue
+  if last == "-md_steps":
+    last = ""
+    md_steps = int(i)
+    continue
+  #MD DUMP
+  if i == "-md_dump":
+    last = "-md_dump"
+    continue
+  if last == "-md_dump":
+    last = ""
+    md_dump = int(i)
+    continue
   #ATOM BASIS
   if i == "-nn_ab" or i == "-nn_atom_basis":
     last = "-nn_ab"
     continue
   if last == "-nn_ab":
     last = ""
-    nn_atom_basis = int(i)
+    nn_atom_basis = int(float(i))
     continue
   #NN INTERACTIONS
   if i == "-nn_int" or i == "-nn_interctions":
@@ -577,7 +650,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-nn_int":
     last = ""
-    nn_interactions = int(i)
+    nn_interactions = int(float(i))
     continue
   #NN INTERACTIONS
   if i == "-nw":
@@ -621,7 +694,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-nn_espatience":
     last = ""
-    Qearlystop = int(i)
+    Qearlystop = int(float(i))
     continue
   #LEARNING RATE
   if i == "-nn_lr":
@@ -637,7 +710,7 @@ for i in sys.argv[1:]:
     continue
   if last == "-bs":
     last = ""
-    Qbatch_size = int(i)
+    Qbatch_size = int(float(i)) #int float just in case user enters e.g. 16.0
     continue
   #MD temperature
   if i == "-md_temperature" or i == "-temperature":
@@ -1874,90 +1947,90 @@ for sampleeach_i in sampleeach_all:
           dyn = BFGS(atoms,maxstep=opt_maxstep)
           def printenergy(a=atoms):
             write("opt.xyz", a, append = True)
-          dyn.attach(printenergy, interval=1)
-          dyn.run(fmax=1e-6, steps=30)
+          dyn.attach(printenergy, interval=opt_dump)
+          dyn.run(fmax=1e-6, steps=100)
         else:
           #TODO recently added
-          from schnetpack.md import Simulator
-          md_system = System()
-          md_system.load_molecules(
-            atoms,
-            1,
-            position_unit_input="Angstrom"
-          )
-          md_system = atoms
-          from schnetpack.md.simulation_hooks import LangevinThermostat
-          # Set temperature and thermostat constant
-          bath_temperature = 300  # K
-          time_constant = 100  # fs
-          # Initialize the thermostat
-          langevin = LangevinThermostat(bath_temperature, time_constant)
-          simulation_hooks = [
-            langevin
-          ]
-          md_simulator = Simulator(
-            md_system,
-            md_integrator,
-            md_calculator
-          )
+          #from schnetpack.md import Simulator
+          #md_system = System()
+          #md_system.load_molecules(
+          #  atoms,
+          #  1,
+          #  position_unit_input="Angstrom"
+          #)
+          #md_system = atoms
+          #from schnetpack.md.simulation_hooks import LangevinThermostat
+          ## Set temperature and thermostat constant
+          #bath_temperature = 300  # K
+          #time_constant = 100  # fs
+          ## Initialize the thermostat
+          #langevin = LangevinThermostat(bath_temperature, time_constant)
+          #simulation_hooks = [
+          #  langevin
+          #]
+          #md_simulator = Simulator(
+          #  md_system,
+          #  md_integrator,
+          #  md_calculator
+          #)
 
-          # use and set single precision
-          md_simulator = md_simulator.to(torch.float32)
-          # move everything to target device
-          #md_simulator = md_simulator.to(md_device)
-          n_steps = 100
-          md_simulator.simulate(n_steps)
-          from schnetpack.md.simulation_hooks import callback_hooks
+          ## use and set single precision
+          #md_simulator = md_simulator.to(torch.float32)
+          ## move everything to target device
+          ##md_simulator = md_simulator.to(md_device)
+          #n_steps = 100
+          #md_simulator.simulate(n_steps)
+          #from schnetpack.md.simulation_hooks import callback_hooks
 
-          # Path to database
-          log_file = os.path.join(md_workdir, "simulation.hdf5")
-          
-          # Size of the buffer
-          buffer_size = 100
-          
-          # Set up data streams to store positions, momenta and the energy
-          data_streams = [
-              callback_hooks.MoleculeStream(store_velocities=True),
-              callback_hooks.PropertyStream(target_properties=[properties.energy]),
-          ]
-          
-          # Create the file logger
-          file_logger = callback_hooks.FileLogger(
-              log_file,
-              buffer_size,
-              data_streams=data_streams,
-              every_n_steps=1,  # logging frequency
-              precision=32,  # floating point precision used in hdf5 database
-          )
-          
-          # Update the simulation hooks
-          simulation_hooks.append(file_logger)
-          #Set the path to the checkpoint file
-          chk_file = os.path.join(md_workdir, 'simulation.chk')
-          
-          # Create the checkpoint logger
-          checkpoint = callback_hooks.Checkpoint(chk_file, every_n_steps=100)
-          
-          # Update the simulation hooks
-          simulation_hooks.append(checkpoint)
+          ## Path to database
+          #log_file = os.path.join(md_workdir, "simulation.hdf5")
+          #
+          ## Size of the buffer
+          #buffer_size = 100
+          #
+          ## Set up data streams to store positions, momenta and the energy
+          #data_streams = [
+          #    callback_hooks.MoleculeStream(store_velocities=True),
+          #    callback_hooks.PropertyStream(target_properties=[properties.energy]),
+          #]
+          #
+          ## Create the file logger
+          #file_logger = callback_hooks.FileLogger(
+          #    log_file,
+          #    buffer_size,
+          #    data_streams=data_streams,
+          #    every_n_steps=1,  # logging frequency
+          #    precision=32,  # floating point precision used in hdf5 database
+          #)
+          #
+          ## Update the simulation hooks
+          #simulation_hooks.append(file_logger)
+          ##Set the path to the checkpoint file
+          #chk_file = os.path.join(md_workdir, 'simulation.chk')
+          #
+          ## Create the checkpoint logger
+          #checkpoint = callback_hooks.Checkpoint(chk_file, every_n_steps=100)
+          #
+          ## Update the simulation hooks
+          #simulation_hooks.append(checkpoint)
           
       
-          #### Set the momenta corresponding to T
-          ###MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
-          #### We want to run MD with constant energy using the VelocityVerlet algorithm.
-          ####dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
-          ###dyn = Langevin(atoms, 0.1*units.fs, md_temperature, 0.002) #friction coeffitient 0.002
-          ###def printenergy(a=atoms):  # store a reference to atoms in the definition.
-          ###  """Function to print the potential, kinetic and total energy."""
-          ###  epot = a.get_potential_energy() / len(a)
-          ###  ekin = a.get_kinetic_energy() / len(a)
-          ###  write("traj.xyz", a, append = True)
-          ###  print('Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
-          ###        'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin))
-          #### Now run the dynamics
-          ###dyn.attach(printenergy, interval=1)
-          ###printenergy()
-          ###dyn.run(1000000)
+          # Set the momenta corresponding to T
+          MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
+          # We want to run MD with constant energy using the VelocityVerlet algorithm.
+          #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
+          dyn = Langevin(atoms, Qmd_timestep*units.fs, temperature_K=md_temperature, friction=md_thermostatfriction) #friction coeffitient 0.002
+          def printenergy(a=atoms):  # store a reference to atoms in the definition.
+            """Function to print the potential, kinetic and total energy."""
+            epot = a.get_potential_energy() / len(a)
+            ekin = a.get_kinetic_energy() / len(a)
+            write("traj.xyz", a, append = True)
+            print('Energy per atom: Epot = %.3f kcal/mol  Ekin = %.3f kcal/mol (T=%3.0f K)  '
+                  'Etot = %.3f kcal/mol' % (23.060541945329334*epot, 23.060541945329334*ekin, ekin / (1.5 * units.kB), 23.060541945329334*(epot + ekin)))
+          # Now run the dynamics
+          dyn.attach(printenergy, interval=md_dump)
+          printenergy()
+          dyn.run(md_steps)
  
       #  Y_predicted.append(atoms.get_potential_energy())
       #  if Qforces == 1:

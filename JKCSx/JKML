@@ -84,7 +84,15 @@ Qarraymax=0 #max jobs per array
 Qsplit=1 #HOW much is split the K, 1 = no split
 Qsplitargument=""
 
-Qmd=0
+Qspkmd=0
+Qlangevin=0
+Qrpmd=0
+md_cutoff=5.0
+md_thermostatconstant=100
+md_steps=2000
+md_timestep=0.1
+md_model="model.pkl"
+md_what=""
 
 last=""
 # loop over all arguments
@@ -125,13 +133,117 @@ do
     last=""
     continue
   fi
-  #MD 
-  if [ "$iter" == "-md" ]
+  #SPKMD 
+  if [ "$iter" == "-spkmd" ]
   then
-    Qmd=1
+    Qspkmf=1
     continue
   fi
-  #
+  #MD STRUCTURE
+  if [ "$iter" == "-md_structure" ] || [ "$iter" == "-md" ]
+  then
+    last="-md_structure"
+    continue
+  fi
+  if [ "$last" == "-md_structure" ]
+  then
+    md_structure="$iter"
+    last=""
+    continue
+  fi
+  #MD CUTOFF
+  if [ "$iter" == "-md_cutoff" ] || [ "$iter" == "-cutoff" ] || [ "$iter" == "-nn_cutoff" ] 
+  then
+    last="-md_cutoff"
+    continue
+  fi
+  if [ "$last" == "-md_cutoff" ]
+  then
+    md_cutoff="$iter"
+    last=""
+    continue
+  fi
+  #MD STEPS
+  if [ "$iter" == "-md_steps" ] 
+  then
+    last="-md_steps"
+    continue
+  fi
+  if [ "$last" == "-md_steps" ]
+  then
+    md_steps="$iter"
+    last=""
+    continue
+  fi
+  #MD TIME STEP
+  if [ "$iter" == "-md_timestep" ] 
+  then
+    last="-md_timestep"
+    continue
+  fi
+  if [ "$last" == "-md_timestep" ]
+  then
+    md_timestep="$iter"
+    last=""
+    continue
+  fi
+  #MD md_thermostatconstant
+  if [ "$iter" == "-md_thermostatconstant" ] 
+  then
+    last="-md_thermostatconstant"
+    continue
+  fi
+  if [ "$last" == "-md_thermostatconstant" ]
+  then
+    md_thermostatconstant="$iter"
+    last=""
+    continue
+  fi
+  #MD MODEL
+  if [ "$iter" == "-md_model" ]
+  then
+    last="-md_model"
+    continue
+  fi
+  if [ "$last" == "-md_model" ]
+  then
+    md_model="$iter"
+    last=""
+    continue
+  fi
+  #MD RPMD
+  if [ "$iter" == "-rpmd" ]
+  then
+    last="-rpmd"
+    continue
+  fi
+  if [ "$last" == "-rpmd" ]
+  then
+    rpmd="$iter"
+    Qspkmd=1
+    last=""
+    continue
+  fi
+  #MD Langevin
+  if [ "$iter" == "-langevin" ]
+  then
+    Qlangevin=1
+    Qspkmd=1
+    continue
+  fi
+  #SPKMD extra
+  if [ "$iter" == "-spkmd_extra" ]
+  then
+    last="-spkmd_extra"    
+    continue
+  fi
+  if [ "$last" == "-spkmd_extra" ]
+  then
+    md_what+="$iter"
+    Qspkmd=1
+    last=""
+    continue
+  fi
   arguments_help+=( "${arguments[i]}" )
 done
 arguments=("${arguments_help[@]}")
@@ -180,7 +292,8 @@ do
     if [ $Qarray -eq 1 ]
     then
       calc=`echo $calc+1 | bc`
-      if [ $Qmd -eq 1 ]
+      #TODO it will not work for more structures!!!!
+      if [ $Qspkmd -eq 1 ]
       then
         echo "source ~/.JKCSusersetup.txt$loc;program_PYTHON -V >/dev/null; spkmd simulation_dir=SIM system.molecule_file=0sa10w-05_05.xyz calculator.model_file=model.pkl calculator.neighbor_list.cutoff=5.0 device=cpu dynamics.n_steps=200 dynamics/integrator=rpmd system.n_replicas=4 $therest" > .run$calc
       else
@@ -202,23 +315,26 @@ do
         echo $job | awk '{print $4}'  >> .jobs.txt 
       fi
     else
-      if [ $Qmd -eq 1 ]
+      if [ $Qspkmd -eq 1 ]
       then
         md_folder="SIM"
-        md_structure="5sa5a-98_9.xyz"
-        md_model="model.pkl"
-        md_cutoff="5.0"
         md_device="cpu"
-        md_steps=200
-        md_what="dynamics/integrator=rpmd system.n_replicas=4"
-        md_what="+dynamics/thermostat=langevin"
+        if [ $Qrpmd -gt 0 ]
+        then
+          md_what+=" dynamics/integrator=rpmd system.n_replicas=4 "
+        fi
+        if [ $Qlangevin -gt 0 ]
+        then
+          md_what+=" +dynamics/thermostat=langevin dynamics.integrator.time_step=$md_timestep dynamics.thermostat.time_constant=$md_thermostatconstant "
+        fi
+        if [ -e "$md_folder/checkpoint.chk" ]
+        then
+          md_what+=" system.load_system_state=$md_folder/checkpoint.chk restart=$md_folder/checkpoint.chk "
+        fi
         #md_rpmd/md_langevin/md_verlet"
-        echo """from schnetpack.md.data import HDF5Loader
-        data = HDF5Loader(\"simulation.hdf5\")
-         
-        """
-        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff device=$md_device dynamics.n_steps=$md_steps $md_what $therest\"" >> output
-        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff device=$md_device dynamics.n_steps=$md_steps $md_what $therest\"" > .run
+        cp $toolspath/SCRIPTS/JKMD.py .
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what $therest\"" >> output
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; time spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what $therest\"" > .run
       else 
         echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit -dir $PWD -time $SCtime\"" >> output
         echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../TOOLS/SCRIPTS/JKML.py $therest $addsplit -dir $PWD -time $SCtime\"" > .run

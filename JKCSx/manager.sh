@@ -81,7 +81,7 @@ do
   then
     SBATCH_PREFIX+=" --dependency=afterok:$last_ID "
     #echo $SBATCH_PREFIX
-    submit_MANAGER sh $scriptpath/manager.sh $input $line_num "SUB"
+    submit_MANAGER sh $scriptpath/manager.sh $input $line_num "SUB" >> output 2>&1
     exit
   fi
   cd $original_directory
