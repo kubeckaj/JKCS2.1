@@ -51,7 +51,7 @@ function help {
              -array = does submit array instead of single jobs
              -arraymax X = max jobs per array
              -add maxiter <inter> = max number of iteration in ORCA
-             -xtbpath,-char,-mult
+             -xtbpath,-char,-mult, -mnof/-mf = max number of files per folder
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
@@ -145,6 +145,7 @@ addbase="" #add base or some extraline?
 Qjpt=1 #jobs per task
 Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
+Qnof=0 #max number of files per folder
 
 #for GREASY:
 cores_in_node=40
@@ -219,6 +220,18 @@ do
   if [ "$last" == "-arraymax" ]
   then
     Qarraymax="$iter" 
+    last=""
+    continue
+  fi
+  #Max number of files
+  if [ "$iter" == "-mf" ] || [ "$iter" == "-mnof" ]
+  then
+    last="-mf"
+    continue
+  fi
+  if [ "$last" == "-mf" ]
+  then
+    Qnof="$iter"
     last=""
     continue
   fi
@@ -544,6 +557,7 @@ else
   if [ $QfromfolderOLD -eq 1 ]
   then
     cd $folderOLD
+    if [ ! -e "${name}-LM" ]; then JKecho 0 "calc-LM missing in the old folder.[EXITING]"; exit; fi
     cd ${name}-LM/
     files=`ls *.xyz`
     files_help=""
@@ -555,12 +569,23 @@ else
   else
     files=`cat $filetake | awk '{print $1}'`
   fi
-  JKecho 2 "Files (${cfBLUE}`echo $files | wc -w`${cfDEF}) selected."
+  number_of_files=`echo $files | wc -w`
+  JKecho 2 "Files (${cfBLUE}$number_of_files${cfDEF}) selected."
+  enum=1;
+  count=0;
+  if [ $Qnof -gt 0 ] && [ $number_of_files -gt $Qnof ]; then ADDc="_v$enum"; else ADDc=""; fi
   cd $currentdirpath/$folderNEW
-  mkdir ${name}-LM
   JKarguments
   for file in $files
   do
+    count=`echo $count+1 | bc`
+    if [ $count -gt $Qnof ] && [ $Qnof -gt 0 ];
+    then
+      enum=`echo $enum+1 | bc`
+      ADDc="_v$enum"
+      count=1
+    fi
+    if [ $count -eq 1 ]; then mkdir ${name}-LM$ADDc; fi
     if [ $Qjpt_iter -eq 0 ]
     then
       commandTODO="source ~/.JKCSusersetup.txt$loc;"
@@ -569,7 +594,7 @@ else
     const_iter=`echo $const_iter+1 |bc`
     #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file"
     #printf "$command" > run${scriptfilecommand}.sh
-    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM/; program_$program $file${addbase};"
+    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM$ADDc/; program_$program $file${addbase};"
     if [ "$Qperform" == 2 ]
     then
       echo "$commandTODO" >> $currentdirpath/$folderNEW/commands_TODO.txt

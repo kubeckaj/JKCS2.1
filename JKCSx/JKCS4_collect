@@ -252,6 +252,9 @@ fi
 if [ -d ${method}/${name}-LM ]
 then
   subfolders="${method}/${name}-LM"
+elif [ -d ${method}/${name}-LM_v1 ]
+then
+  subfolders=`ls -d ${method}/${name}-LM_v*/ | xargs`
 else
   subfolders=`ls -d ${method}/${method}_*/calc-LM | xargs`
   if [ -z "$subfolders" ]
