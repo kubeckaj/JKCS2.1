@@ -1,113 +1,278 @@
 #!/bin/bash
-############################################################
-## JAKUB KUBECKA 2023                                     ##
-## Program for analysis of pulling str from ORCA .out     ##
-## To understand program run help:                        ##
-##        JKlog2xyz -help                                 ##
-############################################################
-## "Once I have seen shark in open sea, I ate snake, I    ##
-## jumped from bridge...nothing stops me!"  Jakub Kubecka ##
-############################################################
 
-### THIS IS HELP
-function help {
-  echo "THIS IS HELP:"
-  echo "Program for analysis of pulling str from orca .out"
-  echo """
-  JKout2xyz [OPTIONS] [FILES]
-  OPTIONS:
-   -help ........ print this help and exit
-   -f,-forces ... print forces as well [Hartree/Bohr]
-   -units ....... converts Bohrs to Angstroms
-  FILES:
-   orca output is expected
-  EXAMPLES:
-   JKout2xyz
-   JKlog2xyz test.out
-   JKlog2xyz test.out -forces
-  """
-  exit
+#This script is used for generate xyz files from geometry optimization output file of ORCA
+#If the output file is not a geometry opt. file, running this script will generate empty xyz files
+
+
+# Default values for flags
+e_flag=0
+g_flag=0
+c_flag=0
+low_flag=0
+final_flag=1
+
+
+# Function to display help information
+print_help() {
+    echo "======================================================"
+    echo "SCRIPT out2xyz by Haide Wu hwu@chem.au.dk VERSION 2.0"
+    echo "======================================================"
+    echo " This script is used for generate xyz files from geometry optimization output file of ORCA. Here are some instructions"
+    echo -e "\n The filename extention ('*.log', '*.out' or '*.out.0') of ORCA output file does not matter. You can also process '*.log' and '*.out'. However, if the files only differ from each other by extension, you would only get one '.xyz'."
+    echo -e "\n This script does not delete/modify the original '.out' files, yet it will overwrite the '.xyz' files which have the same basename. (e.g. processing '14sa14tma-1414_4_415.out' will write '14sa14tma-1414_4_415.xyz'). "
+    echo -e "\n If the processed file(s) is not a orca geometry optimization output, running this script will generate empty xyz files"
+    echo -e "\n By default, it outputs the geometry in the last finished iteration.\n"
+    echo "------------------------------------------------------"
+    echo -e "Usage: $0 [options] *.out \n------------------------------------------------------"
+    echo "Options:"
+    echo "  -e                                 Include Electronic Energy in the comment line of .xyz file"
+    echo "  -l                                 Get the structure which has lowest single point energy"
+    echo "  -c                                 Show whether the geometry has converged in comment line"
+    echo "  -f                                 [Default] Get the 'Final structure'"
+    echo "                                     For an unfinished optimization, this is usually not the lowest energy. And the lowest energy geometry might not be the converged geometry either."
+    echo "  -h, --help                         Display this help and exit"
+    echo ""
+    echo "Example: $0 -e -l -c *.log           This will give you *xyz files containing lowest energy geometries"
+    echo "$0 -ec *.out                         This will give you *xyz files containing the ending geometries"
+    echo "$0 -ec -f *.out                      It works the same as the one above"
+    echo "$0 *.out                             This outputs *xyz of last geometries without showing convergence status and energy in the comment line"
 }
 
-### PREPARING WHAT AND HOW
-what=""
-next=0
-Qforce=0
-Qunit="1.0"
-for i in $*
-do
-  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
-  firstletter=`echo $i | cut -c 1`
-  if [ $firstletter == "-" ] || [ $next -eq 1 ]
-  then
-    ### Qforce
-    if [ "$i" == "-f" ] || [ "$i" == "-forces" ] || [ "$i" == "-force" ]
-    then
-      Qforce=1
-      continue
-    fi
-    ### unit
-    if [ "$i" == "-units" ]
-    then
-      Qunit=`echo 1/0.529177 | bc -l`
-      continue
-    fi
-  else
-    what+="$i "
-  fi
-done
-### CHECK WHAT
-if [ -z "$what" ]; then what=`ls *.out`;fi
+# Incase of no arguments were provided
+if [ "$#" -eq 0 ]; then
+    print_help
+    exit 1
+fi
 
-### MAIN PROGRAM // in the case a lot of file might take a few seconds
-echo "JKout2xyz: Wait a moment ..."
-
-function convertORCA {
-  N=`grep "Number of atoms"    $file | tail -n 1 | awk '{print $5}'`
-  N1=`echo $N+1 | bc`
-  N2=`echo $N+2 | bc`
-  E=`grep "FINAL SINGLE POINT" $file | awk '{print $5}'`  
-  newfile=$(basename ${file%.*} ).xyz
-  if [ -e $newfile ]
-  then
-    test=`head -n 1 $newfile`
-    if [ $test -ne $N ]
-    then
-      echo "There is some mismatch with number of atoms [EXITING]"
-      exit
-    fi
-    test=`cat $newfile | wc -l`
-    if [ $test -ne $N2 ]
-    then
-      echo "There is some mismatch with number of atoms and lines [EXITING]"
-      exit
-    fi
-    tail -n $N $newfile | awk '{print $1 " " $2 " " $3 " " $4}' | column -t > helpingfile1
-    #TODO comment out
-    mv $newfile BCP${newfile}old
-  else
-    echo "For file $file, no xyz exist, I will just take the input coordinates."
-    grep -C $N1 "CARTESIAN COORDINATES (ANGSTROEM)" $file | tail -n $N | awk '{printf("%s %.8f %.8f %.8f\n"),$1,$2,$3,$4}' | column -t > helpingfile1
-  fi
-  echo " $N" > $newfile
-  echo "energy = $E" >> $newfile
-  if [ $Qforce -ne 1 ]
-  then
-    cat helpingfile1 >> $newfile
-  else
-    grep -C $N2 "CARTESIAN GRADIENT"  $file | tail -n $N | awk -v unit=$Qunit '{printf("%.8f %.8f %.8f\n"),$4*unit,$5*unit,$6*unit}' > helpingfile2
-    paste helpingfile1 helpingfile2 | column -t >> $newfile
-  fi     
-}
-
-for file in $what
-do
-  convertORCA
+# Parse command-line arguments
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -*)  #Match any argument starting with "-"
+            # iterate over the combined options, starting from the second character
+            for (( i=1; i<${#1}; i++ )); do
+                opt="${1:$i:1}"  # extract the single option character
+                case "$opt" in
+                    e)
+                        e_flag=1
+                        ;;
+                    #g)
+                        #g_flag=1
+                        #;;
+                    c)
+                        c_flag=1
+                        ;;
+                    f)
+                        final_flag=1
+                        ;;
+                    l)
+                        low_flag=1
+                        ;;
+                    h)  # considering 'h' as another form of asking for help
+                        print_help
+                        exit 0
+                        ;;
+                    *)  # unrecognized option
+                        echo "Error: Invalid option '-$opt'"
+                        print_help
+                        exit 1
+                        ;;
+                esac
+            done
+            ;;
+        --help)
+            print_help
+            exit 0
+            ;;
+        *)
+            # The rest argument should specify the input file(s).
+            input_files+=("$1")
+            ;;
+    esac
+    shift
 done
 
-if [ -e helpingfile1 ]; then rm helpingfile1; fi
-if [ -e helpingfile2 ]; then rm helpingfile2; fi
-echo "JKout2xyz: Done :-D"
+
+for i in "${input_files[@]}";
+
+#Define file name first
+do molecule=${i%%.*};
+xyz_file=${molecule}.xyz;
+
+#Label desired info from log file
+start_marker="CARTESIAN COORDINATES (ANGSTROEM)"
+end_marker="CARTESIAN COORDINATES (A.U.)"
+energy_marker="FINAL SINGLE POINT"
+
+
+#Find the markers and save it as a temp file
+grep -n -e "$start_marker" -e "$end_marker" -e "$energy_marker"  "$i" > geo_e_of_${molecule}.temp
+
+#set convergence detection
+if grep -q "THE OPTIMIZATION HAS CONVERGED" "$i" && grep -q "TOTAL RUN TIME" "$i"; then  #This is the condition to define whether a job has finished or not,you can add other condition like the following comment.
+#grep -q "THE OPTIMIZATION HAS CONVERGED" "$i" && 
+    converged="TRUE"
+continue
+else
+    converged="FALSE"
+fi
+
+#Find the lowst energy line and  corresponding geometry lines. 
+Lowest_energy_line=$(grep -n "$energy_marker" "$i" |sort -n -k5| head -1| cut -d ":" -f 1)
+geo_type="FINAL"
+
+#By default it takes the last energy and geometry, unless -l is specified
+energy_line=$(grep -B 2 "$energy_marker" geo_e_of_${molecule}.temp | tail -1 | cut -d ":" -f 1)
+if [ $low_flag -eq 1 ]; then
+energy_line=$Lowest_energy_line
+geo_type="LOWEST"
+fi
+
+#Get the energy
+spe_energy=$(grep "$energy_line" geo_e_of_${molecule}.temp | awk '{print $5}')
+
+#Text info to print
+text_info="GEO_TYPE=${geo_type}"
+
+if [ $c_flag -eq 1 ]; then
+text_info="${text_info} Converged=${converged}"
+fi
+
+if [ $e_flag -eq 1 ]; then
+text_info="${text_info}  Energy=${spe_energy}"
+fi
 
 
 
+#Find the start and end line for collecting geometry
+start_line=$(grep -B 2 "$energy_line" geo_e_of_${molecule}.temp | head -1 | cut -d ":" -f 1)
+end_line=$(grep -B 1 "$energy_line" geo_e_of_${molecule}.temp | head -1 | cut -d ":" -f 1)
+
+#echo "Starts on line${start_line} Ends on line${end_line}"
+sed -n "${start_line},${end_line}p" "$i" > "$xyz_file"
+
+
+#remove temp files
+rm geo_e_of_${molecule}.temp
+
+#sed -n '/FINAL ENERGY EVAL/,/CARTESIAN COORDINATES (A.U.)/p' $i > ${xyz_file};
+sed -i "1,2d" ${xyz_file};
+
+# Delete redundant lines
+sed -i s@"----------------------------"@""@ ${xyz_file};
+sed -i s@"CARTESIAN COORDINATES (A.U.)"@""@ ${xyz_file};
+
+# Delete empty lines
+sed -i "/^$/d" ${xyz_file};
+sed -i "/^[[:space:]]*$/d" ${xyz_file};
+
+# Add atom number and a necessary empty line
+atom_num=`wc -l < ${xyz_file}`;
+sed -i "1 i ${atom_num}\n${text_info}" ${xyz_file};
+
+
+done
+
+
+#JK: THIS IS MY OLD SCRIPT (something might be useful there):
+#### THIS IS HELP
+#function help {
+#  echo "THIS IS HELP:"
+#  echo "Program for analysis of pulling str from orca .out"
+#  echo """
+#  JKout2xyz [OPTIONS] [FILES]
+#  OPTIONS:
+#   -help ........ print this help and exit
+#   -f,-forces ... print forces as well [Hartree/Bohr]
+#   -units ....... converts Bohrs to Angstroms
+#  FILES:
+#   orca output is expected
+#  EXAMPLES:
+#   JKout2xyz
+#   JKlog2xyz test.out
+#   JKlog2xyz test.out -forces
+#  """
+#  exit
+#}
+#
+#### PREPARING WHAT AND HOW
+#what=""
+#next=0
+#Qforce=0
+#Qunit="1.0"
+#for i in $*
+#do
+#  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+#  firstletter=`echo $i | cut -c 1`
+#  if [ $firstletter == "-" ] || [ $next -eq 1 ]
+#  then
+#    ### Qforce
+#    if [ "$i" == "-f" ] || [ "$i" == "-forces" ] || [ "$i" == "-force" ]
+#    then
+#      Qforce=1
+#      continue
+#    fi
+#    ### unit
+#    if [ "$i" == "-units" ]
+#    then
+#      Qunit=`echo 1/0.529177 | bc -l`
+#      continue
+#    fi
+#  else
+#    what+="$i "
+#  fi
+#done
+#### CHECK WHAT
+#if [ -z "$what" ]; then what=`ls *.out`;fi
+#
+#### MAIN PROGRAM // in the case a lot of file might take a few seconds
+#echo "JKout2xyz: Wait a moment ..."
+#
+#function convertORCA {
+#  N=`grep "Number of atoms"    $file | tail -n 1 | awk '{print $5}'`
+#  N1=`echo $N+1 | bc`
+#  N2=`echo $N+2 | bc`
+#  E=`grep "FINAL SINGLE POINT" $file | awk '{print $5}'`  
+#  newfile=$(basename ${file%.*} ).xyz
+#  if [ -e $newfile ]
+#  then
+#    test=`head -n 1 $newfile`
+#    if [ $test -ne $N ]
+#    then
+#      echo "There is some mismatch with number of atoms [EXITING]"
+#      exit
+#    fi
+#    test=`cat $newfile | wc -l`
+#    if [ $test -ne $N2 ]
+#    then
+#      echo "There is some mismatch with number of atoms and lines [EXITING]"
+#      exit
+#    fi
+#    tail -n $N $newfile | awk '{print $1 " " $2 " " $3 " " $4}' | column -t > helpingfile1
+#    #TODO comment out
+#    mv $newfile BCP${newfile}old
+#  else
+#    echo "For file $file, no xyz exist, I will just take the input coordinates."
+#    grep -C $N1 "CARTESIAN COORDINATES (ANGSTROEM)" $file | tail -n $N | awk '{printf("%s %.8f %.8f %.8f\n"),$1,$2,$3,$4}' | column -t > helpingfile1
+#  fi
+#  echo " $N" > $newfile
+#  echo "energy = $E" >> $newfile
+#  if [ $Qforce -ne 1 ]
+#  then
+#    cat helpingfile1 >> $newfile
+#  else
+#    grep -C $N2 "CARTESIAN GRADIENT"  $file | tail -n $N | awk -v unit=$Qunit '{printf("%.8f %.8f %.8f\n"),$4*unit,$5*unit,$6*unit}' > helpingfile2
+#    paste helpingfile1 helpingfile2 | column -t >> $newfile
+#  fi     
+#}
+#
+#for file in $what
+#do
+#  convertORCA
+#done
+#
+#if [ -e helpingfile1 ]; then rm helpingfile1; fi
+#if [ -e helpingfile2 ]; then rm helpingfile2; fi
+#echo "JKout2xyz: Done :-D"
+#
+#
+#

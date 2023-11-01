@@ -52,6 +52,7 @@ function help {
              -arraymax X = max jobs per array
              -add maxiter <inter> = max number of iteration in ORCA
              -xtbpath,-char,-mult, -mnof/-mf = max number of files per folder
+             -JKCS4/-collect
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
@@ -146,6 +147,8 @@ Qjpt=1 #jobs per task
 Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 Qnof=0 #max number of files per folder
+QJKCS4=0
+JKCS4=""
 
 #for GREASY:
 cores_in_node=40
@@ -358,6 +361,17 @@ do
   then
     MULTIPLICITY=$iter
     last=""
+    continue
+  fi
+  #JKCS4
+  if [ "$iter" == "-collect" ] || [ "$iter" == "-JKCS4" ]
+  then
+    QJKCS4=1
+    continue
+  fi
+  if [ "$iter" == "-onlycollect" ] || [ "$iter" == "-oc" ] || [ "$iter" == "-JKQCrecollect" ] || [ "$iter" == "-cleanfull" ] || [ "$iter" == "-JKQCcleanfull" ] || [ "$iter" == "-clean" ] || [ "$iter" == "-JKQCclean" ] || [ "$iter" == "-orca" ]
+  then
+    JKCS4+=" $iter"
     continue
   fi
   ###
@@ -721,6 +735,7 @@ if [ $SCtasks -eq 1 ]
 then
   Qarray=0
 fi
+commands_TODO_lines=`cat commands_TODO.txt | wc -l`
 for i in `seq $SCtasks -1 1`
 do
   if [ "$Qperform" == 2 ]
@@ -744,9 +759,8 @@ do
           arraymax=""
         fi
         SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
-        #TODO
-        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> output
-        echo "$SC_command 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" > .run
+        echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" >> output
+        echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" > .run
         #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
@@ -755,9 +769,8 @@ do
         echo $job | awk '{print $4}'  >> .jobs.txt
       fi
     else
-      #TODO
-      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" >> output
-      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" > .run
+      echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" >> output
+      echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" > .run
       #echo  "$SC_command sh .run$i" >> output
       #echo  "$SC_command sh .run$i" > .run
       #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
@@ -779,6 +792,19 @@ then
 fi
 
 ###################################################################
+if [ $QJKCS4 -eq 1 ]
+then
+  cd $currentdirpath
+  job_id=`echo $job | awk '{print $4}'`
+  SC_command_dep=`echo $SC_command | sed "s/sbatch/sbatch -dependency=afterok:$job_id/"`
+  if [ "$METHODsupercomputer" == "loc" ]
+  then
+    JKCS4_collect $folderNEW -loc $JKCS4
+  else
+    echo yes | JKCS4_collect $folderNEW -dependency $job_id -maxtasks $enum $JKCS4
+  fi
+fi
+
 cd $currentdirpath
 JKecho 1 "Performing calculations/Calculations submitted or calculation done (-loc)."
 exit

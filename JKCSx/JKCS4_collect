@@ -126,6 +126,7 @@ Qrecollect=1
 Qonlycollect=0 #after JKQC no recollecting will be done
 Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
+ADDdependency=""
 
 last=""
 # loop over all arguments
@@ -205,6 +206,17 @@ do
     if [ "$iter" == "-onlycollect" ] || [ "$iter" == "-oc" ]
     then
       Qonlycollect=1
+      continue
+    fi
+    # Dependency
+    if [ "$iter" == "-dependency" ]
+    then
+      last="-dependency"
+      continue
+    fi
+    if [ "$last" == "-dependency" ]
+    then
+      ADDdependency=" --dependency=afterany:$iter "
       continue
     fi
     arguments_help+=( "${arguments[i]}" )
@@ -443,7 +455,7 @@ do
     fi
     if [ $Qclean -gt 0 ]
     then
-      echo "rm -r ../.run* *.xyz *.log *.out *.cmd *.com TMP 2>/dev/null" >> run${scriptfilecommand}.sh   
+      echo "rm -r ../.run *.inp *.sh *.xyz *.log *.out *.cmd *.com TMP 2>/dev/null" >> run${scriptfilecommand}.sh   
     fi
   fi
   commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
@@ -494,20 +506,26 @@ JKecho 2 " + Sending to CONTROL collection."
 #
 if [ $Qpickle -eq 0 ]
 then
-  commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; break; else sleep 1; fi; done "
+  #commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then $toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; break; else sleep 1; fi; done "
+  commandTODO="$toolspath/SCRIPTS/JKcollect CONTROL $savefile $resultfile $movie $Qs $Qu; "
 else
-  if [ $Qclean -eq 2 ]
-  then
-    removingcommand="rm -r $method;"
-  else
-    removingcommand=""
-  fi
-  commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; "
+  #if [ $Qclean -eq 2 ]
+  #then
+  #  removingcommand="rm -r $method;"
+  #else
+  #  removingcommand=""
+  #fi
+  #commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; "
+  commandTODO="source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; "
   if [ $Qonlycollect -eq 0 ]
   then
-    commandTODO+="$toolspath/SCRIPTS/JKcollect CONTROL $savepklfile $resultfile $movie $Qs $Qu; $removingcommand "
+    commandTODO+="$toolspath/SCRIPTS/JKcollect CONTROL $savepklfile $resultfile $movie $Qs $Qu; "
   fi
-  commandTODO+="break; else sleep 1; fi; done"
+  #commandTODO+="break; else sleep 1; fi; done"
+fi
+if [ $Qclean -eq 2 ]
+then
+  commandTODO+="rm -r $method;"
 fi
 if [ "$Qperform" == 2 ]
 then
@@ -572,7 +590,7 @@ do
         else
           arraymax=""
         fi
-        SC_command_array=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
+        SC_command_array=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax $ADDdependency/"`
         JKecho 2 "$SC_command"
         #TODO
         echo "$SC_command_array 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> output
@@ -589,8 +607,9 @@ do
       fi
     else
       #TODO
-      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" >> output
-      echo "$SC_command 'tail -n $i commands_TODO.txt | head -n 1 | sh'" > .run
+      SC_command_dep=`echo $SC_command | sed "s/sbatch/sbatch $ADDdependency/"`
+      echo "$SC_command_dep 'tail -n $i commands_TODO.txt | head -n 1 | sh'" >> output
+      echo "$SC_command_dep 'tail -n $i commands_TODO.txt | head -n 1 | sh'" > .run
       #echo  "$SC_command sh .run$i" >> output
       #echo  "$SC_command sh .run$i" > .run
       #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
@@ -609,7 +628,14 @@ then
   JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
   echo  "$SC_command '$commandTODO'" >> output
   JKecho 3 "Submitting CONTROL command"
-  echo  "$SC_command '$commandTODO'" > .runC
+  if [ $SCtasks -eq 0 ]
+  then
+    SC_command_dep=$SC_command
+  else
+    job_id=`echo $job | awk '{print $4}'`
+    SC_command_dep=`echo $SC_command | sed "s/sbatch/sbatch --dependency=afterany:$job_id/"`
+  fi
+  echo  "$SC_command_dep '$commandTODO'" > .runC
   job=$(/bin/bash .runC)
   #job=$(eval $SC_command "$commandTODO")
   if [ ! -z "$job" ];then echo $job; fi
