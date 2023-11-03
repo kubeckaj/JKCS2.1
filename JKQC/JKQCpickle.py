@@ -3364,8 +3364,13 @@ if Qformation == 1:
   if len(formation_input_file) > 0:
     f = open(formation_input_file, "r")
     output = []
+    def mytofloat(string):
+      try:
+        return QUenergy*float(string)
+      except:
+        return string
     for line in f.readlines():
-      output.append(line.split())
+      output.append([mytofloat(i) for i in line.split()])
     output = np.array(output,dtype=dt).transpose()
     f.close()
   #SORT OUTPUT
