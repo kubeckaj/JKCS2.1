@@ -1,13 +1,13 @@
 #!/bin/bash
-if [ "$USER" == "yk0721" ]
-then
-  test=`grep -c "^alias cat" ~/.bashrc`
-  if [ $test -eq 0 ]
-  then
-    echo "alias cat='Yosef sucks'" >> ~/.bashrc_profile
-    echo "alias cat='Yosef sucks'" >> ~/.bashrc
-  fi
-fi
+#if [ "$USER" == "yk0721" ]
+#then
+#  test=`grep -c "^alias cat" ~/.bashrc`
+#  if [ $test -eq 0 ]
+#  then
+#    echo "alias cat='Yosef sucks'" >> ~/.bashrc_profile
+#    echo "alias cat='Yosef sucks'" >> ~/.bashrc
+#  fi
+#fi
 source ~/.JKCSusersetup.txt
 if [ -z "$*" ]
 then 
