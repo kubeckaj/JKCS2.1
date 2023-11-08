@@ -2,10 +2,13 @@
 '''Dynamic Approach for Transition State'''
 ###############################LIBRARIES#####################################
 import numpy as np
+import pandas as pd
 import argparse
 import os
 import shutil
 import re
+# import pickle
+# from ase.io import read
 
 ###############################CONSTANS#####################################
 T = 298.15
@@ -13,6 +16,8 @@ h = 6.62607015e-34
 k_b = 1.380649e-23
 c = 29979245800
 R = 8.314 # J/mol*K 
+
+maxtasks = 100
 
 ###########################VECTOR MANIPULATION################################
 def calculate_vector(coord1, coord2):
@@ -53,7 +58,7 @@ def write_xyz_file(file_path, updated_coords):
             f.write(f'{atom[0]} {atom[1]:.6f} {atom[2]:.6f} {atom[3]:.6f}\n')
 
 
-def mkdir(file, index: list, crest, program, method, basis_set):
+def mkdir(file, index: list, crest):
     cwd = os.getcwd() # Current working directory
     dir_name = os.path.splitext(file)[0]
     new_dir = os.path.join(cwd, dir_name)
@@ -67,24 +72,68 @@ def mkdir(file, index: list, crest, program, method, basis_set):
         if crest:
             crest_constrain(new_dir, *index)
 
-    with open(new_dir + "/.inputfile", "w") as f:
-        f.write(new_dir + "/" + file)
+    TS_commands(file, new_dir)
+    with open(new_dir + "/.constrain", "w") as c:
+        c.write(f"{index[0]}, {index[1]}, {index[2]}") # C, H, O
+        
 
-    with open(new_dir + "/commands.txt", "w") as f:
-        if program == "G16":
-            with open(new_dir + "/" + file.replace(".xyz", ".com")) as f_:
-                m = next((l for l in f_ if "#" in l), None).strip()
-        elif program == "orca":
-            with open(new_dir + "/" + file.replace(".xyz", ".inp")) as f_:
-                m = next((l for l in f_ if "!" in l), None).strip()
-        else:
-            print("No program specified")
 
-        f.write(f'JKCS3_run -p {program} -rf .inputfile -nf placeholder -m "{m}"  -mult 2 -cpu {args.cpu} -mem {args.mem} -par {args.par}')
+def TS_commands(file, dir):
+    with open(dir + "/commands.txt", "w") as f:
+        file_name = file.rsplit('.', 1)[0]
+        f.write(f'sbatch -J {file_name} -p {args.par} --mem={args.mem} -c {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_CREST {dir}/{file_name}.xyz -gfn2 -ewin 2 -noreftopo -cinp {dir}/constrain.inp -uhf 1"\n')
+        f.write(f'rm {file}\n')
+        f.write(f'rm {file_name}.xyz\n')
+        f.write(f'JKTS collection{file_name}.pkl -{program} -method B3LYP -basis "6-31+g(d,p)" --no-TS -constrain --no-xyz\n')
+        f.write(f'ls "$(pwd)"/*.com > array.txt\n')
+        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -maxtasks {maxtasks} -mult 2 -rf array.txt -nf preopt_DFT\n')
+        f.write(f'cp preopt_DFT/calc-LM/*.log .\n')
+        f.write(f'rm *.com\n')
+        f.write(f'rm *.xyz\n')
+        f.write(f'JKlog2xyz\n')
+        f.write(f'JKTS *.xyz -{program} -method {args.method} -basis "{args.basis}" -par {args.par}\n')
+        f.write(f'ls "$(pwd)"/*.com > array.txt\n')
+        f.write(f'rm *.xyz\n')
+        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -maxtasks {maxtasks} -mult 2 -rf array.txt -nf DFT_TS\n')
+        f.write(f'cp DFT_TS/calc-LM/*.log .\n')
+        f.write(f'rm *.com\n')
+        f.write(f'JKlog2xyz\n')
+        f.write(f'ls "$(pwd)"/*.xyz > array.txt\n')
+        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -maxtasks {maxtasks} -mult 2 -rf array.txt -nf DLPNO_SP -m "aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK"\n')
 
- 
+
+def reactant_folder(file):
+    cwd = os.getcwd()
+    reactant_dir = os.path.join(cwd, "reactants")
+    if os.path.exists(reactant_dir):
+        shutil.copy2(cwd + "/" + file, reactant_dir + "/" + file)
+    else:
+        os.mkdir(reactant_dir)
+        shutil.copy2(file, reactant_dir)
+    with open(reactant_dir + "/commands.txt", "w") as f:
+        f.write(f'sbatch -J {file} -p {args.par} --mem={args.mem} -c {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_CREST {reactant_dir}/{file} -gfn2 -ewin 2 -noreftopo"\n')
+        f.write(f'rm {file}\n')
+        f.write(f'JKTS collection{file.split(".")[0]}.pkl -{program} -method {args.method} -basis "{args.basis}" --no-xyz\n')
+        f.write(f'ls "$(pwd)"/*.com > array.txt\n')
+        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -maxtasks {maxtasks}  -rf array.txt -nf DFT_TS\n')
+
+def pkl_to_xyz(file):
+    all_conformers = []
+    with open(file, 'rb') as f:
+        df = pd.read_pickle(f) 
+        for xyz in df[('xyz', 'structure')]:
+            coordinates_list = []
+            np.set_printoptions(precision=6, suppress=True)
+            coords = xyz.get_positions()
+            atom = xyz.get_chemical_symbols()
+            for atom, coord in zip(atom, coords):
+                coordinates = [atom, coord[0], coord[1], coord[2]]
+                coordinates_list.append(coordinates)
+            all_conformers.append(coordinates_list)
+    return all_conformers
+
 #########################################GENERATE INPUT FILES#############################
-def crest_constrain(file_path, C_index, H_index, O_index, force_constant=0.25):
+def crest_constrain(file_path, C_index, H_index, O_index, force_constant=0.95):
     '''Force constant tells how tight to constrain the atoms i.e. the magnitude of the oscillation between the constrained atoms'''
     with open (file_path + "/constrain.inp","w") as f:
         f.write("$constrain\n")
@@ -96,7 +145,12 @@ def crest_constrain(file_path, C_index, H_index, O_index, force_constant=0.25):
 
 
 def QC_input(file_path, coords, TS, constrain, program, method, basis_set, C_index=None, H_index=None, O_index=None):
-    if program == "orca":
+    if constrain and C_index == None and H_index == None and O_index == None:
+        with open(os.getcwd() + "/.constrain", "r") as f:
+            content = f.read()
+            C_index, H_index, O_index = [int(num) for num in content.split(",")]
+            
+    if program == "ORCA":
         file_path = file_path + ".inp"
         with open(file_path, "w") as f:
             if TS:
@@ -139,6 +193,8 @@ def QC_input(file_path, coords, TS, constrain, program, method, basis_set, C_ind
                 f.write(f"B {C_index} {H_index} F\n")
                 f.write(f"B {H_index} {O_index} F\n")
                 f.write("\n")
+    else:
+        print("QC_input was called but no program was specified")
 
 ##############################ADDITIONAL FUNCTIONS##################################
 def get_terminal_O(coords, distance=1.5):
@@ -150,9 +206,15 @@ def get_terminal_O(coords, distance=1.5):
                 O_index.append(i)
     return O_index[0]
 
+def number_lines(file):
+    line_count = 0
+    with open(file, "r") as file:
+        for line in file:
+            line_count += 1
+    return line_count
 
 #####################################MAIN FUNCTIONS####################################
-def H_abstraction(file, method, basis_set, TS, no_xyz, crest,program=None, distance=1.35, dist_OH=0.97, constrain=False):
+def H_abstraction(file, method, basis_set, TS, no_xyz, crest, program=None, distance=1.35, dist_OH=0.97, constrain=False):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
     count = 1
@@ -200,55 +262,54 @@ def H_abstraction(file, method, basis_set, TS, no_xyz, crest,program=None, dista
                         # OH_index = len(new_coords)
                         list_index = [j+1, i+1, len(new_coords)-1] # ['C', 'H', 'O']
 
-
                         base_file_name = os.path.splitext(os.path.basename(file))[0]
                         if no_xyz is False:
                             write_xyz_file(f"{base_file_name}_H{count}.xyz", new_coords)
-                            mkdir(f"{base_file_name}_H{count}.xyz", list_index, crest=crest, program=program, method=method, basis_set=basis_set)
+                            mkdir(f"{base_file_name}_H{count}.xyz", list_index, crest=crest)
 
                         if program != None:
                             QC_input(file_path=f"{base_file_name}_H{count}", coords=new_coords,C_index=C_index, H_index=H_index, O_index=O_index, constrain=constrain, TS=TS, method=method, basis_set=basis_set, program=program)
-                            if program == "orca":
-                                mkdir(f"{base_file_name}_H{count}.inp", list_index, crest=crest, program=program, method=method, basis_set=basis_set)
+                            if program == "ORCA":
+                                mkdir(f"{base_file_name}_H{count}.inp", list_index, crest=crest)
                             elif program == "G16": 
-                                mkdir(f"{base_file_name}_H{count}.com", list_index, crest=crest, program=program, method=method, basis_set=basis_set)
+                                mkdir(f"{base_file_name}_H{count}.com", list_index, crest=crest)
                             else:
                                 print("QC input files not generated since no program specified")
 
                         count += 1
 
 
-def OH_addition(file, distance=1.45, double_bond_distance=1.36, dist_OH=0.97):
+def OH_addition(file, distance=1.45, double_bond_distance=1.36, dist_oh=0.97):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
     count = 1
 
     for i in range(num_atoms):
-        if coords[i][0] == "C":
+        if coords[i][0] == "c":
             for j in range(num_atoms):
-                if coords[j][0] == "C" and i != j:
-                    vector_CC = np.array(coords[i][1:]) - np.array(coords[j][1:])
-                    dist_CC = vector_length(vector_CC)
-                    if dist_CC <= double_bond_distance:
-                        norm_vector_CC = normalize_vector(vector_CC)
+                if coords[j][0] == "c" and i != j:
+                    vector_cc = np.array(coords[i][1:]) - np.array(coords[j][1:])
+                    dist_cc = vector_length(vector_cc)
+                    if dist_cc <= double_bond_distance:
+                        norm_vector_cc = normalize_vector(vector_cc)
                         new_coords = read_xyz_file(file)
-                        # NOTE: update the way perpendicular axis is calculated. Copy from addition()
-                        perpendicular_axis = np.cross(norm_vector_CC, [0,1,0])
+                        # note: update the way perpendicular axis is calculated. copy from addition()
+                        perpendicular_axis = np.cross(norm_vector_cc, [0,1,0])
                         perpendicular_axis = normalize_vector(perpendicular_axis)
-                        # Shift carbon
-                        new_coords[i][1:] = np.array(new_coords[i][1:]) + norm_vector_CC * 0.1
-                        # Update oxygen in OH coordiantes
+                        # shift carbon
+                        new_coords[i][1:] = np.array(new_coords[i][1:]) + norm_vector_cc * 0.1
+                        # update oxygen in oh coordiantes
                         oxygen_coords = np.array(new_coords[j][1:]) + perpendicular_axis * distance
 
-                        rotation_axis = norm_vector_CC
-                        rotation_angle_H = np.radians(45) 
+                        rotation_axis = norm_vector_cc
+                        rotation_angle_h = np.radians(45) 
 
-                        rotated_vector_H = rotate_vector(perpendicular_axis, rotation_axis, rotation_angle_H)
+                        rotated_vector_h = rotate_vector(perpendicular_axis, rotation_axis, rotation_angle_h)
 
-                        hydrogen_coords = oxygen_coords + rotated_vector_H * dist_OH
+                        hydrogen_coords = oxygen_coords + rotated_vector_h * dist_oh
                         
-                        new_coords.append(['O', *oxygen_coords])
-                        new_coords.append(['H', *hydrogen_coords])
+                        new_coords.append(['o', *oxygen_coords])
+                        new_coords.append(['h', *hydrogen_coords])
 
                         base_file_name = os.path.splitext(os.path.basename(file))[0]
                         write_xyz_file(f"{base_file_name}_{count}.xyz", new_coords)
@@ -265,22 +326,22 @@ def addition(file1, file2, method, basis_set, TS, no_xyz, program=None, constrai
     carbon_index = []
     vector_lst = []
     
-    # Gather carbon index
+    # gather carbon index
     for i in range(num_atoms1):
-        if coords1[i][0] == "C":
+        if coords1[i][0] == "c":
             for j in range(num_atoms1):
                 if atom_distance(coords1[i][1:], coords1[j][1:]) < 1.52:
                     perpendicular_vector = (coords1[i][1:], coords1[j][1:])
                     vector_lst.append(perpendicular_vector)
-                if coords1[j][0] == "C" and i != j:
-                    bond_CC = atom_distance(coords1[i][1:], coords1[j][1:])
-                    if bond_CC <= double_bond_distance:
+                if coords1[j][0] == "c" and i != j:
+                    bond_cc = atom_distance(coords1[i][1:], coords1[j][1:])
+                    if bond_cc <= double_bond_distance:
                         carbon_index.append(i)
                         carbon_index.append(j)
 
     for index in carbon_index[::2]:
         new_coords = read_xyz_file(file1)
-        direction = calculate_vector(new_coords[index][1:], new_coords[index+1][1:]) # Vector between C=C
+        direction = calculate_vector(new_coords[index][1:], new_coords[index+1][1:]) # vector between c=c
         # perpendicular_vector = [calculate_vector(coords1[index][1:], coords1[k][1:]) for k in range(num_atoms1) if atom_distance(coords1[index][1:], coords1[k][1:]) < 1.52]
 
         for k in range(num_atoms1):
@@ -289,21 +350,21 @@ def addition(file1, file2, method, basis_set, TS, no_xyz, program=None, constrai
                 break
             else: perpendicular_vector = np.array([0,0,1])
 
-        new_coords[index][1:] -= direction * elongation_factor/2 # Standard is 10% increase in bond length
+        new_coords[index][1:] -= direction * elongation_factor/2 # standard is 10% increase in bond length
         new_coords[index+1][1:] += direction * elongation_factor/2
 
         perpendicular_axis = np.cross(direction, perpendicular_vector)
         perpendicular_axis = normalize_vector(perpendicular_axis)
 
-        O_index = get_terminal_O(coords2)
+        o_index = get_terminal_O(coords2)
 
         first_pos = new_coords[index][1:] + perpendicular_axis * distance
 
         rotation_axis = normalize_vector(np.cross(direction, perpendicular_axis))
 
-        # NOTE: fix the rotation axis
+        # note: fix the rotation axis
         for i in range(num_atoms2):
-            relative_vector = calculate_vector(coords2[O_index][1:], coords2[i][1:])
+            relative_vector = calculate_vector(coords2[o_index][1:], coords2[i][1:])
             dot = np.dot(perpendicular_axis, normalize_vector(relative_vector))
             if dot > 0:
                  rotation_angle = np.radians(90) # radians value should be function of dot product
@@ -322,19 +383,19 @@ def addition(file1, file2, method, basis_set, TS, no_xyz, program=None, constrai
 
                         
 
-##################################THERMOCHEMISTRY##############################
+##################################thermochemistry##############################
 
 def partition_function(vibrations: list, rot_constants, symmetry_num, mol_mass, multiplicity, T, scaling_factor=0.96):
-    # Vibrational partition function
+    # vibrational partition function
     qvib = 1 
     for vib in vibrations:
         vib = float(vib)
         if vib > 0:
             qvib *= 1 / (1 - np.exp(-(h * c * vib) / (k_b * T))) 
 
-    # Rotational partition function
-    GHztowave = 29.978869
-    rot_constants = [float(i) * GHztowave for i in rot_constants]
+    # rotational partition function
+    ghztowave = 29.978869
+    rot_constants = [float(i) * ghztowave for i in rot_constants]
     if 0.0 in rot_constants:
         rot_constant = [e for e in rot_constants if e != 0.0]  
         qrot = ((k_b*T)/(int(symmetry_num)*h*c*rot_constant[0]))
@@ -342,19 +403,19 @@ def partition_function(vibrations: list, rot_constants, symmetry_num, mol_mass, 
         qrot = (1/int(symmetry_num)) * ((k_b*T)/(h*c))**1.5 * (np.pi / (rot_constants[0] * rot_constants[1] * rot_constants[2]))**0.5
 
 
-    # Translational partition function
+    # translational partition function
     mol_mass = float(mol_mass) * 1.6605*(10**(-27))
-    Lambda = h/(np.sqrt(2*np.pi*mol_mass*k_b*T))
-    qtrans = 0.02479/(Lambda**3)
+    lmbda = h/(np.sqrt(2*np.pi*mol_mass*k_b*T))
+    qtrans = 0.02479/(lmbda**3)
 
     qelec = float(multiplicity)
 
-    Q = qvib*qrot*qtrans*qelec
+    q = qvib*qrot*qtrans*qelec
 
-    return Q
+    return q
 
 
-def rate_constant(files, T=293.15, program=None):
+def rate_constant(files, t=293.15, program=None):
     reactants = []
     transition_states = []
     
@@ -364,26 +425,26 @@ def rate_constant(files, T=293.15, program=None):
             content = f.read()
             job_info = re.search(r"#(.*)", content)
             job_info = re.split('[, ()]', job_info.group(0)) 
-            ee_zpe = re.search(r"Sum of electronic and zero-point Energies=\s+([-+]?\d*\.\d+|\d+)", content)
+            ee_zpe = re.search(r"sum of electronic and zero-point energies=\s+([-+]?\d*\.\d+|\d+)", content)
             if ee_zpe:
-                vibration = re.findall(r"Frequencies --\s+(-?\d+\.\d+)", content)
-                rot_constant = re.findall(r"Rotational constants \(GHZ\):\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)", content)
+                vibration = re.findall(r"frequencies --\s+(-?\d+\.\d+)", content)
+                rot_constant = re.findall(r"rotational constants \(ghz\):\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)", content)
                 rot_constant = rot_constant[-1]
-                symmetry_num = re.search(r"Rotational symmetry number\s*(\d+)", content)
+                symmetry_num = re.search(r"rotational symmetry number\s*(\d+)", content)
                 if symmetry_num:
                     symmetry_num = symmetry_num.group(1)
                 else: 
-                    print("No symmetry number found. Assuming 1")
+                    print("no symmetry number found. assuming 1")
                     symmetry_num = 1
-                mol_mass = re.search(r"Molecular mass:\s+(-?\d+\.\d+)", content).group(1)
-                multiplicity = re.search(r"Multiplicity =\s*(\d+)", content).group(1)
+                mol_mass = re.search(r"molecular mass:\s+(-?\d+\.\d+)", content).group(1)
+                multiplicity = re.search(r"multiplicity =\s*(\d+)", content).group(1)
 
 
-                Q = partition_function(vibration, rot_constant, symmetry_num, mol_mass, multiplicity, T)
+                q = partition_function(vibration, rot_constant, symmetry_num, mol_mass, multiplicity, t)
 
                 dic[file] = ""
                 dic["ee_zpe"] = float(ee_zpe.group(1)) 
-                dic["Q"] = Q 
+                dic["q"] = q 
 
 
                 if 'ts' in job_info:
@@ -393,16 +454,17 @@ def rate_constant(files, T=293.15, program=None):
 
 
             else:
-                print(f"No energies in {file}. Check if calculation has converged")
+                print(f"no energies in {file}. check if calculation has converged")
 
 
     lowest_zpec_ts = min(transition_states, key=lambda x: x['ee_zpe'])['ee_zpe']
     # lowest_zpec_r = min(reactants, key=lambda x: x['ee_zpe'])['ee_zpe']
     
-    HtoJ = 4.3597447222*(10**(-18))
-    sum_TS = sum([np.exp((lowest_zpec_ts*HtoJ - transition_states[i]['ee_zpe']*HtoJ) / (k_b*T)) *transition_states[i]['Q'] for i in range(len(transition_states))])
-    # sum_R = [np.exp((lowest_zpec_r*HtoJ - reactants[i]['ee_zpe']*HtoJ) / (k_b*T)) *reactants[i]['Q'] for i in range(len(transition_states))]
-    print(sum_TS)
+    htoj = 4.3597447222*(10**(-18))
+    sum_ts = sum([np.exp((lowest_zpec_ts*htoj - transition_states[i]['ee_zpe']*htoj) / (k_b*t)) *transition_states[i]['q'] for i in range(len(transition_states))])
+    # sum_r = [np.exp((lowest_zpec_r*htoj - reactants[i]['ee_zpe']*htoj) / (k_b*t)) *reactants[i]['q'] for i in range(len(transition_states))]
+    print(sum_ts)
+
 
 def main():
     parser = argparse.ArgumentParser(description='''    'Dynamic Approach for Transition State'
@@ -414,7 +476,7 @@ rate constants can also be calculated from log files.''',
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog='''
 Examples of use:
-                JKTS file.xyz -H -orca -method R2SCAN-3C
+                JKTS file.xyz -H -ORCA -method R2SCAN-3C
                 JKTS *.xyz -basis def2-TZVPPD --no-xyz
                 JKTS reactant.log product.log -k
                                      ''')
@@ -429,16 +491,16 @@ Examples of use:
     reaction_options.add_argument('-OH', action='store_true', help='Perform OH addition to C=C bonds')
 
     parser.add_argument('-G16', action='store_true', help='Create G16 input file')
-    parser.add_argument('-orca', action='store_true', help='Create ORCA input file')
+    parser.add_argument('-ORCA', action='store_true', help='Create ORCA input file')
     parser.add_argument('-crest', action='store_true', help='Create file for CREST constrain')
     parser.add_argument('-constrain', action='store_true', help='Constrain is integrated into input file')
 
     additional_options = parser.add_argument_group("Additional arguments")
 
-    additional_options.add_argument('--no-TS',action='store_true', help='Input files for normal geometry relaxation are generated')
+    additional_options.add_argument('--no-TS',action='store_false', default=True, help='Input files for normal geometry relaxation are generated')
     additional_options.add_argument('--no-xyz',action='store_true', help='No XYZ files generated')
     additional_options.add_argument('-k', action='store_true', help='Write me later')
-    additional_options.add_argument('-method', nargs="?", default=None,  help='Specify the QC method [def = wB97X-D]')
+    additional_options.add_argument('-method', nargs="?", default='wb97xd',  help='Specify the QC method [def = wB97X-D]')
     additional_options.add_argument('-basis',  nargs='?', default="6-31+g(d,p)", help='Specify the basis set used [def = 6-31+G(d,p)]')
     additional_options.add_argument('-cpu', nargs='?', const=1, type=int, default=4, help='CPU amount [def = 4]')
     additional_options.add_argument('-mem', nargs='?', const=1, default="4GB", help='Amount of memory allocated for job [def = 4GB]')
@@ -449,30 +511,49 @@ Examples of use:
 
     ################################ARGUMENT SPECIFICATIONS############################
     # Program and method 
-    global method
+    global program
     if args.G16:
         program = "G16"
         if args.method == None:
-            method = "wb97xd"
-    elif args.orca:
-        program = "orca"
+            args.method = "wb97xd"
+    elif args.ORCA:
+        program = "ORCA"
         if args.method == None:
-            method = "wB97X-D3"
-    else: program = None # Just produce XYZ-file
+            args.method = "wB97X-D3"
+    else: 
+        program = None # Just produce XYZ-file
+
 
 
     for n, input_file in enumerate(args.input_files):
-        if len(args.input_files) == 2 and args.CC:
-            addition(args.input_files[n], args.input_files[n+1], constrain=args.constrain, program=program, method=args.method, TS=args.no_TS, no_xyz=args.no_xyz, basis_set=args.basis)
-            break
-        elif len(args.input_files) > 0 and args.H:
-            H_abstraction(input_file, constrain=args.constrain, TS=args.no_TS, program=program, method=method, basis_set=args.basis, no_xyz=args.no_xyz, crest=args.crest)
-        elif len(args.input_files) > 0 and args.H==False and args.CC==False and args.k==False:
+        file_type = input_file.split(".")[1]
+        reactant_folder(input_file) # Temp solution
+        if file_type == "pkl":
+            file_name = input_file.split(".")[0]
+            coordinates = pkl_to_xyz(input_file)
+            for i, coord in enumerate(coordinates):
+                if args.H:
+                    H_abstraction(input_file, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis, no_xyz=args.no_xyz, crest=args.crest)
+                if program != None:
+                    QC_input(file_path=f"{file_name.replace('collection','')}conf{i+1}", coords=coord, TS=args.no_TS, constrain=args.constrain, program=program, method="B3LYP", basis_set=args.basis)
+        
+        elif file_type == "xyz":
+            if len(args.input_files) == 2 and args.CC:
+                addition(args.input_files[n], args.input_files[n+1], constrain=args.constrain, program=program, method=args.method, TS=args.no_TS, no_xyz=args.no_xyz, basis_set=args.basis)
+                break
+            elif len(args.input_files) > 0 and args.H:
+                H_abstraction(input_file, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis, no_xyz=args.no_xyz, crest=args.crest)
+            elif len(args.input_files) > 0 and args.H==False and args.CC==False:
+                coords =  read_xyz_file(input_file)
+                QC_input(file_path=input_file.split(".")[0], coords=coords, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis)
+        
+        elif file_type == "log" and args.k:
             rate_constant(args.input_files)
             break
+
         else:
-            parser.error("No input file given")
-   
+            parser.error("Invalid type of input file")
+
 
 if __name__ == "__main__":
     main()
