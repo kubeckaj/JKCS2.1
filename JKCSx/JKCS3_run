@@ -58,12 +58,13 @@ function help {
 
    ${cfYELLOW}XTB:${cfDEF}
      $scriptfile    
-     $scriptfile -p XTB -of ABC -m \"--opt --gfn 2\" 
+     $scriptfile -p XTB -of ABC -m \"--opt --gfn 1\" 
      $scriptfile -p XTB -nf XTB_freq -rf XTB -m \"-ohess -temp 298.15\"
    ${cfYELLOW}G16:${cfDEF}
      $scriptfile -p G16 -rf ABC     -nf PM6      -m \"# PM6 opt=(calcall,verytight)  freq\"
      $scriptfile -p G16 -rf XTB     -nf DFT_sp   -m \"# wb97xd 6-31++g**\"
      $scriptfile -p G16 -rf XTB     -nf DFT_opt  -m \"# wb97xd 6-31++g** opt=verytight\"
+     $scriptfile -p G16 -rf XTB     -nf DFT_opt  -m \"# wb97xd 6-31++g** opt=(maxcycles=60)\"
      $scriptfile -p G16 -rf DFT_opt -nf DFT_freq -m \"# wb97xd 6-31++g** freq Temperature=298.15\"
    ${cfYELLOW}ORCA:${cfDEF}
      $scriptfile -p ORCA -rf XTB -nf OPT -m \"! PBE0 def2-TZVP TIGHTSCF Opt D3BJ\"
@@ -483,8 +484,10 @@ if [ ! -z "$subfolders" ]
 then
   JKecho 2 "Subfoldering from previous directory is used."
   JKecho 3 "Subfolders: ${cfBLUE}$subfolders${cfDEF}"
+  enum=0
   for sub in $subfolders
-  do 
+  do
+    enum=`echo $enum+1 | bc` 
     Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
     const_iter=`echo $const_iter+1 |bc`
     newsub=`sed "s/$folderOLD/$folderNEW/g" <<< $sub`
@@ -758,9 +761,9 @@ do
         else
           arraymax=""
         fi
-        SC_command=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
-        echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" >> output
-        echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" > .run
+        SC_command_sub=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
+        echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" >> output
+        echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" > .run
         #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
