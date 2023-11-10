@@ -2107,7 +2107,14 @@ if Qextract > 0:
       comma2_separated = comma2(extract_i)
       for separated_i in range(len(comma2_separated)):
         Pextract_comma2.append(comma2_separated[separated_i])
-    #print(Pextract_comma2)
+    #print(Pextract_comma2) #[['1', 'sa', '2', '*']]
+    ##remove asterix
+    #Qasterix=-1
+    #
+    #for extract_i in Pextract_comma2:
+    #    
+    #
+    ##
     Pextract_sorted = []
     for extract_i in Pextract_comma2:
       if len(extract_i) > 1:
@@ -2133,7 +2140,48 @@ if Qextract > 0:
       extracted_df = clusters_df[clusters_df["info"]["file_basename"].values == extract_i].copy()
       #print(len(extracted_df))
     else:
-      extracted_df = clusters_df[clusters_df["info"]["cluster_type"].values == extract_i].copy()
+      if "*" not in extract_i:
+        extracted_df = clusters_df[clusters_df["info"]["cluster_type"].values == extract_i].copy()
+      else:
+        #print("Here")
+        asterix_position=seperate_string_number(extract_i)[1::2].index('*')
+        new_extract_i=seperate_string_number(extract_i)[:2*asterix_position]+seperate_string_number(extract_i)[asterix_position*2+1+1:]
+        #print(extract_i)
+        #print(asterix_position)
+        #print(new_extract_i)
+        try:
+          howmany=int(extract_i[asterix_position*2])
+        except:
+          howmany=-1
+        #print(howmany)
+        def my_special_compare_with_asterix(string1,string2_array,howmany):
+          string1_array = seperate_string_number(string1)
+          #string2_array = seperate_string_number(string2)
+          tothowmany=howmany
+          for indx in range(int(len(string1_array)/2)):
+            #print(string2_array)
+            if string1_array[1::2][indx] in string2_array[1::2]:
+              found_position = string2_array[1::2].index(string1_array[1::2][indx])
+              if string1_array[::2][indx] != string2_array[::2][found_position]:
+                return False
+              else:
+                string2_array=string2_array[:2*found_position]+string2_array[2*found_position+2:] 
+                continue
+            else:
+              tothowmany-=int(string1_array[::2][indx])
+              if howmany>0 and tothowmany<0:
+                return False
+              else:
+                continue
+          if tothowmany == 0 or howmany<0:
+            if len(string2_array) > 0:
+              return False
+            else:
+              return True
+          else:
+            return False
+        extracted_df = clusters_df[[my_special_compare_with_asterix(value_i,new_extract_i,howmany) for value_i in clusters_df["info"]["cluster_type"].values]].copy()
+              
     if len(extracted_df) > 0:
       if len(newclusters_df) == 0:
         newclusters_df = extracted_df.copy()
