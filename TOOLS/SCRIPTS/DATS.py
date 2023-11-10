@@ -18,6 +18,10 @@ c = 29979245800
 R = 8.314 # J/mol*K 
 
 maxtasks = 100
+low_method = "B3LYP"
+low_basis = "6-31+g(d,p)"
+high_method = ""
+high_basis = "aug-cc-pVTZ"
 
 ###########################VECTOR MANIPULATION################################
 def calculate_vector(coord1, coord2):
@@ -59,47 +63,72 @@ def write_xyz_file(file_path, updated_coords):
 
 
 def mkdir(file, index: list, crest):
+    file_name = file.split(".")[0]
     cwd = os.getcwd() # Current working directory
     dir_name = os.path.splitext(file)[0]
     new_dir = os.path.join(cwd, dir_name)
     if os.path.exists(new_dir):
-        shutil.move(cwd + "/" + file, new_dir + "/" + file) # NOTE: overwrites already existing files with same name in new_dir. As the full path is given
+        if args.NEB:
+            shutil.move(cwd + "/" + file_name + "_TS.xyz", new_dir + "/" + file_name + "_TS.xyz")
+            shutil.move(cwd + "/" + file_name + "_reactant.xyz", new_dir + "/" + file_name + "_reactant.xyz")
+            shutil.move(cwd + "/" + file_name + "_product.xyz", new_dir + "/" + file_name + "_product.xyz")
+            NEP_input(new_dir, dir_name)
+        else:
+            shutil.move(cwd + "/" + file, new_dir + "/" + file) # NOTE: overwrites already existing files with same name in new_dir. As the full path is given
         if crest:
             crest_constrain(new_dir, *index)
     else:
         os.mkdir(new_dir)
-        shutil.move(file, new_dir)
+        if args.NEB:
+            shutil.move(cwd + "/" + file_name + "_TS.xyz", new_dir + "/" + file_name + "_TS.xyz")
+            shutil.move(cwd + "/" + file_name + "_reactant.xyz", new_dir + "/" + file_name + "_reactant.xyz")
+            shutil.move(cwd + "/" + file_name + "_product.xyz", new_dir + "/" + file_name + "_product.xyz")
+            NEP_input(new_dir, dir_name)
+        else:
+            shutil.move(file, new_dir)
         if crest:
             crest_constrain(new_dir, *index)
 
-    TS_commands(file, new_dir)
+    if args.NEB:
+        NEB_commands(file, new_dir)
+    else:
+        TS_commands(file, new_dir)
+
     with open(new_dir + "/.constrain", "w") as c:
         c.write(f"{index[0]}, {index[1]}, {index[2]}") # C, H, O
-        
 
+def NEB_commands(file, dir):
+    with open(dir + "/commands.txt", "w") as f:
+        file_name = file.rsplit('.', 1)[0]
+        f.write(f'sbatch -J NEB_TS_{file_name} -p {args.par} --mem={args.mem} -n {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_{program}  {dir}/NEB_TS.inp"\n')
 
 def TS_commands(file, dir):
     with open(dir + "/commands.txt", "w") as f:
         file_name = file.rsplit('.', 1)[0]
-        f.write(f'sbatch -J {file_name} -p {args.par} --mem={args.mem} -c {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_CREST {dir}/{file_name}.xyz -gfn2 -ewin 2 -noreftopo -cinp {dir}/constrain.inp -uhf 1"\n')
-        f.write(f'rm {file}\n')
-        f.write(f'rm {file_name}.xyz\n')
-        f.write(f'JKTS collection{file_name}.pkl -{program} -method B3LYP -basis "6-31+g(d,p)" --no-TS -constrain --no-xyz\n')
-        f.write(f'ls "$(pwd)"/*.com > array.txt\n')
-        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -maxtasks {maxtasks} -mult 2 -rf array.txt -nf preopt_DFT\n')
-        f.write(f'cp preopt_DFT/calc-LM/*.log .\n')
-        f.write(f'rm *.com\n')
+        f.write(f'sbatch -J {file_name} -p {args.par} --mem={args.mem} -n {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_{program}  {dir}/{file_name}{dot_inputtype}"\n')
+        f.write(f'sh /home/danayo/check_convergence.sh {file_name}{dot_outputtype}\n')
+        f.write(f'if [ -e ".converged1" ]; then JKTS {file_name}.xyz -{program} -method {args.method} -basis "{args.basis}" -par {args.par} --no-xyz; else JKTS {file_name}.xyz -{program} -method {low_method} -basis "{low_basis}" -par {args.par} --no-xyz --no-TS -constrain; fi\n')
+        f.write(f'sbatch -J {file_name} -p {args.par} --mem={args.mem} -n {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_{program}  {dir}/{file_name}{dot_inputtype}"\n')
+        f.write(f'sh /home/danayo/check_convergence.sh {file_name}{dot_outputtype}\n')
+        f.write(f'if [ -e ".TS_converged" ]; then sbatch -J {file_name}_CREST -p {args.par} --mem={args.mem} -n {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_CREST {dir}/{file_name}.xyz -gfn2 -ewin 2 -noreftopo -cinp {dir}/constrain.inp -uhf 1"; else JKTS {file_name}.xyz -{program} -method {args.method} -basis "{args.method}" -par {args.par} --no-xyz; fi\n')
+        f.write(f"rm {file_name}.xyz\n")
+        f.write(f"rm {file_name}{dot_inputtype}\n")
+        f.write(f'if [ -e ".TS_converged" ]; then JKTS collection{file_name}.pkl -{program} -method {args.method} -basis "{args.basis}" --no-xyz; else sbatch -J {file_name} -p {args.par} --mem={args.mem} -n {args.cpu} JKsend "source ~/.JKCSusersetup.txt; program_{program}  {dir}/{file_name}{dot_inputtype}"; fi\n')
+        f.write(f'ls "$(pwd)"/*{dot_inputtype} > array.txt\n')
+        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -mult 2 -maxtasks 100 -rf array.txt -nf LOWDFT_TS\n')
+        f.write(f'rm *{dot_inputtype}\n')
+        f.write(f'cp LOWDFT_TS/calc-LM/*.xyz .\n')
+        f.write(f'JKTS *.xyz -{program} -method {args.method} -basis "{args.basis}" -par {args.par} --no-xyz\n')
         f.write(f'rm *.xyz\n')
-        f.write(f'JKlog2xyz\n')
-        f.write(f'JKTS *.xyz -{program} -method {args.method} -basis "{args.basis}" -par {args.par}\n')
-        f.write(f'ls "$(pwd)"/*.com > array.txt\n')
+        f.write(f'ls "$(pwd)"/*{dot_inputtype} > array.txt\n')
+        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -mult 2 -maxtasks 100 -rf array.txt -nf DFT_TS\n')
+        f.write(f'rm *{dot_inputtype}\n')
         f.write(f'rm *.xyz\n')
-        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -maxtasks {maxtasks} -mult 2 -rf array.txt -nf DFT_TS\n')
-        f.write(f'cp DFT_TS/calc-LM/*.log .\n')
-        f.write(f'rm *.com\n')
-        f.write(f'JKlog2xyz\n')
-        f.write(f'ls "$(pwd)"/*.xyz > array.txt\n')
-        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -maxtasks {maxtasks} -mult 2 -rf array.txt -nf DLPNO_SP -m "aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK"\n')
+        f.write(f'cp DFT_TS/calc-LM/*.xyz .\n')
+        f.write(f'sh /home/danayo/scripts/convert/xyz2orca_radical.sh')
+        f.write(f'ls "$(pwd)"/{file_name}*.inp > array.txt\n')
+        f.write(f'JKCS3_run -p {program} -cpu {args.cpu} -mem {args.mem} -par {args.par} -mult 2 -maxtasks 100 -rf array.txt -nf DLPNO\n')
+        f.write("\n")
 
 
 def reactant_folder(file):
@@ -144,21 +173,22 @@ def crest_constrain(file_path, C_index, H_index, O_index, force_constant=0.95):
         f.write("$end\n")
 
 
-def QC_input(file_path, coords, TS, constrain, program, method, basis_set, C_index=None, H_index=None, O_index=None):
+def QC_input(file_name, coords, TS, constrain, program, method, basis_set, C_index=None, H_index=None, O_index=None):
     if constrain and C_index == None and H_index == None and O_index == None:
         with open(os.getcwd() + "/.constrain", "r") as f:
             content = f.read()
             C_index, H_index, O_index = [int(num) for num in content.split(",")]
             
+
     if program == "ORCA":
-        file_path = file_path + ".inp"
+        file_path = file_name + ".inp"
         with open(file_path, "w") as f:
-            if TS:
+            if args.no_TS is False:
                 f.write(f"! {method} {basis_set} OptTS freq\n")
             else:
                 f.write(f"! {method} {basis_set} Opt\n")
-            f.write("%pal nprocs 8 end\n")
-            f.write("%maxcore 8000\n")
+            f.write(f"%pal nprocs {args.cpu} end\n")
+            f.write(f"%maxcore 4000\n")
             if constrain:
                 f.write("%geom\n")
                 f.write("Constraints\n")
@@ -172,15 +202,15 @@ def QC_input(file_path, coords, TS, constrain, program, method, basis_set, C_ind
                 f.write(f'{atom[0]} {atom[1]:.6f} {atom[2]:.6f} {atom[3]:.6f}\n')
             f.write("*")
     elif program == "G16":
-        file_path = file_path + ".com"
+        file_path = file_name + ".com"
         with open(file_path, "w") as f:
-            f.write("%nprocshared=4\n")
-            f.write("%mem=4GB\n")
-            if TS and constrain:
+            f.write(f"%nprocshared={args.cpu}\n")
+            f.write(f"%mem={args.mem}\n")
+            if args.no_TS is False and constrain:
                 f.write(f"# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant) freq\n\n") # freq may be redundant
-            elif TS and constrain is False:
+            elif args.no_TS is False and constrain is False:
                 f.write(f"# {method} {basis_set} opt=(calcfc,ts,noeigen) freq\n\n")
-            elif TS is False and constrain:
+            elif args.no_TS and constrain:
                 f.write(f"# {method} {basis_set} opt=modredundant\n\n")
             else:
                 f.write(f"# {method} {basis_set} opt\n\n")
@@ -196,6 +226,14 @@ def QC_input(file_path, coords, TS, constrain, program, method, basis_set, C_ind
     else:
         print("QC_input was called but no program was specified")
 
+def NEP_input(file_path, file_name):
+    print(file_name)
+    if args.NEB:
+        with open(file_path + "/NEB_TS.inp", "w") as f:
+            f.write(f'! B3LYP 6-31+g(d,p)  NEB-TS FREQ\n')
+            f.write(f'%NEB PREOPT_ENDS TRUE NEB_END_XYZFILE "{file_path + "/" + file_name}_product.xyz" END\n')
+            f.write(f'* XYZfile 0 2 {file_path + "/" + file_name}_reactant.xyz\n')
+
 ##############################ADDITIONAL FUNCTIONS##################################
 def get_terminal_O(coords, distance=1.5):
     O_index = []
@@ -206,15 +244,9 @@ def get_terminal_O(coords, distance=1.5):
                 O_index.append(i)
     return O_index[0]
 
-def number_lines(file):
-    line_count = 0
-    with open(file, "r") as file:
-        for line in file:
-            line_count += 1
-    return line_count
 
 #####################################MAIN FUNCTIONS####################################
-def H_abstraction(file, method, basis_set, TS, no_xyz, crest, program=None, distance=1.35, dist_OH=0.97, constrain=False):
+def H_abstraction(file, method, basis_set, TS, no_xyz, crest, NEB, program=None, distance=1.35, dist_OH=0.97, constrain=False):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
     count = 1
@@ -233,7 +265,15 @@ def H_abstraction(file, method, basis_set, TS, no_xyz, crest, program=None, dist
                         H_perturb_axis = normalize_vector(H_perturb_axis)
                         
                         # Update the initial hydrogen coordinates
-                        new_coords = read_xyz_file(file)
+                        if NEB:
+                            new_coords = read_xyz_file(file) # Coordinates for TS guess
+                            reactant_coords = read_xyz_file(file)
+                            product_coords = read_xyz_file(file)
+                            distance_reactant = 2
+                            distance_product = 1.8
+                        else:
+                            new_coords = read_xyz_file(file)
+                        
                         new_coords[i][1:] = np.array(new_coords[i][1:]) + norm_vector_CH * (distance - dist_CH)
 
                         # Update oxygen in OH coordiantes
@@ -256,6 +296,19 @@ def H_abstraction(file, method, basis_set, TS, no_xyz, crest, program=None, dist
                         new_coords.append(['O', *oxygen_coords])
                         new_coords.append(['H', *hydrogen_coords])
 
+                        if NEB:
+                            oxygen_reactant = np.array(reactant_coords[i][1:]) + norm_vector_CH *distance_reactant
+                            hydrogen_reactant = oxygen_reactant + rotated_vector_H * dist_OH
+                            reactant_coords.append(['O', *oxygen_reactant])
+                            reactant_coords.append(['H', *hydrogen_reactant])
+
+                            product_coords[i][1:] = np.array(product_coords[i][1:]) + norm_vector_CH * (distance_product - dist_CH)
+                            oxygen_product = np.array(product_coords[i][1:]) + norm_vector_CH * dist_OH
+                            hydrogen_product = oxygen_product + rotated_vector_H * dist_OH
+                            product_coords.append(['O', *oxygen_product])
+                            product_coords.append(['H', *hydrogen_product])
+
+
                         C_index = j+1
                         H_index = i+1
                         O_index = len(new_coords)-1
@@ -263,12 +316,17 @@ def H_abstraction(file, method, basis_set, TS, no_xyz, crest, program=None, dist
                         list_index = [j+1, i+1, len(new_coords)-1] # ['C', 'H', 'O']
 
                         base_file_name = os.path.splitext(os.path.basename(file))[0]
-                        if no_xyz is False:
+                        if args.NEB:
+                            write_xyz_file(f"{base_file_name}_H{count}_reactant.xyz", reactant_coords)
+                            write_xyz_file(f"{base_file_name}_H{count}_product.xyz", product_coords)
+                            write_xyz_file(f"{base_file_name}_H{count}_TS.xyz", new_coords)
+                            mkdir(f"{base_file_name}_H{count}.xyz", list_index, crest=crest)
+                        elif no_xyz is False:
                             write_xyz_file(f"{base_file_name}_H{count}.xyz", new_coords)
                             mkdir(f"{base_file_name}_H{count}.xyz", list_index, crest=crest)
 
-                        if program != None:
-                            QC_input(file_path=f"{base_file_name}_H{count}", coords=new_coords,C_index=C_index, H_index=H_index, O_index=O_index, constrain=constrain, TS=TS, method=method, basis_set=basis_set, program=program)
+                        if program != None and args.NEB is False:
+                            QC_input(file_name=f"{base_file_name}_H{count}", coords=new_coords,C_index=C_index, H_index=H_index, O_index=O_index, constrain=constrain, TS=TS, method=method, basis_set=basis_set, program=program)
                             if program == "ORCA":
                                 mkdir(f"{base_file_name}_H{count}.inp", list_index, crest=crest)
                             elif program == "G16": 
@@ -415,55 +473,102 @@ def partition_function(vibrations: list, rot_constants, symmetry_num, mol_mass, 
     return q
 
 
-def rate_constant(files, t=293.15, program=None):
+def rate_constant(files, T=293.15, program=None):
     reactants = []
     transition_states = []
     
-    for file in files:
-        dic = {}
-        with open (file, "r") as f:
-            content = f.read()
-            job_info = re.search(r"#(.*)", content)
-            job_info = re.split('[, ()]', job_info.group(0)) 
-            ee_zpe = re.search(r"sum of electronic and zero-point energies=\s+([-+]?\d*\.\d+|\d+)", content)
-            if ee_zpe:
-                vibration = re.findall(r"frequencies --\s+(-?\d+\.\d+)", content)
-                rot_constant = re.findall(r"rotational constants \(ghz\):\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)", content)
-                rot_constant = rot_constant[-1]
-                symmetry_num = re.search(r"rotational symmetry number\s*(\d+)", content)
-                if symmetry_num:
-                    symmetry_num = symmetry_num.group(1)
-                else: 
-                    print("no symmetry number found. assuming 1")
-                    symmetry_num = 1
-                mol_mass = re.search(r"molecular mass:\s+(-?\d+\.\d+)", content).group(1)
-                multiplicity = re.search(r"multiplicity =\s*(\d+)", content).group(1)
+    if program == "G16":
+        for file in files:
+            dic = {}
+            with open (file, "r") as f:
+                content = f.read()
+                job_info = re.search(r"#(.*)", content)
+                job_info = re.split('[, ()]', job_info.group(0)) 
+                ee_zpe = re.search(r"Sum of electronic and zero-point Energies=\s+([-+]?\d*\.\d+|\d+)", content)
+                if ee_zpe:
+                    vibration = re.findall(r"Frequencies --\s+(-?\d+\.\d+)", content)
+                    rot_constant = re.findall(r"Rotational constants \(GHZ\):\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)", content)
+                    rot_constant = rot_constant[-1]
+                    symmetry_num = re.search(r"Rotational symmetry number\s*(\d+)", content)
+                    if symmetry_num:
+                        symmetry_num = symmetry_num.group(1)
+                    else: 
+                        print("No symmetry number found. assuming 1")
+                        symmetry_num = 1
+                    mol_mass = re.search(r"Molecular mass:\s+(-?\d+\.\d+)", content).group(1)
+                    multiplicity = re.search(r"Multiplicity =\s*(\d+)", content).group(1)
 
 
-                q = partition_function(vibration, rot_constant, symmetry_num, mol_mass, multiplicity, t)
+                    Q = partition_function(vibration, rot_constant, symmetry_num, mol_mass, multiplicity, T)
 
-                dic[file] = ""
-                dic["ee_zpe"] = float(ee_zpe.group(1)) 
-                dic["q"] = q 
+                    dic[file] = ""
+                    dic["ee_zpe"] = float(ee_zpe.group(1)) 
+                    dic["Q"] = Q 
+
+                    if 'ts' in job_info:
+                        transition_states.append(dic)
+                    else:
+                        reactants.append(dic)
 
 
-                if 'ts' in job_info:
-                    transition_states.append(dic)
                 else:
-                    reactants.append(dic)
+                    print(f"No energies in {file}. check if calculation has converged")
 
 
-            else:
-                print(f"no energies in {file}. check if calculation has converged")
+        lowest_zpec_ts = min(transition_states, key=lambda x: x['ee_zpe'])['ee_zpe']
+        # lowest_zpec_r = min(reactants, key=lambda x: x['ee_zpe'])['ee_zpe']
+        
+        HtoJ = 4.3597447222*(10**(-18))
+        sum_ts = sum([np.exp((lowest_zpec_ts*HtoJ - transition_states[i]['ee_zpe']*HtoJ) / (k_b*T)) *transition_states[i]['Q'] for i in range(len(transition_states))])
+        # sum_r = [np.exp((lowest_zpec_r*htoj - reactants[i]['ee_zpe']*htoj) / (k_b*t)) *reactants[i]['q'] for i in range(len(transition_states))]
+        print(sum_ts)
 
+    elif program == "ORCA":
+        for file in files:
+            vibrations = []
+            dic = {}
+            with open(file, "r") as f:
+                content = f.read()
+                vibrations = []
+                # for line in f:
+                EE = re.search(r"Electronic energy\s*...\s*[-+]?\d*\.\d+", content)
+                if EE:
+                    EE = float(EE.group().split()[-1])
+                
+                    vib = re.search(r'[-+]?\d*\.\d+\s*cm\*\*-1', content)
+                    if vib:
+                        vibration = float(vib.group().split()[0])
+                        vibrations.append(vibration)
+                    else: print(f"No vibrations found in {file}")
+        
+                    rot = re.findall(r"Rotational constants in cm-1: \s*[-+]?\d*\.\d*  \s*[-+]?\d*\.\d* \s*[-+]?\d*\.\d*", content)
+                    if rot:
+                        rot_constants = rot[0].split()[-3:]
+                    else: print(f"No rotational constants found in {file}")
 
-    lowest_zpec_ts = min(transition_states, key=lambda x: x['ee_zpe'])['ee_zpe']
-    # lowest_zpec_r = min(reactants, key=lambda x: x['ee_zpe'])['ee_zpe']
-    
-    htoj = 4.3597447222*(10**(-18))
-    sum_ts = sum([np.exp((lowest_zpec_ts*htoj - transition_states[i]['ee_zpe']*htoj) / (k_b*t)) *transition_states[i]['q'] for i in range(len(transition_states))])
-    # sum_r = [np.exp((lowest_zpec_r*htoj - reactants[i]['ee_zpe']*htoj) / (k_b*t)) *reactants[i]['q'] for i in range(len(transition_states))]
-    print(sum_ts)
+                    symmetry_num = re.search(r'Symmetry Number:\s*(\d*)', content)
+                    if symmetry_num:
+                        symmetry_num = int(symmetry_num.group(1))
+                    else: 
+                        print(f"No symmetry number found in {file}. Assuming 1")
+                        symmetry_num = 1
+
+                    mol_mass = re.search(r'Total Mass\s*...\s*\d*\.\d+', content)
+                    if mol_mass:
+                        mol_mass = float(mol_mass.group().split()[-1])
+                    else: print(f"No molecular mass found in {file}")
+
+                    multiplicity = re.search(r'Mult\s* ....\s*(\d*)', content)
+                    if multiplicity:
+                        multiplicity = int(multiplicity.group().split()[-1])
+                    else: print(f"No multiplicity found in {file}")
+
+                else:
+                    print(f"No energies in {file}. check if calculation has converged")
+
+                Q = partition_function(vibrations, rot_constants, symmetry_num, mol_mass, multiplicity, T)
+                print(Q)
+
 
 
 def main():
@@ -479,6 +584,7 @@ Examples of use:
                 JKTS file.xyz -H -ORCA -method R2SCAN-3C
                 JKTS *.xyz -basis def2-TZVPPD --no-xyz
                 JKTS reactant.log product.log -k
+                JKTS pinonaldehyde.xyz -H -init
                                      ''')
 
 
@@ -494,12 +600,15 @@ Examples of use:
     parser.add_argument('-ORCA', action='store_true', help='Create ORCA input file')
     parser.add_argument('-crest', action='store_true', help='Create file for CREST constrain')
     parser.add_argument('-constrain', action='store_true', help='Constrain is integrated into input file')
+    parser.add_argument('-reactants', action='store_true', help='Prepare folder for reactants')
+    parser.add_argument('-NEB', action='store_true', help='Prepare input file for Nudged Elsatic Band')
 
     additional_options = parser.add_argument_group("Additional arguments")
 
-    additional_options.add_argument('--no-TS',action='store_false', default=True, help='Input files for normal geometry relaxation are generated')
+    additional_options.add_argument('--no-TS',action='store_true', help='Input files for normal geometry relaxation are generated')
     additional_options.add_argument('--no-xyz',action='store_true', help='No XYZ files generated')
-    additional_options.add_argument('-k', action='store_true', help='Write me later')
+    additional_options.add_argument('-k', action='store_true', help='Calculate Multiconformer Transition State rate constant')
+    additional_options.add_argument('-init', action='store_true', help='Initialize directories for automated calculation of multiconformer reaction barrier')
     additional_options.add_argument('-method', nargs="?", default='wb97xd',  help='Specify the QC method [def = wB97X-D]')
     additional_options.add_argument('-basis',  nargs='?', default="6-31+g(d,p)", help='Specify the basis set used [def = 6-31+G(d,p)]')
     additional_options.add_argument('-cpu', nargs='?', const=1, type=int, default=4, help='CPU amount [def = 4]')
@@ -510,46 +619,61 @@ Examples of use:
     args = parser.parse_args()
 
     ################################ARGUMENT SPECIFICATIONS############################
+    if args.init:
+        args.crest=True; args.constrain=True; args.no_TS=True; args.G16=True; args.reactants=True
+        args._no_xyz=True; 
     # Program and method 
     global program
+    global dot_inputtype
+    global dot_outputtype
     if args.G16:
         program = "G16"
+        dot_inputtype = ".com"
+        dot_outputtype = ".log"
         if args.method == None:
             args.method = "wb97xd"
+
     elif args.ORCA:
         program = "ORCA"
+        dot_inputtype = ".inp"
+        dot_outputtype = ".out"
+        if args.method == "B97-3c" or args.method == "r2scan-3c":
+            args.basis = ""
         if args.method == None:
             args.method = "wB97X-D3"
     else: 
         program = None # Just produce XYZ-file
 
 
-
     for n, input_file in enumerate(args.input_files):
         file_type = input_file.split(".")[1]
-        reactant_folder(input_file) # Temp solution
         if file_type == "pkl":
             file_name = input_file.split(".")[0]
             coordinates = pkl_to_xyz(input_file)
             for i, coord in enumerate(coordinates):
                 if args.H:
-                    H_abstraction(input_file, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis, no_xyz=args.no_xyz, crest=args.crest)
+                    H_abstraction(input_file, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis, no_xyz=args.no_xyz, crest=args.crest, NEB=args.NEB)
                 if program != None:
-                    QC_input(file_path=f"{file_name.replace('collection','')}conf{i+1}", coords=coord, TS=args.no_TS, constrain=args.constrain, program=program, method="B3LYP", basis_set=args.basis)
+                    QC_input(file_name=f"{file_name.replace('collection','')}conf{i+1}", coords=coord, TS=args.no_TS, constrain=args.constrain, program=program, method="B3LYP", basis_set=args.basis)
         
         elif file_type == "xyz":
+            if args.reactants:
+                reactant_folder(input_file) # Temp solution
             if len(args.input_files) == 2 and args.CC:
                 addition(args.input_files[n], args.input_files[n+1], constrain=args.constrain, program=program, method=args.method, TS=args.no_TS, no_xyz=args.no_xyz, basis_set=args.basis)
                 break
             elif len(args.input_files) > 0 and args.H:
-                H_abstraction(input_file, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis, no_xyz=args.no_xyz, crest=args.crest)
+                H_abstraction(input_file, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis, no_xyz=args.no_xyz, crest=args.crest, NEB=args.NEB)
             elif len(args.input_files) > 0 and args.H==False and args.CC==False:
                 coords =  read_xyz_file(input_file)
-                QC_input(file_path=input_file.split(".")[0], coords=coords, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis)
+                QC_input(file_name=input_file.split(".")[0], coords=coords, constrain=args.constrain, TS=args.no_TS, program=program, method=args.method, basis_set=args.basis)
+            else: 
+                print("Please specifiy type of reaction")
         
-        elif file_type == "log" and args.k:
-            rate_constant(args.input_files)
-            break
+        elif file_type == "log" or file_type == "out":
+            if args.k:
+                rate_constant(args.input_files, program=program)
+                break
 
         else:
             parser.error("Invalid type of input file")
