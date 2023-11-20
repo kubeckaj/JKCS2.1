@@ -5,4 +5,23 @@ source ~/.JKCSusersetup.txt
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../"
 
-program_PYTHON $toolspath/SCRIPTS/DATS.py ${@}
+SLURM_SCRIPT=$(mktemp /tmp/slurm-script.XXXXXX)
+
+cat > $SLURM_SCRIPT << EOF
+#!/bin/sh
+#SBATCH --job-name=JKTS
+#SBATCH --output=output.log
+#SBATCH --error=error.log
+#SBATCH --time=72:00:00
+#SBATCH --partition=qany
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1500
+
+source ~/.JKCSusersetup.txt
+program_PYTHON $toolspath/SCRIPTS/DATS.py "$@"
+EOF
+
+sbatch $SLURM_SCRIPT
+
+rm $SLURM_SCRIPT

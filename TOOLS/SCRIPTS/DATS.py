@@ -59,6 +59,11 @@ def submit_job(dir, input_file, job_program, ncpus, mem, partition, time, nnodes
     job_name = os.path.splitext(os.path.basename(input_file))[0]
     file_extension = os.path.splitext(input_file)[1].lower()  # Extract the file extension and convert to lower case
 
+    if job_program.lower() == "orca" or job_program.lower() == "g16":
+        program_mem = mem + 2000
+    else:
+        program_mem = mem
+
     pwd = os.path.join(os.getcwd(), dir)
     path_submit_script = os.path.join(pwd, f"{job_name}_submit.sh")
     submit_file = os.path.join(pwd, "qsub.tmp")
@@ -90,8 +95,8 @@ def submit_job(dir, input_file, job_program, ncpus, mem, partition, time, nnodes
             file.write("SCRATCH=/scratch/\$SLURM_JOB_ID\n")
             file.write("mkdir -p \$SCRATCH || exit $?\n")
             file.write("cd \$SCRATCH\n")
-            file.write(f"cp \$SLURM_SUBMIT_DIR/{job_name}.inp .\n")
-            file.write(f"\$(which orca) {job_name}.inp > \$SLURM_SUBMIT_DIR/{job_name}.log\n")
+            file.write(f"cp {pwd}/{job_name}.inp .\n")
+            file.write(f"\$(which orca) {job_name}.inp > {pwd}/{job_name}.log\n")
         elif job_program.lower() == "crest" or file_extension == '.xyz':
             file.write("source /comm/groupstacks/chemistry/bin/modules.sh\n")
             file.write("ml xtb/6.3.3\n\n")
@@ -113,6 +118,11 @@ def submit_job(dir, input_file, job_program, ncpus, mem, partition, time, nnodes
 def submit_array_job(dir, job_files, input_array_list_name, job_name, job_program, partition, time, ncpus, mem, nnodes=1):
     path_submit_script = os.path.join(dir, f"{job_name}_submit.sh")
     array_path = os.path.join(dir, input_array_list_name)
+    
+    if job_program.lower() == "orca" or job_program.lower() == "g16":
+        program_mem = mem + 2000
+    else:
+        program_mem = mem
 
     with open(array_path, 'w') as f:
         for file in job_files:
@@ -197,15 +207,17 @@ def submit_array_job(dir, job_files, input_array_list_name, job_name, job_progra
     subprocess.run(['sh', path_submit_script, array_path])
 
 
-def check_convergence(log_file_name, directory, logger, shared_data, job_type, job_program, initial_delay=10, interval=20, max_attempts=500):
+def check_convergence(log_file_name, directory, logger, shared_data, job_type, job_program, initial_delay=300, interval=90, max_attempts=100):
     if job_program.lower() == "g16":
         termination = "Normal termination"
-    elif job_program.lower == "orca":
-        termination = "TOTAL RUN"
+    elif job_program.lower() == "orca":
+        termination = "****ORCA TERMINATED NORMALLY****"
     elif job_program.lower() == "crest":
         termination = "CREST terminated normally"
     else:
-        termination = "Fail safe"
+        logger.log("Invalid program specified. Unable to check convergence of log file")
+        shared_data[log_file_name]['result'] = (None, None, False)
+        return False
 
     log_file_path = os.path.join(directory, log_file_name)
     logger.log(f"Waiting for {initial_delay} seconds before first check.")
@@ -226,30 +238,29 @@ def check_convergence(log_file_name, directory, logger, shared_data, job_type, j
                     if xyz_coordinates: 
                         logger.log(f"Extracting XYZ coordinates from {log_file_name}")
                         next_step = determine_next_step(log_file_path)
-                        logger.log(f"Next step is {next_step}")
 
                         if next_step == 'transition_state_optimization':
                             new_input_file = log_file_name.replace(".log", "_TS")
-                            shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, True)
+                            shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, next_step, True)
 
                         elif next_step == 'crest_sampling':
                             new_input_file = log_file_name.replace("_TS.log", "_CREST")
-                            shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, True)
+                            shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, next_step, True)
 
                         elif next_step == 'ts_optimization_for_conformers':
                             conformers = []
                             new_input_file = log_file_name.replace("_CREST.log", "")
                             for conf in xyz_coordinates:
                                 conformers.append(conf)
-                            shared_data[log_file_name]['result'] = (new_input_file, conformers, True)
+                            shared_data[log_file_name]['result'] = (new_input_file, conformers, next_step, True)
                         elif next_step == 'DLPNO_SP_for_conformers':
-                            conformer_name = log_file_name.replace(".log", "_TS")
-                            conformer_xyz = log2xyz(log_file_path, job_program)
-                            if conformer_name in conformer_info:
-                                shared_data[conformer_name]['result'] = (conformer_name, conformer_xyz, True)
+                            new_input_file = log_file_name.replace(".log", "_DLPNO")
+                            shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, next_step, True)
+                        else:
+                            logger.log("")
                     else:
-                        logger.log(f"Normal termination of {program}. However, no XYZ coordinates found. Check log file")
-                        shared_data[log_file_name]['result'] = (None, None, False)
+                        logger.log(f"Normal termination of {job_program}. However, no XYZ coordinates found. Check log file")
+                        shared_data[log_file_name]['result'] = (None, None, None, False)
                     return True
                 elif "Error termination" in content:
                     logger.log(f"Error termination in {log_file_name}. Gathering last XYZ coordinates")
@@ -257,7 +268,7 @@ def check_convergence(log_file_name, directory, logger, shared_data, job_type, j
                     if xyz_coordinates:
                         logger.log(f"XYZ coordinates found in failed log file {log_file_name}. Trying to resubmit job")
                         new_input_file = log_file_name.replace(".log", "")
-                        shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, False)
+                        shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, job_type, False) # None could be exchanged for job type being resubmitted
                     else:
                         logger.log(f"No XYZ coordinates found in {log_file_name}. Check log file for type of error.")
                     return False
@@ -267,9 +278,9 @@ def check_convergence(log_file_name, directory, logger, shared_data, job_type, j
                     logger.log(f"No termination yet in {log_file_name}. Waiting for next check. Attempt: {attempts}/{max_attempts}")
                     time.sleep(interval)
         except FileNotFoundError:
-            time.sleep(interval)
-            logger.log(f"Log file {log_file_name} not found. Waiting for the next check. Attempt: {attempts}/{max_attempts}")
             attempts += 1
+            time.sleep(interval)
+            logger.log(f"Log file {log_file_path} not found. Waiting for the next check. Attempt: {attempts}/{max_attempts}")
         
     logger.log("Max attempts reached. Calculation may be stock. Check for convergence.")
 
@@ -446,7 +457,7 @@ def crest_constrain(file_path, C_index, H_index, O_index, force_constant=0.95):
 
 def QC_input(file_name, destination, coords,constrain, program, method, basis_set, TS, C_index=None, H_index=None, O_index=None):
     if constrain and C_index == None and H_index == None and O_index == None:
-        with open(os.getcwd() + "/.constrain", "r") as f:
+        with open(os.path.join(os.getcwd(), destination, "/.constrain"), "r") as f:
             content = f.read()
             C_index, H_index, O_index = [int(num) for num in content.split(",")]
 
@@ -454,12 +465,15 @@ def QC_input(file_name, destination, coords,constrain, program, method, basis_se
         file_name = file_name + ".inp"
         file_path = os.path.join(destination, file_name)
         with open(file_path, "w") as f:
-            if TS:
+            if method == "DLPNO" or basis_set == "DLPNO":
+                f.write(f"! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK\n")
+                args.cpu = 1 # TEMP solution
+            elif TS:
                 f.write(f"! {method} {basis_set} OptTS freq\n")
             else:
                 f.write(f"! {method} {basis_set} Opt\n")
             f.write(f"%pal nprocs {args.cpu} end\n")
-            f.write(f"%maxcore 4000\n")
+            f.write(f"%maxcore {args.mem}\n")
             if constrain:
                 f.write("%geom\n")
                 f.write("Constraints\n")
@@ -477,7 +491,7 @@ def QC_input(file_name, destination, coords,constrain, program, method, basis_se
         file_path = os.path.join(destination, file_name)
         with open(file_path, "w") as f:
             f.write(f"%nprocshared={args.cpu}\n")
-            f.write(f"%mem={args.mem}\n")
+            f.write(f"%mem={args.mem}mb\n")
             if TS and constrain:
                 f.write(f"# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant) freq\n\n") # freq may be redundant
             elif TS and constrain is False:
@@ -858,15 +872,16 @@ def handle_convergence_result(convergence_info, threads):
         if job_info['result'] is not None:
             result = job_info['result']
             current_dir = job_info['dir']
+            last_job = job_info['job_type']
             current_logger = job_info['logger']
-            new_input_file, xyz_coordinates, converged = result
+            new_input_file, xyz_coordinates, job_type, converged = result
             log_file_path = os.path.join(current_dir, log_file)
             if xyz_coordinates:
                 next_step = determine_next_step(log_file_path)
+                print(next_step)
 
                 if converged:
-                    print(f"Yay converged, next step is: {next_step}")
-                    current_logger.log(f"Yay converged. Next step is: {next_step}")
+                    current_logger.log(f"Yay converged. Next step is: {job_type}")
 
                     if next_step == 'transition_state_optimization':
                         QC_input(file_name=new_input_file, destination=current_dir,coords=xyz_coordinates, constrain=False, method=high_method, basis_set=high_basis, program=program, TS=True)
@@ -874,11 +889,10 @@ def handle_convergence_result(convergence_info, threads):
                         current_logger.log(f'Submitted new {program} job with input file {new_input_file}{dot_inputtype}')
                         # Start monitoring the new job
                         new_log_file = new_input_file + ".log"
-                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'result': None}
+                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
                         new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'transition_state_optimization', program))
                         threads.append(new_thread)
                         new_thread.start()
-                        # Clear the entry in convergence_info after handling it
                         job_info['result'] = None
 
 
@@ -888,7 +902,7 @@ def handle_convergence_result(convergence_info, threads):
                         submit_job(current_dir, new_input_file + ".xyz", "CREST", args.cpu, args.mem, args.par, args.time)
                         current_logger.log(f'Submitted CREST job with input file {new_input_file}.xyz')
                         new_log_file = new_input_file + ".log"
-                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'result': None}
+                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
                         new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'crest_sampling', "CREST"))
                         threads.append(new_thread)
                         new_thread.start()
@@ -902,42 +916,46 @@ def handle_convergence_result(convergence_info, threads):
                         for n, conf in enumerate(xyz_coordinates, start=1):
                             conf_file_name = f"{new_input_file}_conf{n}"
                             conf_file_path = os.path.join(conformers_dir, conf_file_name)
-                            QC_input(file_name=conf_file_name, destination=conformers_dir, coords=conf, constrain=False, method=high_method, basis_set=high_basis, program="G16", TS=True)
+                            QC_input(file_name=conf_file_name, destination=conformers_dir, coords=conf, constrain=False, method=high_method, basis_set=high_basis, program=program, TS=True)
                             job_files.append(conf_file_name + dot_inputtype)
-                            conformer_info[conf_file_name] = {
-                                'dir': conformers_dir,
-                                'log_file': f"{conf_file_name}.log",
-                                ',conformer_coords': None,
-                                converged: False
-                            }
-                        
+                            new_log_file = conf_file_name + ".log"
+                            convergence_info[new_log_file] = {'dir': conformers_dir, 'logger': current_logger,'job_type': next_step, 'result': None}
+                            new_thread = threading.Thread(target=check_convergence, args=(new_log_file, conformers_dir, current_logger, convergence_info, 'transition_state_optimization_for_conformers', program))
+                            threads.append(new_thread)
+                            new_thread.start()
+                                                    
                         input_array_list_name = "array.txt"
                         submit_array_job(conformers_dir, job_files, input_array_list_name, f"{new_input_file}_array", program, args.par, args.time, args.cpu, args.mem)
-                        current_logger.log(f'Submitted TS optimization on CREST conformers with array file: {input_array_list_name}')
-
-                        for conf_file_name in job_files:
-                            log_file_name = conf_file_name.replace(dot_inputtype, ".log")
-                            thread = threading.Thread(target=check_convergence, args=(log_file_name, conformers_dir, current_logger, convergence_info, 'ts_optimization_for_conformers', program))
-                            threads.append(thread)
-                            thread.start()
-
+                        current_logger.log(f'Submitting TS optimization on CREST conformers with array file: {input_array_list_name}')
 
 
                     elif next_step == 'DLPNO_SP_for_conformers':
                         print("Doing Couple Cluster")
-                        pass
-                        # Submit couple cluster single point energy calculations
+                        DLPNO_dir = os.path.join(current_dir, "DLPNO")
+                        os.makedirs(DLPNO_dir, exist_ok=True)
+                        QC_input(file_name=new_input_file, destination=DLPNO_dir, coords=xyz_coordinates, method="DLPNO", basis_set="DLPNO", program="ORCA", TS=False, constrain=False)
+                        submit_job(DLPNO_dir, new_input_file+".inp", "ORCA", 1, args.mem, args.par, args.time)
+                        current_logger.log(f"DLPNO single point calculation with input file: {new_input_file}.inp in folder confomers_TS/DLPNO")
+                        new_log_file = new_input_file + ".log"
+                        convergence_info[new_log_file] = {'dir': DLPNO_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
+                        new_thread = threading.Thread(target=check_convergence, args=(new_log_file, DLPNO_dir, current_logger, convergence_info, 'DLPNO_SP_for_conformers', "ORCA"))
+                        threads.append(new_thread)
+                        new_thread.start()
+                        job_info['result'] = None
+
+                    else:
+                        current_logger.log(f"Error: next step could not be determined for log file: {log_file_path}")
 
 
                 else:
-                    print(f"failed converged log file: {log_file_path}. Resubmiting calculation")
+                    print(f"failed converged log file: {log_file_path}. Resubmiting calculation {job_type} {next_step}")
                     if next_step == "transition_state_optimization":
-                        current_logger.log(f"Failed preoptimization for log file: {log_file_path}. Redoing calculation")
+                        current_logger.log(f"Failed preoptimization for log file: {log_file_path}. Redoing calculation {job_type} {next_step}")
                         QC_input(file_name=new_input_file, destination=current_dir, coords=xyz_coordinates, constrain=True, method=low_method, basis_set=low_basis, program=program, TS=False)
                         submit_job(current_dir, new_input_file + dot_inputtype, program, args.cpu, args.mem, args.par, args.time)
                         current_logger.log(f"Resubmitted {program} job with input file {new_input_file}{dot_inputtype}")
                         new_log_file = new_input_file + ".log"
-                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'result': None}
+                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
                         new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'transition_state_optimization', program))
                         threads.append(new_thread)
                         new_thread.start()
@@ -950,11 +968,10 @@ def handle_convergence_result(convergence_info, threads):
                         submit_job(current_dir, new_input_file + dot_inputtype, program, args.cpu, args.mem, args.par, args.time)
                         current_logger.log(f"Resubmitted {program} job with input file {new_input_file}{dot_inputtype}")
                         new_log_file = new_input_file + ".log"
-                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'result': None}
+                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
                         new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'transition_state_optimization', program))
                         threads.append(new_thread)
                         new_thread.start()
-                        # Clear the entry in convergence_info after handling it
                         job_info['result'] = None
 
                     elif next_step == "ts_optimization_for_conformers":
@@ -963,7 +980,7 @@ def handle_convergence_result(convergence_info, threads):
                         submit_job(current_dir, new_input_file + ".xyz", "CREST", args.cpu, args.mem, args.par, args.time)
                         current_logger.log(f'Submitted CREST job with input file {new_input_file}.xyz')
                         new_log_file = new_input_file + ".log"
-                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'result': None}
+                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
                         new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'crest_sampling', "CREST"))
                         threads.append(new_thread)
                         new_thread.start()
@@ -984,10 +1001,11 @@ def determine_next_step(log_file_path):
                         if 'ts' not in components:
                             return 'transition_state_optimization'
                         elif 'ts' in components: 
-                            vibrations = log2vib(log_file_path, program)
-                            print(vibrations)
-                            if 'conf' in re.split('[_.]', log_file_name):
-                                return 'DLPNO_SP_for_conformers'
+                            if 'conf' in log_file_name:
+                                vibrations = log2vib(log_file_path, program)
+                                print(vibrations)
+                                if vibrations:
+                                    return 'DLPNO_SP_for_conformers'
                             else: return 'crest_sampling' 
                     elif line.startswith('xTB'):
                         return 'ts_optimization_for_conformers'
@@ -1068,7 +1086,7 @@ def main():
 
     ################################ARGUMENT SPECIFICATIONS############################
     if args.auto:
-        args.constrain=True; args.no_TS=True; args.G16=True; args.reactants=True; args.no_xyz=True
+        args.constrain=True; args.no_TS=True; args.G16=True; args.reactants=True; args.no_xyz=True; args.time="18:00:00";
 
     # Program and method 
     global low_basis, low_method, high_basis, high_method
@@ -1080,20 +1098,15 @@ def main():
     global program
     global dot_inputtype
     global dot_outputtype
-    global program_mem
     if args.G16:
         program = "G16"
         dot_inputtype = ".com"
         dot_outputtype = ".log"
-        args.mem = f"{args.mem}mb"
-        program_mem = int(''.join(filter(str.isdigit, args.mem)))
-        program_mem += 1500
 
     elif args.ORCA:
         program = "ORCA"
         dot_inputtype = ".inp"
         dot_outputtype = ".out"
-        program_mem = args.mem + 1500
         if low_method in methods:
             low_basis = ""
         if high_method in methods:
@@ -1153,7 +1166,7 @@ def main():
             elif not args.H and not args.CC:
                 # Default case for XYZ files without specific reactions
                 coords = read_xyz_file(input_file)
-                QC_input(file_name=input_file.split(".")[0], destination=os.getcwd(),coords=coords, constrain=args.constrain, program=program, method=low_method, basis_set=low_basis, TS=False)
+                QC_input(file_name=input_file.split(".")[0], destination=os.getcwd(), coords=coords, constrain=args.constrain, program=program, method=args.method, basis_set=args.basis, TS=TS)
 
             else:
                 print("Unsupported reaction type or combination of arguments.")
@@ -1207,6 +1220,7 @@ def main():
                 threads.remove(thread)
                 handle_convergence_result(convergence_info, threads)
 
+    print("You are now finished")
 
 
 if __name__ == "__main__":
