@@ -53,6 +53,21 @@ class Logger:
         with open(self.log_file, 'a') as file:
             file.write(message + '\n')
 
+    def log_with_stars(self, message):
+        wrapped_message = self.wrap_in_stars(message)
+
+        self.log(wrapped_message)
+
+    @staticmethod
+    def wrap_in_stars(s):
+        star_length = len(s) + 14  # 6 stars and 2 spaces padding on each side
+
+        top_bottom_line = '*' * star_length
+        middle_line = f"****** {s} ******"
+        wrapped_string = f"{top_bottom_line}\n{middle_line}\n{top_bottom_line}"
+
+        return wrapped_string
+
 
 #########################################SUBMIT JOBS############################
 def submit_job(dir, input_file, job_program, ncpus, mem, partition, time, nnodes=1):
@@ -185,7 +200,7 @@ def submit_array_job(dir, job_files, input_array_list_name, job_name, job_progra
             file.write("#\n")
             file.write("!EOF")
 
-        elif job_program.lower == "orca":
+        elif job_program.lower() == "orca":
             file.write("  ulimit -c 0\n")
             file.write("source /comm/groupstacks/gaussian/bin/modules.sh\n")
             file.write("ml orca/5.0.4\n\n")
@@ -207,7 +222,12 @@ def submit_array_job(dir, job_files, input_array_list_name, job_name, job_progra
     subprocess.run(['sh', path_submit_script, array_path])
 
 
-def check_convergence(log_file_name, directory, logger, shared_data, job_type, job_program, initial_delay=300, interval=90, max_attempts=100):
+def check_convergence(log_file_name, directory, logger, shared_data, job_type, job_program):
+    time_seconds = get_time(start_dir, log_file_name)
+    max_attempts = 500
+    initial_delay = int((time_seconds/(max_attempts)))
+    interval = int((time_seconds/max_attempts*2))
+    
     if job_program.lower() == "g16":
         termination = "Normal termination"
     elif job_program.lower() == "orca":
@@ -220,15 +240,16 @@ def check_convergence(log_file_name, directory, logger, shared_data, job_type, j
         return False
 
     log_file_path = os.path.join(directory, log_file_name)
-    logger.log(f"Waiting for {initial_delay} seconds before first check.")
+    logger.log(f"Waiting {initial_delay} seconds before first check.")
     time.sleep(initial_delay)
     attempts = 0
-    while attempts < max_attempts:
+    find_log_attempts = 0
+    while attempts < max_attempts and find_log_attempts < max_attempts:
         try:
             with open(log_file_path, 'r') as f:
                 content = f.read()
                 if termination in content:
-                    logger.log(f"Calculation has converged. log file: {log_file_name}")
+                    logger.log_with_stars(f"Yay {log_file_name} converged")
                     vibrations = re.findall(r"Frequencies --\s+(-?\d+\.\d+)", content)
                     [logger.log(vib) for vib in vibrations if float(vib) < 0]
                     if job_program.lower() == "crest":
@@ -268,23 +289,29 @@ def check_convergence(log_file_name, directory, logger, shared_data, job_type, j
                     if xyz_coordinates:
                         logger.log(f"XYZ coordinates found in failed log file {log_file_name}. Trying to resubmit job")
                         new_input_file = log_file_name.replace(".log", "")
-                        shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, job_type, False) # None could be exchanged for job type being resubmitted
+                        shared_data[log_file_name]['result'] = (new_input_file, xyz_coordinates, job_type, False) 
                     else:
                         logger.log(f"No XYZ coordinates found in {log_file_name}. Check log file for type of error.")
                     return False
 
                 else:
                     attempts += 1
-                    logger.log(f"No termination yet in {log_file_name}. Waiting for next check. Attempt: {attempts}/{max_attempts}")
+                    logger.log(f"No termination yet in {log_file_name}. Next check in {interval+10} seconds. Attempt: {attempts}/{max_attempts}")
                     time.sleep(interval)
         except FileNotFoundError:
-            attempts += 1
-            time.sleep(interval)
-            logger.log(f"Log file {log_file_path} not found. Waiting for the next check. Attempt: {attempts}/{max_attempts}")
+            log_attempts = 10
+            if find_log_attempts < log_attempts:
+                time.sleep(interval)
+                logger.log(f"Log file {log_file_name} not found. Perhaps job is pending. Checking again in {interval+log_attempts} seconds.")
+            else:
+                logger.log(f"Log file {log_file_name} still not found. Check whether calculation is pending or terminated. Checking again for log file in {interval+10*log_attempts} seconds")
+                time.sleep(interval+300)
+                log_attempts += 10
+            find_log_attempts += 1
         
     logger.log("Max attempts reached. Calculation may be stock. Check for convergence.")
 
-    shared_data[log_file_name]['result'] = (None, None, False)
+    shared_data[log_file_name]['result'] = (None, None, None,False)
     return False
 
 
@@ -355,6 +382,25 @@ def write_xyz_file(destination_path, output_file_name, updated_coords):
             f.write(f'{atom[0]} {atom[1]:.6f} {atom[2]:.6f} {atom[3]:.6f}\n')
 
 
+def get_time(directory, log_file_name):
+    xyz_file = [file for file in os.listdir(directory) if log_file_name.split("_")[0] in file and ".xyz" in file]
+    xyz_path = os.path.join(directory, xyz_file[0])
+    heavy_count = 0
+    H_count = 0
+    try:
+        with open(xyz_path, 'r') as f:
+            lines = f.readlines()[2:]
+            for line in lines:
+                if 'H' in line:
+                    H_count += 1
+                else:
+                    heavy_count += 1
+        time_seconds = (((8*heavy_count)**3 + (4*H_count)**3)+18000)/args.cpu
+    except FileNotFoundError:
+        time_seconds = 259200 # 72 hours
+    return time_seconds
+
+
 def mkdir(file, index: list):
     file_name = file.split(".")[0]
     cwd = os.getcwd() # Current working directory
@@ -372,7 +418,7 @@ def mkdir(file, index: list):
     else:
         manager_TS(file, new_dir)
 
-    with open(new_dir + "/.constrain", "w") as c:
+    with open(new_dir + "/.index", "w") as c:
         c.write(f"{index[0]}, {index[1]}, {index[2]}") # C, H, O
 
 
@@ -457,9 +503,17 @@ def crest_constrain(file_path, C_index, H_index, O_index, force_constant=0.95):
 
 def QC_input(file_name, destination, coords,constrain, program, method, basis_set, TS, C_index=None, H_index=None, O_index=None):
     if constrain and C_index == None and H_index == None and O_index == None:
-        with open(os.path.join(os.getcwd(), destination, "/.constrain"), "r") as f:
-            content = f.read()
-            C_index, H_index, O_index = [int(num) for num in content.split(",")]
+        index_path = [os.path.join(destination, file) for file in os.listdir(destination) if file == ".index"]
+        if index_path:
+            with open(os.path.join(os.getcwd(), destination, "/.index"), "r") as f:
+                content = f.read()
+                C_index, H_index, O_index = [int(num) for num in content.split(",")]
+        else:
+            try:
+                dir_name = file_name.split("_")[0] + "_" + file_name.split("_")[1]
+                index_path = os.path.join(start_dir, dir_name, ".index")
+            except FileNotFoundError:
+                print(f"File '.index' not found. Looked in: {index_path}")
 
     if program == "ORCA":
         file_name = file_name + ".inp"
@@ -531,24 +585,35 @@ def get_terminal_O(coords, distance=1.5):
                 O_index.append(i)
     return O_index[0]
 
+def methyl_C_index(coords, distance=1.5):
+    indexes = []
+    for i, atom in enumerate(coords):
+        if atom[0] == 'C':
+            H_neighbors = sum(1 for other_atom in coords if other_atom[0] == 'H' and atom_distance(atom[1:], other_atom[1:]) < distance)
+        if H_neighbors >= 3:
+            indexes.append(i)
+    return indexes
 
 #####################################MAIN FUNCTIONS####################################
 def H_abstraction(file, distance=1.35, dist_OH=0.97, NEB=False):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
     modified_coords = []
-    sampled_hydrogens = set()
+    methyl_C_indexes = methyl_C_index(coords) 
+    carbon_iteration_counter = {index: 0 for index in range(num_atoms) if coords[index][0] == 'C'}
 
     for i in range(num_atoms):
         if coords[i][0] == "H":  # Atom label for hydrogen
             for j in range(num_atoms):
                 if coords[j][0] == "C":  # Atom label for carbon
+                    if j in methyl_C_indexes and carbon_iteration_counter[j] >= 1:
+                        continue
                     vector_CH = np.array(coords[i][1:]) - np.array(coords[j][1:])
                     dist_CH = vector_length(vector_CH)
 
                     if dist_CH < distance:
+                        carbon_iteration_counter[j] += 1
                         norm_vector_CH = normalize_vector(vector_CH)
-
 
                         H_perturb_axis = np.cross(norm_vector_CH, [0, 1, 0])
                         H_perturb_axis = normalize_vector(H_perturb_axis)
@@ -605,32 +670,16 @@ def H_abstraction(file, distance=1.35, dist_OH=0.97, NEB=False):
 
     return modified_coords
 
-                        
-def find_equivalent_hydrogens(coords, hydrogen_index, carbon_index, threshold=0.1):
-    equivalent_hydrogens = []
-    for index, atom in enumerate(coords):
-        if atom[0] == "H" and index != hydrogen_index:
-            vector_HC = np.array(coords[index][1:]) - np.array(coords[carbon_index][1:])
-            dist_HC = vector_length(vector_HC)
-            vector_HC_target = np.array(coords[hydrogen_index][1:]) - np.array(coords[carbon_index][1:])
-            dist_HC_target = vector_length(vector_HC_target)
-
-            if abs(dist_HC - dist_HC_target) < threshold:
-                equivalent_hydrogens.append(index)
-
-    return equivalent_hydrogens
-
 
 def OH_addition(file, distance=1.45, double_bond_distance=1.36, dist_oh=0.97):
     coords = read_xyz_file(file)
     num_atoms = len(coords)
-    count = 1
     modified_coords = []
 
     for i in range(num_atoms):
-        if coords[i][0] == "c":
+        if coords[i][0] == "C":
             for j in range(num_atoms):
-                if coords[j][0] == "c" and i != j:
+                if coords[j][0] == "C" and i != j:
                     vector_cc = np.array(coords[i][1:]) - np.array(coords[j][1:])
                     dist_cc = vector_length(vector_cc)
                     if dist_cc <= double_bond_distance:
@@ -651,34 +700,34 @@ def OH_addition(file, distance=1.45, double_bond_distance=1.36, dist_oh=0.97):
 
                         hydrogen_coords = oxygen_coords + rotated_vector_h * dist_oh
                         
-                        new_coords.append(['o', *oxygen_coords])
-                        new_coords.append(['h', *hydrogen_coords])
+                        new_coords.append(['O', *oxygen_coords])
+                        new_coords.append(['H', *hydrogen_coords])
+                        
+                        C_index = j+1
+                        H_index = i+1
+                        O_index = len(new_coords)-1
 
-                        modified_coords.append(new_coords)
+                        modified_coords.append((new_coords, (C_index, H_index, O_index)))
 
-                        base_file_name = os.path.splitext(os.path.basename(file))[0]
-                        write_xyz_file(f"{base_file_name}_{count}.xyz", new_coords)
-
-                        count += 1
-
+    return modified_coords
 
 def addition(file1, file2, method, basis_set, TS, no_xyz, program=None, constrain=False, distance = 1.55, double_bond_distance=1.36, elongation_factor=0.1):
     coords1 = read_xyz_file(file1)
     coords2 = read_xyz_file(file2)
+    modified_coords = []
     num_atoms1 = len(coords1)
     num_atoms2 = len(coords2)
-    count = 1
     carbon_index = []
     vector_lst = []
     
     # gather carbon index
     for i in range(num_atoms1):
-        if coords1[i][0] == "c":
+        if coords1[i][0] == "C":
             for j in range(num_atoms1):
                 if atom_distance(coords1[i][1:], coords1[j][1:]) < 1.52:
                     perpendicular_vector = (coords1[i][1:], coords1[j][1:])
                     vector_lst.append(perpendicular_vector)
-                if coords1[j][0] == "c" and i != j:
+                if coords1[j][0] == "C" and i != j:
                     bond_cc = atom_distance(coords1[i][1:], coords1[j][1:])
                     if bond_cc <= double_bond_distance:
                         carbon_index.append(i)
@@ -719,13 +768,10 @@ def addition(file1, file2, method, basis_set, TS, no_xyz, program=None, constrai
                 rotated_vector = rotate_vector(relative_vector, rotation_axis, rotation_angle)
             new_pos = first_pos + relative_vector + (rotated_vector * 0.1)
             new_coords.append([coords2[i][0], *new_pos])
+
+            modified_coords.append(new_coords)
         
-
-        base_file_name1 = os.path.splitext(os.path.basename(file1))[0]
-        base_file_name2 = os.path.splitext(os.path.basename(file2))[0]      
-        write_xyz_file(f"{base_file_name1}_{base_file_name2}_{count}.xyz", new_coords)
-        count += 1
-
+    return modified_coords 
                         
 
 ##################################thermochemistry##############################
@@ -846,7 +892,9 @@ def rate_constant(files, T=293.15, program=None):
                     multiplicity = re.search(r'Mult\s* ....\s*(\d*)', content)
                     if multiplicity:
                         multiplicity = int(multiplicity.group().split()[-1])
-                    else: print(f"No multiplicity found in {file}")
+                    else:
+                        multiplicity = 2
+                        print(f"No multiplicity found in {file}. Assuming 2")
 
                 else:
                     print(f"No energies in {file}. check if calculation has converged")
@@ -866,7 +914,6 @@ def submit_and_monitor(dir, input_file_path, logger, convergence_info, threads, 
     thread.start()
 
 
-
 def handle_convergence_result(convergence_info, threads):
     for log_file, job_info in list(convergence_info.items()):
         if job_info['result'] is not None:
@@ -881,7 +928,7 @@ def handle_convergence_result(convergence_info, threads):
                 print(next_step)
 
                 if converged:
-                    current_logger.log(f"Yay converged. Next step is: {job_type}")
+                    current_logger.log(f"Next step is: {job_type}")
 
                     if next_step == 'transition_state_optimization':
                         QC_input(file_name=new_input_file, destination=current_dir,coords=xyz_coordinates, constrain=False, method=high_method, basis_set=high_basis, program=program, TS=True)
@@ -894,7 +941,6 @@ def handle_convergence_result(convergence_info, threads):
                         threads.append(new_thread)
                         new_thread.start()
                         job_info['result'] = None
-
 
                     elif next_step == 'crest_sampling':
                         print("Doing CREST sampling")
@@ -948,15 +994,15 @@ def handle_convergence_result(convergence_info, threads):
 
 
                 else:
-                    print(f"failed converged log file: {log_file_path}. Resubmiting calculation {job_type} {next_step}")
+                    print(f"failed converged log file: {log_file_path}. Resubmiting calculation {job_type}")
                     if next_step == "transition_state_optimization":
-                        current_logger.log(f"Failed preoptimization for log file: {log_file_path}. Redoing calculation {job_type} {next_step}")
+                        current_logger.log(f"Failed preoptimization for log file: {log_file_path}. Redoing calculation {job_type}")
                         QC_input(file_name=new_input_file, destination=current_dir, coords=xyz_coordinates, constrain=True, method=low_method, basis_set=low_basis, program=program, TS=False)
                         submit_job(current_dir, new_input_file + dot_inputtype, program, args.cpu, args.mem, args.par, args.time)
                         current_logger.log(f"Resubmitted {program} job with input file {new_input_file}{dot_inputtype}")
                         new_log_file = new_input_file + ".log"
-                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
-                        new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'transition_state_optimization', program))
+                        convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': job_type, 'result': None}
+                        new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'preoptimization', program))
                         threads.append(new_thread)
                         new_thread.start()
                         job_info['result'] = None
@@ -978,7 +1024,7 @@ def handle_convergence_result(convergence_info, threads):
                         print("Redoing CREST sampling")
                         write_xyz_file(current_dir, new_input_file + ".xyz", xyz_coordinates)
                         submit_job(current_dir, new_input_file + ".xyz", "CREST", args.cpu, args.mem, args.par, args.time)
-                        current_logger.log(f'Submitted CREST job with input file {new_input_file}.xyz')
+                        current_logger.log(f'Resubmitted CREST job with input file {new_input_file}.xyz')
                         new_log_file = new_input_file + ".log"
                         convergence_info[new_log_file] = {'dir': current_dir, 'logger': current_logger, 'job_type': next_step, 'result': None}
                         new_thread = threading.Thread(target=check_convergence, args=(new_log_file, current_dir, current_logger, convergence_info, 'crest_sampling', "CREST"))
@@ -1007,6 +1053,8 @@ def determine_next_step(log_file_path):
                                 if vibrations:
                                     return 'DLPNO_SP_for_conformers'
                             else: return 'crest_sampling' 
+                        else:
+                            return 'preoptimization'
                     elif line.startswith('xTB'):
                         return 'ts_optimization_for_conformers'
                 except StopIteration:
@@ -1064,15 +1112,15 @@ def main():
     parser.add_argument('-constrain', action='store_true', help='Constrain is integrated into relevant input file')
     parser.add_argument('-reactants', action='store_true', help='Prepare folder for reactants')
     parser.add_argument('-NEB', action='store_true', help='Prepare input file for Nudged Elsatic Band')
-    parser.add_argument('-auto', action='store_true', help='Automated process with the workflow: \n-> Preoptimization as low level of theory \n-> TS optimization as high level of theory \n-> CREST TS conformer sampling \n-> DLPNO-CCSD(T) SP energy calculations on top of TS conformers \n-> calculate rate constants and branching rations for reaction type \n- Resubmission of failed calculations is automatically done until convergence')
+    parser.add_argument('-auto', action='store_true', help='Automated process with the workflow: \n-> Preoptimization of geometry (Low Level of Theory) \n-> Optimization towards transition state (High Level of Theory) \n-> CREST TS conformer sampling (GFN2-xTB -ewin=2kcal/mol) \n-> Reoptimization of CREST conformers to TS (High Level of Theory)\n-> DLPNO-CCSD(T) SP energy calculations on top of TS conformers \n-> calculate rate constants and branching rations for reaction type \n* Resubmission of failed calculations is automatically done until convergence or wall-time reached')
 
     additional_options = parser.add_argument_group("Additional arguments")
 
     additional_options.add_argument('--no-TS', action='store_true', help='Input files for geometry relaxation are generated')
     additional_options.add_argument('--no-xyz', action='store_true', help='No XYZ files generated')
     additional_options.add_argument('-k', action='store_true', help='Calculate Multiconformer Transition State rate constant')
-    additional_options.add_argument('--high_level', nargs=2, metavar='', default=['wb97xd', 'aug-cc-pVTZ'],  help='Specify the high level of theory for QC method TS optimization [def = wB97X-D aug-cc-pVTZ]')
-    additional_options.add_argument('--low_level', nargs=2, metavar='', default=['B3LYP', '6-31+G(d,p)'],  help='Specify the low level of theory for preoptimization [def = B3LYP 6-31+G(d,p)]')
+    additional_options.add_argument('--high_level', nargs='+', metavar='', help='Specify the high level of theory for QC method TS optimization [def = wB97X-D aug-cc-pVTZ]')
+    additional_options.add_argument('--low_level', nargs='+', metavar='', help='Specify the low level of theory for preoptimization [def = B3LYP 6-31+G(d,p)]')
     additional_options.add_argument('-method', nargs="?", default='wb97xd',  help='Specify the QC method [def = wB97X-D]') # redundant
     additional_options.add_argument('-basis',  nargs='?', default="6-31+g(d,p)", help='Specify the basis set used [def = 6-31+G(d,p)]') # redundant
     additional_options.add_argument('-cpu', metavar="int", nargs='?', const=1, type=int, default=4, help='Number of CPUs [def = 4]')
@@ -1080,24 +1128,34 @@ def main():
     additional_options.add_argument('-par', metavar="partition", nargs='?', const=1, default="qany", help='Partition to use [def = qany]')
     additional_options.add_argument('-time', metavar="hours:minutes:seconds", nargs='?', const=1, default="72:00:00", help='Specify total time for calculation [def = 72 Hours]')
 
-    global args
+    global args, start_dir
     args = parser.parse_args()
     start_dir = os.getcwd()
 
     ################################ARGUMENT SPECIFICATIONS############################
     if args.auto:
-        args.constrain=True; args.no_TS=True; args.G16=True; args.reactants=True; args.no_xyz=True; args.time="18:00:00";
-
+        args.constrain=True; args.no_TS=True; args.G16=True; args.reactants=True; args.no_xyz=True;
     # Program and method 
-    global low_basis, low_method, high_basis, high_method
-    low_basis, low_method = args.low_level
-    high_basis, high_method = args.high_level
+    global low_method, low_basis, high_method, high_basis
 
-    methods = ["B97-3c", "r2scan-3c", "pm3", "am1", "pm6", "pm7"] 
+    methods_no_basis = {"B97-3c", "r2scan-3c", "pm3", "am1", "pm6", "pm7"}
 
-    global program
-    global dot_inputtype
-    global dot_outputtype
+    def extract_method_basis(input_args, default):
+        if not input_args:
+            return default
+
+        if len(input_args) == 1:
+            if input_args[0] in methods_no_basis:
+                return input_args[0], ""
+            else:
+                raise ValueError(f"Basis set required for method {input_args[0]}")
+        
+        return input_args[0], input_args[1]
+
+    high_method, high_basis = extract_method_basis(args.high_level, ["wb97xd", "aug-cc-pVTZ"])
+    low_method, low_basis = extract_method_basis(args.low_level, ["B3LYP", "6-31+G(d,p)"])
+
+    global program, dot_inputtype, dot_outputtype
     if args.G16:
         program = "G16"
         dot_inputtype = ".com"
@@ -1107,24 +1165,19 @@ def main():
         program = "ORCA"
         dot_inputtype = ".inp"
         dot_outputtype = ".out"
-        if low_method in methods:
+        if low_method in methods_no_basis:
             low_basis = ""
-        if high_method in methods:
+        if high_method in methods_no_basis:
             high_basis = ""
-        if high_method == "wb97xd":
+        if high_method.lower() == "wb97xd":
             high_method = "WB97X-D3"
-        if low_method == "wb97xd":
+        if low_method.lower() == "wb97xd":
             low_method = "WB97X-D3" 
     else: 
-        program = None # Just produce XYZ-file
+        program = None  # Just produce XYZ-file
         dot_inputtype = ".xyz"
-        dot_outputtype = ".log"
+        dot_outputtype = ".log"    
 
-    if args.no_TS:
-        TS = False
-    else: TS = True
-
-    
     ####################################################################################################
     threads = []
     convergence_info = {}
@@ -1135,7 +1188,6 @@ def main():
         file_name, file_type = os.path.splitext(input_file)
 
         if file_type == ".xyz":
-            # logger = Logger(os.path.join(start_dir, file_name, "log"))
 
             if args.H:
                 # Hydrogen abstraction process
@@ -1206,7 +1258,7 @@ def main():
                 print("DLPNO to be done")
 
             elif next_step == 'default_action':
-                print("Doing nothing")
+                print("Next step was not able to be determined from log file")
 
 
         else:
