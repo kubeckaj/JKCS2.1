@@ -1,8 +1,62 @@
 #!/bin/bash
-source ~/.JKCSusersetup.txt
 
-# locate TOOLS path
+source ~/.JKCSusersetup.txt
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../"
 
-program_PYTHON $toolspath/SCRIPTS/DATS.py ${@}
+# Default values
+SLURM_TIME="72:00:00"
+SLURM_PARTITION="qany"
+PYTHON_ARGS=""
+
+# Collect all arguments
+for arg in "$@"; do
+  PYTHON_ARGS+="$arg "
+done
+
+# Trim trailing space
+PYTHON_ARGS="${PYTHON_ARGS% }"
+
+# Extract time and partition values from arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -time)
+      SLURM_TIME="$2"
+      shift 2
+      ;;
+    -par)
+      SLURM_PARTITION="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ "$PYTHON_ARGS" == *"-h"* ]] || [[ "$PYTHON_ARGS" == *"--help"* ]]; then
+  program_PYTHON $toolspath/SCRIPTS/DATS.py $PYTHON_ARGS
+elif [[ "$PYTHON_ARGS" == *"-auto"* ]]; then 
+  SLURM_SCRIPT=$(mktemp /tmp/slurm-script.XXXXXX)
+
+  cat > $SLURM_SCRIPT <<EOF
+#!/bin/sh
+#SBATCH --job-name=JKTS
+#SBATCH --output=output.log
+#SBATCH --error=error.log
+#SBATCH --time=$SLURM_TIME
+#SBATCH --partition=$SLURM_PARTITION
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1500
+
+source ~/.JKCSusersetup.txt
+program_PYTHON $toolspath/SCRIPTS/DATS.py $PYTHON_ARGS
+EOF
+
+  sbatch $SLURM_SCRIPT
+  rm $SLURM_SCRIPT
+else
+  program_PYTHON $toolspath/SCRIPTS/DATS.py $PYTHON_ARGS
+fi
+
