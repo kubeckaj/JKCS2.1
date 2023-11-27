@@ -102,6 +102,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -163,6 +164,8 @@ Qshuffle = 0 #shuffle rows
 
 Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
 Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
+Qrh = missing
+QPsolvent = missing
 Qformation = 0
 Qconc = 0
 conc = []
@@ -248,6 +251,22 @@ for i in argv[1:]:
   #Hydration
   if i == "-hydration":
     Qsolvation = "w"
+    continue
+  #Qrh
+  if i == "-rh":
+    last = "-rh"
+    continue
+  if last == "-rh":
+    last = ""
+    Qrh = float(i)
+    continue
+  #psolvent
+  if i == "-psolvent":
+    last = "-psolvent"
+    continue
+  if last == "-psolvent":
+    last = ""
+    QPsolvent = float(i)
     continue
   #Solvation
   if i == "-solvation":
@@ -3596,10 +3615,10 @@ if Qsolvation != "0":
   #unique_clusters = filter(None, unique_clusters)
   free_energies = output[1]
   
-  print(cluster_types)
-  print(no_solvent_cluster_types)
-  print(solvent_content)
-  print(unique_clusters)
+  #print(cluster_types)
+  #print(no_solvent_cluster_types)
+  #print(solvent_content)
+  #print(unique_clusters)
   index_of_solvent = -1
   for i in range(len(cluster_types)):
     if cluster_types[i] == "1"+Qsolvation:
@@ -3607,45 +3626,70 @@ if Qsolvation != "0":
   if index_of_solvent == -1:
     print("Missing solvent")
     exit()
-  print(index_of_solvent)
+  #print(index_of_solvent)
   #solvent_free_energy = 
 
   #TODO
+  if not pd.isna(Qt):
+    Temp = Qt
+  else:
+    Temp = 298.15
+  print(f"Temp = %.2f K; "%(Temp), end = "")
+  if not pd.isna(QPsolvent):
+    p_solvent = QPsolvent
+  else:
+    if not pd.isna(Qrh):
+      rh = Qrh
+    else:
+      rh = 1.0
+    print(f"RH = %.2f %%; "%(rh*100), end = "") 
+    p_solvent = rh*10**(8.14019-1810.9/(244.485+Temp))
+  print(f"p_solvent = %.2f Pa "%(p_solvent))
   #p_solvent = 100  
   p_ref = 101325
   R = 1.987 #cal/mol/K #=8.31441
-  Temp = 298.15
   #Antoine equation
   #https://www.omnicalculator.com/chemistry/vapour-pressure-of-water
-  p_solvent = 10**(8.14019-1810.9/(244.485+Temp))
-  
+  #print("P_solvent")
+  #print(p_solvent) 
 
-  print(output)
+  #print(output)
+  new_output = []  
   for i in unique_clusters:
     indexes = []
     for j in range(len(no_solvent_cluster_types)):
       if i == no_solvent_cluster_types[j]:
         indexes.append(j)
-    print("Indexes:")
-    print(indexes)
+    #print("Indexes:")
+    #print(indexes)
     tot_conc = 0
     nominators = []
     free_energies_i = []
     for j in indexes:
       free_energies_i.append(output[1][j]-float(solvent_content[j])*output[1][index_of_solvent])
-    minimum = min(free_energies_i)
+    minimum = np.min(free_energies_i)
     free_energies_i = free_energies_i - minimum
-    print("Minimum:")
-    print(minimum)
-    print("Free energies:")
-    print(free_energies_i)
+    #print("Minimum:")
+    #print(minimum)
+    #print("Free energies:")
+    #print(free_energies_i)
     for j in range(len(indexes)):
-      print(-QUenergy*free_energies_i[j]/R*1000/Temp)
-      nominator = (p_solvent/p_ref)**float(solvent_content[indexes[j]])*np.exp(-QUenergy*free_energies_i[j]/R*1000/Temp)
+      #print(-QUenergy*free_energies_i[j]/R*1000/Temp)
+      nominator = (p_solvent/p_ref)**float(solvent_content[indexes[j]])*np.exp(-1/QUenergy*free_energies_i[j]/R*1000/Temp)
       nominators.append(nominator)
-      print(cluster_types[indexes[j]])
-    print(nominators)
-  
+      #print(cluster_types[indexes[j]])
+    denominator = np.sum(nominators)
+    #print(nominators/denominator)
+    
+    #print(output[0])
+    for j in range(len(indexes)):
+      print(f"%8s "%(cluster_types[indexes[j]]), end="")
+    print("")
+    for j in range(len(indexes)):
+      print(f"%8.1f "%(nominators[j]/denominator*100),end="")
+    print("")
+    print("----------------------------------------")
+    #new_output
     
 
 if Qformation == 1:
