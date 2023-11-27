@@ -982,12 +982,20 @@ if len(input_pkl_sp) > 0:
     newclusters_df_sp = newclusters_df_sp.rename(columns={"log": "out"}) 
     #newclusters_df_sp = pd.concat([newclusters_df_sp[("info","file_basename")],newclusters_df_sp["out"]],axis = 1)
     newclusters_df_sp.set_index(('info', 'file_basename'), inplace=True)
+    #print(newclusters_df_sp.index)
     #newclusters_df_sp = newclusters_df_sp
     clusters_df.set_index(('info', 'file_basename'), inplace=True)
+    #print(clusters_df.index)
     #print(clusters_df.join(newclusters_df_sp,how='left'))
-    clusters_df = pd.concat([clusters_df.sort_index(), newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out'].sort_index()], axis=1)
+    #print(newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out'])
+    newclusters_df_sp = newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out']
+    clusters_df = pd.concat([clusters_df, newclusters_df_sp], axis=1)
+    clusters_df = clusters_df.sort_index()
+    newclusters_df_sp = newclusters_df_sp.sort_index()
     #print(clusters_df.merge(newclusters_df_sp, on=('info', 'file_basename')))
     #clusters_df.index = [str(j) for j in range(len(clusters_df))]
+    clusters_df = clusters_df.sort_index()
+    #print(clusters_df)
     clusters_df.reset_index(inplace=True)
 
 ####################################################################################################
@@ -2878,7 +2886,7 @@ if Qout > 0:
     
 
 ## EXTRACT DATA ##
-if Qsolvation != 0 or Qformation != 0:
+if Qsolvation != "0" or Qformation != 0:
   if Pout[0] != "-b" and Pout[0] != "-ct":
     Pout.insert(0,"-ct")
 output = []
