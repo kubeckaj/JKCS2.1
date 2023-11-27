@@ -3651,7 +3651,7 @@ if Qsolvation != "0":
     else:
       rh = 1.0
     print(f"RH = %.2f %%; "%(rh*100), end = "") 
-    p_solvent = rh*10**(8.14019-1810.9/(244.485+Temp))
+    p_solvent = rh*10**(8.14019-1810.9/(244.485+Temp-273.15))*133.322
   print(f"p_solvent = %.2f Pa "%(p_solvent))
   #p_solvent = 100  
   p_ref = 101325
