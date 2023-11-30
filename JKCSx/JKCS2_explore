@@ -47,10 +47,12 @@ function help {
     -g,-gen \"X\" ....... amount of ABC generations [def=100]
     -s,-sc \"X\" ........ amount of scout bees      [def=4]
     -pop,-i,-init \"X\" . amount of initial guesses [def=300*M]
+    
+    ADVANCED:
     -repeat \"X\" ....... each simulation is repeated X-times [def=1]
- 
-    OTHERS: -box [def=7+M]
-    OTHERS: -pickle,-JKQC,-expl/-exploded (removes >50 Angstrom)
+    -box \"X\" .......... box size [def=7+M]
+    -pickle ............... pickles in the end to save space
+    -exploded ............. removes exploded (>50 Angstrom) and pickles in the end
     OTHERS: -components <file>
  
   ${cfMAGENTA}SYMBOLS:${cfDEF}
@@ -63,12 +65,12 @@ function help {
     ${cfRED}WRONG exploration (BAD = DO NOT USE):${cfDEF}
             $scriptfile -pop 100 -lm 100 -gen 1     #too short (gen>=100)
             $scriptfile -pop 1000 -gen 100 -lm 1    #few saved structures
-            $scriptfile -pop 100 -gen 100 -lm 300   #too small population
+            $scriptfile -pop 10 -gen 100 -lm 300   #too small population
 
     ${cfGREEN}Correct exploration:${cfDEF}
-            $scriptfile -pop 1000 -gen 100 -lm 3000
-            $scriptfile -pop 1000*M -gen 100 -lm 4000/NoC
-            $scriptfile -wtc 3h -pop 2000*M/NoC\n""" 
+            $scriptfile -pop 300 -gen 100 -lm 200 -repeat 5 
+            $scriptfile -pop 200*M -gen 100 -lm 2000/NoC
+            $scriptfile -exploded -pop 300 -gen 100 -cpu 1 -lm 1000 -time 5:00:00 -par qany\n""" 
   #OTHERS: -wtb,-walltimebased {1000s,3h,1d ...}      [TESTING]
   #OTHERS: -wtc,-walltimecontrolled {1000s,3h,1d ...} [TESTING]
   printf "#################################################################\n"

@@ -190,7 +190,7 @@ do
       continue
     fi
     # JKQCcleanfull
-    if [ "$iter" == "-cleanfull" ] || [ "$iter" == "-JKQCcleanfull" ]
+    if [ "$iter" == "-cleanfull" ] || [ "$iter" == "-JKQCcleanfull" ] || [ "$iter" == "-fullclean" ]
     then
       Qpickle=1
       Qclean=2
@@ -289,7 +289,7 @@ then
   if [ "$answer" == "y" ] || [ "$answer" == "yes" ] || [ "$answer" == "Y" ] || [ "$answer" == "YES" ] || [ "$answer" == "Yes" ]
   then
     JKecho 1 "Ok, I will continue."
-    rm $method/.* 2>/dev/null
+    #rm $method/.* 2>/dev/null
     #rm ./.* 2>/dev/null
   else 
     JKecho 0 "Collection will not be performed [${cfRED}EXITING${cfDEF}]"
@@ -594,13 +594,13 @@ do
         JKecho 2 "$SC_command"
         #TODO
         echo "$SC_command_array 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" >> output
-        echo "$SC_command_array 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" > .run
+        echo "$SC_command_array 'tail -n \${SLURM_ARRAY_TASK_ID} commands_TODO.txt | head -n 1 | sh'" > .runP
         #echo  "$SC_command0 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         #echo  "$SC_command0 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #echo  "$SC_command0 'sh .run1'" >> output
         #echo  "$SC_command0 'sh .run1'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
-        job=$(/bin/bash .run)
+        job=$(/bin/bash .runP)
         JKecho 2 "submitted"
         if [ ! -z "$job" ] ;then echo $job;fi
         echo $job | awk '{print $4}'  >> .jobs.txt
@@ -609,11 +609,11 @@ do
       #TODO
       SC_command_dep=`echo $SC_command | sed "s/sbatch/sbatch $ADDdependency/"`
       echo "$SC_command_dep 'tail -n $i commands_TODO.txt | head -n 1 | sh'" >> output
-      echo "$SC_command_dep 'tail -n $i commands_TODO.txt | head -n 1 | sh'" > .run
+      echo "$SC_command_dep 'tail -n $i commands_TODO.txt | head -n 1 | sh'" > .runP
       #echo  "$SC_command sh .run$i" >> output
       #echo  "$SC_command sh .run$i" > .run
       #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
-      job=$(/bin/bash .run)
+      job=$(/bin/bash .runP)
       #job=$(eval `cat .run`)
       if [ ! -z "$job" ] ;then echo $job;fi
       echo $job | awk '{print $4}'  >> .jobs.txt

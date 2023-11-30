@@ -84,7 +84,7 @@ def print_help():
   print("\nFILTERING:")
   print(" -sort <str>          sort by: g,gout,el,elout,<full name in database under log>")
   print(" -select <int>        selects <int> best structures from each cluster")
-  print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip")
+  print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip, or dup=duplicates")
   print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
   print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
@@ -101,7 +101,8 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log", "-levels", "-atoms", "-natoms")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -163,19 +164,22 @@ Qshuffle = 0 #shuffle rows
 
 Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
 Qbavg = 0 # 1=Boltzmann avg over -g, 2=Boltzmann avg over -gout
+Qrh = missing
+QPsolvent = missing
 Qformation = 0
 Qconc = 0
 conc = []
 CNTfactor = 0 #see Wyslouzil
+Qsolvation = "0"
 
 folderMAIN = ""
 folderSP = ""
 
 orcaext = "out"
 orcaextname = "out"
+mrccextname = "out"
 turbomoleext = "out"
 turbomoleextname = "out"
-dash="-"
 
 last = ""
 for i in argv[1:]:
@@ -183,9 +187,6 @@ for i in argv[1:]:
   if i == "-help" or i == "--help":
     print_help()
     exit()
-  if i == "-underscore":
-    dash = "_"
-    continue
   #FOLDER
   if i == "-folder":
     last = "-folder"
@@ -247,6 +248,34 @@ for i in argv[1:]:
       if Qout == 0:
         Qout = 1
       continue
+  #Hydration
+  if i == "-hydration":
+    Qsolvation = "w"
+    continue
+  #Qrh
+  if i == "-rh":
+    last = "-rh"
+    continue
+  if last == "-rh":
+    last = ""
+    Qrh = float(i)
+    continue
+  #psolvent
+  if i == "-psolvent":
+    last = "-psolvent"
+    continue
+  if last == "-psolvent":
+    last = ""
+    QPsolvent = float(i)
+    continue
+  #Solvation
+  if i == "-solvation":
+    last = "-solvation"
+    continue
+  if last == "-solvation":
+    last = ""
+    Qsolvation = str(i)
+    continue
   #IamIfo
   if i == "-IamIfo":
     Qiamifo = 1
@@ -953,12 +982,20 @@ if len(input_pkl_sp) > 0:
     newclusters_df_sp = newclusters_df_sp.rename(columns={"log": "out"}) 
     #newclusters_df_sp = pd.concat([newclusters_df_sp[("info","file_basename")],newclusters_df_sp["out"]],axis = 1)
     newclusters_df_sp.set_index(('info', 'file_basename'), inplace=True)
+    #print(newclusters_df_sp.index)
     #newclusters_df_sp = newclusters_df_sp
     clusters_df.set_index(('info', 'file_basename'), inplace=True)
+    #print(clusters_df.index)
     #print(clusters_df.join(newclusters_df_sp,how='left'))
-    clusters_df = pd.concat([clusters_df.sort_index(), newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out'].sort_index()], axis=1)
+    #print(newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out'])
+    newclusters_df_sp = newclusters_df_sp.loc[:,newclusters_df_sp.columns.get_level_values(0) == 'out']
+    clusters_df = pd.concat([clusters_df, newclusters_df_sp], axis=1)
+    clusters_df = clusters_df.sort_index()
+    newclusters_df_sp = newclusters_df_sp.sort_index()
     #print(clusters_df.merge(newclusters_df_sp, on=('info', 'file_basename')))
     #clusters_df.index = [str(j) for j in range(len(clusters_df))]
+    clusters_df = clusters_df.sort_index()
+    #print(clusters_df)
     clusters_df.reset_index(inplace=True)
 
 ####################################################################################################
@@ -973,11 +1010,13 @@ for file_i in files:
   file_i_XTBengrad  = folder+file_i_BASE+".engrad"
   file_i_G16  = folder+file_i_BASE+".log"
   file_i_XYZ  = folder+file_i_BASE+".xyz"
-  #ORCA
+  #ORCA && MRCC
+  file_i_MRCC  = folder+file_i_BASE+".out"
   orcaextname = rem_orcaextname
   if not path.exists(folder+file_i_BASE+".log"):
     file_i_ORCA = folder+file_i_BASE+"."+orcaext
     orcaextname = "log"
+    mrccextname = "log"
   else:
     if orcaext == "out":
       if not path.exists(folder+file_i_BASE+"."+orcaext):
@@ -1588,6 +1627,51 @@ for file_i in files:
   clusters_df = df_add_iter(clusters_df, "xyz", "structure", [str(cluster_id)], [out])
 
   ###############
+  ### MRCC ######
+  ###############
+  if path.exists(file_i_MRCC):
+    file = open(file_i_MRCC, "r")
+    testMRCC = 0
+    for i in range(3):
+      line = file.readline()
+      if re.search("MRCC program system", line):
+        testMRCC = 1
+        break
+    if testMRCC == 1:
+      from datetime import datetime
+      out_program = "MRCC"                              #PROGRAM
+      out_method = missing                               #METHOD
+      out_time = missing                                 #TIME
+      out_electronic_energy = missing                    #O3
+      ######
+      first_time=""
+      for line in file:
+        #TIME
+        if re.search("\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\* ",line):
+          if first_time == "":
+            first_time = line.split()[1]+" "+line.split()[2]
+            print(datetime.strptime(first_time,"%Y-%m-%d %H:%M:%S"))
+          else:
+            try:
+              this_time = line.split()[1]+" "+line.split()[2]
+              out_time = datetime.strptime(this_time, "%Y-%m-%d %H:%M:%S")-datetime.strptime(first_time, "%Y-%m-%d %H:%M:%S")
+              out_time = out_time.total_seconds() / 60
+            except:
+              out_time = missing
+          continue   
+        #EL.ENERGY
+        if re.search("Total LNO-CCSD\(T\) energy with MP2 corrections", line): #O3
+          try:
+            out_electronic_energy = float(line.split()[7])
+          except:
+            out_electronic_energy = missing
+          continue 
+      clusters_df = df_add_iter(clusters_df, mrccextname, "program", [str(cluster_id)], [out_program]) #PROGRAM
+      clusters_df = df_add_iter(clusters_df, mrccextname, "method", [str(cluster_id)], [out_method]) #METHOD
+      clusters_df = df_add_iter(clusters_df, mrccextname, "time", [str(cluster_id)], [out_time]) #TIME
+      clusters_df = df_add_iter(clusters_df, mrccextname, "electronic_energy", [str(cluster_id)], [out_electronic_energy]) #O3
+  
+  ###############
   ### ORCA ######
   ###############
   if path.exists(file_i_ORCA):
@@ -2027,7 +2111,7 @@ def dash(input_array):
 def dash_comment(input_array):
   output_array = [input_array]
   for element in range(len(input_array)):
-    if input_array[element] == dash:
+    if input_array[element] == "-" or input_array[element] == "_":
       output_array = []
       partbefore = input_array[0:element]
       output_array.append(partbefore)
@@ -2143,18 +2227,32 @@ if Qextract > 0:
       if "*" not in extract_i:
         extracted_df = clusters_df[clusters_df["info"]["cluster_type"].values == extract_i].copy()
       else:
-        #print("Here")
-        asterix_position=seperate_string_number(extract_i)[1::2].index('*')
-        new_extract_i=seperate_string_number(extract_i)[:2*asterix_position]+seperate_string_number(extract_i)[asterix_position*2+1+1:]
-        #print(extract_i)
-        #print(asterix_position)
-        #print(new_extract_i)
         try:
-          howmany=int(extract_i[asterix_position*2])
+          asterix_position=seperate_string_number(extract_i)[1::2].index('*')
+          new_extract_i=seperate_string_number(extract_i)[:2*asterix_position]+seperate_string_number(extract_i)[asterix_position*2+1+1:]
+          try:
+            howmany=int(extract_i[asterix_position*2])
+          except:
+            howmany=-1
+          what=["whatever"]
         except:
-          howmany=-1
-        #print(howmany)
-        def my_special_compare_with_asterix(string1,string2_array,howmany):
+          what=[]
+          while 1==1:
+            try:
+              asterix_position=seperate_string_number(extract_i)[::2].index('*')
+              print(asterix_position)
+              try:
+                if len(asterix_position)>1:
+                  asterix_position=asterix_position[0]
+              except:
+                howmany=-1
+              new_extract_i=seperate_string_number(extract_i)[:2*asterix_position]+seperate_string_number(extract_i)[asterix_position*2+1+1:]
+              howmany=-1
+              what.append(seperate_string_number(extract_i)[asterix_position*2+1])
+              extract_i=new_extract_i
+            except:
+              break
+        def my_special_compare_with_asterix(string1,string2_array,howmany,what):
           string1_array = seperate_string_number(string1)
           #string2_array = seperate_string_number(string2)
           tothowmany=howmany
@@ -2168,11 +2266,17 @@ if Qextract > 0:
                 string2_array=string2_array[:2*found_position]+string2_array[2*found_position+2:] 
                 continue
             else:
-              tothowmany-=int(string1_array[::2][indx])
-              if howmany>0 and tothowmany<0:
-                return False
-              else:
+              if what[0] == "whatever":
+                tothowmany-=int(string1_array[::2][indx])
+                if howmany>0 and tothowmany<0:
+                  return False
+                else:
+                  continue
+              elif string1_array[1::2][indx] in what:
+                tothowmany-=int(string1_array[::2][indx])
                 continue
+              else:
+                return False
           if tothowmany == 0 or howmany<0:
             if len(string2_array) > 0:
               return False
@@ -2180,7 +2284,7 @@ if Qextract > 0:
               return True
           else:
             return False
-        extracted_df = clusters_df[[my_special_compare_with_asterix(value_i,new_extract_i,howmany) for value_i in clusters_df["info"]["cluster_type"].values]].copy()
+        extracted_df = clusters_df[[my_special_compare_with_asterix(value_i,new_extract_i,howmany,what) for value_i in clusters_df["info"]["cluster_type"].values]].copy()
               
     if len(extracted_df) > 0:
       if len(newclusters_df) == 0:
@@ -2503,7 +2607,13 @@ if Qqha == 1:
 
 ###### FILTERING ######
 if str(Qsort) == "0" and str(Qarbalign) != "0":
-  Qsort = "el"
+  if ("log","gibbs_free_energy") in clusters_df.columns:
+    if ("out","electronic_energy") in clusters_df.columns:
+      Qsort = "gout"
+    else:
+      Qsort = "g"
+  else:
+    Qsort = "el"
 if ( str(Qselect) != "0" or ( str(Quniq) != "0" and str(Quniq) != "dup" )) and str(Qsort) == "0":
   Qsort = "g"
 if str(Qsort) != "0":
@@ -2648,6 +2758,8 @@ if Qarbalign > 0:
        comparison = Parallel(n_jobs=num_cores)(delayed(compare_pair)(i) for i in range(len(comparepairs)))
        for AAc in range(len(comparison)):
          if comparison[AAc] < Qarbalign:
+           #TODO try:
+           #print(comparepairs[AAc][1]) 
            removedindexes.append(allindexes[comparepairs[AAc][1]])
      clusters_df = clusters_df.drop(removedindexes)
 #not sure if this sorting is necessary but maybe after uniqueness filtering yes
@@ -2774,6 +2886,9 @@ if Qout > 0:
     
 
 ## EXTRACT DATA ##
+if Qsolvation != "0" or Qformation != 0:
+  if Pout[0] != "-b" and Pout[0] != "-ct":
+    Pout.insert(0,"-ct")
 output = []
 last = ''
 for i in Pout:
@@ -3171,13 +3286,19 @@ for i in Pout:
     levels = []
     for ind in clusters_df.index:
       try:
-        if ("out","method") in clusters_df and ("out","program") in clusters_df:
-          if not pd.isna(clusters_df["out"]["program"][ind]):
-            levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind]+"__"+clusters_df["out"]["program"][ind]+"_"+clusters_df["out"]["method"][ind])
+        if ("log","method") in clusters_df and ("log","program") in clusters_df:
+          if ("out","method") in clusters_df and ("out","program") in clusters_df:
+            if not pd.isna(clusters_df["out"]["program"][ind]):
+              levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind]+"__"+clusters_df["out"]["program"][ind]+"_"+clusters_df["out"]["method"][ind])
+            else:
+              levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])
           else:
-            levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])
+            levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])  
         else:
-          levels.append(clusters_df["log"]["program"][ind]+"_"+clusters_df["log"]["method"][ind])  
+          if ("out","method") in clusters_df and ("out","program") in clusters_df:
+            levels.append(clusters_df["out"]["program"][ind]+"_"+clusters_df["out"]["method"][ind])
+          else:
+            levels.append(missing)
       except:
         levels.append(missing)
     output.append(levels)
@@ -3294,6 +3415,7 @@ for i in Pout:
 
 ## PRINT DATA ##
 if not len(output) == 0:
+  #print(output)
   output = np.array(output)
 
   #TAKING GLOBAL MINIMA ONLY
@@ -3313,8 +3435,16 @@ if not len(output) == 0:
       if len(GFE[~pd.isna(GFE)]) != 0:
         globindex = clusters_df.index.values[clusters_df["info"]["cluster_type"] == i][GFE == np.min(GFE[~pd.isna(GFE)])][0]
         indexes.append(int(np.array(range(len(clusters_df)))[clusters_df.index.values == globindex][0]))
-   
-    output = [[output[j][i] for i in indexes] for j in range(output.shape[0])]
+    
+    newoutput = []
+    for j in range(output.shape[0]):
+      toappend=[]
+      for i in indexes:
+        toappend.append(output[j][i])
+      newoutput.append(np.array(toappend,dtype=object)) 
+    #output = [[output[j][i] for i in indexes] for j in range(output.shape[0])]
+    output = np.array(newoutput)
+    #output = np.array(output)
   
   #TAKING BOLTZMANN AVERAGE OVER ALL MINIMA 
   if Qbavg == 1 or Qbavg == 2:
@@ -3337,12 +3467,26 @@ if not len(output) == 0:
         exit()
       nonans = ~pd.isna(GFE)
       GFE = GFE[nonans]
-      minimum = np.min(GFE)
+      try:
+        minimum = np.min(GFE)
+      except:
+        minimum = missing
       GFE = GFE-minimum
+      #print(GFE)     
+ 
       preportions = [np.exp(-GFE[i]*43.60*10**-19/k/temps[nonans][i]) for i in range(GFE.shape[0])]
-      freeenergies.append(QUenergy*(minimum - 1/43.60/10**-19*k*temps[nonans][0]*np.log(np.sum([np.exp(GFE[i]*43.60*10**-19/k/temps[nonans][i]) for i in range(GFE.shape[0])]))))
+      #print(preportions)
+      toaddfreeenergies = []
+      try:
+        addfreeenergy = QUenergy*(minimum - 1/43.60/10**-19*k*temps[nonans][0]*np.log(np.sum([np.exp(-GFE[i]*43.60*10**-19/k/temps[nonans][i]) for i in range(GFE.shape[0])])))
+      except:
+        addfreeenergy = missing
+      freeenergies.append(addfreeenergy)
+      #freeenergies.append(QUenergy*(minimum - 1/43.60/10**-19*k*temps[nonans][0]*np.log(np.sum([np.exp(-GFE[i]*43.60*10**-19/k/temps[nonans][i]) for i in range(GFE.shape[0])]))))
+      #print(freeenergies)
       sumpreportions = np.sum(preportions)
       portions.append(preportions/sumpreportions)
+      #print(portions)
       indexes.append(np.array(range(len(clusters_df)))[clusters_df["info"]["cluster_type"] == i][nonans])
     
     def is_averagable(input_array): # :-D
@@ -3378,7 +3522,30 @@ if not len(output) == 0:
       else:
         return opt1
    
-    output = [[myif(l,np.sum([float(portions[i][j])*float(output[l,indexes[i][j]]) for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]
+    #print(output)
+    newoutput = []
+    skip = []
+    #print(output)
+    for l in range(output.shape[0]):
+      toappend = []
+      for i in range(len(portions)):
+        if i in skip:
+          continue
+        try:
+          appendable = myif(l,np.sum([float(portions[i][j])*float(output[l,indexes[i][j]]) for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]])
+        except: 
+          appendable = missing
+        if l == 0:
+          if pd.isna(appendable):
+            skip.append(i)
+            continue
+        #print(appendable)
+        toappend.append(appendable)
+      #print(toappend)
+      newoutput.append(np.array(toappend, dtype=object))
+    output = np.array(newoutput)
+    #output = [[myif(l,np.sum([float(portions[i][j])*float(output[l,indexes[i][j]]) for j in range(len(portions[i]))]),freeenergies[i],missing) if is_averagable(output[l][indexes[i]]) else is_the_same(output[l,indexes[i]]) for i in range(len(portions))] for l in range(output.shape[0])]   
+    #print(output)
 
   #fn = ".help"+str(np.random.randint(100000,size=1)[0])+".txt" 
   #f = open(fn, "w")
@@ -3396,6 +3563,8 @@ if not len(output) == 0:
         formatted_row = [str(row[i]).ljust(column_widths[i]) for i in range(len(row))]
         print(" ".join(formatted_row),flush = True)
 
+#print(output)
+#print(type(output[3][3]))
 def myFunc(e):
   try:
     numero = np.sum([int(i) for i in seperate_string_number(dash_comment(e[0])[0])[0::2]])
@@ -3404,11 +3573,8 @@ def myFunc(e):
   return numero+len(e[0])/100.
 dt = np.dtype(object)
 
-if Qformation == 1:
-  if Qout != 2:
-    print("#####################################",flush = True)
-    print("##########  FORMATION  ##############",flush = True)
-    print("#####################################",flush = True)
+#LOAD INPUT FILE
+if Qsolvation != "0" or Qformation == 1:
   if len(formation_input_file) > 0:
     f = open(formation_input_file, "r")
     output = []
@@ -3421,10 +3587,132 @@ if Qformation == 1:
       output.append([mytofloat(i) for i in line.split()])
     output = np.array(output,dtype=dt).transpose()
     f.close()
+
+if Qsolvation != "0":
+  if Qout != 2:
+    print("#####################################",flush = True)
+    print("##########  SOLVATION  ##############",flush = True)
+    print("#####################################",flush = True)
+  if len(Pout)>1:
+    if Pout[1] != "-g" and Pout[1] != "-gout":
+      print("Please use -ct -g or -ct -gout as the first two arguments.")
+      exit()
+  #SORT OUTPUT1
+  #print(output) 
+  output = np.transpose(np.transpose(output)[np.apply_along_axis(myFunc, axis=1, arr=np.transpose(output)).argsort()])
+  #print(output) 
+  cluster_types = [dash_comment(seperate_string_number(i))[0] for i in output[0]]
+  no_solvent_cluster_types = []
+  solvent_content = []
+  for i in cluster_types:
+    solvent_content_i = 0
+    no_solvent_cluster_types_i = []
+    for j in range(int(len(i)/2)):
+      if i[2*j+1] == Qsolvation:
+        solvent_content_i = i[2*j]
+      else:
+        no_solvent_cluster_types_i.append(i[2*j]) 
+        no_solvent_cluster_types_i.append(i[2*j+1]) 
+    no_solvent_cluster_types.append(no_solvent_cluster_types_i)
+    solvent_content.append(solvent_content_i)
+  cluster_types = ["".join(i) for i in cluster_types]
+  no_solvent_cluster_types = ["".join(i) for i in no_solvent_cluster_types]
+  #unique_clusters = [x for x in np.array(np.unique(no_solvent_cluster_types), dtype=object) if x != []]
+  unique_clusters = [x for x in np.array(np.unique(no_solvent_cluster_types), dtype=object) if x != ""]
+  #unique_clusters = np.unique(no_solvent_cluster_types)
+  #unique_clusters = filter(None, unique_clusters)
+  free_energies = output[1]
+  
+  #print(cluster_types)
+  #print(no_solvent_cluster_types)
+  #print(solvent_content)
+  #print(unique_clusters)
+  index_of_solvent = -1
+  for i in range(len(cluster_types)):
+    if cluster_types[i] == "1"+Qsolvation:
+      index_of_solvent = i
+  if index_of_solvent == -1:
+    print("Missing solvent")
+    exit()
+  #print(index_of_solvent)
+  #solvent_free_energy = 
+
+  #TODO
+  if not pd.isna(Qt):
+    Temp = Qt
+  else:
+    Temp = 298.15
+  print(f"Temp = %.2f K; "%(Temp), end = "")
+  if not pd.isna(QPsolvent):
+    p_solvent = QPsolvent
+  else:
+    if not pd.isna(Qrh):
+      rh = Qrh
+    else:
+      rh = 1.0
+    print(f"RH = %.2f %%; "%(rh*100), end = "") 
+    #p_solvent = rh*10**(8.14019-1810.9/(244.485+Temp-273.15))*133.322
+    p_solvent = rh*100*6.1094*np.exp(17.625*(Temp-273.15)/(Temp-273.15+234.04))
+  print(f"p_solvent = %.2f Pa "%(p_solvent))
+  #p_solvent = 100  
+  p_ref = 101325
+  R = 1.987 #cal/mol/K #=8.31441
+  #Antoine equation
+  #https://www.omnicalculator.com/chemistry/vapour-pressure-of-water
+  #print("P_solvent")
+  #print(p_solvent) 
+
+  #print(output)
+  new_output = []  
+  for i in unique_clusters:
+    indexes = []
+    for j in range(len(no_solvent_cluster_types)):
+      if i == no_solvent_cluster_types[j]:
+        indexes.append(j)
+    #print("Indexes:")
+    #print(indexes)
+    tot_conc = 0
+    nominators = []
+    free_energies_i = []
+    for j in indexes:
+      free_energies_i.append(output[1][j]-float(solvent_content[j])*output[1][index_of_solvent])
+    minimum = np.min(free_energies_i)
+    free_energies_i = free_energies_i - minimum
+    #print("Minimum:")
+    #print(minimum)
+    #print("Free energies:")
+    #print(free_energies_i)
+    for j in range(len(indexes)):
+      #print(-QUenergy*free_energies_i[j]/R*1000/Temp)
+      nominator = (p_solvent/p_ref)**float(solvent_content[indexes[j]])*np.exp(-1/QUenergy*free_energies_i[j]/R*1000/Temp)
+      nominators.append(nominator)
+      #print(cluster_types[indexes[j]])
+    denominator = np.sum(nominators)
+    #print(nominators/denominator)
+    
+    #print(output[0])
+    for j in range(len(indexes)):
+      print(f"%8s "%(cluster_types[indexes[j]]), end="")
+    print("")
+    for j in range(len(indexes)):
+      print(f"%8.1f "%(nominators[j]/denominator*100),end="")
+    print("")
+    print("----------------------------------------")
+    #new_output
+    
+
+if Qformation == 1:
+  if Qout != 2:
+    print("#####################################",flush = True)
+    print("##########  FORMATION  ##############",flush = True)
+    print("#####################################",flush = True)
   #SORT OUTPUT
   output = np.transpose(np.transpose(output)[np.apply_along_axis(myFunc, axis=1, arr=np.transpose(output)).argsort()])
   #
+  #print(seperate_string_number(output[0][0]))
+  #print(dash_comment(seperate_string_number(output[0][0])))
   cluster_types = [dash_comment(seperate_string_number(i))[0] for i in output[0]]
+  #print(cluster_types)
   ######## SOLVING PROTONATION
   for i in range(len(cluster_types)):
     chosen_cluster_type = cluster_types[i]
@@ -3530,3 +3818,4 @@ if Qformation == 1:
   f.close()
   system("cat .help.txt | column -t")
   remove(".help.txt")
+

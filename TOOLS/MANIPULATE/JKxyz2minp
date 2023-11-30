@@ -1,0 +1,137 @@
+#!/bin/bash
+############################################################
+## JAKUB KUBECKA 2023                                     ##
+## Program that prepare input for MRCC from __.xyz        ##
+## To understand program run help:                        ##
+##        JKxyz2minp -help                                ##
+############################################################
+## "Misbehaved PhD students, lazy bachelor students, well ##
+## "I guess I will have to do it by myself" Jakub Kubecka ##
+############################################################
+
+### THIS IS HELP
+function help {
+  echo "THIS IS HELP:"
+  echo """
+  JKxyz2minp [OPTIONS] [FILES]
+  OPTIONS:
+   -help ............... print this help and exit
+   -m,-method \"XX\" ..... use XX as an input line
+   -cpu \"X\" ............ number of threads
+   -mem \"X\" ............ memory specification
+   -char,-ch,-q \"x\" .... specify system charge ch=x
+   -mult \"x\" ........... specify system multiplicity m=x
+  FILES:
+   xyz file is expected
+  EXAMPLES:
+     JKxyz2minp 1sa.xyz -m \"calc=LCCSD(T) \nbasis=aug'-cc-pVTZ\nscfalg=direct\"
+  """
+  exit
+}
+
+Qfile=""
+Qmethod="calc=LCCSD(T) \nbasis=aug'-cc-pVTZ\nscfalg=direct"
+Qmem=8gb
+Qcharge=0
+Qmult=1
+Qcpu=1
+
+last=""
+for i in "$@"
+do
+  if [ "$i" == "-help" ] || [ "$i" == "--help" ]; then help;exit;fi
+  ### -method
+  if [ "$i" == "-method" ] || [ "$i" == "-m" ]
+  then
+    last="-method"
+    continue
+  fi
+  if [ "$last" == "-method" ]
+  then
+    Qmethod=$i
+    last=""
+    continue
+  fi
+  # -charge 
+  if [ "$i" == "-char" ] || [ "$i" == "-chrg" ] 
+  then
+    last="-charge"
+    continue
+  fi
+  if [ "$last" == "-charge" ]
+  then
+    Qcharge=$i
+    last=""
+    continue
+  fi
+  # -multiplicity
+  if [ "$i" == "-mult" ]
+  then
+    last="-mult"
+    continue
+  fi
+  if [ "$last" == "-mult" ]
+  then
+    Qmult=$i
+    last=""
+    continue
+  fi
+  # -mem
+  if [ "$i" == "-mem" ] 
+  then
+    last="-mem"
+    continue
+  fi
+  if [ "$last" == "-mem" ]
+  then
+    Qmem=$i
+    last=""
+    continue
+  fi
+  # -cpu 
+  if [ "$i" == "-cpu" ]
+  then
+    last="-cpu"
+    continue
+  fi
+  if [ "$last" == "-cpu" ]
+  then
+    Qcpu=$i
+    last=""
+    continue
+  fi
+  # xyz file
+  if [ -e "$i" ]
+  then
+    Qfile="$i"
+    continue
+  fi
+  echo "I am sorry but I do not understand argument $i. [EXITING]"
+  exit
+done
+
+if [ -z "$Qfile" ]
+then
+  echo "Missing inpout file.[EXITING]"
+  exit
+fi
+
+echo JKxyz2minp: Wait for it.
+    
+NAtoms=`head -n 1 $Qfile`
+NAtoms2=`echo $NAtoms+2 | bc`
+
+if [ -e MINP ]; then rm MINP; fi
+
+echo -e "$Qmethod" > MINP
+echo "mem=$Qmem" >> MINP
+echo "charge=$Qcharge" >> MINP
+echo "mult=$Qmult" >> MINP
+echo "ccsdthreads=$Qcpu" >> MINP 
+echo "ptthreads=$Qcpu" >> MINP
+echo "geom=xyz" >> MINP
+echo "$NAtoms" >> MINP
+echo "" >> MINP
+head -n $NAtoms2 $Qfile | tail -n $NAtoms >> MINP
+
+echo JKxyz2minp: Done!
