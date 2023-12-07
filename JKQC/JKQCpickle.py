@@ -2887,8 +2887,9 @@ if Qout > 0:
 
 ## EXTRACT DATA ##
 if Qsolvation != "0" or Qformation != 0:
-  if Pout[0] != "-b" and Pout[0] != "-ct":
-    Pout.insert(0,"-ct")
+  if len(Pout) > 0:
+    if Pout[0] != "-b" and Pout[0] != "-ct":
+      Pout.insert(0,"-ct")
 output = []
 last = ''
 for i in Pout:
@@ -3676,15 +3677,19 @@ if Qsolvation != "0":
     free_energies_i = []
     for j in indexes:
       free_energies_i.append(output[1][j]-float(solvent_content[j])*output[1][index_of_solvent])
+    #print("Free energies:")
+    #print(free_energies_i)
     minimum = np.min(free_energies_i)
     free_energies_i = free_energies_i - minimum
     #print("Minimum:")
     #print(minimum)
     #print("Free energies:")
-    #print(free_energies_i)
+    #print(627.503/QUenergy*free_energies_i/R*1000/Temp)
+    #print(indexes)
+    #print(1/R*1000/Temp)
     for j in range(len(indexes)):
       #print(-QUenergy*free_energies_i[j]/R*1000/Temp)
-      nominator = (p_solvent/p_ref)**float(solvent_content[indexes[j]])*np.exp(-1/QUenergy*free_energies_i[j]/R*1000/Temp)
+      nominator = (p_solvent/p_ref)**float(solvent_content[indexes[j]])*np.exp(-627.503/QUenergy*free_energies_i[j]/R*1000/Temp)
       nominators.append(nominator)
       #print(cluster_types[indexes[j]])
     denominator = np.sum(nominators)
