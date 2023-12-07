@@ -1177,6 +1177,9 @@ def main():
         program = None  # Just produce XYZ-file
         dot_inputtype = ".xyz"
         dot_outputtype = ".log"    
+    if args.no_TS:
+        TS = False
+    else: TS = True
 
     ####################################################################################################
     threads = []
