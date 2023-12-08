@@ -5,7 +5,7 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../"
 
 # Default values
-SLURM_TIME="72:00:00"
+SLURM_TIME="128:00:00"
 SLURM_PARTITION="qany"
 PYTHON_ARGS=()
 
@@ -38,7 +38,6 @@ EOF
   sbatch $SLURM_SCRIPT
   rm $SLURM_SCRIPT
 else
-  echo "Manual"
   program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}"
 fi
 
