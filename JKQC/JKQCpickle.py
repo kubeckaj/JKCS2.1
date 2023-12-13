@@ -1057,20 +1057,24 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "info", str(line.split(" ",1)[0]), [str(cluster_id)], [line.split(" ",1)[-1].strip()])    
     file.close()
 
-  ###############
-  ### ABC #######
-  ###############
+  #####################
+  ### ABC/CREST #######
+  #####################
   if path.exists(file_i_ABC):
     file = open(file_i_ABC, "r")
-    testABC = 0
+    test = 0
     for i in range(1):
-      if re.search("ABC", file.readline()):
-        testABC = 1
+      line=file.readline()
+      if re.search("ABC", line):
+        test = 1
         break
-    if testABC == 1:
+      if re.search("JXYZ", line):
+        test = 1
+        break
+    if test == 1:
       out_electronic_energy = missing  #1
       for line in file:
-        if re.search("ABC energy:", line): #1
+        if re.search("ABC energy:", line) or re.search("structure energy:", line): #1
           try:
             out_electronic_energy = float(line.split()[2]) 
           except:

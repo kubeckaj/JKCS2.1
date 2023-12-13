@@ -431,28 +431,23 @@ function program_CREST {
   ${PATH_CREST}crest calc.xyz $method $args > $DIR/$output 2>&1
 
   #COPYING RESULTS BACK
-  #cp $output $DIR/$output
   if [ -e crest_conformers.xyz ]
   then
-    t=`wc -l crest_conformers.xyz | awk '{print $1}'`
+    mkdir COLLECT
+    cd COLLECT
+    t=`wc -l ../crest_conformers.xyz | awk '{print $1}'`
     if [ $t -gt 0 ];
     then
-      mkdir COLLECT
-      cd COLLECT
-      cp ../crest_conformers.xyz .
-      JKmov2xyz crest_conformers.xyz
-      rm crest_conformers.xyz
-      for i in *.xyz
-      do 
-        mv $i $base-$i
-      done
+      JKmov2xyz ../crest_conformers.xyz -log 1
     else
-      mkdir COLLECT 
-      cd COLLECT
-      cp ../crest_best.xyz ./${base}-best.xyz
+      JKmov2xyz ../crest_best.xyz -log 1
     fi
-    JKQC *.xyz -out collection${base}.pkl
-    cp collection${base}.pkl $DIR/
+    for i in *.xyz *.log
+    do
+      mv $i $base-$i
+    done
+    JKQC *.xyz -out collection${base}.pkl >/dev/null
+    cp collection${base}.pkl $DIR/ 2>/dev/null
   fi
 
   #CLEANING

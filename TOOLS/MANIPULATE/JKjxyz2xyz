@@ -1,22 +1,86 @@
 #!/bin/bash
-input=$1
+#input=$1
+#
+#atoms=`head -n 1 $input | awk '{print $1}'`
+#atoms2=`echo $atoms+2 | bc`
+#numberoflines=`wc -l $input | awk '{print $1}'`
+#molecules=`echo $numberoflines/$atoms2 |bc`
+#
+##TEST
+#test=`echo $molecules*$atoms2-$numberoflines | bc`
+#if [ "$test" != "0" ]
+#then
+#  echo "There is something weird with the $input input file. [EXITING]"
+#  echo "If you copied the files from Windows, check also first: dos2unix $input"
+#  exit
+#fi
+#
+#for i in `seq 1 $molecules`
+#do
+#  endline=`echo $i*$atoms2 | bc -l`
+#  head -n $endline $input | tail -n $atoms2 > str$i.xyz
+#done
 
-atoms=`head -n 1 $input | awk '{print $1}'`
-atoms2=`echo $atoms+2 | bc`
-numberoflines=`wc -l $input | awk '{print $1}'`
-molecules=`echo $numberoflines/$atoms2 |bc`
 
-#TEST
-test=`echo $molecules*$atoms2-$numberoflines | bc`
-if [ "$test" != "0" ]
+input=""
+Qlog=0 #create LOG files for energies
+
+next=""
+for i in $@
+do
+  #HELP
+  if [ "$i" == "-help" ]
+  then
+    echo "EXAMPLES: "
+    echo "JKmov2xyz movie.xyz"
+    echo "JKmov2xyz crest_conformers.xyz -log 2"
+    exit
+  fi
+  #LOG
+  if [ "$i" == "-log" ]
+  then
+    next="-log"
+    continue
+  fi
+  if [ "$next" == "-log" ]
+  then
+    next=""
+    Qlog=$i
+    continue
+  fi
+  #INPUT FILE
+  if [ -e "$i" ]
+  then
+    input=$i
+    continue
+  fi
+  echo "I do not understand the input $i."
+  exit
+done
+
+if [ -z "$input" ]
 then
-  echo "There is something weird with the $input input file. [EXITING]"
-  echo "If you copied the files from Windows, check also first: dos2unix $input"
+  echo "Missing input"
   exit
 fi
 
-for i in `seq 1 $molecules`
+N=`wc -l $input | awk '{print $1}'`
+l=1
+file=1
+while [ $l -le $N ]
 do
-  endline=`echo $i*$atoms2 | bc -l`
-  head -n $endline $input | tail -n $atoms2 > str$i.xyz
+  atoms=`head -n $l $input | tail -n 1`
+  atoms1=`echo $atoms+1 | bc`
+  atoms2=`echo $atoms+2 | bc`
+  endline=`echo $l+$atoms1 | bc`
+  head -n $endline $input | tail -n $atoms2 > str${file}.xyz 
+  if [ "$Qlog" -gt 0 ]
+  then
+    l1=`echo $l+1 | bc`
+    energy=`head -n $l1 $input | tail -n 1 | awk -v COL=$Qlog '{print $COL}'`
+    echo "JXYZ" > str${file}.log
+    echo "structure energy: $energy" >> str${file}.log
+  fi
+  file=`echo $file+1 | bc`
+  l=`echo $l+$atoms2 | bc`
 done
