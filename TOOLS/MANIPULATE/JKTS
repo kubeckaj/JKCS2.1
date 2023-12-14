@@ -6,7 +6,7 @@ toolspath="$scriptpath/../"
 
 # Default values
 SLURM_TIME="128:00:00"
-SLURM_PARTITION="qany"
+SLURM_PARTITION="q24,q28,q36,q40,q48,q64"
 PYTHON_ARGS=()
 
 # Process all arguments
