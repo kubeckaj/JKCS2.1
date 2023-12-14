@@ -78,9 +78,10 @@ JKloadhelp             # check if user asks for -help
 ###############################################################################
 #reading arguments important for this script
 
-Qselect=0;    #Do you need to select just specific amount of combinations
-QselectN=0;   #Max number of combinations 
-Qoverwrite=0; #Overwrite parameters.txt
+Qselect=0;     #Do you need to select just specific amount of combinations
+QselectN=0;    #Max number of combinations 
+Qoverwrite=0;  #Overwrite parameters.txt
+Qprotonated=0; #Adds 1p
 
 last=""
 # loop over all arguments
@@ -105,6 +106,12 @@ do
   if [ "$iter" == "-overwrite" ] || [ "$iter" == "-o" ]
   then
     Qoverwrite=1
+    continue
+  fi
+  #protonated
+  if [ "$iter" == "-1p" ] || [ "$iter" == "-protonated" ]
+  then
+    Qprotonated=1
     continue
   fi
   #
@@ -224,6 +231,10 @@ do
       folder+="_${numero}${name}" 
     fi
   done
+  if [ $Qprotonated -eq 1 ]
+  then
+    folder+="_1p"
+  fi
   JKecho 2 "  Name of folder was created: ${cfGREEN}$folder${cfDEF}"
   if [ $Qoverwrite -eq 0 ]
   then

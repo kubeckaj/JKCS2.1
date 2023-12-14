@@ -1057,20 +1057,24 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "info", str(line.split(" ",1)[0]), [str(cluster_id)], [line.split(" ",1)[-1].strip()])    
     file.close()
 
-  ###############
-  ### ABC #######
-  ###############
+  #####################
+  ### ABC/CREST #######
+  #####################
   if path.exists(file_i_ABC):
     file = open(file_i_ABC, "r")
-    testABC = 0
+    test = 0
     for i in range(1):
-      if re.search("ABC", file.readline()):
-        testABC = 1
+      line=file.readline()
+      if re.search("ABC", line):
+        test = 1
         break
-    if testABC == 1:
+      if re.search("JXYZ", line):
+        test = 1
+        break
+    if test == 1:
       out_electronic_energy = missing  #1
       for line in file:
-        if re.search("ABC energy:", line): #1
+        if re.search("ABC energy:", line) or re.search("structure energy:", line): #1
           try:
             out_electronic_energy = float(line.split()[2]) 
           except:
@@ -2887,8 +2891,9 @@ if Qout > 0:
 
 ## EXTRACT DATA ##
 if Qsolvation != "0" or Qformation != 0:
-  if Pout[0] != "-b" and Pout[0] != "-ct":
-    Pout.insert(0,"-ct")
+  if len(Pout) > 0:
+    if Pout[0] != "-b" and Pout[0] != "-ct":
+      Pout.insert(0,"-ct")
 output = []
 last = ''
 for i in Pout:
@@ -3676,15 +3681,19 @@ if Qsolvation != "0":
     free_energies_i = []
     for j in indexes:
       free_energies_i.append(output[1][j]-float(solvent_content[j])*output[1][index_of_solvent])
+    #print("Free energies:")
+    #print(free_energies_i)
     minimum = np.min(free_energies_i)
     free_energies_i = free_energies_i - minimum
     #print("Minimum:")
     #print(minimum)
     #print("Free energies:")
-    #print(free_energies_i)
+    #print(627.503/QUenergy*free_energies_i/R*1000/Temp)
+    #print(indexes)
+    #print(1/R*1000/Temp)
     for j in range(len(indexes)):
       #print(-QUenergy*free_energies_i[j]/R*1000/Temp)
-      nominator = (p_solvent/p_ref)**float(solvent_content[indexes[j]])*np.exp(-1/QUenergy*free_energies_i[j]/R*1000/Temp)
+      nominator = (p_solvent/p_ref)**float(solvent_content[indexes[j]])*np.exp(-627.503/QUenergy*free_energies_i[j]/R*1000/Temp)
       nominators.append(nominator)
       #print(cluster_types[indexes[j]])
     denominator = np.sum(nominators)
