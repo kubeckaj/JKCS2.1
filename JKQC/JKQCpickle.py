@@ -85,6 +85,7 @@ def print_help():
   print(" -sort <str>          sort by: g,gout,el,elout,<full name in database under log>")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip, or dup=duplicates")
+  print(" -sample <int> <str>  selects <INT> distinct based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
   print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
@@ -155,6 +156,7 @@ Qout2log = 0 #change column name
 
 Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
+Qsample = 0 # The same as uniqueness but adjustable automatically
 Quniq = 0 # uniqie based on given arguments
 Qarbalign = 0 #use ArbAlign with float parameter
 formation_input_file = ""
@@ -479,6 +481,14 @@ for i in argv[1:]:
     last = ""
     Qselect = int(i)
     continue  
+  # SAMPLE
+  if i == "-sample":
+    last = "-sample"
+    continue
+  if last == "-sample":
+    last = "-uniq"
+    Qsample = int(i)
+    continue
   # UNIQUE
   if i == "-unique" or i == "--unique" or i == "-uniq" or i == "--uniq":
     last = "-uniq"
@@ -2651,7 +2661,6 @@ if str(Quniq) != "0":
          preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
        else:
          preselected_df = clusters_df
-       tocompare = []
        separated_inputs = seperate_string_number2(str(Quniq))
        compare_list = []
        compare_list_num = []
@@ -2693,30 +2702,47 @@ if str(Quniq) != "0":
        #  compare_list = ["rg","electronic_energy"]
        #print(compare_list)
        #print(compare_list_num)
-       for compare_element_i in range(len(compare_list)):
-         j = compare_list[compare_element_i]
-         jj = compare_list_num[compare_element_i]
-         if j == "rg":
-           rg = []
-           for aseCL in preselected_df["xyz"]["structure"]:
-             try:
-               rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
-             except:
-               rg.append(missing)
-           values = [np.floor(myNaN(o)*10**jj) for o in rg]
-         elif j == "gout":
-           gout = []
-           for Gouti in range(len(preselected_df)):
-             try:
-               gout.append(preselected_df["log"]["gibbs_free_energy"].values[Gouti]-preselected_df["log"]["electronic_energy"].values[Gouti]+preselected_df["out"]["electronic_energy"].values[Gouti])
-             except:
-               gout.append(missing)
-           values = [np.floor(myNaN(o)*10**jj) for o in gout]
-         else:  
-           values = [np.floor(float(myNaN(o))*10**jj) for o in preselected_df["log"][j].values]
-         tocompare.append(values)
-       tocompare = np.transpose(tocompare)
-       uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
+       scale_test=1
+       scale=1.0
+       scale_scale = 0.1
+       scale_iter = 0
+       while scale_test == 1:
+         scale_iter = scale_iter + 1 
+         tocompare = []
+         for compare_element_i in range(len(compare_list)):
+           j = compare_list[compare_element_i]
+           jj = scale*compare_list_num[compare_element_i]
+           if j == "rg":
+             rg = []
+             for aseCL in preselected_df["xyz"]["structure"]:
+               try:
+                 rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
+               except:
+                 rg.append(missing)
+             values = [np.floor(myNaN(o)*10**jj) for o in rg]
+           elif j == "gout":
+             gout = []
+             for Gouti in range(len(preselected_df)):
+               try:
+                 gout.append(preselected_df["log"]["gibbs_free_energy"].values[Gouti]-preselected_df["log"]["electronic_energy"].values[Gouti]+preselected_df["out"]["electronic_energy"].values[Gouti])
+               except:
+                 gout.append(missing)
+             values = [np.floor(myNaN(o)*10**jj) for o in gout]
+           else:  
+             values = [np.floor(float(myNaN(o))*10**jj) for o in preselected_df["log"][j].values]
+           tocompare.append(values)
+         tocompare = np.transpose(tocompare)
+         uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
+         if Qsample > 0 and len(uniqueindexes) > Qsample and scale_iter < 100:
+           if scale_scale > 0:
+             scale_scale = -0.9*scale_scale
+           scale = scale + scale_scale
+         elif Qsample > 0 and len(uniqueindexes) < Qsample and len(compare_list) >= Qsample and scale_iter < 100:
+           if scale_scale < 0:
+             scale_scale = -0.9*scale_scale
+           scale = scale + scale_scale  
+         else:
+           scale_test = 0
        selected_df = preselected_df.iloc[uniqueindexes]
        if len(newclusters_df) == 0:
          newclusters_df = selected_df
@@ -2725,7 +2751,10 @@ if str(Quniq) != "0":
          newclusters_df = newclusters_df.append(selected_df)
          #print(newclusters_df)
   if Qout == 1:
-    print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
+    if Qsample > 0:
+      print("Sampled: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
+    else:
+      print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
 if Qarbalign > 0:
   import ArbAlign
