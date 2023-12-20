@@ -1,0 +1,91 @@
+#!/bin/bash
+#SA_MSA_AM clusters
+
+echo "Hi Nanna, I will now prepare:"
+echo " -folders: POSITIVE NEGATIVE NEUTRAL"
+echo " -file: acdb.txt = just to know what is already done in ACDB 2.0"
+echo " -file: commands_for_managar.txt = there are all the commands that will be done for each cluster"
+echo " -file: start_next.sh = this just starts the next cluster when the previous one is finished"
+echo ""
+
+all_clusters_that_are_done="1am 1am1b 1am1b1sa 1am1b2sa 1am1b3sa 1am1b4sa 1am1b5sa 1am1msa 1am1msa1sa 1am1p 1am1p1sa 1am1p2sa 1am1sa 1am2msa 1am2sa 1am3sa 1am4sa 1am5sa 1b 1b1sa 1b2sa 1b3sa 1b4sa 1b5sa 1msa 1msa1sa 1msa2sa 1msa3sa 1sa 2am 2am1b 2am1b1sa 2am1b2sa 2am1b3sa 2am1b4sa 2am1msa 2am1msa1sa 2am1p 2am1p1sa 2am1p2sa 2am1p3sa 2am1sa 2am2msa 2am2sa 2am3sa 2am4sa 2am5sa 2msa 2msa1sa 2msa2sa 2msa3sa 2sa 3am 3am1b2sa 3am1b3sa 3am1b4sa 3am1b5sa 3am1p 3am1p1sa 3am1p2sa 3am1p3sa 3am1p4sa 3am1sa 3am2sa 3am3sa 3am4sa 3am5sa 3msa 3msa1sa 3msa2sa 3msa3sa 3sa 4am 4am1b3sa 4am1b4sa 4am1b5sa 4am1p 4am1p1sa 4am1p2sa 4am1p3sa 4am1p4sa 4am1sa 4am2sa 4am3sa 4am4sa 4am5sa 4msa 4sa 5am1b4sa 5am1b5sa 5am1p 5am1p1sa 5am1p2sa 5am1p3sa 5am1p4sa 5am1p5sa 5am4sa 5am5sa 5sa"
+mkdir NEUTRAL
+cd NEUTRAL
+JKCS0_copy am msa sa
+sed -i "/Composition/c\Composition 0-2_0-2_x 3-4_3-4_x 2_3_x 3_2_x" input.txt
+JKCS1_prepare
+cd ..
+mkdir POSITIVE
+cd POSITIVE
+JKCS0_copy am msa sa
+sed -i "/Composition/c\Composition 1-3_0-1_x 4-5_2-3_x 3_2_x 4_1_x" input.txt
+sed -i "/TotalCharge/c\TotalCharge        1" input.txt
+JKCS1_prepare -protonated am
+cd ..
+mkdir NEGATIVE
+cd NEGATIVE
+JKCS0_copy am msa sa
+sed -i "/Composition/c\Composition 0-1_1-3_x 2-3_4-5_x 2_3_x 1_4_x" input.txt
+sed -i "/TotalCharge/c\TotalCharge        -1" input.txt
+JKCS1_prepare -deprotonated "sa=b msa=mb"
+cd ..
+for i in */SYS*; 
+do 
+  n=`echo $(basename $i) | sed "s/_//g" | sed "s/SYS//"`; 
+  if grep -q "\<$n\>" <<< ${all_clusters_that_are_done}:; 
+  then 
+    echo "$i is already done in ACDB [REMOVING]"; 
+    echo $n > acdb.txt
+    rm -r $i
+  fi
+done
+
+echo """JKCS2_explore -pop 1000 -gen 100 -repeat 2 -lm 5000/NoC -cpu 1 -time 72:00:00 -exploded
+JKCS3_run -p XTB -of ABC -nf XTB -m \"--gfn 1 --opt\" -cpu 1 -time 72:00:00 -maxtasks 101
+JKCS4_collect XTB -oc 
+rm -r ABC XTB
+JKQC collectionXTB.pkl -unique rg,el,dip -sort el -select 1000 -noex -ePKL -out collectionXTB_FILTERED.pkl > to_run_DFT-c.txt 
+JKCS3_run -p ORCA -rf to_run_DFT-c.txt -nf DFT-c -m \"! r2SCAN-3c\" -tpj 10 -cpu 2 -time 72:00:00 -maxtasks 101
+JKCS4_collect DFT-c -oc -orca -cleanfull -time 1:00:00
+JKQC collectionDFT-c.pkl -sort el -select 100 -noex -ePKL > to_run_DFT-low.txt
+JKCS3_run -p G16 -rf to_run_DFT-low.txt -nf DFT-low -m \"# wb97xd 6-31+g* opt=(maxcycles=50,loose)\" -time 24:00:00 -cpu 8 -maxtasks 101
+JKCS4_collect DFT-low -oc -cleanfull -loc
+JKQC collectionDFT-low.pkl -reacted -sort el -select 50 -noex -ePKL > runDFT-high_opt.dat
+JKCS3_run -p G16 -rf runDFT-high_opt.dat -nf DFT_opt -m \"# wb97xd 6-31++g** opt=(maxcycles=100)\" -time 48:00:00 -cpu 8 -maxtasks 51
+cd DFT_opt/calc-LM; JKtakebest *.log; cd ../..
+JKCS4_collect DFT_opt -oc -loc
+JKCS3_run -p G16 -rf collectionDFT_opt.pkl -nf DFT_freq -m \"# wb97xd 6-31++g** freq\" -time 48:00:00 -cpu 8 -maxtasks 51
+JKCS4_collect DFT_freq -oc -loc
+JKQC collectionDFT_freq.pkl -cut lf 0 -ePKL -noex -out ifreq.pkl > to_run_DFT_freq_restart.dat
+JKQC collectionDFT_freq.pkl -pass lf nan -ePKL -noex -out nfreq.pkl >> to_run_DFT_freq_restart.dat
+JKCS3_run -p G16 -rf to_run_DFT_freq_restart.dat -nf DFT_freq -m \"# wb97xd 6-31++g**  opt=(maxcycles=100) freq\" -time 72:00:00 -cpu 8 -maxtasks 51
+JKCS4_collect DFT_freq_restart -oc -loc
+JKQC collectionDFT_freq*.pkl -pass lf 0 -sort g -fc 100 -v 0.996 -select 1 -noex -ePKL -out bestDFT.pkl > to_run_DLPNO.dat
+JKCS3_run -p ORCA -rf to_run_DLPNO.dat -nf DLPNO -m \"! aug-cc-pVTZ aug-cc-pVTZ/C cc-pVTZ-F12-CABS DLPNO-CCSD(T) TightSCF\" -time 72:00:00 -cpu 8 -mem 16gb -maxtasks 2
+JKCS4_collect DLPNO -oc -orca
+mkdir FINAL; cp \`JKQC bestDFT.pkl -pXYZ -pLOG | xargs\` \`JKQC collectionDLPNO.pkl -pOUT\` FINAL/
+JKQC -folder FINAL -out final.pkl
+cd ../; sh ../start_next.sh""" > commands_for_managar.txt
+
+echo """for i in \`ls -d SYS_*/\`
+do
+  if [ ! -e \"\$i/outputi\" ]
+  then
+    cd \$i
+    manager.sh ../../commands_for_managar.txt
+    break
+  fi
+done""" > start_next.sh
+
+echo "############################"
+echo "TASKS FOR YOU:"
+echo " 1) You can check the commands_for_managar.txt file but I guess it will be hard to find error. So, let us rather jump on next step."
+echo " 2) Run Test (which will be continued by normal run)"
+echo "       cd NEGATIVE/SYS_1mb"
+echo "       manager.sh ../../commands_for_managar.txt"
+echo "    It would be good that you check from time to time whether it goes smoothly (there might be e.g. some problem with partition naming etc.):"
+echo "    i.e.: ABC -> XTB -> DFT-c -> DFT-low -> DFT_opt -> DFT_freq -> DFT_freq_restart -> DLPNO -> FINAL (contains final structures)"
+echo "    e.g.:    JKQC collectionDFT-low.pkl -b -rg -el #does it gives something reasonable"
+echo "    !!! IF IT FAILS, IT WILL STILL TRY TO GO ON. YOU WOULD NEED TO KILL THE JOBS MANUALLY (mainly the manager) + LET ME KNOW WHAT IS IN THE OUTPUT !!!"
+echo " 3) If works, start it also in the other folders:"
+echo "       cd POSITIVE; sh ../start_next.sh; cd ..; cd NEUTRAL; sh ../start_next.sh"

@@ -103,7 +103,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
-  print(" -rh <0.0-1.0>, -psolvent <float in Pa>")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -147,6 +147,7 @@ Qt = missing
 Qp = missing
 Qfc = 0 #Run QHA with vib. frequency cutoff
 Qanh = 1
+Qanharm = 0 #To collect anharmonicities from QC output
 
 Qpresplit = 0 #Do I want to take only part of the data?
 Qsplit = 1 #should I split the base on several parts
@@ -253,6 +254,10 @@ for i in argv[1:]:
   #Hydration
   if i == "-hydration":
     Qsolvation = "w"
+    continue
+  #Anharm
+  if i == "-anharm":
+    Qanharm = 1
     continue
   #Qrh
   if i == "-rh":
@@ -1332,6 +1337,8 @@ for file_i in files:
       out_entropy = missing                              #E1
       if Qforces == 1:
         out_forces = missing                             #F1
+      if Qanharm == 1:
+        out_anharm = missing
       search=-1
       save_mulliken_charges=0
       save_something=""
@@ -1593,6 +1600,23 @@ for file_i in files:
             if save_forces == out_NAtoms:
               save_something = ""
             continue
+        if Qanharm == 1:
+          if re.search("Fundamental Bands", line):
+            save_something = "anharm"
+            save_anharm = -2
+            out_anharm = []
+            continue
+          if save_something == "anharm":
+            save_anharm = save_anharm + 1
+            if save_anharm > 0:
+              try:
+                out_anharm.append(line[4:].split[3])
+              except:
+                out_anharm = missing
+                save_something = ""
+            if save_anharm == len(out_vibrational_frequencies):
+              save_something = ""
+            continue 
       #SAVE
       clusters_df = df_add_iter(clusters_df, "log", "program", [str(cluster_id)], [out_program]) #PROGRAM
       clusters_df = df_add_iter(clusters_df, "log", "method", [str(cluster_id)], [out_method]) #METHOD
@@ -1626,6 +1650,8 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "entropy", [str(cluster_id)], [out_entropy]) #E1
       if Qforces == 1:
         clusters_df = df_add_iter(clusters_df, "extra", "forces", [str(cluster_id)], [out_forces]) #F1
+      if Qanharm == 1:
+        clusters_df = df_add_iter(clusters_df, "extra", "anharm", [str(cluster_id)], [out_anharm]) 
     file.close()
 
   ###############
