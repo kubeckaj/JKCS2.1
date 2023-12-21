@@ -516,7 +516,7 @@ else
   #  removingcommand=""
   #fi
   #commandTODO="while [ 1 -eq 1 ]; do testdone=\`JKcheck $method -num\` ; if [ \"\$testdone\" == \"100.00\" ]; then source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; "
-  commandTODO="source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; "
+  commandTODO="source ~/.JKCSusersetup.txt; PKLinsubfolders=\`ls $method/c*.pkl $method/*/c*.pkl $method/*/*/c*.pkl 2>/dev/null | xargs\`; program_JKQCpickle \$PKLinsubfolders -out $savepklfile >> output; program_JKQCpickle  $savepklfile ${arguments[@]} >  $savefile; "
   if [ $Qonlycollect -eq 0 ]
   then
     commandTODO+="$toolspath/SCRIPTS/JKcollect CONTROL $savepklfile $resultfile $movie $Qs $Qu; "

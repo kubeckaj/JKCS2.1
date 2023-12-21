@@ -85,6 +85,7 @@ def print_help():
   print(" -sort <str>          sort by: g,gout,el,elout,<full name in database under log>")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip, or dup=duplicates")
+  print(" -sample <int> <str>  selects <INT> distinct based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
   print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
@@ -102,7 +103,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
-  print(" -rh <0.0-1.0>, -psolvent <float in Pa>")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -146,6 +147,7 @@ Qt = missing
 Qp = missing
 Qfc = 0 #Run QHA with vib. frequency cutoff
 Qanh = 1
+Qanharm = 0 #To collect anharmonicities from QC output
 
 Qpresplit = 0 #Do I want to take only part of the data?
 Qsplit = 1 #should I split the base on several parts
@@ -155,6 +157,7 @@ Qout2log = 0 #change column name
 
 Qsort = 0 # 0=no sorting, otherwise string
 Qselect = 0 # 0=nothing, otherwise the number of selected structures
+Qsample = 0 # The same as uniqueness but adjustable automatically
 Quniq = 0 # uniqie based on given arguments
 Qarbalign = 0 #use ArbAlign with float parameter
 formation_input_file = ""
@@ -251,6 +254,10 @@ for i in argv[1:]:
   #Hydration
   if i == "-hydration":
     Qsolvation = "w"
+    continue
+  #Anharm
+  if i == "-anharm":
+    Qanharm = 1
     continue
   #Qrh
   if i == "-rh":
@@ -479,6 +486,14 @@ for i in argv[1:]:
     last = ""
     Qselect = int(i)
     continue  
+  # SAMPLE
+  if i == "-sample":
+    last = "-sample"
+    continue
+  if last == "-sample":
+    last = "-uniq"
+    Qsample = int(i)
+    continue
   # UNIQUE
   if i == "-unique" or i == "--unique" or i == "-uniq" or i == "--uniq":
     last = "-uniq"
@@ -751,7 +766,7 @@ for i in argv[1:]:
     continue
   if last == "-as":
     last = ""
-    Qanh = float(i)
+    Qanh = str(i)
     continue
   if i == "-unit" or i == "--unit":
     QUenergy = 627.503
@@ -1322,7 +1337,10 @@ for file_i in files:
       out_entropy = missing                              #E1
       if Qforces == 1:
         out_forces = missing                             #F1
+      if Qanharm == 1:
+        out_anharm = missing
       search=-1
+      save_anharm=0
       save_mulliken_charges=0
       save_something=""
       for line in file:
@@ -1583,6 +1601,26 @@ for file_i in files:
             if save_forces == out_NAtoms:
               save_something = ""
             continue
+        if Qanharm == 1:
+          if re.search("Fundamental Bands", line) and not save_anharm > 0:
+            save_something = "anharm"
+            save_anharm = -2
+            out_anharm = []
+            out_anharm_help = []
+            continue
+          if save_something == "anharm":
+            save_anharm = save_anharm + 1
+            if save_anharm > 0:
+              try:
+                out_anharm.append(float(line[4:].split()[3]))
+                out_anharm_help.append(float(line[4:].split()[2]))
+              except:
+                out_anharm = missing
+                save_something = ""
+            if save_anharm == len(out_vibrational_frequencies):
+              out_anharm = sorted(out_anharm)
+              save_something = ""
+            continue 
       #SAVE
       clusters_df = df_add_iter(clusters_df, "log", "program", [str(cluster_id)], [out_program]) #PROGRAM
       clusters_df = df_add_iter(clusters_df, "log", "method", [str(cluster_id)], [out_method]) #METHOD
@@ -1616,6 +1654,8 @@ for file_i in files:
       clusters_df = df_add_iter(clusters_df, "log", "entropy", [str(cluster_id)], [out_entropy]) #E1
       if Qforces == 1:
         clusters_df = df_add_iter(clusters_df, "extra", "forces", [str(cluster_id)], [out_forces]) #F1
+      if Qanharm == 1:
+        clusters_df = df_add_iter(clusters_df, "extra", "anharm", [str(cluster_id)], [out_anharm]) 
     file.close()
 
   ###############
@@ -2450,7 +2490,7 @@ if Qqha == 1:
   h = 6.626176*10**-34 #m^2 kg s^-1
   R = 1.987 #cal/mol/K #=8.31441
   k = 1.380662*10**-23 #m^2 kg s^-2 K^-1
-  if Qanh != 1:
+  if Qanh != "1":
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
       try:
@@ -2479,7 +2519,26 @@ if Qqha == 1:
         Sv_OLD = missing
         Ev_OLD = missing
       #
-      clusters_df["log","vibrational_frequencies"][i] = [Qanh * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
+      if Qanh != "anh":
+        try:
+          clusters_df["log","vibrational_frequencies"][i] = [float(Qanh) * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
+        except:
+          clusters_df["log","vibrational_frequencies"][i] = [missing]
+      else:
+        def replace_by_nonnegative(new, orig):
+          mask = np.array(new) > 0
+          orig = np.array(orig)
+          new = np.array(new)
+          orig[mask] = new[mask]
+          return list(orig)
+        #print(len(clusters_df["extra","anharm"].values[i]) == len(clusters_df["log","vibrational_frequencies"].values[i]))
+        print(clusters_df["log","vibrational_frequencies"].values[i])
+        try:
+          clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i])
+        except:
+          clusters_df["log","vibrational_frequencies"][i] = [missing]
+        print(clusters_df["log","vibrational_frequencies"].values[i])
+        print()
       #
       try:
         Sv = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K  
@@ -2651,7 +2710,6 @@ if str(Quniq) != "0":
          preselected_df = clusters_df[clusters_df["info"]["cluster_type"] == i]
        else:
          preselected_df = clusters_df
-       tocompare = []
        separated_inputs = seperate_string_number2(str(Quniq))
        compare_list = []
        compare_list_num = []
@@ -2693,30 +2751,47 @@ if str(Quniq) != "0":
        #  compare_list = ["rg","electronic_energy"]
        #print(compare_list)
        #print(compare_list_num)
-       for compare_element_i in range(len(compare_list)):
-         j = compare_list[compare_element_i]
-         jj = compare_list_num[compare_element_i]
-         if j == "rg":
-           rg = []
-           for aseCL in preselected_df["xyz"]["structure"]:
-             try:
-               rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
-             except:
-               rg.append(missing)
-           values = [np.floor(myNaN(o)*10**jj) for o in rg]
-         elif j == "gout":
-           gout = []
-           for Gouti in range(len(preselected_df)):
-             try:
-               gout.append(preselected_df["log"]["gibbs_free_energy"].values[Gouti]-preselected_df["log"]["electronic_energy"].values[Gouti]+preselected_df["out"]["electronic_energy"].values[Gouti])
-             except:
-               gout.append(missing)
-           values = [np.floor(myNaN(o)*10**jj) for o in gout]
-         else:  
-           values = [np.floor(float(myNaN(o))*10**jj) for o in preselected_df["log"][j].values]
-         tocompare.append(values)
-       tocompare = np.transpose(tocompare)
-       uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
+       scale_test=1
+       scale=1.0
+       scale_scale = 0.1
+       scale_iter = 0
+       while scale_test == 1:
+         scale_iter = scale_iter + 1 
+         tocompare = []
+         for compare_element_i in range(len(compare_list)):
+           j = compare_list[compare_element_i]
+           jj = scale*compare_list_num[compare_element_i]
+           if j == "rg":
+             rg = []
+             for aseCL in preselected_df["xyz"]["structure"]:
+               try:
+                 rg.append((np.sum(np.sum((aseCL.positions-np.tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/np.sum(aseCL.get_masses()))**0.5)
+               except:
+                 rg.append(missing)
+             values = [np.floor(myNaN(o)*10**jj) for o in rg]
+           elif j == "gout":
+             gout = []
+             for Gouti in range(len(preselected_df)):
+               try:
+                 gout.append(preselected_df["log"]["gibbs_free_energy"].values[Gouti]-preselected_df["log"]["electronic_energy"].values[Gouti]+preselected_df["out"]["electronic_energy"].values[Gouti])
+               except:
+                 gout.append(missing)
+             values = [np.floor(myNaN(o)*10**jj) for o in gout]
+           else:  
+             values = [np.floor(float(myNaN(o))*10**jj) for o in preselected_df["log"][j].values]
+           tocompare.append(values)
+         tocompare = np.transpose(tocompare)
+         uniqueindexes = np.unique(tocompare,axis = 0,return_index=True)[1]
+         if Qsample > 0 and len(uniqueindexes) > Qsample and scale_iter < 100:
+           if scale_scale > 0:
+             scale_scale = -0.9*scale_scale
+           scale = scale + scale_scale
+         elif Qsample > 0 and len(uniqueindexes) < Qsample and len(compare_list) >= Qsample and scale_iter < 100:
+           if scale_scale < 0:
+             scale_scale = -0.9*scale_scale
+           scale = scale + scale_scale  
+         else:
+           scale_test = 0
        selected_df = preselected_df.iloc[uniqueindexes]
        if len(newclusters_df) == 0:
          newclusters_df = selected_df
@@ -2725,7 +2800,10 @@ if str(Quniq) != "0":
          newclusters_df = newclusters_df.append(selected_df)
          #print(newclusters_df)
   if Qout == 1:
-    print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
+    if Qsample > 0:
+      print("Sampled: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
+    else:
+      print("Uniqueness: "+str(len(clusters_df))+" --> "+str(len(newclusters_df)))
   clusters_df = newclusters_df
 if Qarbalign > 0:
   import ArbAlign

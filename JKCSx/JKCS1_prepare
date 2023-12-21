@@ -81,7 +81,9 @@ JKloadhelp             # check if user asks for -help
 Qselect=0;     #Do you need to select just specific amount of combinations
 QselectN=0;    #Max number of combinations 
 Qoverwrite=0;  #Overwrite parameters.txt
+
 Qprotonated=0; #Adds 1p
+Qdeprotonated=0; #removes 1p
 
 last=""
 # loop over all arguments
@@ -111,10 +113,27 @@ do
   #protonated
   if [ "$iter" == "-1p" ] || [ "$iter" == "-protonated" ]
   then
-    Qprotonated=1
+    last="-protonated"
     continue
   fi
-  #
+  if [ "$last" == "-protonated" ]
+  then
+    last=""
+    Qprotonated="$iter"
+    continue
+  fi
+  #deprotonated
+  if [ "$iter" == "-deprotonated" ]
+  then
+    last="-deprotonated"
+    continue
+  fi
+  if [ "$last" == "-deprotonated" ]
+  then
+    last=""
+    Qdeprotonated="$iter"
+    continue
+  fi
   arguments_help+=( "${arguments[i]}" )
 done
 arguments=("${arguments_help[@]}")
@@ -222,19 +241,89 @@ do
   fi
   #creating folder name
   folder=$folderbasename
-  for molecule_i in `seq 1 $numberofmoleculartypes`
+  #for molecule_i in `seq 1 $numberofmoleculartypes`
+  #do
+  #  numero=`echo $composition_numbers | awk -v var=$molecule_i '{print $var}'`
+  #  if [ "$numero" != "0" ] && [[ "${numero}" != "F"* ]]
+  #  then
+  #    name=`echo $molecules | awk -v var=$molecule_i '{print $var}'`
+  #    folder+="_${numero}${name}" 
+  #  fi
+  #done
+  molecules_now=$molecules
+  composition_numbers_now=$composition_numbers
+  if [ "$Qprotonated" != "0" ]
+  then
+    test=0
+    for molecule_i in `seq 1 $numberofmoleculartypes`
+    do
+      molecule_test=`echo $molecules_now | awk -v var=$molecule_i '{print $var}'`
+      molecule_test_n=`echo $composition_numbers_now | awk -v var=$molecule_i '{print $var}'`
+      for molecule_j in $Qprotonated
+      do
+        if [ "$molecule_test" == "$molecule_j" ] && [ $molecule_test_n -gt 0 ]
+        then
+          test=1
+          break
+        fi
+      done
+      if [ $test -eq 1 ]
+      then
+        break
+      fi  
+    done
+    if [ $test -eq 0 ]
+    then
+      continue
+    else
+      molecules_now+=" p"
+      composition_numbers_now+=" 1"
+    fi
+  fi
+  if [ "$Qdeprotonated" != "0" ]
+  then
+    test=0
+    for molecule_j in $Qdeprotonated
+    do
+      molecule_j_from=`echo $molecule_j | sed "s/=/ /" | awk '{print $1}'`
+      molecule_j_to=`echo $molecule_j | sed "s/=/ /" | awk '{print $2}'`
+      for molecule_i in `seq 1 $numberofmoleculartypes`
+      do
+        molecule_test=`echo $molecules_now | awk -v var=$molecule_i '{print $var}'`
+        molecule_test_n=`echo $composition_numbers_now | awk -v var=$molecule_i '{print $var}'`
+        if [ "$molecule_test" == "$molecule_j_from" ] && [ $molecule_test_n -gt 0 ]
+        then
+          test=1
+          break
+        fi
+      done
+      if [ $test -eq 1 ]
+      then
+        composition_numbers_now=`echo $composition_numbers_now | awk -v COL=$molecule_i '{$COL = $COL - 1; print}'`
+        break
+      fi  
+    done
+    if [ $test -eq 0 ]
+    then
+      continue
+    else
+      molecules_now+=" $molecule_j_to"
+      composition_numbers_now+=" 1"
+    fi
+  fi
+  numberofmoleculartypes_refined=`echo $molecules_now | wc -w`
+  molecules_refined=`echo $molecules_now $composition_numbers_now | xargs -n $numberofmoleculartypes_refined | awk '{for (f=1;f<=NF;f++) col[f] = col[f]":"$f} END {for (f=1;f<=NF;f++) print col[f]}' | tr ':' ' ' | awk '$2 != 0' | sort -k 1 | awk '{print $1}' | xargs`
+  composition_numbers_refined=`echo $molecules_now $composition_numbers_now | xargs -n $numberofmoleculartypes_refined | awk '{for (f=1;f<=NF;f++) col[f] = col[f]":"$f} END {for (f=1;f<=NF;f++) print col[f]}' | tr ':' ' ' | awk '$2 != 0' | sort -k 1 | awk '{print $2}' | xargs`
+  numberofmoleculartypes_refined=`echo $molecules_refined | wc -w` 
+  for molecule_i in `seq 1 $numberofmoleculartypes_refined`
   do
-    numero=`echo $composition_numbers | awk -v var=$molecule_i '{print $var}'`
+    numero=`echo $composition_numbers_refined | awk -v var=$molecule_i '{print $var}'`
     if [ "$numero" != "0" ] && [[ "${numero}" != "F"* ]]
     then
-      name=`echo $molecules | awk -v var=$molecule_i '{print $var}'`
+      name=`echo $molecules_refined | awk -v var=$molecule_i '{print $var}'`
       folder+="_${numero}${name}" 
     fi
   done
-  if [ $Qprotonated -eq 1 ]
-  then
-    folder+="_1p"
-  fi
   JKecho 2 "  Name of folder was created: ${cfGREEN}$folder${cfDEF}"
   if [ $Qoverwrite -eq 0 ]
   then
