@@ -766,7 +766,7 @@ for i in argv[1:]:
     continue
   if last == "-as":
     last = ""
-    Qanh = float(i)
+    Qanh = str(i)
     continue
   if i == "-unit" or i == "--unit":
     QUenergy = 627.503
@@ -1340,6 +1340,7 @@ for file_i in files:
       if Qanharm == 1:
         out_anharm = missing
       search=-1
+      save_anharm=0
       save_mulliken_charges=0
       save_something=""
       for line in file:
@@ -1601,20 +1602,23 @@ for file_i in files:
               save_something = ""
             continue
         if Qanharm == 1:
-          if re.search("Fundamental Bands", line):
+          if re.search("Fundamental Bands", line) and not save_anharm > 0:
             save_something = "anharm"
             save_anharm = -2
             out_anharm = []
+            out_anharm_help = []
             continue
           if save_something == "anharm":
             save_anharm = save_anharm + 1
             if save_anharm > 0:
               try:
-                out_anharm.append(line[4:].split[3])
+                out_anharm.append(float(line[4:].split()[3]))
+                out_anharm_help.append(float(line[4:].split()[2]))
               except:
                 out_anharm = missing
                 save_something = ""
             if save_anharm == len(out_vibrational_frequencies):
+              out_anharm = sorted(out_anharm)
               save_something = ""
             continue 
       #SAVE
@@ -2486,7 +2490,7 @@ if Qqha == 1:
   h = 6.626176*10**-34 #m^2 kg s^-1
   R = 1.987 #cal/mol/K #=8.31441
   k = 1.380662*10**-23 #m^2 kg s^-2 K^-1
-  if Qanh != 1:
+  if Qanh != "1":
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
       try:
@@ -2515,7 +2519,26 @@ if Qqha == 1:
         Sv_OLD = missing
         Ev_OLD = missing
       #
-      clusters_df["log","vibrational_frequencies"][i] = [Qanh * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
+      if Qanh != "anh":
+        try:
+          clusters_df["log","vibrational_frequencies"][i] = [float(Qanh) * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
+        except:
+          clusters_df["log","vibrational_frequencies"][i] = [missing]
+      else:
+        def replace_by_nonnegative(new, orig):
+          mask = np.array(new) > 0
+          orig = np.array(orig)
+          new = np.array(new)
+          orig[mask] = new[mask]
+          return list(orig)
+        #print(len(clusters_df["extra","anharm"].values[i]) == len(clusters_df["log","vibrational_frequencies"].values[i]))
+        print(clusters_df["log","vibrational_frequencies"].values[i])
+        try:
+          clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i])
+        except:
+          clusters_df["log","vibrational_frequencies"][i] = [missing]
+        print(clusters_df["log","vibrational_frequencies"].values[i])
+        print()
       #
       try:
         Sv = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K  

@@ -17,6 +17,7 @@ do
 done
 
 helpfile=.help$RANDOM
+helpfileSQ=$PWD/.helpSQ$RANDOM
 
 if [ -e $helpfile ];
 then
@@ -32,7 +33,8 @@ then
     rm ../$helpfile 
   fi
 fi
-  
+
+squeue -o "%.18i %.2t" -u $USER > $helpfileSQ 2>>/dev/null   
 for i in $folders; 
 do  
   cd $i
@@ -84,7 +86,7 @@ do
         for job in `seq 1 $v1`
         do
           jobN=`head -n $job .jobs.txt | tail -n 1`
-          jobR=`squeue -o "%.18i %.2t" --job $jobN 2>>/dev/null | grep "$jobN" 2>>output | awk '{print $2}' 2>>output` 
+          jobR=`cat $helpfileSQ | grep "$jobN" 2>>output | awk '{print $2}' 2>>output` 
           if [ "$jobR" == "" ] || [ "$jobR" == "C" ] || [ -z "$jobN" ]
           then
             v2=`echo $v2+1| bc`
@@ -144,3 +146,4 @@ then
   fi
   rm $helpfile
 fi
+rm $helpfileSQ
