@@ -3010,7 +3010,10 @@ for i in Pout:
   #XYZ
   if i == "-xyz":
     for ind in clusters_df.index:
-      write(clusters_df["info"]["file_basename"][ind]+".xyz",clusters_df["xyz"]["structure"][ind])
+      try:
+        write(clusters_df["info"]["file_basename"][ind]+".xyz",clusters_df["xyz"]["structure"][ind])
+      except:
+        print("Corrupted structure saved for "+clusters_df["info"]["file_basename"][ind])
     continue
   #PDB IMOS
   if i == "-imos":
