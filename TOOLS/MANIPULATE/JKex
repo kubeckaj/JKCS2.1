@@ -1,5 +1,6 @@
 #!/bin/bash
-line=`echo $1 | bc`
+line="$1"
+line=`echo $line | bc`
 file=$2
 if [ $line -lt 0 ]
 then

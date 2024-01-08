@@ -770,10 +770,10 @@ do
           arraymax=""
         fi
         SC_command_sub=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
-        echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" >> output
-        echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" > .run
-        #echo "$SC_command_sub 'JKex `echo $commands_TODO_lines+1 | bc`-\$SLURM_ARRAY_TASK_ID commands_TODO.txt'" >> output
-        #echo "$SC_command_sub 'JKex `echo $commands_TODO_lines+1 | bc`-\$SLURM_ARRAY_TASK_ID commands_TODO.txt'" >  .run
+        #echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" >> output
+        #echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" > .run
+        echo "$SC_command_sub JKex `echo $commands_TODO_lines+1 | bc`-\\\${SLURM_ARRAY_TASK_ID} commands_TODO.txt" >> output
+        echo "$SC_command_sub JKex `echo $commands_TODO_lines+1 | bc`-\\\${SLURM_ARRAY_TASK_ID} commands_TODO.txt" >  .run
         #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" >> output
         #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
@@ -782,8 +782,10 @@ do
         echo $job | awk '{print $4}'  >> .jobs.txt
       fi
     else
-      echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" >> output
-      echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" > .run
+      #echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" >> output
+      #echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" > .run
+      echo "$SC_command JKex `echo $commands_TODO_lines+1-$i | bc` commands_TODO.txt" >> output
+      echo "$SC_command JKex `echo $commands_TODO_lines+1-$i | bc` commands_TODO.txt" >  .run
       #echo  "$SC_command sh .run$i" >> output
       #echo  "$SC_command sh .run$i" > .run
       #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
