@@ -1618,7 +1618,8 @@ for file_i in files:
                 out_anharm = missing
                 save_something = ""
             if save_anharm == len(out_vibrational_frequencies):
-              out_anharm = sorted(out_anharm)
+              sorted_lists = sorted(zip(out_anharm_help, out_anharm))
+              out_anharm = [item[1] for item in sorted_lists]
               save_something = ""
             continue 
       #SAVE
@@ -2519,26 +2520,29 @@ if Qqha == 1:
         Sv_OLD = missing
         Ev_OLD = missing
       #
-      if Qanh != "anh":
+      if Qanh != "anh" and Qanh != "anh2":
         try:
           clusters_df["log","vibrational_frequencies"][i] = [float(Qanh) * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
         except:
           clusters_df["log","vibrational_frequencies"][i] = [missing]
       else:
-        def replace_by_nonnegative(new, orig):
-          mask = np.array(new) > 0
+        def replace_by_nonnegative(new, orig, q):
+          if q == 0:
+            mask = np.array(new) > 0
+          else:
+            mask = [ new[ii] > 0 and new[ii] < orig[ii] for ii in range(len(new)) ]
           orig = np.array(orig)
           new = np.array(new)
           orig[mask] = new[mask]
           return list(orig)
         #print(len(clusters_df["extra","anharm"].values[i]) == len(clusters_df["log","vibrational_frequencies"].values[i]))
-        print(clusters_df["log","vibrational_frequencies"].values[i])
         try:
-          clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i])
+          if Qanh == "anh":
+            clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i],0)
+          else:
+            clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i],1)
         except:
           clusters_df["log","vibrational_frequencies"][i] = [missing]
-        print(clusters_df["log","vibrational_frequencies"].values[i])
-        print()
       #
       try:
         Sv = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K  
