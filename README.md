@@ -1,4 +1,3 @@
-&theme=cobalt
 # JKCS (=JKCS2.1) 
 Jammy Key for Configurational Sampling
 
