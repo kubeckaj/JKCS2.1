@@ -1,0 +1,11 @@
+#!/bin/bash
+line="$1"
+line=`echo $line | bc`
+file=$2
+if [ $line -lt 0 ]
+then
+  line=`echo -$line | bc`
+  tail -n $line $file | head -n 1 | sh
+else
+  head -n $line $file | tail -n 1 | sh
+fi

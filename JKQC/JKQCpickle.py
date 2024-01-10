@@ -9,6 +9,7 @@ import numpy as np
 #Attach command to the output
 cmd="".join(["echo COMMAND: JKQC "," ".join(argv[1:])," >> output 2>/dev/null"])
 system(cmd)
+  
 
 def listToString(s,spaces): 
     # initialize an empty string
@@ -1618,7 +1619,8 @@ for file_i in files:
                 out_anharm = missing
                 save_something = ""
             if save_anharm == len(out_vibrational_frequencies):
-              out_anharm = sorted(out_anharm)
+              sorted_lists = sorted(zip(out_anharm_help, out_anharm))
+              out_anharm = [item[1] for item in sorted_lists]
               save_something = ""
             continue 
       #SAVE
@@ -2493,68 +2495,72 @@ if Qqha == 1:
   if Qanh != "1":
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
-      try:
-        QtOLD = clusters_df["log","temperature"].values[i]
-        if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]).any():
+      if len(clusters_df["xyz"]["structure"][i].get_atomic_numbers()) != 1:
+        try:
+          QtOLD = clusters_df["log","temperature"].values[i]
+          if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]).any():
+            continue
+        except:
+          QtOLD = clusters_df["log","temperature"].values[i]
+        try:
+          lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
+        except:
+          lf = 0
+        if lf <= 0:
+          clusters_df["log","entropy"][i] = missing
+          clusters_df["log","enthalpy_energy"][i] = missing
+          clusters_df["log","enthalpy_thermal_correction"][i] = missing
+          clusters_df["log","internal_energy"][i] = missing
+          clusters_df["log","energy_thermal_correction"][i] = missing
+          clusters_df["log","zero_point_correction"][i] = missing
+          clusters_df["log","zero_point_energy"][i] = missing
           continue
-      except:
-        QtOLD = clusters_df["log","temperature"].values[i]
-      try:
-        lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
-      except:
-        lf = 0
-      if lf <= 0:
-        clusters_df["log","entropy"][i] = missing
-        clusters_df["log","enthalpy_energy"][i] = missing
-        clusters_df["log","enthalpy_thermal_correction"][i] = missing
-        clusters_df["log","internal_energy"][i] = missing
-        clusters_df["log","energy_thermal_correction"][i] = missing
-        clusters_df["log","zero_point_correction"][i] = missing
-        clusters_df["log","zero_point_energy"][i] = missing
-        continue
-      try:
-        Sv_OLD = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K
-        Ev_OLD = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
-      except:
-        Sv_OLD = missing
-        Ev_OLD = missing
-      #
-      if Qanh != "anh":
         try:
-          clusters_df["log","vibrational_frequencies"][i] = [float(Qanh) * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
+          Sv_OLD = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K
+          Ev_OLD = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
         except:
-          clusters_df["log","vibrational_frequencies"][i] = [missing]
-      else:
-        def replace_by_nonnegative(new, orig):
-          mask = np.array(new) > 0
-          orig = np.array(orig)
-          new = np.array(new)
-          orig[mask] = new[mask]
-          return list(orig)
-        #print(len(clusters_df["extra","anharm"].values[i]) == len(clusters_df["log","vibrational_frequencies"].values[i]))
-        print(clusters_df["log","vibrational_frequencies"].values[i])
+          Sv_OLD = missing
+          Ev_OLD = missing
+        #
+        if Qanh != "anh" and Qanh != "anh2":
+          try:
+            clusters_df["log","vibrational_frequencies"][i] = [float(Qanh) * j for j in clusters_df["log","vibrational_frequencies"].values[i]]
+          except:
+            clusters_df["log","vibrational_frequencies"][i] = [missing]
+        else:
+          def replace_by_nonnegative(new, orig, q):
+            if q == 0:
+              mask = np.array(new) > 0
+            else:
+              mask = [ new[ii] > 0 and new[ii] < orig[ii] for ii in range(len(new)) ]
+            orig = np.array(orig)
+            new = np.array(new)
+            orig[mask] = new[mask]
+            return list(orig)
+          #print(len(clusters_df["extra","anharm"].values[i]) == len(clusters_df["log","vibrational_frequencies"].values[i]))
+          try:
+            if Qanh == "anh":
+              clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i],0)
+            else:
+              clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i],1)
+          except:
+            clusters_df["log","vibrational_frequencies"][i] = [missing]
+        #
         try:
-          clusters_df["log","vibrational_frequencies"][i] = replace_by_nonnegative(clusters_df["extra","anharm"].values[i],clusters_df["log","vibrational_frequencies"].values[i])
+          Sv = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K  
+          Ev = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
         except:
-          clusters_df["log","vibrational_frequencies"][i] = [missing]
-        print(clusters_df["log","vibrational_frequencies"].values[i])
-        print()
-      #
-      try:
-        Sv = np.sum([R*h*vib*2.99793*10**10/k/QtOLD/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)-R*np.log(1-np.exp(-h*vib*2.99793*10**10/k/QtOLD)) for vib in clusters_df["log"]["vibrational_frequencies"].values[i]]) #cal/mol/K  
-        Ev = np.sum([R*h*vib*2.99793*10**10/k/(np.exp(h*vib*2.99793*10**10/k/QtOLD)-1)+R*h*vib*2.99793*10**10/k*0.5 for vib in clusters_df["log"]["vibrational_frequencies"].values[i]])
-      except:
-        Sv = missing
-        Ev = missing
-      ###
-      clusters_df["log","zero_point_correction"][i] = np.sum([0.5*h*vib*2.99793*10**10 for vib in clusters_df["log","vibrational_frequencies"][i]])*0.00038088*6.022*10**23/1000
-      clusters_df["log","zero_point_energy"][i] = clusters_df["log","electronic_energy"][i] + clusters_df["log","zero_point_correction"][i]  
-      clusters_df["log","internal_energy"][i] += (Ev - Ev_OLD)/1000/627.503    
-      clusters_df["log","energy_thermal_correction"][i] += (Ev - Ev_OLD)/1000/627.503    
-      clusters_df["log","enthalpy_energy"][i] += (Ev - Ev_OLD)/1000/627.503
-      clusters_df["log","enthalpy_thermal_correction"][i] += (Ev - Ev_OLD)/1000/627.503
-      clusters_df["log","entropy"][i] += Sv - Sv_OLD      
-      ###
+          Sv = missing
+          Ev = missing
+        ###
+        clusters_df["log","zero_point_correction"][i] = np.sum([0.5*h*vib*2.99793*10**10 for vib in clusters_df["log","vibrational_frequencies"][i]])*0.00038088*6.022*10**23/1000
+        clusters_df["log","zero_point_energy"][i] = clusters_df["log","electronic_energy"][i] + clusters_df["log","zero_point_correction"][i]  
+        clusters_df["log","internal_energy"][i] += (Ev - Ev_OLD)/1000/627.503    
+        clusters_df["log","energy_thermal_correction"][i] += (Ev - Ev_OLD)/1000/627.503    
+        clusters_df["log","enthalpy_energy"][i] += (Ev - Ev_OLD)/1000/627.503
+        clusters_df["log","enthalpy_thermal_correction"][i] += (Ev - Ev_OLD)/1000/627.503
+        clusters_df["log","entropy"][i] += Sv - Sv_OLD      
+        ###
     
   
   # NEW TEMPERATURE (T,S,H,Hc,U,Uc // G,Gc)
@@ -2940,7 +2946,10 @@ if Qout > 0:
   #print(len(clusters_df.index))
   #print(len(tosave))
   if Qsplit == 1:
-    tosave.to_pickle(output_pkl)
+    try:
+      tosave.to_pickle(output_pkl)
+    except:
+      print("Pickle was not written down due to an error.")
     if Qout == 1:
       if len(tosave) == 0:
         print(tosave)
@@ -3006,7 +3015,10 @@ for i in Pout:
   #XYZ
   if i == "-xyz":
     for ind in clusters_df.index:
-      write(clusters_df["info"]["file_basename"][ind]+".xyz",clusters_df["xyz"]["structure"][ind])
+      try:
+        write(clusters_df["info"]["file_basename"][ind]+".xyz",clusters_df["xyz"]["structure"][ind])
+      except:
+        print("Corrupted structure saved for "+clusters_df["info"]["file_basename"][ind])
     continue
   #PDB IMOS
   if i == "-imos":

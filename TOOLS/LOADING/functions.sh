@@ -251,9 +251,11 @@ function JKloadsupercomputer {
   JKecho 2 "Final supercomputer parameters: `echo $METHODsupercomputer $SCtasks $SCcpu $SCnodes $SCtime $SCpar $SCmem | column -t`"
   if [ "$METHODsupercomputer" == "loc" ]
   then
-    SC_command="sh $toolspath/SCRIPTS/JKsend "
+    #SC_command="sh $toolspath/SCRIPTS/JKsend "
+    SC_command="sh JKsend "
   else
-    SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem $SCcpu`" $toolspath/SCRIPTS/JKsend "
+    #SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem $SCcpu`" $toolspath/SCRIPTS/JKsend "
+    SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem $SCcpu`" JKsend "
     #SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime -N $SCnodes --mem-per-cpu $SCmem -n $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
   fi
 }

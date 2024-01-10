@@ -61,7 +61,7 @@ JKQC collectionDFT_freq.pkl -pass lf nan -ePKL -noex -out nfreq.pkl >> to_run_DF
 JKCS3_run -p G16 -rf to_run_DFT_freq_restart.dat -nf DFT_freq -m \"# wb97xd 6-31++g**  opt=(maxcycles=100) freq\" -time 72:00:00 -cpu 8 -maxtasks 51
 JKCS4_collect DFT_freq_restart -oc -loc
 JKQC collectionDFT_freq*.pkl -pass lf 0 -sort g -fc 100 -v 0.996 -select 1 -noex -ePKL -out bestDFT.pkl > to_run_DLPNO.dat
-JKCS3_run -p ORCA -rf to_run_DLPNO.dat -nf DLPNO -m \"! aug-cc-pVTZ aug-cc-pVTZ/C cc-pVTZ-F12-CABS DLPNO-CCSD(T) TightSCF\" -time 72:00:00 -cpu 8 -mem 16gb -maxtasks 2
+JKCS3_run -p ORCA -rf to_run_DLPNO.dat -nf DLPNO -m \"! aug-cc-pVTZ aug-cc-pVTZ/C RI-JK aug-cc-pVTZ/JK DLPNO-CCSD(T) TightSCF\" -time 72:00:00 -cpu 8 -mem 16gb -maxtasks 2
 JKCS4_collect DLPNO -oc -orca
 mkdir FINAL; cp \`JKQC bestDFT.pkl -pXYZ -pLOG | xargs\` \`JKQC collectionDLPNO.pkl -pOUT\` FINAL/
 JKQC -folder FINAL -out final.pkl
