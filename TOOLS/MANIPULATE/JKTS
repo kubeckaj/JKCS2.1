@@ -12,33 +12,63 @@ XYZ=0
 LOG=0
 PKL=0
 RESTART=0
+INFO=0
+PAR_FLAG=0
 
 for arg in "$@"; do
   PYTHON_ARGS+=("$arg")
 done
 
 for arg in "$@"; do
-  if [[ "$arg" == "-h" ]] || [[ "$arg" == "--help" ]] || [[ "$arg" == "-help" ]]; then
-    program_PYTHON "$toolspath/SCRIPTS/DATS.py" -h
-    exit 0
-  elif [[ "$arg" == "-test" ]]; then
-    program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}"
-    exit 0
-  elif [[ "$arg" == *.xyz ]]; then
-    input_file="$arg"
-    base_name="${input_file%.*}"
-    XYZ=1
-  elif [[ "$arg" == *.log ]]; then
-    LOG=1
-  elif [[ "$arg" == *.pkl ]]; then
-    PKL=1
-  elif [[ "$arg" == "-restart" ]]; then
-    RESTART=1
-  fi
-  if [[ "$arg" == "qtest" ]]; then
-    SLURM_PARTITION="qtest"
-    SLURM_TIME="1:00:00"
-  fi
+  case "$arg" in
+    -h|--help|-help)
+      program_PYTHON "$toolspath/SCRIPTS/DATS.py" -h
+      exit 0
+      ;;
+    -test)
+      program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}"
+      exit 0
+      ;;
+    -info)
+      program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}" -info
+      exit 0
+      ;;
+    *.xyz)
+      input_file="$arg"
+      base_name="${input_file%.*}"
+      XYZ=1
+      ;;
+    *.log)
+      LOG=1
+      ;;
+    *.pkl)
+      PKL=1
+      ;;
+    -time)
+      time_arg="$arg"
+      ;;
+    -restart)
+      RESTART=1
+      ;;
+    -par)
+      PAR_FLAG=1
+      ;;
+    qtest)
+      SLURM_PARTITION="qtest"
+      SLURM_TIME="1:00:00"
+      ;;
+    *)
+      if [[ "$time_arg" == "-time" ]]; then
+        SLURM_TIME="$arg"
+        time_arg=""
+      elif [[ "$par_flag" -eq 1 ]]; then
+        SLURM_PARTITION="$arg"
+        par_flag=0
+      else
+        PYTHON_ARGS+=("$arg")
+      fi
+      ;;
+  esac
 done
 
 
