@@ -1359,7 +1359,7 @@ def NEP_input(file_path, file_name):
             f.write(f'%NEB PREOPT_ENDS TRUE NEB_END_XYZFILE "{file_path + "/" + file_name}_product.xyz" END\n')
             f.write(f'* XYZfile 0 2 {file_path + "/" + file_name}_reactant.xyz\n')
 
-def energy_cutoff(molecules, logger, initial_cutoff=5.0, max_cutoff_increment=30.0, increment_step=5.0):
+def energy_cutoff(molecules, logger, initial_cutoff=args.energy_cutoff, max_cutoff_increment=30.0, increment_step=5.0):
     """
     Filter molecules to those within a certain energy range of the lowest energy conformer.
     Adjusts cutoff to avoid removing more than 50% of molecules.
@@ -2264,6 +2264,7 @@ def main():
     additional_options.add_argument('-freq_cutoff', metavar="int", nargs='?', const=1, type=int, help='TS imaginary frequency cutoff [def: -200 cm^-1]')
     additional_options.add_argument('-reaction_angle', metavar="float", nargs='?', default=175.0, const=1, type=float, help='Active site transition state angle [def: 175.0 degrees]')
     additional_options.add_argument('-ewin', metavar="int", nargs='?', const=1, default=8, type=int, help='Energy threshold for CREST conformer sampling [def: 8 kcal/mol]')
+    additional_options.add_argument('-energy_cutoff', metavar="int", nargs='?', const=1, default=5, type=int, help='After preoptimization, remove conformers which are [int] kcal/mol higher in energy than the lowest conformer [def: 5 kcal/mol]')
 
     additional_options.add_argument('-test', action='store_true', default=False, help=argparse.SUPPRESS) # Run TEST section in main() and exit
     additional_options.add_argument('-num_molecules', type=int, default=None, help=argparse.SUPPRESS) # Set the number of directories created to [int]. Used when doing limited testing
