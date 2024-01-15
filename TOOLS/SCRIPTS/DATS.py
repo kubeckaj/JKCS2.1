@@ -135,7 +135,7 @@ def parse_job_status(output):
 
 def submit_array_job(molecules, partition, time, ncpus, mem, nnodes=1):
     dir = molecules[0].directory
-    job_files = [f"{conf.name}{conf.input}" for conf in molecules] 
+    job_files = [f"{conf.name}{conf.input}" for conf in molecules if conf.converged is False] 
     if molecules[0].product:
         job_name = f"{molecules[0].current_step.split('_')[0]}_prod_{os.path.basename(dir)}"
     elif molecules[0].reactant:
@@ -827,7 +827,7 @@ class Molecule(VectorManipulation):
                 qrot = (np.pi**0.5/self.symmetry_num) * ((T**3 / (rot_temps[0] * rot_temps[1] * rot_temps[2]))**0.5)
         elif self.program.lower() == 'orca':
             rot_constants = self.rot_temps
-            if 0.0 in rot_constants:
+            if 0.0 in rot_constants or len(rot_constants) == 1:
                 rot_constant = [e for e in rot_constants if e != 0.0]  
                 qrot = ((k_b*T)/(self.symmetry_num*h*c*100*rot_constant[0]))
             else:
@@ -1282,7 +1282,7 @@ def QC_input(molecule, constrain,  method, basis_set, TS, C_index=None, H_index=
     else:
         freq = ""
 
-    if molecule.program.lower() == "orca":
+    if molecule.program.lower() == "orca" and molecule.converged is False:
         with open(file_path, "w") as f:
             if method == "DLPNO":
                 f.write(f"! {basis_set} {basis_set}/C DLPNO-CCSD(T) TightSCF RI-JK {basis_set}/JK\n")
@@ -1318,7 +1318,7 @@ def QC_input(molecule, constrain,  method, basis_set, TS, C_index=None, H_index=
                 f.write(f'{atom} {coord[0]:.6f} {coord[1]:.6f} {coord[2]:.6f}\n')
             f.write("*")
 
-    elif molecule.program.lower() == "g16":
+    elif molecule.program.lower() == "g16" and molecule.converged is False:
         with open(file_path, "w") as f:
             f.write(f"%nprocshared={args.cpu}\n")
             f.write(f"%mem={args.mem}mb\n")
@@ -1359,7 +1359,7 @@ def NEP_input(file_path, file_name):
             f.write(f'%NEB PREOPT_ENDS TRUE NEB_END_XYZFILE "{file_path + "/" + file_name}_product.xyz" END\n')
             f.write(f'* XYZfile 0 2 {file_path + "/" + file_name}_reactant.xyz\n')
 
-def energy_cutoff(molecules, logger, initial_cutoff=args.energy_cutoff, max_cutoff_increment=30.0, increment_step=5.0):
+def energy_cutoff(molecules, logger, initial_cutoff=5, max_cutoff_increment=30.0, increment_step=5.0):
     """
     Filter molecules to those within a certain energy range of the lowest energy conformer.
     Adjusts cutoff to avoid removing more than 50% of molecules.
@@ -1369,6 +1369,8 @@ def energy_cutoff(molecules, logger, initial_cutoff=args.energy_cutoff, max_cuto
     max_cutoff_increment: Maximum additional cutoff to add (default is 10 kcal/mol).
     increment_step: Step size for increasing the cutoff (default is 1 kcal/mol).
     """
+    if args.energy_cutoff:
+        initial_cutoff = args.energy_cutoff
     hartree_to_kcalmol = 627.509
 
     # Convert to kcal/mol from Hartree and sort by energy
@@ -1475,6 +1477,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
 
     all_converged = False
     for m in molecules:  # Initialize with all molecules not being converged and no terminations counted
+        m.converged = False
         m.error_termination_count = 0
         m.wrong_TS = 0
 
@@ -1672,6 +1675,7 @@ def check_convergence(molecule, logger, threads, time_seconds, max_attempts):
                         for n, conformer_coords in enumerate(xyz_conformers, start=1):
                             conformer_molecule = copy.deepcopy(molecule)
                             conformer_molecule.name = f"{molecule.name}_conf{n}"
+                            conformer_molecule.converged = False
                             conformer_molecule.atoms = [atom[0] for atom in conformer_coords]
                             conformer_molecule.coordinates = [atom[1:] for atom in conformer_coords]
                             conformer_molecules.append(conformer_molecule)
@@ -2329,9 +2333,9 @@ def main():
 
 
     #####################################################################################################
-    # if args.test:
-    #     print(args)
-    #     exit()
+    if args.test:
+        print(args)
+        exit()
     #     molecules = []
     #     for n, input_file in enumerate(args.input_files, start=1):
     #         input_file = args.input_files[0]
@@ -2392,7 +2396,7 @@ def main():
             pickle_path = os.path.join(product_dir, "product_molecules.pkl")
             Molecule.molecules_to_pickle(product_molecules, pickle_path)
         else:
-            parser.error("Error when handling product directory") # Tmp fix # Tmp fix
+            parser.error("Error when handling product directory") # Tmp fix 
 
     elif args.info:
         for input_file in args.input_files:
@@ -2425,7 +2429,7 @@ def main():
                     input_file_path = os.path.join(start_dir, f"{file_name}_reactant.pkl")
                     logger = Logger(os.path.join(start_dir, "log"))
                     OH = Molecule(name='OH')
-                    if args.high_method is None and args.high_basis is None:
+                    if args.high_level is None:
                         global_molecules.append(OH)
                     else:
                         QC_input(OH, constrain=False, method=high_method, basis_set=high_basis, TS=False)
@@ -2438,7 +2442,7 @@ def main():
                 elif os.path.basename(start_dir) == 'products':
                     logger = Logger(os.path.join(start_dir, "log"))
                     H2O = Molecule(name='H2O')
-                    if args.high_method is None and args.high_basis is None:
+                    if args.high_level is None:
                         global_molecules.append(H2O)
                     else:
                         QC_input(H2O, constrain=False, method=high_method, basis_set=high_basis, TS=False)
