@@ -1586,6 +1586,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                 
         if all(m.converged for m in molecules):
             all_converged = True
+            break
 
         attempts += 1
         if attempts % 10 == 0 or attempts == 1:
@@ -2502,6 +2503,7 @@ def main():
                             m.converged = True
                 if all(m.converged for m in input_molecules):
                     logger.log(f"All molecules converged for step {current_step}. Proceeding with next step: {input_molecules[0].next_step}")
+                    for m in input_molecules: m.converged = False
                     converged_job(input_molecules, logger, threads)
                 else:
                     logger.log(f"Not all molecules given have converged. Non-converged will be calculated and converged ones will be skipped.")
