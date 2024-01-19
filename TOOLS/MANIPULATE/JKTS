@@ -64,25 +64,10 @@ for arg in "$@"; do
       elif [[ "$par_flag" -eq 1 ]]; then
         SLURM_PARTITION="$arg"
         par_flag=0
-      else
-        PYTHON_ARGS+=("$arg")
       fi
       ;;
   esac
 done
-
-
-if [[ "$XYZ" -gt 0 ]]; then
-    program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}" -init
-fi
-
-for dir in */; do
-    dir_name=${dir%/}
-    if [[ $dir_name =~ ^$base_name(_H[0-9]+|_C[0-9]+)$ ]] || [[ $dir_name == "reactants" ]] || [[ $dir_name == "products" ]]; then
-        directories+=("$dir_name")
-    fi
-done
-
 
 # Submit one array job for all directories
 submit_array_job() {
@@ -91,7 +76,7 @@ submit_array_job() {
   cat > $SLURM_SCRIPT <<EOF
 #!/bin/sh
 #SBATCH --job-name=JKTS
-#SBATCH --output=JKTS_%a_out
+##SBATCH --output=${directories[$i]}/JKTS_%a_out
 #SBATCH --time=$SLURM_TIME
 #SBATCH --partition=$SLURM_PARTITION
 #SBATCH --ntasks=1
@@ -132,9 +117,19 @@ EOF
   rm $SLURM_SCRIPT
 }
 
+if [[ "$XYZ" -gt 0 ]]; then
+    program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}" -init
+fi
+
+for dir in */; do
+    dir_name=${dir%/}
+    if [[ $dir_name =~ ^$base_name(_H[0-9]+|_C[0-9]+)$ ]] || [[ $dir_name == "reactants" ]] || [[ $dir_name == "products" ]]; then
+        directories+=("$dir_name")
+    fi
+done
+
 if [ ${#directories[@]} -gt 0 ] && [ "$RESTART" -lt 1 ]; then
   submit_array_job
 elif [ "$PKL" -gt 0 ] || [ "$LOG" -gt 0 ]; then
   submit_job
 fi
-
