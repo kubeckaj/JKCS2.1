@@ -180,10 +180,7 @@ def submit_array_job(molecules, partition, time, ncpus, mem, nnodes=1):
 
         file.write("PWD=`pwd`\n\n")
 
-        if job_program.lower() == 'crest':
-            file.write(f"cat > $SUBMIT <<!EOF\n")
-        else:
-            file.write(f"cat <<!EOF  | $submit\n")
+        file.write(f"cat > $SUBMIT <<!EOF\n")
         file.write("#!/bin/sh\n")
         file.write(f"#SBATCH --job-name={job_name}\n")
         if job_program.lower() == 'g16':
@@ -194,7 +191,6 @@ def submit_array_job(molecules, partition, time, ncpus, mem, nnodes=1):
             file.write(f"#SBATCH --nodes={nnodes}\n")
             file.write(f"#SBATCH --cpus-per-task=1\n")
             file.write(f"#SBATCH --ntasks={ncpus}\n")
-        # file.write(f"#SBATCH --error=./slurm_output/{job_name}_%A_%a.err\n")
         file.write(f"#SBATCH --output=./slurm_output/{job_name}_%A_%a.out\n")
         file.write(f"#SBATCH --time={time}\n")
         file.write(f"#SBATCH --partition={partition}\n")
@@ -202,40 +198,39 @@ def submit_array_job(molecules, partition, time, ncpus, mem, nnodes=1):
         file.write(f"#SBATCH --mem={program_mem}\n")
         file.write(f"#SBATCH --array=$ARRAY\n\n")
 
-        file.write("# Create scratch folder\n")
-        file.write("SCRATCH=/scratch/\\${SLURM_JOB_ID}/\\${SLURM_ARRAY_TASK_ID}\n")
-        file.write("mkdir -p \\$SCRATCH\n\n")
+        file.write(f"source ~/.JKCSusersetup.txt\n")
 
         if job_program.lower() == 'g16':
+            file.write("eval \\$MODULE_G16\n")
+            file.write("export GAUSS_EXEDIR=\\${PATH_G16}g16/\n")
+            file.write("# create and set scratch dir\n")
+            file.write("mkdir -p \\$WRKDIR || exit $?\n")
             file.write(f"cd $PWD\n")
-            file.write("export GAUSS_SCRDIR=\\$SCRATCH\n\n")
-
-            file.write("source /comm/groupstacks/gaussian/bin/modules.sh\n")
-            file.write("ml gaussian16/Rev.B.01\n")
-            file.write("ml gcc/9.2.0\n")
-            file.write("ml openmpi/4.0.1\n\n")
+            file.write("export GAUSS_SCRDIR=\\$WRKDIR\n\n")
 
             file.write('GJ=\\$(awk "NR == \\$SLURM_ARRAY_TASK_ID" $IN)\n')
             file.write('LOG=\\${GJ%.*}.log\n\n')
-            file.write("srun $(which g16) \\$GJ > \\$LOG\n")
+            file.write("\\${PATH_G16}g16/g16 \\$GJ > \\$LOG\n")
             file.write("#\n")
-            file.write("!EOF")
+            file.write("!EOF\n\n")
 
         elif job_program.lower() == "orca":
             file.write("  ulimit -c 0\n")
-            file.write("source /comm/groupstacks/gaussian/bin/modules.sh\n")
-            file.write("ml openmpi\n")
-            file.write("ml orca/5.0.4\n\n")
+            file.write("export LD_LIBRARY_PATH=\\$PATH_ORCA:\\$LD_LIBRARY_PATH\n")
+            file.write("eval \\$MODULE_ORCA\n")
+            
+            file.write("# create and set scratch dir\n")
+            file.write("mkdir -p \\$WRKDIR || exit $?\n")
 
-            file.write("cd \\$SCRATCH\n")
+            file.write("cd \\$WRKDIR\n")
             file.write(f"cp \\$SLURM_SUBMIT_DIR/{array_txt} .\n")
             file.write(f"cp \\$SLURM_SUBMIT_DIR/*.inp .\n\n")
 
             file.write('GJ=\\$(awk "NR == \\$SLURM_ARRAY_TASK_ID" $IN)\n')
             file.write('LOG=\\${GJ%.*}.log\n\n')
 
-            file.write(f"\\$(which orca) \\$GJ > \\$SLURM_SUBMIT_DIR/\\$LOG\n\n")
-            file.write("!EOF")
+            file.write("\\${PATH_ORCA}orca \\$GJ > \\$SLURM_SUBMIT_DIR/\\$LOG\n\n")
+            file.write("!EOF\n\n")
 
         else:
             file.write('source ~/.JKCSusersetup.txt\n')
@@ -247,7 +242,8 @@ def submit_array_job(molecules, partition, time, ncpus, mem, nnodes=1):
             file.write(f"cp *log \\$SLURM_SUBMIT_DIR/.\n")
             file.write(f"cp *output {dir}/.\n")
             file.write(f"!EOF\n\n")
-            file.write(f"sbatch $SUBMIT")
+
+        file.write("sbatch $SBATCH_PREFIX $SUBMIT")
 
     submit_command = ['sh', path_submit_script, array_txt]
     try:
@@ -294,7 +290,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --nodes={nnodes}
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks={ncpus}
-#SBATCH --output=./slurm_output/{job_name}_%A_%a.out
+#SBATCH --output=./slurm_output/{job_name}_%j.out
 #SBATCH --time={time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
@@ -329,25 +325,29 @@ cat > $SUBMIT <<!EOF
 #SBATCH --nodes={nnodes}
 #SBATCH --cpus-per-task={ncpus}
 #SBATCH --ntasks={nnodes}
-#SBATCH --output=./slurm_output/{job_name}_%A_%a.out
+#SBATCH --output=./slurm_output/{job_name}_%j.out
 #SBATCH --time={time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
 #SBATCH --mem={program_mem}  # requested total memory in MB
 
-# Create scratch folder
-mkdir /scratch/\\$SLURM_JOB_ID
-cd $PWD
-export GAUSS_SCRDIR=/scratch/\\$SLURM_JOB_ID
+source ~/.JKCSusersetup.txt
+eval \\$MODULE_G16
+export GAUSS_EXEDIR=\\${{PATH_G16}}g16/
 
-srun /comm/groupstacks/gaussian/gaussian/gaussian16/Rev.B.01/g16/g16 $JOB.com > $JOB.log
+# Create scratch folder
+mkdir -p \\$WRKDIR || exit $?
+cd \\$PWD
+export GAUSS_SCRDIR=\\$WRKDIR
+
+\\${{PATH_G16}}g16/g16 $JOB.com > \\$SLURM_SUBMIT_DIR/$JOB.log
 
 # Remove scratch folder
-rm -rf /scratch/\\$SLURM_JOB_ID
+rm -rf \\$WRKDIR
 
 !EOF
 
-sbatch $SUBMIT
+sbatch $SBATCH_PREFIX $SUBMIT
 """
 ######################################################################################################################
     script_content_orca = f"""#!/bin/bash
@@ -363,29 +363,29 @@ cat > $SUBMIT <<!EOF
 #SBATCH --nodes={nnodes}
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks={ncpus}
-#SBATCH --output=./slurm_output/{job_name}_%A_%a.out
+#SBATCH --output=./slurm_output/{job_name}_%j.out
 #SBATCH --time={time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
 #SBATCH --mem={mem}  # requested memory per process in MB
 
-source /comm/groupstacks/chemistry/bin/modules.sh
-ml openmpi
-ml orca/5.0.4
+source ~/.JKCSusersetup.txt
+export LD_LIBRARY_PATH=\\$PATH_ORCA:\\$LD_LIBRARY_PATH
+eval \\$MODULE_ORCA
 
 # create and set scratch dir
-SCRATCH=/scratch/\\$SLURM_JOB_ID
-mkdir -p \\$SCRATCH || exit $?
+mkdir -p \\$WRKDIR || exit $?
 
-cd \\$SCRATCH
+cd \\$WRKDIR
 cp \\$SLURM_SUBMIT_DIR/$JOB.inp .
-\\$(which orca) $JOB.inp > \\$SLURM_SUBMIT_DIR/$JOB.log
+\\${{PATH_ORCA}}orca $JOB.inp > \\$SLURM_SUBMIT_DIR/$JOB.log
 
-# Copy back results
-cp *log \\$SLURM_SUBMIT_DIR/.
+# Remove scratch folder
+rm -rf \\$WRKDIR
+
 !EOF
 
-sbatch $SUBMIT
+sbatch $SBATCH_PREFIX $SUBMIT
     """
 
     with open(path_submit_script, 'w') as file:
@@ -633,6 +633,15 @@ class Molecule(VectorManipulation):
         if os.path.exists(destination):
             os.remove(destination)
         shutil.move(os.path.join(self.directory, f"{self.name}{self.output}"), destination)
+        self.log_file_path = destination
+
+    def move_inputfile(self):
+        if not os.path.exists(os.path.join(self.directory, "input_files")):
+            os.makedirs(os.path.join(self.directory, "input_files"), exist_ok=True)
+        destination = os.path.join(self.directory, "input_files", f"{self.name}{self.input}")
+        if os.path.exists(destination):
+            os.remove(destination)
+        shutil.move(os.path.join(self.directory, f"{self.name}{self.input}"), destination)
         self.log_file_path = destination
 
     def move_failed(self):
@@ -1562,9 +1571,10 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                     continue
                 termination_detected = any(termination in line for line in last_lines)
                 error_termination_detected = any(error_termination in line for line in last_lines)
+                molecule.move_inputfile()
 
                 if termination_detected:
-                    logger.log("termination_detected")
+                    logger.log(f"Normal termination detected in {log_file_name}")
                     xyz_coordinates = log2xyz(molecule)
                     molecule.coordinates = xyz_coordinates
                     molecule.update_energy(logger)
@@ -1642,7 +1652,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
             basename = os.path.basename(dir)
             pickle_path = os.path.join(dir, f'{basename}_{job_type}.pkl')
             Molecule.molecules_to_pickle(molecules, pickle_path)
-            move_files(dir, input_files)
+            # move_files(dir, input_files)
             logger.log_with_stars(f"Yay! All conformer jobs have converged for job type: {job_type}.")
             if job_type == "DLPNO":
                 for molecule in molecules: 
@@ -1704,6 +1714,7 @@ def check_convergence(molecule, logger, threads, time_seconds, max_attempts):
         elif status in ["Running", "Completed or Not Found"] or molecule.converged is False:
             if running:
                 logger.log(f"Job {job_type} for {molecule.name} with job id {molecule.job_id} is {status}.")
+                molecule.move_inputfile()
                 running = 0
 
             if job_type == 'crest_sampling':
@@ -2380,7 +2391,7 @@ def main():
     additional_options.add_argument('--gfn', default='2', choices=['1','2'], help='Specify the GFN version (1 or 2, default: 2)')
     additional_options.add_argument('-skip_low', action='store_true', help='Skip the preoptimization of the structures at the low level of theory')
     additional_options.add_argument('-cpu', metavar="int", nargs='?', const=1, type=int, default=4, help='Number of CPUs [def: 4]')
-    additional_options.add_argument('-mem', metavar="int", nargs='?', const=1, type=int, default=8000, help='Amount of memory allocated for the job [def: 8000MB]')
+    additional_options.add_argument('-mem', metavar="int", nargs='?', const=1, type=int, default=4000, help='Amount of memory allocated for the job [def: 4000MB]')
     additional_options.add_argument('-par', metavar="partition", type=str, default="q24,q28,q36,q40,q48,q64", help='Partition to use [def: qany]')
     additional_options.add_argument('-time', metavar="hh:mm:ss", type=str, default=None, help='Monitoring duration [def: 144 hours]')
     additional_options.add_argument('-interval', metavar="int", nargs='?', const=1, type=int, help='Time interval between log file checks [def: based on molecule size]')

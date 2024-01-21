@@ -76,24 +76,27 @@ submit_array_job() {
   cat > $SLURM_SCRIPT <<EOF
 #!/bin/sh
 #SBATCH --job-name=JKTS
-##SBATCH --output=${directories[$i]}/JKTS_%a_out
 #SBATCH --time=$SLURM_TIME
 #SBATCH --partition=$SLURM_PARTITION
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2000
 #SBATCH --array=1-${#directories[@]}%${#directories[@]}
+#SBATCH --output=/dev/null
 
 DIR_INDEX=\$((\$SLURM_ARRAY_TASK_ID - 1))
 DIRS=(${directories[@]})
 cd \${DIRS[\$DIR_INDEX]}
+OUTPUT_FILE="\${DIRS[\$DIR_INDEX]}/\${DIRS[\$DIR_INDEX]}_%a.out"
+
 source ~/.JKCSusersetup.txt
-program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}" 
+program_PYTHON "$toolspath/SCRIPTS/DATS.py" "${PYTHON_ARGS[@]}" | tee \$OUTPUT_FILE
 EOF
 
   sbatch $SLURM_SCRIPT
   rm $SLURM_SCRIPT
 }
+
 
 
 submit_job() {
