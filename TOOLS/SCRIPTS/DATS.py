@@ -553,14 +553,10 @@ class Molecule(VectorManipulation):
                 self.reactant = True
                 self.mult = 1
                 self.current_step = determine_current_step(self)
-                if self.current_step == 'crest_sampling' and args.skip_low:
-                    self.next_step = 'TS_opt'
 
             elif self.product or 'product' in self.name:
                 self.product = True
                 self.current_step = determine_current_step(self)
-                if self.current_step == 'crest_sampling' and args.skip_low:
-                    self.next_step = 'TS_opt'
         
             else:
                 self.current_step = determine_current_step(self)
@@ -1714,8 +1710,8 @@ def check_convergence(molecule, logger, threads, time_seconds, max_attempts):
         elif status in ["Running", "Completed or Not Found"] or molecule.converged is False:
             if running:
                 logger.log(f"Job {job_type} for {molecule.name} with job id {molecule.job_id} is {status}.")
-                molecule.move_inputfile()
                 running = 0
+            molecule.move_inputfile()
 
             if job_type == 'crest_sampling':
                 if crest_running:
