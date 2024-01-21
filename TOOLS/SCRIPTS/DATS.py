@@ -1567,7 +1567,6 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                     continue
                 termination_detected = any(termination in line for line in last_lines)
                 error_termination_detected = any(error_termination in line for line in last_lines)
-                molecule.move_inputfile()
 
                 if termination_detected:
                     logger.log(f"Normal termination detected in {log_file_name}")
@@ -1580,6 +1579,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                             logger.log_with_stars(f"Yay {log_file_name} converged with imaginary frequency: {negative_freqs}")
                             molecule.converged = True
                             molecule.wrong_TS = 0
+                            molecule.move_inputfile()
                             molecule.move_converged()
                         elif any(freq < freq_cutoff for freq in molecule.vibrational_frequencies):
                             negative_freqs = ', '.join(str(freq) for freq in molecule.vibrational_frequencies if -freq_cutoff <= freq < 0)
@@ -1606,6 +1606,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                         xyz_coordinates = log2xyz(molecule)
                         if xyz_coordinates:
                             molecule.coordinates = xyz_coordinates
+                            molecule.move_inputfile()
                             molecule.move_converged()
                         else:
                             logger.log(f"Error gathering XYZ coordinates from {log_file_name}. Check log file.")
@@ -1711,7 +1712,6 @@ def check_convergence(molecule, logger, threads, time_seconds, max_attempts):
             if running:
                 logger.log(f"Job {job_type} for {molecule.name} with job id {molecule.job_id} is {status}.")
                 running = 0
-            molecule.move_inputfile()
 
             if job_type == 'crest_sampling':
                 if crest_running:
@@ -2707,16 +2707,25 @@ def main():
             molecule.log_items(molecules_logger)
 
         if all(m.reactant for m in global_molecules):
-            molecule_name = global_molecules[-1].name
+            molecule_name = global_molecules[-1].name.split("_")[0]
             logger.log(f"Final DLPNO calculations for reactants is done. Logging properties to {molecule_name}_reactants.pkl")
             Molecule.molecules_to_pickle(global_molecules, os.path.join(start_dir, f"{molecule_name}_reactants.pkl"))
         elif all(m.product for m in global_molecules):
-            molecule_name = global_molecules[-1].name
-            # Split list into each seperate abstraction product
-            logger.log(f"Final DLPNO calculations for products is done. Logging properties to {molecule_name}_products.pkl")
-            Molecule.molecules_to_pickle(global_molecules, os.path.join(start_dir, f"{molecule_name}_products.pkl"))
+            # Identify unique H numbers
+            h_numbers = sorted(set(m.name.split('_H')[1][0] for m in global_molecules if "_H" in m.name))
+            # Group molecules by H numbers and include H2O in each group
+            grouped_lists = [[m for m in global_molecules if f"_H{h_num}_" in m.name] + 
+                             [m for m in global_molecules if "H2O" in m.name] 
+                             for h_num in h_numbers]
+
+            # Create a pickle file for each group
+            for h, molecules_group in zip(h_numbers, grouped_lists):
+                molecule_name = f"{molecules_group[0].name.split('_')[0]}_H{h}"
+                pickle_path = os.path.join(start_dir, f"{molecule_name}_products.pkl")
+                logger.log(f"Final DLPNO calculations for products are done. Logging properties to {molecule_name}_products.pkl")
+                Molecule.molecules_to_pickle(molecules_group, pickle_path)
         else:
-            molecule_name = global_molecules[0].name
+            molecule_name = global_molecules[0].name.split("_")[0]
             logger.log(f"Final DLPNO calculations for transition state molecules is done. Logging properties to {molecule_name}_TS.pkl")
             TS_pkl_path = os.path.join(start_dir, f"{molecule_name}_TS.pkl")
             Molecule.molecules_to_pickle(global_molecules, TS_pkl_path)
