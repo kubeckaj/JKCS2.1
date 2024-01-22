@@ -3171,7 +3171,7 @@ for i in Pout:
         bonds = sum(test_i <= float(Qbonded[Qbonded_index][0]) for test_i in dm)
         if Qbonded[Qbonded_index][1] == Qbonded[Qbonded_index][2]:
           bonds = (bonds-sum(mask1))/2
-        bonded.append(bonds)
+        bonded.append(str(int(bonds)))
       except:
         bonded.append(missing)
     output.append(bonded)
