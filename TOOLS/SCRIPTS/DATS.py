@@ -233,14 +233,12 @@ def submit_array_job(molecules, partition, time, ncpus, mem, nnodes=1):
             file.write("!EOF\n\n")
 
         else:
-            file.write('source ~/.JKCSusersetup.txt\n')
             file.write('MOLECULE_NAME=\\$(awk "NR == \\${SLURM_ARRAY_TASK_ID}" "$IN")\n')
-            file.write(f'cp \\$SLURM_SUBMIT_DIR/\\$MOLECULE_NAME \\$SCRATCH/\n')
-            file.write(f'cd \\$SCRATCH\n')
+            file.write(f'cp \\$SLURM_SUBMIT_DIR/\\$MOLECULE_NAME \\$WRKDIR/\n')
+            file.write(f'cd \\$WRKDIR\n')
             file.write(f"program_CREST \\$MOLECULE_NAME -gfn{args.gfn} -ewin {args.ewin} -noreftopo > \\${{MOLECULE_NAME%.xyz}}.log\n")
             file.write(f"cp *pkl \\$SLURM_SUBMIT_DIR/.\n")
-            file.write(f"cp *log \\$SLURM_SUBMIT_DIR/.\n")
-            file.write(f"cp *output {dir}/.\n")
+            file.write(f"cp *output \\$SLURM_SUBMIT_DIR/.\n")
             file.write(f"!EOF\n\n")
 
         file.write("sbatch $SBATCH_PREFIX $SUBMIT")
@@ -297,10 +295,9 @@ cat > $SUBMIT <<!EOF
 #SBATCH --mem={mem}
 
 source ~/.JKCSusersetup.txt
-SCRATCH=/scratch/\\$SLURM_JOB_ID
 
-mkdir -p \\$SCRATCH || exit $?
-cd \\$SCRATCH
+mkdir -p \\$WRKDIR || exit $?
+cd \\$WRKDIR
 cp \\$SLURM_SUBMIT_DIR/{molecule.name}.xyz .
 program_CREST {crest_input}
 cp *pkl \\$SLURM_SUBMIT_DIR/.
@@ -1504,7 +1501,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
     job_type = molecules[0].current_step
 
     if args.freq_cutoff:
-        freq_cutoff = args.freq_cutoff
+        freq_cutoff = -abs(args.freq_cutoff)
     elif args.OH:
         freq_cutoff = -200
     elif args.CC:
@@ -1687,7 +1684,7 @@ def check_convergence(molecule, logger, threads, time_seconds, max_attempts):
     crest_running = 1
 
     if args.freq_cutoff:
-        freq_cutoff = args.freq_cutoff
+        freq_cutoff = -abs(args.freq_cutoff)
     elif args.OH:
         freq_cutoff = -200
     elif args.CC:
@@ -1794,7 +1791,7 @@ def check_convergence(molecule, logger, threads, time_seconds, max_attempts):
                                 logger.log(f"Automatic processing of calculations has been turned off and JKTS will not proceed with next step: {molecule.next_step}")
                             return True
                         elif any(freq_cutoff <= freq < 0 for freq in molecule.vibrational_frequencies):
-                            negative_freqs = ', '.join(str(freq) for freq in molecule.vibrational_frequencies if -freq_cutoff <= freq < 0)
+                            negative_freqs = ', '.join(str(freq) for freq in molecule.vibrational_frequencies if freq_cutoff <= freq < 0)
                             logger.log(f"Small negative frequency found in the range {freq_cutoff} to 0: {negative_freqs}. This may be indicate wrong transition state. Resubmitting job")
                             molecule.wrong_TS += 1
                             if molecule.wrong_TS == 3:
@@ -2228,46 +2225,105 @@ def log2program(log_file_path):
         return None
     return None
     
-def A(E,mu,ALPHA):
-	a =  2 * PI * (2 * mu * E)**0.5 / ALPHA
-	return a
+def Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1):
+    pi = np.pi
+    E=np.arange(Emin,2*max(V),GSize)
+    K=[0 for x in range(len(E))]
+    EK=[0 for x in range(len(E))]
+    EKa=[0 for x in range(len(E))]
+    for i in range(len(E)):
+        C=(h**2)/(8*m*(L**2))     # calculation of C factor
+        a=0.5*np.sqrt(E[i]/C)
+        b=0.5*np.sqrt((E[i]-A)/C)
+        d=0.5*np.sqrt((B-C)/C)
+        K[i]=1-((np.cosh(2*pi*(a-b))+np.cosh(2*pi*d))/(np.cosh(2*pi*(a+b))+np.cosh(2*pi*d)))
+        EK[i]=E[i]
+        EKa[i]=E[i]*627.509
+    
+    G=[0 for x in range(len(T))]
+    for q in range(len(T)):                                # Temperature dependent operations begin
+        GK=[0 for x in range(len(K))]                                              # Clean variable
+        for j in range(len(K)):                            
+            GK[j]=K[j]*np.exp(-EK[j]/(kB*T[q]))           # Calculate integrand
+        GI=[0 for x in range(len(K))]
+        for l in range(len(EK)-1):
+            GI[l]=(0.5*(GK[l]+GK[l+1])*abs(EK[l]-EK[l+1])) # Numerical integration by using the area of squares
+        
+        GI=np.sum(GI)
+        GI=GI*(np.exp(v1/(kB*T[q]))/(kB*T[q]))                     # multiplying integral with prefactor
+        
+        # For energies above the interval where transmission is less than 1, we use
+        # analytical integration to obtain the final result
+        
+        G[q]=GI+np.exp(v1/(kB*T[q]))*np.exp(-EK[len(EK)-1]/(kB*T[q]))
+        
+    return G, EKa, K, GK
 
-def B(E,mu,V_p,V_r,ALPHA):
-	b =  2 * PI * (2 * mu * (E - (V_p - V_r)))**0.5 / ALPHA
-	return b
 
+def eckart(SP_TS, SP_reactant, SP_product, imag, T=[298.15]):
+    c=2.99792458e+8          # Speed of light (m s-1)
+    pi=np.pi               # π
+    kB=3.1668152e-6
+    h=2*pi
+    Na=6.0221409e+23         # Avogadro's number (mol-1)
 
-def eckart(SP_TS, SP_reactant, SP_product, imag, T=298.15):
-    GAS_CONSTANT = 8.3144621
-    PLANCK_CONSTANT = 6.62606957e-34
-    BOLTZMANN_CONSTANT = 1.3806488e-23
-    SPEED_OF_LIGHT = 2.99792458e10
-    AVOGADRO_CONSTANT = 6.0221415e23
-    AMU_to_KG = 1.66053886E-27
-    autokcal = 627.509541
-    kjtokcal = 4.184
-    atmos = 101.325
-    PI = 3.14159265359
-    k = 3.1668114E-6 #Boltzmann Constant in atomic units
-    from array import array
+    E1 = SP_TS - SP_reactant
+    E2 = SP_TS - SP_product
+    mu = 1
+    v1=((E1*4184)/Na)/4.3597447222071e-18
+    v2=((E2*4184)/Na)/4.3597447222071e-18
+    wau=(imag*100)*c*2.418884326509e-17
+    m=mu*1822.888479
 
-    # Specifing Parameters for the Eckart Potential
-    mu = 33.03404*1836
-    F_s = float(force_constant('ts.out'))/15.569141
-    bee = Bee(V_max,V_r,V_p)
-    alpha = ALPHA(bee,F_s,V_max,V_r,V_p)
-    d = D(bee,mu,alpha)
+    # Calculate force constant, A, B and L
+    F=-4*(pi**2)*(wau**2)*m;
+    F2=-4*(pi**2)*(wau**2)*1;
+    A=v1-v2;
+    B=(np.sqrt(v2)+np.sqrt(v1))**2;
+    L=-pi*(A-B)*(B+A)/(np.sqrt(-2*F*B)*B);
 
-    #10-point Gauss-Legendre Quadrature abscissa and weight (exact solution for up to 21st order polynomial)
-    x = array('d',[-0.9739065285,-0.8650633667,-0.6794095683,-0.4333953941,-0.1488743390,0.1488743390,0.4333953941,0.6794095683,0.8650633667,0.9739065285])
-    w = array('d',[0.0666713443,0.1494513492,0.2190863625,0.2692667193,0.2955242247,0.2955242247,0.2692667193,0.2190863625,0.1494513492,0.0666713443])
+    # Defining reaction coordinate
+    x = np.arange(-3, 3, 0.01)
+    x = x/(np.sqrt(mu))      # Removing reduced mass from reaction coordinate in order to get a well defined potential
 
-    kappa = 1
-    for i in range(0,10):
-        a = A((x[i] * y + z),mu,alpha)
-        b = B((x[i] * y + z),mu,V_p,V_r,alpha)
-        kappa = (2 * y  / (T*k) * w[i] * S((V_max),(x[i] * y + z)) * T(a,b,d)) + kappa
+    # Calculating potential
+    y=[0 for i in range(len(x))]
+    V=[0 for i in range(len(x))]
+    xa=[0 for i in range(len(x))]
+    Va=[0 for i in range(len(x))]
 
+    for i in range(len(x)):
+        y[i]=-np.exp( (2*pi*x[i])/L )
+        V[i]=( (-(y[i]*A)/(1-y[i]) ) - ( (y[i]*B)/((1-y[i])**2)) )
+        xa[i]=0.529177*x[i]*np.sqrt(mu)         # reduced mass re-inserted for plotting
+        Va[i]=V[i]*627.509                        # potential converted to kcal/mol for plotting
+
+    # Calculating the correction factors for all T's
+    VB=[0,0]
+    VB[0]=V[0]                                                # value of potential at reactants
+    VB[1]=V[len(x)-1]                                           # value of potential at products
+    Emin=np.max(VB)                                           # minimum energy at which tunnelling can occur
+    Gdiff=1                                                   # initial convergence control set to 1
+    GSize=np.max(V)/50                                        # initial integration stepsize 
+    [Gold,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)                      # calculate G
+    GSize=GSize/10                                            # reduce integration stepsize
+    runs=0                                                    # initial number of runs
+    while Gdiff >= 0.001:                                        # convergence criteria
+        [Gnew,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)  # new G
+    #    print("Tunneling Factor", Gnew)                                         # display new correction factor
+        GSize=GSize/10                                        # reduce integration stepsize
+        Gdiffcalc=[0 for x in range(len(T))]
+        for j in range(len(T)):
+            Gdiffcalc[j]=abs(Gnew[j]-Gold[j])/Gold[j]         # calculate convergence
+        Gdiff=max(Gdiffcalc)                                  # max convergence control value
+    #    print("convergence control value", Gdiff)                                        # display convergence control value
+        Gold=Gnew                                             # replace old correction factor with new
+        runs=runs+1                                           # a run completed
+    #    print("runs done", runs)                                         # display run number
+
+    [G,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)        #final G
+
+    kappa = G[0]
     return kappa
 
 
@@ -2275,64 +2331,55 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
     k_b = 1.380649e-23  # Boltzmann constant in J/K
     h = 6.62607015e-34  # Planck constant in J*s
     HtoJ = 4.3597447222e-18  # Conversion factor from Hartree to Joules
-    hartree_to_kcalmol = 627.509
+    Htokcalmol = 627.509
     Na = 6.022e23 # molecules/mol
     liters_to_cm3 = 1000 # 1 liter is 1000 cm^3
+    kappa = 1
     
-    # # Molecule lists
-    # reactant_molecules = Molecule.load_molecules_from_pickle(reactant_molecules_path)
-    # product_molecules = Molecule.load_molecules_from_pickle(product_molecules_path)
-    # TS_molecules = Molecule.load_molecules_from_pickle(TS_molecules_path)
-
     # Calculation of rate constant
     if reactant_conformers and TS_conformers:
         # Seperate organic molecule and OH
         reactant_molecules = [mol for mol in reactant_conformers if 'OH' not in mol.name]
         OH = next((mol for mol in reactant_conformers if 'OH' in mol.name), None)
 
-        if reactant_molecules:
-            # Find the lowest single point energies for reactant (excluding OH) and TS
-            lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.single_point)
-            lowest_TS = min(TS_conformers, key=lambda molecule: molecule.single_point)
+        # Find the lowest single point energies for reactant (excluding OH) and TS
+        lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.single_point)
+        lowest_TS = min(TS_conformers, key=lambda molecule: molecule.single_point)
 
-            # Lowest single point reactant and TS and convert from Hartree to Joules
-            lowest_SP_TS_J = np.float64(lowest_TS.single_point * HtoJ)
-            lowest_SP_reactant_J = np.float64(lowest_reactant.single_point * HtoJ)
-            if OH:
-                total_reactant_SP_J = lowest_SP_reactant_J + np.float64(OH.single_point*HtoJ)
-                sum_reactant = np.sum([np.exp((lowest_SP_reactant_J - np.float64(mol.single_point * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in reactant_molecules])*OH.Q
+        # Lowest single point reactant and TS and convert from Hartree to Joules
+        lowest_SP_TS_J = np.float64(lowest_TS.single_point * HtoJ)
+        lowest_SP_reactant_J = np.float64(lowest_reactant.single_point * HtoJ)
+        if OH:
+            sum_reactant_SP_J = lowest_SP_reactant_J + np.float64(OH.single_point*HtoJ)
+            sum_reactant = np.sum([np.exp((lowest_SP_reactant_J - np.float64(mol.single_point * HtoJ)) / (k_b * T)) * np.float64(mol.Q) * np.float64(OH.Q) for mol in reactant_molecules])
+        else:
+            sum_reactant_SP_J = lowest_SP_TS_J
+            sum_reactant = np.sum([np.exp((lowest_SP_reactant_J - np.float64(mol.single_point * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in reactant_molecules])        
+
+        sum_TS = np.sum([np.exp((lowest_SP_TS_J - np.float64(mol.single_point * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in TS_conformers])
+
+        if product_conformers:
+            # Seperate organic molecule and H2O
+            product_molecules = [mol for mol in product_conformers if 'H2O' not in mol.name]
+            H2O = next((mol for mol in product_conformers if 'H2O' in mol.name), None)
+
+            if product_molecules and H2O:
+                lowest_product = min(product_molecules, key=lambda molecule: molecule.single_point)
+                lowest_SP_TS_kcalmol = np.float64(lowest_TS.single_point * Htokcalmol)
+                lowest_SP_reactant_kcalmol = np.float64((lowest_reactant.single_point + OH.single_point) * Htokcalmol)
+                lowest_SP_product_kcalmol = np.float64((lowest_product.single_point + H2O.single_point) * Htokcalmol)
+
+                imag = abs(lowest_TS.vibrational_frequencies[0])
+                kappa  = eckart(lowest_SP_TS_kcalmol, lowest_SP_reactant_kcalmol, lowest_SP_product_kcalmol, imag)
+                k = kappa * (k_b*T/h) * (sum_TS / sum_reactant) * np.exp(-(lowest_SP_TS_J - sum_reactant_SP_J) / (k_b * T))
             else:
-                total_reactant_SP_J = lowest_SP_TS_J
-                sum_reactant = np.sum([np.exp((lowest_SP_reactant_J - np.float64(mol.single_point * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in reactant_molecules])        
-
-            sum_TS = np.sum([np.exp((lowest_SP_TS_J - np.float64(mol.single_point * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in TS_conformers])
-
-            if product_conformers:
-                # Seperate organic molecule and H2O
-                product_molecules = [mol for mol in reactant_conformers if 'H2O' not in mol.name]
-                H2O = next((mol for mol in product_conformers if 'H2O' in mol.name), None)
-
-                if product_molecules:
-                    lowest_product = min(product_molecules, key=lambda molecule: molecule.single_point)
-                    lowest_SP_product_J = np.float64(lowest_product.single_point * HtoJ)
-
-                    if H2O:
-                        total_product_SP_J = lowest_SP_product_J + np.float64(H2O.single_point*HtoJ)
-                    else:
-                        total_product_SP_J = lowest_SP_product_J
-
-                    imag = lowest_TS.vibrational_frequencies[0]
-                    tunneling_coefficient = eckart(lowest_SP_TS_J, total_reactant_SP_J, total_product_SP_J, imag)
-                    k = tunneling_coefficient * (k_b*T/h) * (sum_TS / sum_reactant) * np.exp(-(lowest_SP_TS_J - total_reactant_SP_J) / (k_b * T))
-                else:
-                    print("Error in product molecules")
-                    return None
-            else: # If products are not calculated assume tunneling coefficient is 1
-                tunneling_coefficient = 1.0
-                k = tunneling_coefficient * (k_b*T/h) * (sum_TS / sum_reactant) * np.exp(-(lowest_SP_TS_J - total_reactant_SP_J) / (k_b * T))
-           
-            k_mol_cm3_s = k/(Na/liters_to_cm3)
-            return k_mol_cm3_s
+                print("Error in product molecules")
+                return None
+        else: # If products are not calculated assume tunneling coefficient is 1
+            k = kappa * (k_b*T/h) * (sum_TS / sum_reactant) * np.exp(-(lowest_SP_TS_J - sum_reactant_SP_J) / (k_b * T))
+       
+        k_mol_cm3_s = k/(Na/liters_to_cm3)
+        return k_mol_cm3_s, kappa 
 
     return None
 
@@ -2379,7 +2426,7 @@ def main():
 
     additional_options = parser.add_argument_group("Additional arguments")
     additional_options.add_argument('-init', action='store_true', help=argparse.SUPPRESS)
-    additional_options.add_argument('-restart', action='store_true', default=False, help='Restart and resume log files')
+    # additional_options.add_argument('-restart', action='store_true', default=False, help='Restart and resume log files')
     additional_options.add_argument('-k', type=str2bool, metavar='<boolean>', default=True, help='Calculate Multiconformer Transition State rate constant [def: True]')
     additional_options.add_argument('-info', action='store_true', default=False, help='Print information of molecules in log files or .pkl file')
     additional_options.add_argument('--high_level', nargs='+', metavar='', help='Specify high-level theory for QC method TS optimization [def: uwB97X-D aug-cc-pVTZ]')
@@ -2395,15 +2442,13 @@ def main():
     additional_options.add_argument('-attempts', metavar="int", nargs='?', const=1, type=int, default=100, help='Number of log file check attempts [def: 100]')
     additional_options.add_argument('-max_conformers', metavar="int", nargs='?', const=1, type=int, default=50, help='Maximum number of conformers from CREST [def: 50]')
     additional_options.add_argument('-freq_cutoff', metavar="int", nargs='?', const=1, type=int, default=-200, help='TS imaginary frequency cutoff [def: -200 cm^-1]')
-    additional_options.add_argument('-reaction_angle', metavar="float", nargs='?', default=175.0, const=1, type=float, help='Active site transition state angle [def: 175.0 degrees]')
+    additional_options.add_argument('-reaction_angle', metavar="float", nargs='?', default=175.0, const=1, type=float, help=argparse.SUPPRESS) #'Active site transition state angle [def: 175.0 degrees]')
     additional_options.add_argument('-ewin', metavar="int", nargs='?', const=1, default=8, type=int, help='Energy threshold for CREST conformer sampling [def: 8 kcal/mol]')
     additional_options.add_argument('-energy_cutoff', metavar="int", nargs='?', const=1, default=5, type=int, help='After preoptimization, remove conformers which are [int] kcal/mol higher in energy than the lowest conformer [def: 5 kcal/mol]')
 
     additional_options.add_argument('-test', action='store_true', default=False, help=argparse.SUPPRESS) # Run TEST section in main() and exit
     additional_options.add_argument('-num_molecules', type=int, default=None, help=argparse.SUPPRESS) # Set the number of directories created to [int]. Used when doing limited testing
-    additional_options.add_argument('-XQC', action=SCFAction, nargs=0, dest='SCF')
-    additional_options.add_argument('-YQC', action=SCFAction, nargs=0, dest='SCF')
-    additional_options.add_argument('-QC', action=SCFAction, nargs=0, dest='SCF')
+    additional_options.add_argument('-XQC', '-YQC', '-QC', action=SCFAction, nargs=0, dest='SCF', help='Use G16 SCF=(X,Y)QC algorithm for SCF procedure - https://gaussian.com/scf/')
     parser.set_defaults(SCF="")
 
     global args, start_dir
@@ -2630,8 +2675,9 @@ def main():
                 exit()
 
         if final_TS and final_reactants:
-            k = rate_constant(final_TS, final_reactants, final_products)
+            k, kappa = rate_constant(final_TS, final_reactants, final_products)
             print(f"{k} cm^3 molecules^-1 s^-1")
+            print(f"Tunneling coefficient: {kappa}")
             exit()
 
 
@@ -2725,7 +2771,8 @@ def main():
                 logger.log(f"Final DLPNO calculations for products are done. Logging properties to {molecule_name}_products.pkl")
                 Molecule.molecules_to_pickle(molecules_group, pickle_path)
         else:
-            molecule_name = global_molecules[0].name.split("_")[0]
+            molecule_name = global_molecules[0].name.split("_")
+            molecule_name = f"{molecule_name[0]}_{molecule_name[1]}"
             logger.log(f"Final DLPNO calculations for transition state molecules is done. Logging properties to {molecule_name}_TS.pkl")
             TS_pkl_path = os.path.join(start_dir, f"{molecule_name}_TS.pkl")
             Molecule.molecules_to_pickle(global_molecules, TS_pkl_path)
@@ -2736,20 +2783,24 @@ def main():
                 if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
                     final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                     final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
-                    k = rate_constant(global_molecules, final_reactants, final_products)
+                    k, kappa = rate_constant(global_molecules, final_reactants, final_products)
                     results_logger = Logger(os.path.join(os.path.dirname(start_dir), "results_log"))
                     results_logger.log_with_stars(f"{k} molecules cm^-3 s^-1")
+                    results_logger.log_with_stars(f"Tunneling coefficient: {kappa}")
                 else:
                     reactant_pkl_path = os.path.join(start_dir, 'reactants/molecules_reactants.pkl')
                     product_pkl_path = os.path.join(start_dir, 'products/molecules_reactants.pkl')
                     if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
                         final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                         final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
-                        k = rate_constant(global_molecules, final_reactants, final_products)
-                        results_logger = Logger(os.path.join(os.path.dirname(start_dir), "results_log"))
+                        k, kappa = rate_constant(global_molecules, final_reactants, final_products)
+                        results_logger = Logger(os.path.join(start_dir, "results_log"))
                         results_logger.log_with_stars(f"{k} molecules cm^-3 s^-1")
+                        results_logger.log_with_stars(f"Tunneling coefficient: {kappa}")
                     else:
                         logger.log("Done")
+
+                print(reactant_pkl_path, product_pkl_path) # delete me
 
 
 

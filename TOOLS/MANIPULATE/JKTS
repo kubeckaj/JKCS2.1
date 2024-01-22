@@ -11,7 +11,6 @@ PYTHON_ARGS=()
 XYZ=0
 LOG=0
 PKL=0
-RESTART=0
 INFO=0
 PAR_FLAG=0
 
@@ -46,9 +45,6 @@ for arg in "$@"; do
       ;;
     -time)
       time_arg="$arg"
-      ;;
-    -restart)
-      RESTART=1
       ;;
     -par)
       PAR_FLAG=1
@@ -128,7 +124,7 @@ for dir in */; do
     fi
 done
 
-if [ ${#directories[@]} -gt 0 ] && [ "$RESTART" -lt 1 ]; then
+if [ ${#directories[@]} -gt 0 ] && [ "$XYZ" -gt 0 ]; then
   submit_array_job
 elif [ "$PKL" -gt 0 ] || [ "$LOG" -gt 0 ]; then
   submit_job
