@@ -71,8 +71,10 @@ EXAMPLE:
   then
     PYTHON="python3.9"
     MODULE_PYTHON="module load python/3.9.4"
-    PATH_ABC="/home/kubeckaj/Applications/ABCluster-2.0-Linux/"
-    PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.1-Linux/"
+    #PATH_ABC="/home/kubeckaj/Applications/ABCluster-2.0-Linux/"
+    #PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.1-Linux/"
+    PATH_ABC="/home/kubeckaj/Applications/ABCluster-3.2-Linux/"
+    PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.2-Linux/"
     MODULE_ABC="module load gcc"
     PATH_XTB="/home/kubeckaj/Applications/XTB6.4/"
     MODULE_XTB=""
@@ -145,9 +147,10 @@ EXAMPLE:
     MODULE_G16="module load gaussian"
     PATH_ORCA="/projappl/project_2006166/APP/ORCA5.0.3"
     #MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
-    MODULE_ORCA="module purge; module load gcc/11.3.0 openmpi/4.1.4 intel-oneapi-mkl/2022.1.0"
+    #MODULE_ORCA="module purge; module load gcc/11.3.0 openmpi/4.1.4 intel-oneapi-mkl/2022.1.0"
+    MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
     EXTRA_ORCA_LINES="ORTERUN=\\\\\`which orterun\\\\\`\nln -sf \\\\\${ORTERUN}  \\\\\${SLURM_SUBMIT_DIR}/mpirun\nexport PATH=\\\\\${SLURM_SUBMIT_DIR}:\\\\\${PATH}\n"
-    project="project_2006166"
+    project="project_2001079"  #project_2006166
     #project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
     SBATCH_PREFIX="--account=$project "
     WRKDIR="./"
