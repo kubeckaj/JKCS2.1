@@ -4,6 +4,11 @@
 from os import system, remove, environ, path
 from sys import argv
 import numpy as np
+#import imp
+#/home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib64/python3.9/site-packages/numpy
+#np = imp.load_module("numpy",None,"/home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib64/python3.9/site-packages/numpy",None)
+#import importlib
+#np = importlib.import_module('numpy')
 #from numpy import nan, array, mod, isnan, linalg, matrix, all, dtype, loadtxt, unique, sqrt, sum, asarray, sort, log, exp, pi, mean, tile, floor, transpose, min, errstate, delete, round, dot, prod, random, apply_along_axis
 
 #Attach command to the output
@@ -104,7 +109,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
-  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -bonded <float thr.> <element> <element>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -134,6 +139,7 @@ Qextract = 0 #Do I want to extarct only some cluster_type(s)?
 Pextract = []
 Qreacted = 0 #Remove reacted structures?, 1 = yes; 2 = print the reverse 
 bonddistancethreshold = 1.75
+Qbonded = []
 
 Qout = 0 #Do I want to save output.pkl? 0=NO,1=YES,2=YES but do not print example
 Pout = []
@@ -283,6 +289,27 @@ for i in argv[1:]:
   if last == "-solvation":
     last = ""
     Qsolvation = str(i)
+    continue
+  #bonded
+  if i == "-bonded":
+    last = "-bonded"
+    rem = []
+    continue
+  if last == "-bonded":
+    last = "-bonded1"
+    rem.append(str(i))
+    continue
+  if last == "-bonded1":
+    last = "-bonded2"
+    rem.append(str(i))
+    continue
+  if last == "-bonded2":
+    last = "" 
+    rem.append(str(i))
+    Qbonded.append(rem)
+    rem = ""
+    Pout.append("-bonded")
+    Qbonded_index = -1
     continue
   #IamIfo
   if i == "-IamIfo":
@@ -2495,17 +2522,23 @@ if Qqha == 1:
   if Qanh != "1":
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
-      if len(clusters_df["xyz"]["structure"][i].get_atomic_numbers()) != 1:
-        try:
-          QtOLD = clusters_df["log","temperature"].values[i]
-          if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]).any():
-            continue
-        except:
-          QtOLD = clusters_df["log","temperature"].values[i]
-        try:
-          lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
-        except:
-          lf = 0
+      try:
+        test = len(clusters_df["xyz"]["structure"][i].get_atomic_numbers())
+      except:
+        test = 0
+        lf = 0
+      if test != 1:
+        if test != 0:
+          try:
+            QtOLD = clusters_df["log","temperature"].values[i]
+            if pd.isna(clusters_df["log"]["vibrational_frequencies"].values[i]).any():
+              continue
+          except:
+            QtOLD = clusters_df["log","temperature"].values[i]
+          try:
+            lf = float(clusters_df["log"]["vibrational_frequencies"].values[i][0])
+          except:
+            lf = 0
         if lf <= 0:
           clusters_df["log","entropy"][i] = missing
           clusters_df["log","enthalpy_energy"][i] = missing
@@ -3120,6 +3153,28 @@ for i in Pout:
       except:
         continue
     print(" ".join([str(i) for i in np.unique(atoms)]))
+    continue
+  #bonded
+  if i == "-bonded":
+    bonded = []
+    Qbonded_index += 1
+    for ind in clusters_df.index:
+      try:
+        aseCL=clusters_df["xyz"]["structure"][ind] 
+        positions = aseCL.positions
+        symb = np.array(aseCL.get_chemical_symbols())
+        dist = lambda p1, p2: np.sqrt(np.sum(((p1-p2)**2)))
+        symb_ind = np.array(aseCL.get_chemical_symbols())
+        mask1 = symb_ind == Qbonded[Qbonded_index][1]
+        mask2 = symb_ind == Qbonded[Qbonded_index][2]
+        dm = [dist(p1, p2) for p2 in positions[mask1] for p1 in positions[mask2]]
+        bonds = sum(test_i <= float(Qbonded[Qbonded_index][0]) for test_i in dm)
+        if Qbonded[Qbonded_index][1] == Qbonded[Qbonded_index][2]:
+          bonds = (bonds-sum(mask1))/2
+        bonded.append(str(int(bonds)))
+      except:
+        bonded.append(missing)
+    output.append(bonded)
     continue
   #Rg
   if i == "-rg":
