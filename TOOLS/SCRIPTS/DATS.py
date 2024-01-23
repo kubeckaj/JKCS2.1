@@ -152,7 +152,10 @@ def submit_array_job(molecules, partition, time, ncpus, mem, nnodes=1):
     array_path = os.path.join(dir, array_txt)
     
     if job_program.lower() == "orca" or job_program.lower() == "g16":
-        program_mem = mem + 2000 # Headspace for program
+        if molecules[0].current_step == 'DLPNO':
+            program_mem = mem + 16000
+        else:
+            program_mem = mem + 2000 # Headspace for program
     else:
         program_mem = mem
 
@@ -951,8 +954,8 @@ class Molecule(VectorManipulation):
         product_molecules = []
         methyl_C_indexes = self.methyl_C_index()  
         carbon_iteration_counter = {index: 0 for index in range(num_atoms) if atoms[index] == 'C'}
-        distance_CH = 1.3  # Adjusted C-H distance
-        distance_OH = 1.25
+        distance_CH = 1.35  # Adjusted C-H distance
+        distance_OH = 1.35
         distance_OH_H = 0.97
         CHO_angle = args.reaction_angle
         for i in range(num_atoms):
@@ -1157,6 +1160,9 @@ def get_time(molecule):
     elif job_type == 'optimization':
         a=0.4; b=2.5; c=13.4; d=4.8
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
+    elif job_type == 'DLPNO': # Determine parameters for DLPNO
+        a=0.4; b=2.5; c=13.4; d=4.8
+        interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     else:
         a=2.26; b=-30.8; c=249.8; d=-114
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
@@ -1328,7 +1334,7 @@ def QC_input(molecule, constrain,  method, basis_set, TS, C_index=None, H_index=
             else:
                 f.write(f"! {method} {basis_set} TightSCF SlowConv OPT {freq}\n")
             if method == 'DLPNO':
-                f.write(f"%pal nprocs 1 end\n")
+                f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {args.mem+14000}\n") # Find some scaling with the molecule to ensure enough memory
             else:
                 f.write(f"%pal nprocs {args.cpu} end\n")
@@ -1344,7 +1350,14 @@ def QC_input(molecule, constrain,  method, basis_set, TS, C_index=None, H_index=
                 f.write("%geom\n")
                 f.write("maxiter 80\n")
                 f.write("Calc_Hess true\n")
-                f.write("Recalc_Hess 5\n")
+                if molecule.wrong_TS == 1:
+                    f.write("Recalc_Hess 5\n")
+                    f.write("MaxStep 0.1\n") # Maybe 0.2?
+                elif molecule.wrong_TS == 2:
+                    f.write("Recalc_Hess 1\n")
+                    f.write("MaxStep 0.1\n")
+                else:
+                    f.write("Recalc_Hess 10\n")
                 # f.write(f"TS_Mode {{ B {C_index} {H_index} }} end\n")
                 f.write(f"TS_Active_Atoms {{ {C_index} {H_index} {O_index} }} end\n")
                 f.write("TS_Active_Atoms_Factor 3\n")
@@ -1359,18 +1372,18 @@ def QC_input(molecule, constrain,  method, basis_set, TS, C_index=None, H_index=
         with open(file_path, "w") as f:
             f.write(f"%nprocshared={args.cpu}\n")
             f.write(f"%mem={args.mem}mb\n")
-            if TS and constrain:
+            if TS and constrain: # should only be in the case of hard convergence problems where some flexible parts should be constrained.
                 f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant,MaxCycles=60) freq {args.SCF}\n\n')
             elif TS and constrain is False:
                 if molecule.wrong_TS == 1:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,CalcAll,MaxCycles=60) freq {args.SCF}\n\n')
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles=60,ReCalcFC=5,Maxstep=10) freq {args.SCF}\n\n') # RecalcFC=N also option, recalc Hessian every N iteration
                 elif molecule.wrong_TS == 2:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,CalcAll,MaxCycles=60, MaxStep=10) freq {args.SCF}\n\n')
-                elif molecule.wrong_TS == 3:
-                    molecule.set_active_site(perturb=True)
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,CalcAll,MaxCycles=60) freq {args.SCF}\n\n')
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,CalcAll,MaxCycles=60,MaxStep=10) freq {args.SCF}\n\n')
+                # elif molecule.wrong_TS == 3:
+                #     molecule.set_active_site(perturb=True)
+                #     f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,CalcAll,MaxCycles=60) freq {args.SCF}\n\n')
                 else:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles=60) freq {args.SCF}\n\n')
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles=60,RecalcFC=10) freq {args.SCF}\n\n')
             elif TS is False and constrain:
                 f.write(f'# {method} {basis_set} opt=modredundant {args.SCF}\n\n')
             else:
@@ -1525,7 +1538,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
         i = 0
         while i < len(molecules):
             molecule = molecules[i]
-            if molecule.error_termination_count >= 3 or molecule.wrong_TS >= 4:
+            if molecule.error_termination_count >= 3 or molecule.wrong_TS >= 3:
                 logger.log(f"Molecule {molecule.name} is being dropped due to repeated error terminations.")
                 molecules.pop(i)
                 # Check if all remaining molecules are converged
@@ -1577,13 +1590,12 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                             molecule.converged = True
                             molecule.wrong_TS = 0
                             molecule.move_inputfile()
-                            molecule.move_converged()
-                        elif any(freq < freq_cutoff for freq in molecule.vibrational_frequencies):
+                        elif any(freq_cutoff <= freq < 0 for freq in molecule.vibrational_frequencies):
                             negative_freqs = ', '.join(str(freq) for freq in molecule.vibrational_frequencies if -freq_cutoff <= freq < 0)
                             logger.log(f"Small negative frequency {negative_freqs} found. This may be indicate wrong transition state. Resubmitting job")
                             molecule.converged = False
                             molecule.wrong_TS += 1
-                            if molecule.wrong_TS >= 4:
+                            if molecule.wrong_TS >= 3:
                                 continue
                             resubmit_job(molecule, logger, job_type)
                             time.sleep(interval / 2)
@@ -1592,7 +1604,7 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                             logger.log(f"However, no imaginary frequency found for {molecule.name}. Resubmitting TS calculation")
                             molecule.converged = False
                             molecule.wrong_TS += 1
-                            if molecule.wrong_TS >= 4:
+                            if molecule.wrong_TS >= 3:
                                 continue
                             resubmit_job(molecule, logger, job_type)
                             time.sleep(interval / 2)
@@ -1604,7 +1616,6 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
                         if xyz_coordinates:
                             molecule.coordinates = xyz_coordinates
                             molecule.move_inputfile()
-                            molecule.move_converged()
                         else:
                             logger.log(f"Error gathering XYZ coordinates from {log_file_name}. Check log file.")
                 elif error_termination_detected:
@@ -1642,11 +1653,11 @@ def check_convergence_for_conformers(molecules, logger, threads, time_seconds, m
     if all_converged:
         if molecules:
             dir = molecules[0].directory
-            input_files = molecules[0].input
+            output_files = molecules[0].output
             basename = os.path.basename(dir)
             pickle_path = os.path.join(dir, f'{basename}_{job_type}.pkl')
             Molecule.molecules_to_pickle(molecules, pickle_path)
-            # move_files(dir, input_files)
+            move_files(dir, output_files) # Move all logfiles to log_files
             logger.log_with_stars(f"Yay! All conformer jobs have converged for job type: {job_type}.")
             if job_type == "DLPNO":
                 for molecule in molecules: 
@@ -2434,7 +2445,7 @@ def main():
     additional_options.add_argument('--gfn', default='2', choices=['1','2'], help='Specify the GFN version (1 or 2, default: 2)')
     additional_options.add_argument('-skip_low', action='store_true', help='Skip the preoptimization of the structures at the low level of theory')
     additional_options.add_argument('-cpu', metavar="int", nargs='?', const=1, type=int, default=4, help='Number of CPUs [def: 4]')
-    additional_options.add_argument('-mem', metavar="int", nargs='?', const=1, type=int, default=4000, help='Amount of memory allocated for the job [def: 4000MB]')
+    additional_options.add_argument('-mem', metavar="int", nargs='?', const=1, type=int, default=8000, help='Amount of memory allocated for the job [def: 8000MB]')
     additional_options.add_argument('-par', metavar="partition", type=str, default="q24,q28,q36,q40,q48,q64", help='Partition to use [def: qany]')
     additional_options.add_argument('-time', metavar="hh:mm:ss", type=str, default=None, help='Monitoring duration [def: 144 hours]')
     additional_options.add_argument('-interval', metavar="int", nargs='?', const=1, type=int, help='Time interval between log file checks [def: based on molecule size]')
@@ -2474,8 +2485,11 @@ def main():
         
         return input_args[0], input_args[1]
 
-    high_method, high_basis = extract_method_basis(args.high_level, ["uwb97xd", "aug-cc-pVTZ"])
-    low_method, low_basis = extract_method_basis(args.low_level, ["uwb97xd", "6-31+g(d,p)"])
+    standard_high_level = ["uwb97xd", "6-31++g(d,p)"]
+    standard_low_level = ["uwb97xd", "6-31+g(d,p)"]
+
+    high_method, high_basis = extract_method_basis(args.high_level, standard_high_level)
+    low_method, low_basis = extract_method_basis(args.low_level, standard_low_level)
 
     global global_program
     if args.ORCA:
@@ -2506,9 +2520,9 @@ def main():
     }
 
     #####################################################################################################
-    # if args.test:
-    #     print(args)
-    #     exit()
+    if args.test:
+        print(args)
+        exit()
     #     molecules = []
     #     for n, input_file in enumerate(args.input_files, start=1):
     #         input_file = args.input_files[0]
@@ -2581,7 +2595,7 @@ def main():
                 molecules = Molecule.load_molecules_from_pickle(input_file)
                 if isinstance(molecules, pd.DataFrame):
                     conformers = pkl_to_xyz(input_file)
-                    conformers = generate_conformers(conformers, input_file) # function doesnt work for the output of pkl_to_xyz: fix
+                    conformers = generate_conformers(conformers, input_file) 
                     for conf in conformers:
                         conf.print_items()
                 else:
@@ -2754,8 +2768,8 @@ def main():
 
         if all(m.reactant for m in global_molecules):
             molecule_name = global_molecules[-1].name.split("_")[0]
-            logger.log(f"Final DLPNO calculations for reactants is done. Logging properties to {molecule_name}_reactants.pkl")
-            Molecule.molecules_to_pickle(global_molecules, os.path.join(start_dir, f"{molecule_name}_reactants.pkl"))
+            logger.log(f"Final DLPNO calculations for reactants is done. Logging molecules to Final_reactants_{molecule_name}.pkl")
+            Molecule.molecules_to_pickle(global_molecules, os.path.join(start_dir, f"Final_reactants_{molecule_name}.pkl"))
         elif all(m.product for m in global_molecules):
             # Identify unique H numbers
             h_numbers = sorted(set(m.name.split('_H')[1][0] for m in global_molecules if "_H" in m.name))
@@ -2767,19 +2781,21 @@ def main():
             # Create a pickle file for each group
             for h, molecules_group in zip(h_numbers, grouped_lists):
                 molecule_name = f"{molecules_group[0].name.split('_')[0]}_H{h}"
-                pickle_path = os.path.join(start_dir, f"{molecule_name}_products.pkl")
-                logger.log(f"Final DLPNO calculations for products are done. Logging properties to {molecule_name}_products.pkl")
+                pickle_path = os.path.join(start_dir, f"Final_products_{molecule_name}.pkl")
+                logger.log(f"Final DLPNO calculations for products are done. Logging properties to Final_products_{molecule_name}.pkl")
                 Molecule.molecules_to_pickle(molecules_group, pickle_path)
         else:
             molecule_name = global_molecules[0].name.split("_")
             molecule_name = f"{molecule_name[0]}_{molecule_name[1]}"
-            logger.log(f"Final DLPNO calculations for transition state molecules is done. Logging properties to {molecule_name}_TS.pkl")
-            TS_pkl_path = os.path.join(start_dir, f"{molecule_name}_TS.pkl")
+            logger.log(f"Final DLPNO calculations for transition state molecules is done. Logging properties to Final_TS_{molecule_name}.pkl")
+            TS_pkl_path = os.path.join(start_dir, f"Final_TS_{molecule_name}.pkl")
             Molecule.molecules_to_pickle(global_molecules, TS_pkl_path)
 
             if args.k:
-                reactant_pkl_path = os.path.join(os.path.dirname(start_dir), f'reactants/{molecule_name}_reactants.pkl')
-                product_pkl_path = os.path.join(os.path.dirname(start_dir), f'products/{molecule_name}_reactants.pkl')
+                reactant_pkl_name = os.path.basename(start_dir).split("_")[0]
+                product_pkl_name = os.path.basename(start_dir)
+                reactant_pkl_path = os.path.join(os.path.dirname(start_dir), f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
+                product_pkl_path = os.path.join(os.path.dirname(start_dir), f'products/Final_products_{product_pkl_name}.pkl')
                 if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
                     final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                     final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
@@ -2788,8 +2804,8 @@ def main():
                     results_logger.log_with_stars(f"{k} molecules cm^-3 s^-1")
                     results_logger.log_with_stars(f"Tunneling coefficient: {kappa}")
                 else:
-                    reactant_pkl_path = os.path.join(start_dir, 'reactants/molecules_reactants.pkl')
-                    product_pkl_path = os.path.join(start_dir, 'products/molecules_reactants.pkl')
+                    reactant_pkl_path = os.path.join(start_dir, f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
+                    product_pkl_path = os.path.join(start_dir, f'products/Final_products_{product_pkl_name}.pkl')
                     if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
                         final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                         final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
