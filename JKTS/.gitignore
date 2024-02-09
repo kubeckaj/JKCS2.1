@@ -1,2 +1,3 @@
 database/
 test/
+__pycache__/

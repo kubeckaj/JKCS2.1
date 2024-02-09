@@ -4,7 +4,7 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../../JKTS/"
 
 # Default values
-SLURM_TIME="144:00:00"
+SLURM_TIME="192:00:00"
 SLURM_PARTITION="q24,q28,q36,q40,q48,q64"
 PYTHON_ARGS=()
 XYZ=0
@@ -25,7 +25,7 @@ for arg in "$@"; do
       exit 0
       ;;
     -test)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}"
+      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -test
       exit 0
       ;;
     -info)
@@ -34,6 +34,10 @@ for arg in "$@"; do
       ;;
     -collect)
       program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -collect
+      exit 0
+      ;;
+    -init)
+      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -init
       exit 0
       ;;
     *.xyz)
@@ -76,7 +80,7 @@ submit_array_job() {
   cat > $SLURM_SCRIPT <<EOF
 #!/bin/sh
 #SBATCH --job-name=JKTS
-##SBATCH --output=/dev/null
+#SBATCH --output=JKTS_%a.out
 #SBATCH --time=$SLURM_TIME
 #SBATCH --partition=$SLURM_PARTITION
 #SBATCH --ntasks=1
@@ -87,6 +91,7 @@ submit_array_job() {
 DIR_INDEX=\$((\$SLURM_ARRAY_TASK_ID - 1))
 DIRS=(${directories[@]})
 cd \${DIRS[\$DIR_INDEX]}
+mv ../JKTS_\$SLURM_ARRAY_TASK_ID.out .
 source ~/.JKCSusersetup.txt
 program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
 EOF
