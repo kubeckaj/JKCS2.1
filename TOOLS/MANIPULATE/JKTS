@@ -28,6 +28,10 @@ for arg in "$@"; do
       program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -test
       exit 0
       ;;
+    -loc)
+      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -loc
+      exit 0
+      ;;
     -info)
       program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -info
       exit 0

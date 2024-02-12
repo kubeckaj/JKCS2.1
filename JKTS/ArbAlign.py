@@ -434,23 +434,27 @@ def main(molecules, RMSD_threshold):
     unique_molecules = []
 
     while molecules:
-        # Take the first molecule and assume it's unique for now
-        reference = molecules.pop(0)
+        reference = molecules.pop(0) # Take first molecule and assume its unique for now
         unique_molecules.append(reference)
 
-        # Prepare a list to keep molecules that are not similar to the reference
         non_similar_molecules = []
 
         for molecule in molecules:
             rmsd_value = calculate_rmsd(reference, molecule)
-            # Keep the molecule only if RMSD is above the threshold
-            if rmsd_value > RMSD_threshold:
+            # If RMSD is below or equal to the threshold, they are considered similar
+            if rmsd_value <= RMSD_threshold:
+                # Compare their energies and keep the one with lower energy
+                if molecule.single_point < reference.single_point:
+                    unique_molecules.pop()  # Remove the previous reference
+                    unique_molecules.append(molecule)  # Add the new one with lower energy
+                    reference = molecule  # Update reference to the new molecule
+            else:
                 non_similar_molecules.append(molecule)
 
-        # Update the molecules list with the non-similar ones
         molecules = non_similar_molecules
 
     return unique_molecules
+
 
 if __name__ == "__main__":
    main()

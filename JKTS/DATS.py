@@ -189,15 +189,26 @@ def QC_input(molecule, constrain,  method, basis_set, TS, C_index=None, H_index=
     if molecule.program.lower() == "orca" and molecule.converged is False:
         with open(file_path, "w") as f:
             if method == "DLPNO":
-                f.write(f"! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK\n")
+                # Consider scaling of the memory with the molecule size
+                if molecule.error_termination_count == 1:
+                    f.write(f"! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) VeryTightSCF RI-JK aug-cc-pVTZ/JK\n")
+                    # f.write(f"! cc-pVTZ-F12 cc-pVTZ/C cc-pVTZ-F12-CABS DLPNO-CCSD(T)-F12 TightPNO TightSCF\n")
+                    f.write(f"%pal nprocs {args.cpu} end\n")
+                    f.write(f"%maxcore {round((args.mem+16000)/args.cpu)}\n") 
+                elif molecule.error_termination_count == 2:
+                    f.write(f"! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) VeryTightSCF RI-JK aug-cc-pVTZ/JK\n")
+                    f.write(f"%pal nprocs {args.cpu} end\n")
+                    f.write(f"%maxcore {round((args.mem+20000)/args.cpu)}\n") 
+                else:
+                    f.write(f"! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK\n")
+                    f.write(f"%pal nprocs {args.cpu} end\n")
+                    f.write(f"%maxcore {round((args.mem+12000)/args.cpu)}\n") 
             elif TS:
                 f.write(f"! {method} {basis_set} TightSCF SlowConv OptTS {freq}\n")
+                f.write(f"%pal nprocs {args.cpu} end\n")
+                f.write(f"%maxcore {args.mem/args.cpu}\n")
             else:
                 f.write(f"! {method} {basis_set} TightSCF SlowConv OPT {freq}\n")
-            if method == 'DLPNO':
-                f.write(f"%pal nprocs {args.cpu} end\n")
-                f.write(f"%maxcore {round((args.mem+12000)/args.cpu)}\n") # Find some scaling with the molecule to ensure enough memory
-            else:
                 f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {args.mem/args.cpu}\n")
             if constrain:
@@ -334,7 +345,7 @@ def read_last_lines(filename, logger, num_lines, interval=200):
     return False
 
 
-def resubmit_job(molecule, logger):
+def resubmit_job(molecule, logger, error=None):
     molecule.move_failed()
     job_type = molecule.current_step
     if job_type == 'opt_constrain':
@@ -434,7 +445,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                             if molecule.error_termination_count >= 3:
                                 continue
                             resubmit_job(molecule, logger)
-                            time.sleep(interval / 2)
+                            time.sleep(30)
                             continue
                     elif job_type == 'crest_sampling':
                         crest_conformers = pkl_to_xyz(os.path.join(molecule.directory, f"collection{molecule.name}.pkl"))
@@ -521,23 +532,24 @@ def handle_error_termination(molecule, logger, last_lines):
     detected_intervention_errors = [error for error in intervention_errors if any(error in line for line in last_lines)]
 
     if detected_convergence_errors:
-        for error in detected_convergence_errors:
-            logger.log(f"Convergence error '{error}' termination found in {molecule.log_file_name}.")
+        error = detected_convergence_errors[0]
+        logger.log(f"Convergence error '{error}' termination found in {molecule.name}")
         xyz_coordinates = molecule.log2xyz()
         molecule.coordinates = xyz_coordinates
         logger.log(f"Trying to resubmit job for {molecule.name} due to error termination")
-        resubmit_job(molecule, logger)
+        resubmit_job(molecule, logger, error)
     elif detected_intervention_errors:
-        for error in detected_intervention_errors:
-            logger.log(f"Intervention error '{error}' detected.")
-        molecule.set_active_site()
+        error = detected_intervention_errors[0]
+        logger.log(f"Error '{error}' detected in {molecule.name} which needs taken care of manually")
+        logger.log(f"Removing the conformer {molecule.name} for now so user can inspec error")
+        if molecule.program.lower() == 'g16':
+            logger.log(f"Common G16 error are listed in: {G16_common_errors}")
+        # molecule.set_active_site()
     else:
-        logger.log(f"Error termination found in {molecule.log_file_name}. Trying to resubmit")
+        logger.log(f"Error termination found in {molecule.name}. Trying to resubmit")
         xyz_coordinates = molecule.log2xyz()
         molecule.coordinates = xyz_coordinates
         resubmit_job(molecule, logger)
-
-
 
 
 def check_crest_products(molecules, logger, threads, interval, max_attempts):
@@ -615,59 +627,45 @@ def submit_and_monitor(molecules, logger, threads):
     else: logger.log("Error getting job id")
 
 
-def handle_termination(molecule, logger, threads, converged):
-    if not isinstance(molecule, list):
-        if converged:
-            molecule.update_step()
-        molecule.converged = False
-        job_type = molecule.current_step
-        molecule.program = global_program
-        # Clean molecule name
-        molecule.name = molecule.name.replace("_TS", "").replace("_CREST", "").replace("_DLPNO", "")
-        logger.log(f"Next step is: {job_type}")
-
-        if job_type == 'crest_sampling':
-            molecule.name += "_CREST"
-            molecule.program = 'CREST'
-            output_file_path = os.path.join(molecule.directory, f"{molecule.name}.xyz")
-            molecule.write_xyz_file(output_file_path)
-
-        elif job_type in ['TS_opt', 'TS_opt_conf']:
-            molecule.name += '_TS'
-            QC_input(molecule, constrain=False, method=high_method, basis_set=high_basis, TS=True)
-
-        elif job_type == 'DLPNO':
-            molecule.name += "_DLPNO"
-            molecule.program = 'ORCA'
-            QC_input(molecule, constrain=False, method='DLPNO', basis_set=high_basis, TS=False)
-
-        elif job_type in ['optimization', 'optimization_conf']:
-            QC_input(molecule, constrain=False, method=high_method, basis_set=high_basis, TS=False)
-
-        elif job_type in ['opt_constrain', 'opt_constrain_conf']:
-            QC_input(molecule, constrain=True, method=high_method, basis_set=high_basis, TS=False)
-
-        elif job_type == 'Done':
-            logger.log(f"DLPNO single point calculation has been done for {molecule.name}")
-
-        submit_and_monitor(molecule, logger, threads)
-
-    elif isinstance(molecule, list):
-        if converged:
-            for m in molecule: m.update_step()
-        current_step = molecule[0].current_step
-        logger.log(f"Job to be performed: {current_step}")
-        if current_step == args.filter_step and converged: # 'opt_constrain'
-            if len(molecule) > 5:
-                logger.log("Filtering molecules using ArbAlign algorithm")
-                conformer_molecules = ArbAlign_compare_molecules(molecule, logger)
-            else:
-                conformer_molecules = molecule
-                logger.log("Skipping filtering as list of molecules is too short")
+def handle_termination(molecules, logger, threads, converged):
+    if not isinstance(molecules, list):
+        try:
+            molecules = list(molecules)
+        except TypeError:
+            raise ValueError("molecules must be a list or convertible to a list")
+    if converged:
+        for m in molecules: 
+            m.converged = False
+            m.update_step()
+    current_step = molecules[0].current_step
+    logger.log(f"Job to be performed: {current_step}")
+    if current_step == args.filter_step and converged:
+        if molecules[0].product: # For products ArbAlign is needed to be done on every individual H
+            conformer_molecules = []
+            h_numbers = sorted(set(m.name.split('_H')[1][0] for m in molecules if "_H" in m.name))
+            grouped_lists = [[m for m in molecules if f"_H{h_num}_" in m.name] for h_num in h_numbers]
+            for h, group in zip(h_numbers, grouped_lists):
+                if len(group) > 5:
+                    logger.log(f"Filtering product molecules for H{h} using ArbAlign alogrithm")
+                    filtered_group = ArbAlign_compare_molecules(group, logger)
+                    for molecule in filtered_group:
+                        conformer_molecules.append(molecule)
+                else:
+                    logger.log(f"Skipping filtering for H{h} as the number of conformers is less than 5")
+                    for molecule in group:
+                        conformer_molecules.append(molecule)
         else:
-            conformer_molecules = molecule
-        for conf in conformer_molecules:
-            conf.converged = False
+            if len(molecules) > 5:
+                logger.log("Filtering molecules using ArbAlign algorithm")
+                conformer_molecules = ArbAlign_compare_molecules(molecules, logger)
+            else:
+                conformer_molecules = molecules
+                logger.log("Skipping filtering as list of molecules is too short")
+    else:
+        conformer_molecules = molecules
+
+    for conf in conformer_molecules:
+        if conf.converged is False:
             conf.program = global_program
             conf.name = conf.name.replace("_TS", "").replace("_CREST", "").replace("_DLPNO", "")
             job_type = conformer_molecules[0].current_step
@@ -699,11 +697,8 @@ def handle_termination(molecule, logger, threads, converged):
             else:
                 logger.log("Job type could not be determined for conformer list")
                 break
-        if conformer_molecules: 
-            submit_and_monitor(conformer_molecules, logger, threads)
-
-    else:
-        logger.log(f"Error: next step could not be determined for molecule {molecule.name}")
+    if conformer_molecules: 
+        submit_and_monitor(conformer_molecules, logger, threads)
 
 
 def termination_status(molecule):
@@ -764,7 +759,7 @@ def collect_DFT_and_DLPNO(molecules):
     collected_molecules = []
     
     for m in molecules:
-        process_conditions = (m.current_step == 'optimization' and (m.reactant or m.product)) or (m.current_step == 'TS_opt')
+        process_conditions = (m.current_step == 'optimization' and (m.reactant or m.product)) or ('TS_opt' in m.current_step)
         
         if process_conditions:
             if 'OH' in m.name or 'H2O' in m.name:
@@ -936,33 +931,39 @@ def eckart(SP_TS, SP_reactant, SP_product, imag, T=[298.15]):
 def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.15):
     k_b = 1.380649e-23  # Boltzmann constant in J/K
     h = 6.62607015e-34  # Planck constant in J*s
-    HtoJ = 4.3597447222e-18  # Conversion factor from Hartree to Joules
+    HtoJ = 43.597447222e-19  # Conversion factor from Hartree to Joules
     Htokcalmol = 627.509
     Na = 6.022e23 # molecules/mol
     liters_to_cm3 = 1000 # 1 liter is 1000 cm^3
+    mol_per_liter = 1/(0.0821*T)
+    p_ref = (mol_per_liter*Na)/liters_to_cm3
     kappa = 1
     
     # Calculation of rate constant
     if reactant_conformers and TS_conformers:
         # Seperate organic molecule and OH
         reactant_molecules = [mol for mol in reactant_conformers if 'OH' not in mol.name]
-        OH = next((mol for mol in reactant_conformers if 'OH' in mol.name), None)
+        OH = next((mol for mol in reactant_conformers if 'OH' in mol.name))
 
         # Find the lowest single point energies for reactant (excluding OH) and TS
         lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.zero_point_corrected)
         lowest_TS = min(TS_conformers, key=lambda molecule: molecule.zero_point_corrected)
 
-        # Lowest single point reactant and TS and convert from Hartree to Joules
+        # Lowest single point reactant and TS and convert from Hartree to joules and kcal/mol
         lowest_ZP_TS_J = np.float64(lowest_TS.zero_point_corrected * HtoJ)
         lowest_ZP_reactant_J = np.float64(lowest_reactant.zero_point_corrected * HtoJ)
-        if OH:
-            sum_reactant_ZP_J = lowest_ZP_reactant_J + np.float64(OH.zero_point_corrected*HtoJ)
-            sum_reactant = np.sum([np.exp((lowest_ZP_reactant_J - np.float64(mol.zero_point_corrected * HtoJ)) / (k_b * T)) * np.float64(mol.Q) * np.float64(OH.Q) for mol in reactant_molecules])
-        else:
-            sum_reactant_ZP_J = lowest_ZP_TS_J
-            sum_reactant = np.sum([np.exp((lowest_ZP_reactant_J - np.float64(mol.zero_point_corrected * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in reactant_molecules])        
+        lowest_ZP_TS_kcalmol = np.float64(lowest_TS.zero_point_corrected * Htokcalmol)
+        lowest_ZP_reactant_kcalmol = np.float64((lowest_reactant.zero_point_corrected + OH.zero_point_corrected) * Htokcalmol)
+        print(f"Ea: {lowest_ZP_TS_kcalmol - lowest_ZP_reactant_kcalmol} kcal/mol")
 
-        sum_TS = np.sum([np.exp((lowest_ZP_TS_J - np.float64(mol.zero_point_corrected * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in TS_conformers])
+        if OH:
+            sum_reactant_ZP_J = lowest_ZP_reactant_J + (np.float64(OH.zero_point_corrected * HtoJ))
+            Q_reactant = np.sum([np.exp(-(lowest_ZP_reactant_J - np.float64(mol.zero_point_corrected * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in reactant_molecules]) * np.float64(OH.Q)
+        else:
+            sum_reactant_ZP_J = lowest_ZP_reactant_J
+            Q_reactant = np.sum([np.exp(-(lowest_ZP_reactant_J - np.float64(mol.zero_point_corrected * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in reactant_molecules])        
+
+        Q_TS = np.sum([np.exp(-(lowest_ZP_TS_J - np.float64(mol.zero_point_corrected * HtoJ)) / (k_b * T)) * np.float64(mol.Q) for mol in TS_conformers])
 
         if product_conformers:
             # Seperate organic molecule and H2O
@@ -971,21 +972,18 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
 
             if product_molecules and H2O:
                 lowest_product = min(product_molecules, key=lambda molecule: molecule.zero_point_corrected)
-                lowest_ZP_TS_kcalmol = np.float64(lowest_TS.zero_point_corrected * Htokcalmol)
-                lowest_ZP_reactant_kcalmol = np.float64((lowest_reactant.zero_point_corrected + OH.zero_point_corrected) * Htokcalmol)
                 lowest_ZP_product_kcalmol = np.float64((lowest_product.single_point + H2O.single_point) * Htokcalmol)
 
                 imag = abs(lowest_TS.vibrational_frequencies[0])
                 kappa  = eckart(lowest_ZP_TS_kcalmol, lowest_ZP_reactant_kcalmol, lowest_ZP_product_kcalmol, imag)
-                k = kappa * (k_b*T/h) * (sum_TS / sum_reactant) * np.exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
+                k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * np.exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
             else:
                 print("Error in product molecules")
                 return None
         else: # If products are not calculated assume tunneling coefficient is 1
-            k = kappa * (k_b*T/h) * (sum_TS / sum_reactant) * np.exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
-       
-        k_mol_cm3_s = k/(Na/liters_to_cm3)
-        return k_mol_cm3_s, kappa 
+            k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * np.exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
+
+        return k, kappa # cm^3 molecules^-1 s^-1
 
     return None
 
@@ -1055,6 +1053,7 @@ def main():
 
     hidden_options = parser.add_argument_group()
     hidden_options.add_argument('-init', action='store_true', help=argparse.SUPPRESS)
+    hidden_options.add_argument('-loc', action='store_true', help=argparse.SUPPRESS)
     hidden_options.add_argument('-reaction_angle', metavar="float", nargs='?', default=169.5, const=1, type=float, help=argparse.SUPPRESS) 
     additional_options.add_argument('-skip', type=str2bool, default=False, help=argparse.SUPPRESS)
 
@@ -1118,16 +1117,16 @@ def main():
     #####################################################################################################
     # if args.test:
         # molecules = []
+        # threads = []
         # logger = Logger(os.path.join(start_dir, "log"))
-        # for n, input_file in enumerate(args.input_files, start=1):
+        # for n, input_file in enumerate(args.input_files, start=127):
         #     molecule = Molecule(input_file)
+        #     molecule.job_id = f"10537028_{n}"
         #     molecules.append(molecule)
-        # for m in molecules:
-        #     last_lines = read_last_lines(m.log_file_path, logger, 30)
-        #     for l in last_lines:
-        #         if "l9999" in l:
-        #             print(l)
         #
+        # update_molecules_status(molecules)
+        #
+        # 
         # exit()
     ####################################################################################################
 
@@ -1299,7 +1298,7 @@ def main():
             molecule.log_items(molecules_logger)
 
         if all(m.reactant for m in global_molecules):
-            molecule_name = global_molecules[-1].name.split("_")[0]
+            molecule_name = global_molecules[0].name.split("_")[0]
             logger.log(f"Final DLPNO calculations for reactants is done. Logging molecules to Final_reactants_{molecule_name}.pkl")
             Molecule.molecules_to_pickle(global_molecules, os.path.join(start_dir, f"Final_reactants_{molecule_name}.pkl"))
         elif all(m.product for m in global_molecules):
@@ -1317,8 +1316,7 @@ def main():
                 logger.log(f"Final DLPNO calculations for products are done. Logging properties to Final_products_{molecule_name}.pkl")
                 Molecule.molecules_to_pickle(molecules_group, pickle_path)
         else:
-            molecule_name = global_molecules[0].name.split("_")
-            molecule_name = f"{molecule_name[0]}_{molecule_name[1]}"
+            molecule_name = os.path.basename(start_dir)
             logger.log(f"Final DLPNO calculations for transition state molecules is done. Logging properties to Final_TS_{molecule_name}.pkl")
             TS_pkl_path = os.path.join(start_dir, f"Final_TS_{molecule_name}.pkl")
             Molecule.molecules_to_pickle(global_molecules, TS_pkl_path)

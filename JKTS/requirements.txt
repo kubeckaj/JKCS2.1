@@ -1,3 +1,8 @@
 scipy==1.12.0
 numpy==1.26.3
 pandas==1.3.2
+
+# Non-Python dependencies, list of software with their version installed on the Grendel cluster at Centre for Scientific Computing in Aarhus (CSCAA)
+# Slurm: 23.02.7
+# ORCA: 5.0.4
+# Gaussian16: ES64L-G16RevB.01

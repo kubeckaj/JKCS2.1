@@ -60,8 +60,8 @@ class Molecule(Vector):
         self.directory = directory
         self.file_path = file_path
         self.log_file_path = log_file_path
-        self.reactant = True if 'reactant' in self.name.split("_") else reactant
-        self.product = True if 'product' in self.name.split("_") else product
+        self.reactant = True if 'reactant' in self.name.split("_") or 'OH' in self.name else reactant
+        self.product = True if 'product' in self.name.split("_") or 'H2O' in self.name else product
         self.job_id = ""
         self.atoms = atoms if atoms is not None else []
         self.coordinates = coordinates if coordinates is not None else []
@@ -72,6 +72,7 @@ class Molecule(Vector):
         self.vibrational_frequencies = []
         self.zero_point = None
         self.single_point = None
+        self.free_energy = None
         self.Q = None
         self._program = None
         self.input = None
@@ -99,13 +100,19 @@ class Molecule(Vector):
                 self.program = 'g16' if self.file_path.split(".")[-1] == 'com' else 'orca'
                 self.atoms, self.coordinates = self.inp2xyz()
 
-            if self.reactant or 'reactant' in self.name:
+            if self.reactant or 'reactant' in self.name or 'OH' in self.name:
                 self.reactant = True
-                self.mult = 1
+                if 'OH' in self.name:
+                    self.mult = 2
+                else:
+                    self.mult = 1
                 
-            elif self.product or 'product' in self.name:
+            elif self.product or 'product' in self.name or 'H2O' in self.name:
                 self.product = True
-                self.mult = 2
+                if 'H2O' in self.name:
+                    self.mult = 1
+                else:
+                    self.mult = 2
                         
             else:
                 self.find_active_site()
@@ -137,7 +144,7 @@ class Molecule(Vector):
 
 
     def determine_workflow(self):
-        if self.reactant or self.product:
+        if self.reactant or self.product or 'OH' in self.name or 'H2O' in self.name: # Modify me back
             if 'OH' in self.name or 'H2O' in self.name:
                 return ['optimization', 'DLPNO', 'Done']
             else:
@@ -153,6 +160,7 @@ class Molecule(Vector):
         # Creates an OH radical molecule
         molecule = cls(name='OH', directory=directory, atoms=['O', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.97, 0.0, 0.0]], reactant=True, program='g16')
         molecule.mult = 2
+        molecule.reactant = True
         return molecule
 
     @classmethod
@@ -160,6 +168,7 @@ class Molecule(Vector):
         # Creates a water (H2O) molecule
         molecule = cls(name='H2O', directory=directory, atoms=['O', 'H', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.9572, 0.0, 0.0], [-0.239664, 0.926711, 0.0]], product=True, program='g16')
         molecule.mult = 1
+        molecule.product = True
         return molecule
 
 
@@ -269,14 +278,15 @@ class Molecule(Vector):
                     if neighbor == 'H' and self.is_nearby(C, H):
                         # Since we already know the indexes of O and H in the OH radical,
                         # we directly use them instead of iterating through all atoms again.
-                        if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[O_index]) > 120:
+                        if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[O_index]) > 150:
+                            print(self.atom_distance(self.coordinates[H], self.coordinates[O_index]))
                             # Check if the H from the molecule is close enough to the O from the OH radical
                             # indicating a potential active site for hydrogen abstraction.
                             if self.is_nearby(H, O_index):
                                 self.constrained_indexes = {'C': C+1, 'H': H+1, 'O': O_index+1, 'OH': H_OH_index+1}
                                 return 
 
-    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.5):
+    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.60):
         distance = np.linalg.norm(np.array(self.coordinates[atom_index1]) - np.array(self.coordinates[atoms_index2]))
         return distance < threshold_distance
 
@@ -338,6 +348,9 @@ class Molecule(Vector):
                 zero_point_correction = re.findall(r'Zero-point correction=\s+([-.\d]+)', log_content)
                 if zero_point_correction:
                     self.zero_point = float(zero_point_correction[-1])
+                free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
+                if free_energy:
+                    self.free_energy = float(free_energy[-1])
                 single_point = re.findall(r'(SCF Done:  E\(\S+\) =)\s+([-.\d]+)', log_content)
                 if single_point:
                     self.single_point = float(single_point[-1][-1])
@@ -723,9 +736,9 @@ class Molecule(Vector):
             # If there's no file, attempt to determine the current step from the molecule's name
             if 'DLPNO' in self.name:
                 return 'DLPNO'
-            if 'TS' in self.name:
+            elif 'TS' in self.name:
                 return 'TS_opt_conf' if 'conf' in self.name else 'TS_opt'
-            if 'conf' in self.name:
+            elif 'conf' in self.name:
                 return 'opt_constrain_conf'
             return 'opt_constrain'  # Fallback step if no other conditions are met
 
@@ -739,12 +752,13 @@ class Molecule(Vector):
                     continue
 
                 lower_line_content = line_content.lower()
-                if 'ts' in lower_line_content or 'optts' in lower_line_content:
-                    return 'TS_opt_conf' if 'conf' in self.name else 'TS_opt'
-                if 'opt' in lower_line_content:
-                    return 'opt_constrain_conf' if 'conf' in self.name else 'optimization' if self.product or self.reactant else 'opt_constrain'
-                if 'dlpno' in lower_line_content:
+                if 'dlpno' in lower_line_content or 'f12' in lower_line_content:
                     return 'DLPNO'
+                elif 'ts' in lower_line_content or 'optts' in lower_line_content:
+                    return 'TS_opt_conf' if 'conf' in self.name else 'TS_opt'
+                elif 'opt' in lower_line_content:
+                    return 'opt_constrain_conf' if 'conf' in self.name else 'optimization' if self.product or self.reactant else 'opt_constrain'
+
         
 
 
@@ -851,13 +865,14 @@ class Molecule(Vector):
         if self.constrained_indexes: print(f"Constrained Indexes: {self.constrained_indexes}")
         print(f"Electronic Energy: {self.single_point}")
         print(f"Zero Point Corrected Energy: {self.zero_point_corrected}")
+        # print(f"Sum of electronic and thermal Free Energies: {self.free_energy}")
         print(f"Partition Function: {self.Q}")
         print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
         print(f"Current Step: {self.current_step}")
         print(f"Next Step: {self.next_step}")
         print("Atoms and Coordinates:")
         for atom, coord in zip(self.atoms, self.coordinates):
-            print(f"  {atom}: {coord}")
+            print(f"  {atom:2} {coord[0]:>9.6f} {coord[1]:>9.6f} {coord[2]:>9.6f}")
         print("-----------------------------------------------------------------------")
    
     def log_items(self, logger):

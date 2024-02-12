@@ -5,12 +5,7 @@ import re
 def submit_array_job(molecules, args, nnodes=1):
     dir = molecules[0].directory
     job_files = [f"{conf.name}{conf.input}" for conf in molecules if conf.converged is False] 
-    if molecules[0].product:
-        job_name = f"{molecules[0].current_step.split('_')[0]}_{os.path.basename(dir)}"
-    elif molecules[0].reactant:
-        job_name = f"{molecules[0].current_step.split('_')[0]}_{os.path.basename(dir)}"
-    else:
-        job_name = f"{molecules[0].current_step.split('_')[0]}_{os.path.basename(dir)}"
+    job_name = f"{molecules[0].current_step.split('_')[0]}_{os.path.basename(dir)}"
 
     job_program = molecules[0].program
     submit_name = f"{molecules[0].current_step}_submit.sh"
@@ -162,7 +157,12 @@ def submit_job(molecule, args, nnodes=1):
 
     if molecule.program.lower() == "orca" or molecule.program.lower() == "g16":
         if molecule.current_step == 'DLPNO':
-            program_mem = round((mem+12000) * 1.25)
+            if molecule.error_termination_count == 1:
+                program_mem = round((mem+16000) * 1.25)
+            elif molecule.error_termination_count == 2:
+                program_mem = round((mem+20000) * 1.25)
+            else:
+                program_mem = round((mem+12000) * 1.25)
         else:
             program_mem = round(mem * 1.25) # Headspace for program
     else:
@@ -299,18 +299,25 @@ sbatch $SBATCH_PREFIX $SUBMIT
 
 
 def update_molecules_status(molecules):
-    job_id = molecules[0].job_id.split("_")[0]
-    try:
-        result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True, check=True)
-        job_statuses = parse_job_statuses(result.stdout, job_id)
+    # Gather all unique job IDs
+    unique_job_ids = set(molecule.job_id.split("_")[0] for molecule in molecules)
+    job_statuses = {}
 
-        for molecule in molecules:
-            molecule.status = job_statuses.get(molecule.job_id, 'completed or not found')
+    # Query the status of each unique job ID
+    for job_id in unique_job_ids:
+        try:
+            result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True, check=True)
+            job_statuses.update(parse_job_statuses(result.stdout, job_id))
+        except subprocess.CalledProcessError:
+            # If the command fails, assume 'unknown' status for all jobs with this prefix
+            for molecule in molecules:
+                if molecule.job_id.startswith(job_id):
+                    molecule.status = 'unknown'
+            continue  # Skip to the next job_id if there's an error
 
-    except subprocess.CalledProcessError:
-        for molecule in molecules:
-            molecule.status = 'unknown'
-
+    # Update molecule status based on job_statuses dictionary
+    for molecule in molecules:
+        molecule.status = job_statuses.get(molecule.job_id, 'completed or not found')
 
 def parse_job_statuses(output, main_job_id):
     job_statuses = {}
@@ -343,6 +350,7 @@ def extract_job_id(output):
         print("Could not extract job ID.")
         return None
 
+
 def get_interval_seconds(molecule):
     job_type = molecule.current_step
     atoms = molecule.atoms
@@ -360,22 +368,22 @@ def get_interval_seconds(molecule):
     if 'H2O' in molecule.name or 'OH' in molecule.name:
         return 20
     elif 'TS' in job_type:
-        a=37.9; b=-90.33; c=124
-        total_time = (a*heavy_count**2) + (b*heavy_count) + c
+        a = 42.1; b = -120.4; c = 732.5
+        interval = (a*heavy_count**2) + (b*heavy_count) + c
     elif job_type == 'crest_sampling':
-        a = 29; b = 10
-        total_time = (a*heavy_count) + b
+        a = 27; b = 10
+        interval = (a*heavy_count) + b
     elif 'opt' in job_type:
-        a=9.02; b=-26.76; c=63.027
-        total_time = (a*heavy_count**2) + (b*heavy_count) + c
-    elif job_type == 'DLPNO': 
-        a=9.02; b=-26.76; c=63.027
-        total_time = (a*heavy_count**2) + (b*heavy_count) + c
+        a=0.4; b=2.5; c=13.4; d=4.8
+        interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
+    elif 'DLPNO' in job_type:
+        a=0.4; b=2.5; c=13.4; d=4.8
+        interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     else:
         a=2.26; b=-30.8; c=249.8; d=-114
-        total_time = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
+        interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
 
-    return max(total_time, 30)
+    return max(interval, 30)
 
 
 def seconds_to_hours(seconds):
