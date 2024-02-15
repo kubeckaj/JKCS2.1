@@ -55,7 +55,7 @@ class Vector:
 
 
 class Molecule(Vector):
-    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, reactant=False, product=False, program='g16'):
+    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, reactant=False, product=False, program='g16', indexes=None):
         self.name = name
         self.directory = directory
         self.file_path = file_path
@@ -65,7 +65,7 @@ class Molecule(Vector):
         self.job_id = ""
         self.atoms = atoms if atoms is not None else []
         self.coordinates = coordinates if coordinates is not None else []
-        self.constrained_indexes = {}
+        self.constrained_indexes = {'C': indexes[0], 'H': indexes[1], 'O': indexes[2], 'OH': indexes[2]+1} if indexes else {}
         self.converged = False
         self.mult = 1 if self.reactant else 2 
         self.charge = 0
@@ -80,10 +80,10 @@ class Molecule(Vector):
         self.status = None
         self.error_termination_count = 0
         self.program = program if program is not None else 'g16'
-        self.init_molecule()
+        self.init_molecule(indexes)
                         
 
-    def init_molecule(self):
+    def init_molecule(self, indexes):
         # If XYZ file is given
         if self.file_path and self.file_path.split(".")[-1] == 'xyz':
             self.read_xyz_file()
@@ -115,7 +115,7 @@ class Molecule(Vector):
                     self.mult = 2
                         
             else:
-                self.find_active_site()
+                self.find_active_site(indexes)
 
         self.workflow = self.determine_workflow()
         self.set_current_step()
@@ -267,26 +267,60 @@ class Molecule(Vector):
             print("Reached the end of the workflow.")
 
 
-    def find_active_site(self):
-        # Directly access the indexes of the OH radical
-        O_index = len(self.atoms) - 2  # Second-last atom is the oxygen of the OH radical
-        H_OH_index = len(self.atoms) - 1  # Last atom is the hydrogen of the OH radical
+    def find_active_site(self, indexes=None):
+        if indexes:
+            C_index, H_index, O_index = indexes
+            H_OH_index = O_index + 1
+            self.constrained_indexes = {'C': C_index, 'H': H_index, 'O': O_index, 'OH': H_OH_index}
+            return
+        else:
+            constrain_file_path = os.path.join(self.directory, ".constrain")
+            if os.path.exists(constrain_file_path):
+                try:
+                    with open(constrain_file_path, "r") as file:
+                        constraints = {}
+                        for line in file:
+                            atom, index = line.split(":")
+                            constraints[atom.strip()] = int(index.strip())
+                        C_index = constraints.get('C', None)
+                        H_index = constraints.get('H', None)
+                        O_index = constraints.get('O', None)
+                        H_OH_index = O_index + 1
+                        self.constrained_indexes = {'C': C_index, 'H': H_index, 'O': O_index, 'OH': H_OH_index}
+                        return
+                except Exception as e:
+                    print(f"Error reading .constrain file: {e}")
+                    # If reading .constrain fails, proceed to loop through the molecule
+                    indexes = None
 
-        for C, atom in enumerate(self.atoms):
-            if atom == 'C':
-                for H, neighbor in enumerate(self.atoms):
-                    if neighbor == 'H' and self.is_nearby(C, H):
-                        # Since we already know the indexes of O and H in the OH radical,
-                        # we directly use them instead of iterating through all atoms again.
-                        if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[O_index]) > 150:
-                            print(self.atom_distance(self.coordinates[H], self.coordinates[O_index]))
-                            # Check if the H from the molecule is close enough to the O from the OH radical
-                            # indicating a potential active site for hydrogen abstraction.
-                            if self.is_nearby(H, O_index):
-                                self.constrained_indexes = {'C': C+1, 'H': H+1, 'O': O_index+1, 'OH': H_OH_index+1}
-                                return 
+            if not indexes:  # Fallback to original logic if indexes not set
+                # Directly access the indexes of the OH radical
+                O_index = len(self.atoms) - 2  # Second-last atom is the oxygen of the OH radical
+                H_OH_index = len(self.atoms) - 1  # Last atom is the hydrogen of the OH radical
 
-    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.60):
+                for C, atom in enumerate(self.atoms):
+                    if atom == 'C':
+                        for H, neighbor in enumerate(self.atoms):
+                            if neighbor == 'H' and self.is_nearby(C, H):
+                                # Since we already know the indexes of O and H in the OH radical,
+                                # we directly use them instead of iterating through all atoms again.
+                                if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[O_index]) > 160:
+                                    # Check if the H from the molecule is close enough to the O from the OH radical
+                                    # indicating a potential active site for hydrogen abstraction.
+                                    if self.is_nearby(H, O_index):
+                                        if self.is_nearby(O_index, H_OH_index):
+                                            self.constrained_indexes = {'C': C+1, 'H': H+1, 'O': O_index+1, 'OH': H_OH_index+1}
+                                            return
+
+        if not self.constrained_indexes:
+            log_error = Logger(os.path.join(self.directory, "error_constraining_indexes"))
+            log_error.log(f"Atoms involved in the transition state could not be determined for {self.name}. Might be due to bad geometry.")
+            print(f"!!!Atoms involved in the transition state could not be determined for {self.name}\n Might be due to bad geometry!!!")
+
+
+
+
+    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=2.0):
         distance = np.linalg.norm(np.array(self.coordinates[atom_index1]) - np.array(self.coordinates[atoms_index2]))
         return distance < threshold_distance
 
@@ -454,12 +488,27 @@ class Molecule(Vector):
         self.Q = qvib*qrot*qtrans*qelec
 
 
-    def set_active_site(self, perturb=False, distance_CH=None, distance_HO=None, distance_OH_H=None, reaction_angle=None):
-        # python indexing starting from 0
-        C_index = self.constrained_indexes['C']-1
-        H_index = self.constrained_indexes['H']-1
-        O_index = self.constrained_indexes['O']-1
-        OH_index = self.constrained_indexes['OH']-1
+    def set_active_site(self, indexes=None, distance_CH=None, distance_HO=None, distance_OH_H=None, reaction_angle=None, perturb=False):
+        if indexes:
+            C_index, H_index, O_index = indexes
+            OH_index = O_index+1
+            self.constrained_indexes = {'C': C_index, 'H': H_index, 'O': O_index, 'OH': OH_index}
+        elif self.constrained_indexes:
+            # python indexing starting from 0
+            C_index = self.constrained_indexes['C']
+            H_index = self.constrained_indexes['H']
+            O_index = self.constrained_indexes['O']
+            OH_index = self.constrained_indexes['OH']
+        else:
+            self.find_active_site()
+            C_index = self.constrained_indexes['C']
+            H_index = self.constrained_indexes['H']
+            O_index = self.constrained_indexes['O']
+            OH_index = self.constrained_indexes['OH']
+        if not self.constrained_indexes:
+            raise ValueError('Indexes for atoms involved in transition state site could not be determined\n Consider using "-CHO c_index h_index o_index" in the input argument. Open visualizer to manually get indexes')
+
+        C_index, H_index, O_index, OH_index = C_index-1, H_index-1, O_index-1, OH_index-1
 
         if perturb:
             scaling_factor = 0.1
@@ -473,13 +522,13 @@ class Molecule(Vector):
         else:
             # If distances and angle are not given, use molecules current values
             if distance_CH is None:
-                distance_CH = self.atom_distance(self.coordinates[C_index], self.coordinates[H_index])
+                distance_CH = 1.21
             if distance_HO is None:
-                distance_HO = self.atom_distance(self.coordinates[H_index], self.coordinates[O_index])
+                distance_HO = 1.277
             if distance_OH_H is None:
-                distance_OH_H = self.atom_distance(self.coordinates[O_index], self.coordinates[OH_index])
+                distance_OH_H = 0.97
             if reaction_angle is None:
-                reaction_angle = self.calculate_angle(self.coordinates[C_index], self.coordinates[H_index], self.coordinates[O_index])
+                reaction_angle = 176.7
 
             # Set the C-H distance
             vector_CH = self.calculate_vector(self.coordinates[C_index], self.coordinates[H_index])
@@ -543,10 +592,10 @@ class Molecule(Vector):
                         aldehyde_O = group['O']
                         aldehyde_C = group['C']
                         # Adjust settings specifically for aldehyde H
-                        distance_CH = 1.317
-                        distance_OH = 1.302
-                        reaction_angle = 99.9
-                        water_angle = 140
+                        distance_CH = 1.19481
+                        distance_OH = 1.40971
+                        reaction_angle = 145.503
+                        water_angle = 96.138
                         perp_axis = self.normalize_vector(self.calculate_vector(original_coords[aldehyde_O], original_coords[aldehyde_C]))
                         break
             for j, other_atom in enumerate(atoms):
@@ -585,23 +634,21 @@ class Molecule(Vector):
                     rotation_angle = np.radians(180 - reaction_angle)
                     rotated_vector = self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
 
-                    oxygen_position = new_H_position - (rotated_vector * distance_OH)
-                    if self.atom_distance(oxygen_position, original_coords[j]) < distance_OH:
-                        oxygen_position = new_H_position + rotated_vector * distance_OH 
+                    new_oxygen_position = new_H_position - (rotated_vector * distance_OH)
+                    if self.atom_distance(new_oxygen_position, original_coords[j]) < distance_OH:
+                        new_oxygen_position = new_H_position + (rotated_vector * distance_OH)
 
-                    # norm_vector_OH = self.normalize_vector(oxygen_position - new_H_position)
-                    rotation_axis = self.normalize_vector(rotation_axis)
-
-                    rotation_angle_H = np.radians(water_angle)
-                    new_OH_H_position = oxygen_position - self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_H) * distance_OH_H
+                    rotation_angle_H = np.radians(180-water_angle)
+                    norm_vector_OH = self.normalize_vector(self.calculate_vector(new_H_position, new_oxygen_position))
+                    new_OH_H_position = new_oxygen_position - self.rotate_vector(norm_vector_OH, rotation_axis, rotation_angle_H) * distance_OH_H
                     if self.atom_distance(new_OH_H_position, new_H_position) < 1.5:
-                        new_OH_H_position = oxygen_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_H) * distance_OH_H
+                        new_OH_H_position = new_oxygen_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_H) * distance_OH_H
 
                     new_coords[i] = (new_H_position).tolist()
 
                     new_atoms.append('O')
                     new_atoms.append('H')
-                    new_coords.append(oxygen_position.tolist())
+                    new_coords.append(new_oxygen_position.tolist())
                     new_coords.append(new_OH_H_position.tolist())
 
                     if NEB:
@@ -862,10 +909,10 @@ class Molecule(Vector):
         print(f"Multiplicity: {self.mult}")
         print(f"Charge: {self.charge}")
         print(f"Workflow: {self.workflow}")
-        if self.constrained_indexes: print(f"Constrained Indexes: {self.constrained_indexes}")
+        print(f"Constrained Indexes: {self.constrained_indexes}")
         print(f"Electronic Energy: {self.single_point}")
         print(f"Zero Point Corrected Energy: {self.zero_point_corrected}")
-        # print(f"Sum of electronic and thermal Free Energies: {self.free_energy}")
+        print(f"Sum of electronic and thermal Free Energies: {self.free_energy}")
         print(f"Partition Function: {self.Q}")
         print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
         print(f"Current Step: {self.current_step}")
