@@ -1,11 +1,4 @@
-def compare_pair(preselected_df,arg):
-  from ArbAlign import compare
-  tobecompared = comparepairs[arg]
-  AAci = preselected_df.loc[allindexes[tobecompared[0]],("xyz","structure")]
-  AAcj = preselected_df.loc[allindexes[tobecompared[1]],("xyz","structure")]
-  return compare(AAci,AAcj)
-
-def filter_arbalign(clusters_df,Qclustername,Qout):
+def filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout):
   from joblib import Parallel, delayed
   from os import environ
 
@@ -17,12 +10,21 @@ def filter_arbalign(clusters_df,Qclustername,Qout):
 
   if Qclustername != 0:
     from numpy import unique
-    uniqueclusters = unique(clusters_df.loc[:("info","cluster_type")].values)
+    uniqueclusters = unique(clusters_df.loc[:,("info","cluster_type")])
   else:
     uniqueclusters = "1"
 
   original_length = len(clusters_df)
   myNaN = lambda x : missing if x == "NaN" else x
+  global preselected_df,comparepairs,allindexes
+
+  def compare_pair(arg):
+    from ArbAlign import compare
+    tobecompared = comparepairs[arg]
+    AAci = preselected_df.loc[allindexes[tobecompared[0]],("xyz","structure")]
+    AAcj = preselected_df.loc[allindexes[tobecompared[1]],("xyz","structure")]
+    return compare(AAci,AAcj)
+
   for i in uniqueclusters:
      if Qclustername != 0:
        preselected_df = clusters_df.loc[clusters_df.loc[:,("info","cluster_type")] == i]
@@ -42,10 +44,12 @@ def filter_arbalign(clusters_df,Qclustername,Qout):
        comparison = Parallel(n_jobs=num_cores)(delayed(compare_pair)(i) for i in range(len(comparepairs)))
        for AAc in range(len(comparison)):
          if comparison[AAc] < Qarbalign:
-           removedindexes.append(allindexes[preselected_df,comparepairs[AAc][1]])
+           removedindexes.append(allindexes[comparepairs[AAc][1]])
      clusters_df = clusters_df.drop(removedindexes)
 
   if Qout >= 1:
-    print("Sampled: "+str(original_length)+" --> "+str(len(clusters_df)))
+    print("ArbAlign: "+str(original_length)+" --> "+str(len(clusters_df)))
 
   return clusters_df
+
+

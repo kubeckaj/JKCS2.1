@@ -1,5 +1,5 @@
 def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
-  from numpy import array, tile, errstate, unique
+  from numpy import array, tile, errstate, unique, sum
   from pandas import isna
   original_length = len(clusters_df)
 

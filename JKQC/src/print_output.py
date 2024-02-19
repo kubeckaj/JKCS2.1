@@ -161,7 +161,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, Qsplit, Qclustername, Qt, Qcol
       continue
     #Rg
     if i == "-rg":
-      from numpy import tile
+      from numpy import tile,sum
       rg = []
       for ind in clusters_df.index:
         try:

@@ -69,51 +69,69 @@ source JKCS/bin/activate
 #echo y | conda install numba
 PIP="$PYTHON -m pip " #--cache-dir=$PWD/JKCS/"
 
+if [[ "$*" == *"-mbdf"* ]]
+then
+  echo "======================"
+  echo "MBDF requires some old numpy, here you go:"
+  $PIP install numpy==1.21.4
+  echo "======================"
+  currdir=$PWD
+  cd JKCS/lib64/py*/site-packages/
+  git clone https://github.com/dkhan42/MBDF.git
+  cp MBDF/MBDF.py .
+  git clone https://github.com/dkhan42/qml2.git
+  cd qml2
+  cp readme.rst README.rst
+  $PYTHON setup.py install
+  cd $currdir
+fi
+
+#pyarrow==15.0.0 ????
+
 echo "======================"
 $PIP install --upgrade pip
 echo "======================"
-$PIP install numpy==1.25.2
+$PIP install numpy==1.26.3
 echo "======================"
-$PIP install scipy==1.9.3 $ADD 
+$PIP install scipy==1.9.3   #I need this version for ArbAlign 
 echo "======================"
-$PIP install joblib==1.3.2 $ADD
+$PIP install joblib==1.3.2  
 echo "======================"
 $PIP install ase==3.22.1
-
-
-
-if [[ "$*" == *"-qml "* ]]
-then
-  #NUMPY: the numpy is reinstalled later in the script because lapjv would not run with this version
-  #this version is however needed for QML. When QML is installed with the newest version, it works ...I guess
-  #echo "======================"
-  #$PIP install numpy==1.21.4 #1.23.0 had some issues for qml np.distutils or something like that
-  $PIP install scikit-learn
-  echo "======================"
-  $PIP install git+https://github.com/qmlcode/qml@develop $ADD
-fi
 echo "======================"
-$PIP install pathlib==1.0.1 $ADD #Perhaps this one is not necessary
+$PIP install pathlib==1.0.1 #Perhaps this one is not necessary
 echo "======================"
-$PIP install numexpr==2.8.4 #2.7.0 $ADD
+$PIP install numexpr==2.8.4 #2.7.0
+echo "======================"
+$PIP install pyarrow==15.0.0 #this bullshit is required by new pandas
 echo "======================"
 $PIP install pandas==2.2.0  #
 echo "======================"
+$PIP install lapjv==1.3.1
+echo "======================"
+$PIP install xlsxwriter     #important only for IMoS output but cheap to install
 if [[ "$*" == *"-descriptors"* ]]
 then
- $PIP install sklearn
- $PIP install cffi
- $PIP install dscribe
+  echo "======================"
+  $PIP install scikit-learn
+  echo "======================"
+  $PIP install cffi
+  echo "======================"
+  $PIP install dscribe
 fi
 if [[ "$*" == *"-qml "* ]]
 then
-  #Eh, this is bullshit: NUMPY: the numpy is reinstalled later in the script because lapjv would not run with this version
-  #this version is however needed for QML. When QML is installed with the newest version, it works ...I guess
-  #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
-  python -m pip install qml
+  if [[ "$*" != *"-descriptors"* ]]
+  then
+    echo "======================"
+    $PIP install scikit-learn
+  fi
+  echo "======================"
+  $PIP install qml          #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 if [[ "$*" == *"-mbdf"* ]]
 then
+  echo "======================"
   currdir=$PWD
   cd JKCS/lib64/py*/site-packages/
   git clone https://github.com/dkhan42/MBDF.git
@@ -126,6 +144,7 @@ then
 fi
 if [[ "$*" == *"-qml-lightning"* ]]
 then
+  echo "======================"
   currdir=$PWD
   cd JKCS/lib64/py*/site-packages/
   git clone https://github.com/nickjbrowning/qml-lightning.git
@@ -135,6 +154,7 @@ then
 fi
 if [[ "$*" == *"-xtb"* ]]
 then
+  echo "======================"
   export CC=gcc
   $PIP install tblite
   ## Use following in Python script:
@@ -143,22 +163,25 @@ then
 fi
 if [[ "$*" == *"-nn"* ]]
 then
+  echo "======================"
   $PIP install torch
+  echo "======================"
   $PIP install lightning
+  echo "======================"
   $PIP install hydra-core
+  echo "======================"
   $PIP install schnetpack
   #AGOX was not able to use schnet calculator, this will resolve it:
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib64/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
+  echo "======================"
   $PIP install pytorch-lightning==2.0.6
+  echo "======================"
   $PIP install tensorboard
 fi
 
-#NOT IMPORTANT FOR ALL BUT CHEAP TO INSTALL
-$PIP install xlsxwriter
-
+echo "======================"
 #ArbAlign stuff:
-$PIP install lapjv==1.3.1
 cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$PYTHON/site-packages/ArbAlign.py
 
 #echo "- exporting environment"

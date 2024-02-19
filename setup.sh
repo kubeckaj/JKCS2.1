@@ -57,9 +57,10 @@ OPTIONS (extra packages):
   -qml ............ quantum machine learning program
   -nn ............. schnetpack [!needs: module load gcc]
   -descriptors .... dscribe library
+  -xtb ............ python xtblite
+  -all ............ all above = qml,nn,descriptors,xtb
   -mbdf ........... MBDF for categorization trick
-  -all ............ all above
-  experimental: -qml-lightning, -xtb
+  experimental: -qml-lightning
 
 EXAMPLE:
     sh setup.sh -python python3.9 -module "module load python"
@@ -158,7 +159,7 @@ EXAMPLE:
   fi
   if [ "$i" == "-all" ]
   then
-    ADD+=" -qml -mbdf -descriptors -nn "
+    ADD+=" -qml -xtb -descriptors -nn "
     continue
   fi
   if [ "$i" == "-qml" ] || [ "$i" == "qml" ]
