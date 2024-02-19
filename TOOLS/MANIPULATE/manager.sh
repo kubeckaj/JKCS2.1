@@ -1,10 +1,12 @@
-#!/bin/bash
+#!/bin/bash -norc
 #sh manager.sh INPUT
 start=`date +%s`
 
 # locate TOOLS path
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../TOOLS"
+export PATH=$scriptpath:$PATH              #MANIPULATE
+export PATH=$scriptpath/../../JKCSx:$PATH  #JKCSx
 source ~/.JKCSusersetup.txt
 
 input=$1

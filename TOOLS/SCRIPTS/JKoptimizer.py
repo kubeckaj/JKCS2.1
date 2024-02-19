@@ -7,7 +7,7 @@ import shutil
 import copy
 
 ################## CALLING COST FUNCTION  ####################
-def cost_function(guesses,cost_function_file,QSCcpu,QSCparallel):
+def cost_function(guesses,cost_function_file,QSCcpu,QSCparallel,QCtime):
   #PREPARE FOLDERS
   for guess_i in range(len(guesses)):
     os.makedirs("TRIAL_"+str(guess_i))
@@ -25,7 +25,7 @@ def cost_function(guesses,cost_function_file,QSCcpu,QSCparallel):
       process.wait()
       os.chdir('../')
   else:
-    process = subprocess.Popen('sbatch --time 2:00:00 -n '+str(QSCparallel)+' --array=0-'+str(len(guesses)-1)+' JKsend "cd TRIAL_\$SLURM_ARRAY_TASK_ID; sh '+cost_function_file+' '+str(QSCparallel)+'"', shell = True)
+    process = subprocess.Popen('sbatch --time '+QCtime+' -n '+str(QSCparallel)+' --array=0-'+str(len(guesses)-1)+' JKsend "cd TRIAL_\$SLURM_ARRAY_TASK_ID; sh '+cost_function_file+' '+str(QSCparallel)+'"', shell = True)
     process.wait()
  
   #WAITING/CHECKING JOBS TO BE FINISHED
@@ -81,10 +81,10 @@ def generate_step(var, var_mod, var_mod_operation, idx, this_ig_var_operation):
   return np.array(new_var)
 
 ########### OPTIMIZATION DIRECTIONAL HESS MOVE ##########
-def mover(initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, cost_function_file, cpu, parallel):
+def mover(initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, cost_function_file, cpu, parallel,QCtime):
   #positions of new variables to be tested
   all_positions = [array_operate(initial_guess,generate_step(var, where*var_mod[idx], var_mod_operation[idx], idx, ig_var_operation[idx]),ig_var_operation) for where in [1,-1] for idx in range(len(var))]
-  cost_all = cost_function(all_positions, cost_function_file, cpu, parallel)
+  cost_all = cost_function(all_positions, cost_function_file, cpu, parallel, QCtime)
   print("", flush = True)
   
   #SEPARATE AND PRECALCULATE SOMETHING
@@ -163,7 +163,7 @@ def mover(initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_
   return np.array(res), var_mod, best_found, best_var
 
 ########### THE ACTUAL MOVING TESTS ##########
-def moving(move, initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, cost_function_file, cpu, parallel):
+def moving(move, initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, cost_function_file, cpu, parallel,QCtime):
   
   testing = "FIRST TESTING"
   friction_applied = 0
@@ -182,7 +182,7 @@ def moving(move, initial_guess, var, ig_var_operation, var_mod, var_mod_operatio
       print("Too much friction")
       testing = "END"
     all_positions = [array_operate(initial_guess,np.array([operate(var[j], array_operate(-move,-mod_mod,mod_mod_operation,friction_applied+i,1)[j],var_mod_operation[j],1, 1 if ig_var_operation[j]=="*" else 0) for j in range(len(var))]),ig_var_operation) for i in range(in_parallel)]
-    cost_all = cost_function(all_positions, cost_function_file, cpu, parallel)
+    cost_all = cost_function(all_positions, cost_function_file, cpu, parallel,QCtime)
     ## TOO SHORT STEP SHOULD BE IRRELEVANT
     #if np.linalg.norm(friction*move) < 1e-6: #diff_step/10:
     #        print("DONE -- too short step.", flush = True)
@@ -302,6 +302,7 @@ def main():
   parser.add_argument("-cff", "--cost_function_file", type=str, required=False, default="../XTB3_runXTB.sh", help="Cost function file full path [bash file assumed]")
   parser.add_argument("-cpu", type=int, required=False, default=1, help="Number of CPUs this script can use.")
   parser.add_argument("-parallel", type=int, required=False, default=0, help="Number of CPUs the submitted script can use (def = 0).")
+  parser.add_argument("-time", type=str, required=False, default="2-00:00:00", help="Wall time for each cost function calculation (def = 2:00:00).")
   parser.add_argument("-maxiter", type=int, required=False, default=100, help="Maximum number of iterations (def = 100).")
   args = parser.parse_args()
 
@@ -334,7 +335,7 @@ def main():
   print(f">>> Optimizing for input {initial_guess}", flush = True)
   #print([[initial_guess], args.cost_function_file, args.cpu, args.parallel])
   #original cost function:
-  og_cost = cost_function([initial_guess], args.cost_function_file, args.cpu, args.parallel)[0]
+  og_cost = cost_function([initial_guess], args.cost_function_file, args.cpu, args.parallel, args.time)[0]
   print('Cost function: ',og_cost, " kcal/mol/atom (original)", flush = True)
   if np.isnan(og_cost):
     print("For the initial parameters, XTB returns NaN. Buuuuuuu [EXITING]")
@@ -346,11 +347,11 @@ def main():
   for iter in range(max_iter):
     print("####################################")
     print(f'>>> Iteration {iter}', flush = True)
-    move, var_mod, best_found, best_var = mover(initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, args.cost_function_file, args.cpu, args.parallel)
+    move, var_mod, best_found, best_var = mover(initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, args.cost_function_file, args.cpu, args.parallel,args.time)
     #print('\nMove :', move, flush = True)
     print("Test : starting from", og_cost,  flush = True)
     print("Test : best found", best_found,  flush = True)
-    best_test_found, best_test_var = moving(move, initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, args.cost_function_file, args.cpu, args.parallel)
+    best_test_found, best_test_var = moving(move, initial_guess, var, ig_var_operation, var_mod, var_mod_operation, mod_mod, mod_mod_operation, og_cost, args.cost_function_file, args.cpu, args.parallel,args.time)
     if best_test_found < best_found:
       best_found = best_test_found
       best_var =  copy.deepcopy(best_test_var)

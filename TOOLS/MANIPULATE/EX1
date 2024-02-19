@@ -35,7 +35,7 @@ do
   if grep -q "\<$n\>" <<< ${all_clusters_that_are_done}:; 
   then 
     echo "$i is already done in ACDB [REMOVING]"; 
-    echo $n > acdb.txt
+    echo $n >> acdb.txt
     rm -r $i
   fi
 done
@@ -58,7 +58,7 @@ JKCS3_run -p G16 -rf collectionDFT_opt.pkl -nf DFT_freq -m \"# wb97xd 6-31++g** 
 JKCS4_collect DFT_freq -oc -loc
 JKQC collectionDFT_freq.pkl -cut lf 0 -ePKL -noex -out ifreq.pkl > to_run_DFT_freq_restart.dat
 JKQC collectionDFT_freq.pkl -pass lf nan -ePKL -noex -out nfreq.pkl >> to_run_DFT_freq_restart.dat
-JKCS3_run -p G16 -rf to_run_DFT_freq_restart.dat -nf DFT_freq -m \"# wb97xd 6-31++g**  opt=(maxcycles=100) freq\" -time 72:00:00 -cpu 8 -maxtasks 51
+JKCS3_run -p G16 -rf to_run_DFT_freq_restart.dat -nf DFT_freq_restart -m \"# wb97xd 6-31++g**  opt=(maxcycles=100) freq\" -time 72:00:00 -cpu 8 -maxtasks 51
 JKCS4_collect DFT_freq_restart -oc -loc
 JKQC collectionDFT_freq*.pkl -pass lf 0 -sort g -fc 100 -v 0.996 -select 1 -noex -ePKL -out bestDFT.pkl > to_run_DLPNO.dat
 JKCS3_run -p ORCA -rf to_run_DLPNO.dat -nf DLPNO -m \"! aug-cc-pVTZ aug-cc-pVTZ/C RI-JK aug-cc-pVTZ/JK DLPNO-CCSD(T) TightSCF\" -time 72:00:00 -cpu 8 -mem 16gb -maxtasks 2

@@ -1,0 +1,32 @@
+#!/bin/bash -norc
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+export PATH=$scriptpath:$PATH              #MANIPULATE
+export PATH=$scriptpath/../../JKCSx:$PATH  #JKCSx
+######
+
+number_of_folders=`ls -d SYS* | wc -w`
+
+echo """#!/bin/bash -norc
+scriptpath=\"\$( cd \"\$(dirname \"\$0\")\" ; pwd -P )\"
+export PATH=\$scriptpath:\$PATH              #MANIPULATE
+export PATH=\$scriptpath/../../JKCSx:\$PATH  #JKCSx
+folder=\`ls -d SYS* | xargs | awk -v VAR=\$SLURM_ARRAY_TASK_ID '{print \$VAR}'\`
+cd \$folder
+eval \"$@\"
+cd ..
+""" > cmd_jkforsend.sh
+
+
+##UNCOMMENT THIS PART IF YOU OBTAIN ERROR OF TYPE:
+##/var/spool/slurmd/job4726218/slurm_script: line 11: cd /wrk/users/ineefjes/DATABASE/SA_CLUSTERS/NEUTRAL/SYS_3SA/ABC/ABC_2_1_0_0; sh runJKCS2_explore.sh;: No such file or directory
+firstsymbol=`echo $* | cut -c-1`
+if [ "$firstsymbol" == '"' ]
+then
+ args=`echo $@`
+ args="${args%\"}"
+ args="${args#\"}"
+ sbatch --array=1-$number_of_folders JKsend sh cmd_jkforsend.sh
+else
+##AND COMMENT THIS GUY:
+ sbatch --array=1-$number_of_folders JKsend sh cmd_jkforsend.sh
+fi

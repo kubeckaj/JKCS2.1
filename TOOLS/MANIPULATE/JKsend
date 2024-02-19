@@ -1,5 +1,6 @@
-#!/bin/bash -l
-#SBATCH -p qany
+#!/bin/bash -norc
+#-norc for no source of bashrc 
+#SBATCH -p q64,q48,q40,q36,q28,q24,q20
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 1
@@ -9,7 +10,8 @@
 #SBATCH --open-mode=append
 
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
-export PATH=$scriptpath:$PATH
+export PATH=$scriptpath:$PATH              #MANIPULATE
+export PATH=$scriptpath/../../JKCSx:$PATH  #JKCSx
 
 ##UNCOMMENT THIS PART IF YOU OBTAIN ERROR OF TYPE:
 ##/var/spool/slurmd/job4726218/slurm_script: line 11: cd /wrk/users/ineefjes/DATABASE/SA_CLUSTERS/NEUTRAL/SYS_3SA/ABC/ABC_2_1_0_0; sh runJKCS2_explore.sh;: No such file or directory

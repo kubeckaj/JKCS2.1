@@ -11,6 +11,7 @@ then
   fi
 fi
 
+echo Let me install some python packages
 eval $MODULE_PYTHON
 ### MAKING OWN ENVIRONMENT
 #echo """name: jkcs
@@ -36,7 +37,9 @@ if [[ "$parsedVersion" -gt "400" || "$parsedVersion" -lt "380" ]]   #
 
 echo "- creating environment"
 #conda env create --name JKCS --file jkcs.yaml
-$PYTHON -m venv --system-site-packages JKCS
+$PYTHON -m venv JKCS
+#$PYTHON -m venv --no-site-packages JKCS
+#$PYTHON -m venv --system-site-packages JKCS
 
 #echo "- loading anaconda"
 #module load anaconda3/5.0.1
@@ -65,31 +68,49 @@ source JKCS/bin/activate
 #echo y | conda install xtb-python
 #echo y | conda install numba
 PIP="$PYTHON -m pip " #--cache-dir=$PWD/JKCS/"
-#$PIP --version
+
+echo "======================"
 $PIP install --upgrade pip
+echo "======================"
+$PIP install numpy==1.25.2
+echo "======================"
 $PIP install scipy==1.9.3 $ADD 
-$PIP install pathlib #Perhaps this one is not necessary
-$PIP install numexpr==2.7.0 $ADD
-#NUMPY: the numpy is reinstalled later in the script because lapjv would not run with this version
-#this version is however needed for QML. When QML is installed with the newest version, it works ...I guess
-$PIP install numpy==1.21.4 $ADD #1.23.0 had some issues for qml np.distutils or something like that
-$PIP install pandas==1.3.4 $ADD
-$PIP install ase 
+echo "======================"
+$PIP install joblib==1.3.2 $ADD
+echo "======================"
+$PIP install ase==3.22.1
+
+
+
+if [[ "$*" == *"-qml "* ]]
+then
+  #NUMPY: the numpy is reinstalled later in the script because lapjv would not run with this version
+  #this version is however needed for QML. When QML is installed with the newest version, it works ...I guess
+  #echo "======================"
+  #$PIP install numpy==1.21.4 #1.23.0 had some issues for qml np.distutils or something like that
+  $PIP install scikit-learn
+  echo "======================"
+  $PIP install git+https://github.com/qmlcode/qml@develop $ADD
+fi
+echo "======================"
+$PIP install pathlib==1.0.1 $ADD #Perhaps this one is not necessary
+echo "======================"
+$PIP install numexpr==2.8.4 #2.7.0 $ADD
+echo "======================"
+$PIP install pandas==2.2.0  #
+echo "======================"
 if [[ "$*" == *"-descriptors"* ]]
 then
  $PIP install sklearn
  $PIP install cffi
  $PIP install dscribe
- #ADD="--force-reinstall --upgrade"
- #$PIP install install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 if [[ "$*" == *"-qml "* ]]
 then
-  #$PIP install sklearn
-  #$PIP install cffi
-  #$PIP install dscribe
-  #ADD="--force-reinstall --upgrade"
-  $PIP install git+https://github.com/qmlcode/qml@develop $ADD
+  #Eh, this is bullshit: NUMPY: the numpy is reinstalled later in the script because lapjv would not run with this version
+  #this version is however needed for QML. When QML is installed with the newest version, it works ...I guess
+  #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
+  python -m pip install qml
 fi
 if [[ "$*" == *"-mbdf"* ]]
 then
@@ -120,7 +141,6 @@ then
   #from tblite.ase import TBLite 
   #atoms.calc = TBLite(method="GFN1-xTB")
 fi
-$PIP install numpy==1.23.0
 if [[ "$*" == *"-nn"* ]]
 then
   $PIP install torch
@@ -138,7 +158,7 @@ fi
 $PIP install xlsxwriter
 
 #ArbAlign stuff:
-$PIP install lapjv
+$PIP install lapjv==1.3.1
 cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$PYTHON/site-packages/ArbAlign.py
 
 #echo "- exporting environment"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -norc
 line="$1"
 line=`echo $line | bc`
 file=$2
