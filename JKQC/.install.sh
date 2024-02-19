@@ -67,7 +67,7 @@ source JKCS/bin/activate
 
 #echo y | conda install xtb-python
 #echo y | conda install numba
-PIP="$PYTHON -m pip --no-cache-dir" #--cache-dir=$PWD/JKCS/"
+PIP="$PYTHON -m pip --no-cache-dir " #--cache-dir=$PWD/JKCS/"
 
 if [[ "$*" == *"-mbdf"* ]]
 then
@@ -86,13 +86,15 @@ then
   cd $currdir
 fi
 
-#pyarrow==15.0.0 ????
-
 echo "======================"
 $PIP install --upgrade pip
 echo "======================"
-$PIP install numpy==1.26.3
+$PIP install numpy
 echo "======================"
+$PIP install lapjv
+echo "======================"
+#$PIP install numpy==1.26.3
+#echo "======================"
 $PIP install scipy==1.9.3   #I need this version for ArbAlign 
 echo "======================"
 $PIP install joblib==1.3.2  
@@ -107,9 +109,14 @@ $PIP install pyarrow==15.0.0 #this bullshit is required by new pandas
 echo "======================"
 $PIP install pandas==2.2.0  #
 echo "======================"
-$PIP install lapjv==1.3.1
-echo "======================"
 $PIP install xlsxwriter     #important only for IMoS output but cheap to install
+#LAPJV can be installed directlty:
+#echo "======================"
+#module load gcc 2>/dev/null
+#$PIP install git+https://github.com/src-d/lapjv
+#$PIP install lapjv==1.3.1  #this bitch has some issues to see numpy
+
+
 if [[ "$*" == *"-descriptors"* ]]
 then
   echo "======================"
@@ -119,6 +126,8 @@ then
   echo "======================"
   $PIP install dscribe
 fi
+
+
 if [[ "$*" == *"-qml "* ]]
 then
   if [[ "$*" != *"-descriptors"* ]]
@@ -129,6 +138,8 @@ then
   echo "======================"
   $PIP install qml          #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
 fi
+
+
 if [[ "$*" == *"-mbdf"* ]]
 then
   echo "======================"
@@ -142,6 +153,8 @@ then
   $PYTHON setup.py install 
   cd $currdir
 fi
+
+
 if [[ "$*" == *"-qml-lightning"* ]]
 then
   echo "======================"
@@ -152,15 +165,20 @@ then
   $PYTHON setup.py build
   cd $currdir
 fi
+
+
 if [[ "$*" == *"-xtb"* ]]
 then
   echo "======================"
   export CC=gcc
+  module load gcc 2>/dev/null
   $PIP install tblite
   ## Use following in Python script:
   #from tblite.ase import TBLite 
   #atoms.calc = TBLite(method="GFN1-xTB")
 fi
+
+
 if [[ "$*" == *"-nn"* ]]
 then
   echo "======================"
