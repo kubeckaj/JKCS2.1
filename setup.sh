@@ -143,13 +143,14 @@ EXAMPLE:
     MODULE_ABC="module load gcc"
     PATH_XTB="/projappl/project_2006166/APP/XTB6.5.1"
     MODULE_XTB=""
-    PATH_CREST="/projappl/project_2006166/APP/crest"
+    PATH_CREST="/projappl/project_2006166/APP/crest/"
     PATH_G16="/appl/soft/chem/gaussian/G16RevC.02/"
     MODULE_G16="module load gaussian"
     PATH_ORCA="/projappl/project_2006166/APP/ORCA5.0.3"
     #MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
     #MODULE_ORCA="module purge; module load gcc/11.3.0 openmpi/4.1.4 intel-oneapi-mkl/2022.1.0"
-    MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+    #MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
+    MODULE_ORCA="module purge; module load gcc/11.3.0 openmpi/4.1.4 intel-oneapi-mkl/2022.1.0"
     EXTRA_ORCA_LINES="ORTERUN=\\\\\`which orterun\\\\\`\nln -sf \\\\\${ORTERUN}  \\\\\${SLURM_SUBMIT_DIR}/mpirun\nexport PATH=\\\\\${SLURM_SUBMIT_DIR}:\\\\\${PATH}\n"
     project="project_2001079"  #project_2006166
     #project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`

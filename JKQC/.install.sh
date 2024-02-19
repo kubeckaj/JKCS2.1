@@ -90,6 +90,14 @@ echo "======================"
 $PIP install --upgrade pip
 echo "======================"
 $PIP install numpy
+#QML
+if [[ "$*" == *"-qml "* ]]
+then
+  echo "======================"
+  $PIP install scikit-learn
+  echo "======================"
+  $PIP install qml          #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
+fi
 echo "======================"
 $PIP install lapjv
 echo "======================"
@@ -125,18 +133,6 @@ then
   $PIP install cffi
   echo "======================"
   $PIP install dscribe
-fi
-
-
-if [[ "$*" == *"-qml "* ]]
-then
-  if [[ "$*" != *"-descriptors"* ]]
-  then
-    echo "======================"
-    $PIP install scikit-learn
-  fi
-  echo "======================"
-  $PIP install qml          #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
 fi
 
 
