@@ -67,7 +67,7 @@ source JKCS/bin/activate
 
 #echo y | conda install xtb-python
 #echo y | conda install numba
-PIP="$PYTHON -m pip " #--cache-dir=$PWD/JKCS/"
+PIP="$PYTHON -m pip --no-cache-dir" #--cache-dir=$PWD/JKCS/"
 
 if [[ "$*" == *"-mbdf"* ]]
 then
