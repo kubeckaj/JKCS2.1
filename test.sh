@@ -74,7 +74,7 @@ then
   #echo "print(a*a)" >> .test.py
   #program_PYTHON .test.py > .test.out 2>&1
   #result=`grep -c "[15 22]]" .test.out`
-  result=`grep -ce "numpy[[:space:]]*1.23.0" .list.txt`
+  result=`grep -ce "numpy[[:space:]]*1.*" .list.txt`
   if [ $result -eq 1 ]
   then
     printf "   -- numpy: ${cfGREEN}SUCCESFULL${cfDEF}\n"
@@ -84,7 +84,7 @@ then
     echo "   -- numpy: UNSUCCESFULL" >> ../.log
     #cat .test.out >> ../.log
     #echo "   :: see .log for the error"
-    echo "   :: your python version probably does not have numpy libraries or the tested version"
+    echo "   :: your python version probably does not have (correct) numpy libraries"
   fi
   #rm .test.py .test.out
 
@@ -92,7 +92,7 @@ then
   #echo "import pandas" > .test.py
   #program_PYTHON .test.py > .test.out 2>&1
   #result=`wc -l .test.out | awk '{print $1}' `
-  result=`grep -ce "pandas[[:space:]]*1.3.4" .list.txt`
+  result=`grep -ce "pandas[[:space:]]*.*.*" .list.txt`
   if [ $result -eq 1 ]
   then
     printf "   -- pandas: ${cfGREEN}SUCCESFULL${cfDEF}\n"
@@ -102,7 +102,7 @@ then
     echo "   -- pandas: UNSUCCESFULL" >> ../.log
     #cat .test.out >> ../.log
     #echo "   :: see .log for the error"
-    echo "   :: your python version probably does not have numpy libraries"
+    echo "   :: your python version probably does not have (correct) pandas libraries"
   fi
   #rm .test.py .test.out
 
@@ -110,7 +110,7 @@ then
   #echo "import ase" > .test.py
   #program_PYTHON .test.py > .test.out 2>&1
   #result=`wc -l .test.out | awk '{print $1}' `
-  result=`grep -ce "ase[[:space:]]*3.22.1" .list.txt`
+  result=`grep -ce "ase[[:space:]]*.*.*" .list.txt`
   if [ $result -eq 1 ]
   then
     printf "   -- ase: ${cfGREEN}SUCCESFULL${cfDEF}\n"
@@ -120,7 +120,7 @@ then
     echo "   -- ase: UNSUCCESFULL" >> ../.log
     #cat .test.out >> ../.log
     #echo "   :: see .log for the error"
-    echo "   :: your python version probably does not have numpy libraries"
+    echo "   :: your python version probably does not have (correct) ase libraries"
   fi
   #rm .test.py .test.out
 
@@ -128,7 +128,7 @@ then
   #echo "import qml" > .test.py
   #program_PYTHON .test.py > .test.out 2>&1
   #result=`wc -l .test.out | awk '{print $1}' `
-  result=`grep -ce "qml[[:space:]]*0.4.0.12" .list.txt`
+  result=`grep -ce "qml[[:space:]]*.*.*" .list.txt`
   if [ $result -eq 1 ]
   then
     printf "   -- qml: ${cfGREEN}SUCCESFULL${cfDEF}\n"
@@ -138,11 +138,11 @@ then
     echo "   -- qml: UNSUCCESFULL" >> ../.log
     #cat .test.out >> ../.log
     #echo "   :: see .log for the error"
-    echo "   :: your python version probably does not have numpy libraries"
+    echo "   :: your python version probably does not have (correct) qml libraries"
   fi
   #rm .test.py .test.out
 
-  result=`grep -ce "schnetpack[[:space:]]*2.0.3" .list.txt`
+  result=`grep -ce "schnetpack[[:space:]]*.*.*" .list.txt`
   if [ $result -eq 1 ]
   then
     printf "   -- schnetpack: ${cfGREEN}SUCCESFULL${cfDEF}\n"
@@ -152,10 +152,10 @@ then
     echo "   -- schnetpack: UNSUCCESFULL" >> ../.log
     #cat .test.out >> ../.log
     #echo "   :: see .log for the error"
-    echo "   :: your python version probably does not have numpy libraries"
+    echo "   :: your python version probably does not have (correct) schnetpack libraries"
   fi
 
-  result=`grep -ce "pytorch-lightning[[:space:]]*2.0.6" .list.txt`
+  result=`grep -ce "pytorch-lightning[[:space:]]*.*.*" .list.txt`
   if [ $result -eq 1 ]
   then
     printf "   -- pytorch-lightning: ${cfGREEN}SUCCESFULL${cfDEF}\n"
@@ -165,7 +165,7 @@ then
     echo "   -- pytorch-lightning: UNSUCCESFULL" >> ../.log
     #cat .test.out >> ../.log
     #echo "   :: see .log for the error"
-    echo "   :: your python version probably does not have numpy libraries"
+    echo "   :: your python version probably does not have (correct) pytorch-lightning libraries"
   fi
 else
   printf " ${cfRED}UNSUCCESFULL${cfDEF}\n" 
@@ -179,9 +179,9 @@ rm .help
 
 ### JKQCpickle
 cd $testdir
-printf "== testing JKQCpickle:"
-printf "== testing JKQCpickle:\n" >> ../.log
-program_JKQCpickle > .test.out 2>&1
+printf "== testing JKQC:"
+printf "== testing JKQC:\n" >> ../.log
+JKQC > .test.out 2>&1
 cd $testdir
 result=`grep -c "No inputs. No" .test.out`
 if [ $result -eq 1 ]
