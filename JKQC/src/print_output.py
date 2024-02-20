@@ -1,4 +1,4 @@
-def print_output(clusters_df, Qoutpkl, input_pkl, Qsplit, Qclustername, Qt, Qcolumn, Pout = [], QUenergy = 1, QUentropy = 1):
+def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclustername, Qt, Qcolumn, Pout = [], QUenergy = 1, QUentropy = 1):
   """Print output from JKQC
   clusters_df = Pandas Dataframe
   Pout = list of outputs
