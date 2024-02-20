@@ -20,14 +20,12 @@ def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthresho
   #UNIQUENESS AND SAMPLING
   if str(Quniq) != "0":
     from filter_uniq import filter_uniq
-    cluster_df = filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout)
+    clusters_df = filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout)
 
   ### REACTED ###
   if Qreacted > 0:
     from filter_reacted import filter_reacted
     clusters_df = filter_reacted(clusters_df,Qclustername,Qreacted,bonddistancethreshold,Qout)
-    if Qout == 2:
-      print("DONE] Reacted done: "+str(time.time() - start));
 
   #SORTING
   if str(Qsort) != "0" and str(Qsort) != "no":
