@@ -206,7 +206,7 @@ printf "== testing ABCluster:\n" >> ../.log
 touch .calc.inp
 program_ABC .calc.inp 2> .calc.out
 cd $testdir
-result=`grep -c "Cannot read the cluster file name." .calc.out`
+result=`grep -c "Program starts at" .calc.out`
 if [ $result -eq 1 ]
 then 
   printf " ${cfGREEN}SUCCESFULL${cfDEF}\n"
