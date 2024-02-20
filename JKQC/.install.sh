@@ -115,10 +115,10 @@ echo "======================"
 $PIP install pathlib==1.0.1 #Perhaps this one is not necessary
 echo "======================"
 $PIP install numexpr==2.8.4 #2.7.0
+#echo "======================"
+#$PIP install pyarrow==15.0.0 #this bullshit is required by new pandas
 echo "======================"
-$PIP install pyarrow==15.0.0 #this bullshit is required by new pandas
-echo "======================"
-$PIP install pandas==2.2.0  #
+$PIP install pandas==1.3.4  #2.2.0  #for the newer one, I have to get rid of append
 echo "======================"
 $PIP install xlsxwriter     #important only for IMoS output but cheap to install
 #LAPJV can be installed directlty:
