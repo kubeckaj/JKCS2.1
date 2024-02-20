@@ -135,6 +135,8 @@ function program_PYTHON {
 # This is the file used for collecting and pickling file from QC outputs
 ##########################################################################################
 function program_JKQCpickle {
+  JKQCscriptpath=REPLACE_jkcs_path//JKQC/src
+  export PYTHONPATH=$JKQCscriptpath
   program_PYTHON REPLACE_jkcs_path/JKQC/JKQCpickle.py ${@}
 }
 ##########################################################################################
@@ -431,7 +433,7 @@ function program_CREST {
     cp $input calc.xyz
   fi
 
-  ${PATH_CREST}crest calc.xyz $method $args &> $DIR/$output
+  ${PATH_CREST}/crest calc.xyz $method $args &> $DIR/$output
 
   #COPYING RESULTS BACK
   if [ -e crest_conformers.xyz ]

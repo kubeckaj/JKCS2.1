@@ -94,6 +94,9 @@ $PIP install numpy
 if [[ "$*" == *"-qml "* ]]
 then
   echo "======================"
+  echo "QML requires some old numpy, here you go:"
+  $PIP install numpy==1.21.4
+  echo "======================"
   $PIP install scikit-learn
   echo "======================"
   $PIP install qml          #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
