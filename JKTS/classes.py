@@ -55,7 +55,7 @@ class Vector:
 
 
 class Molecule(Vector):
-    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, reactant=False, product=False, program='g16', indexes=None):
+    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, reactant=False, product=False, program=None, indexes=None):
         self.name = name
         self.directory = directory
         self.file_path = file_path
@@ -71,6 +71,7 @@ class Molecule(Vector):
         self.charge = 0
         self.vibrational_frequencies = []
         self.zero_point = None
+        self.G_corr = None
         self.single_point = None
         self.free_energy = None
         self.Q = None
@@ -87,6 +88,8 @@ class Molecule(Vector):
         # If XYZ file is given
         if self.file_path and self.file_path.split(".")[-1] == 'xyz':
             self.read_xyz_file()
+            self.workflow = self.determine_workflow()
+            self.set_current_step(self.workflow[0])
 
         elif self.file_path and self.file_path.split(".")[-1] in ['log', 'out', 'com', 'inp', 'pkl']:
             self.name = f"{self.file_path.split('/')[-1].split('.')[0]}"
@@ -96,7 +99,7 @@ class Molecule(Vector):
                 self.program = self.log2program()
                 self.atoms, self.coordinates = self.log2xyz(atoms=True)
                 self.update_energy()
-            else: # If a ORCA or G16 input file given
+            elif self.file_path.split(".")[-1] in ['com', 'inp']:
                 self.program = 'g16' if self.file_path.split(".")[-1] == 'com' else 'orca'
                 self.atoms, self.coordinates = self.inp2xyz()
 
@@ -117,8 +120,9 @@ class Molecule(Vector):
             else:
                 self.find_active_site(indexes)
 
-        self.workflow = self.determine_workflow()
-        self.set_current_step()
+            self.workflow = self.determine_workflow()
+            self.set_current_step()
+
 
     def set_current_step(self, step=None):
         if step:
@@ -161,6 +165,8 @@ class Molecule(Vector):
         molecule = cls(name='OH', directory=directory, atoms=['O', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.97, 0.0, 0.0]], reactant=True, program='g16')
         molecule.mult = 2
         molecule.reactant = True
+        molecule.workflow = molecule.determine_workflow()
+        molecule.set_current_step()
         return molecule
 
     @classmethod
@@ -169,6 +175,8 @@ class Molecule(Vector):
         molecule = cls(name='H2O', directory=directory, atoms=['O', 'H', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.9572, 0.0, 0.0], [-0.239664, 0.926711, 0.0]], product=True, program='g16')
         molecule.mult = 1
         molecule.product = True
+        molecule.workflow = molecule.determine_workflow()
+        molecule.set_current_step()
         return molecule
 
 
@@ -308,9 +316,8 @@ class Molecule(Vector):
                                     # Check if the H from the molecule is close enough to the O from the OH radical
                                     # indicating a potential active site for hydrogen abstraction.
                                     if self.is_nearby(H, O_index):
-                                        if self.is_nearby(O_index, H_OH_index):
-                                            self.constrained_indexes = {'C': C+1, 'H': H+1, 'O': O_index+1, 'OH': H_OH_index+1}
-                                            return
+                                        self.constrained_indexes = {'C': C+1, 'H': H+1, 'O': O_index+1, 'OH': H_OH_index+1}
+                                        return
 
         if not self.constrained_indexes:
             log_error = Logger(os.path.join(self.directory, "error_constraining_indexes"))
@@ -328,6 +335,12 @@ class Molecule(Vector):
     def zero_point_corrected(self):
         if self.zero_point is not None and self.single_point is not None:
             return float(self.zero_point) + float(self.single_point)
+        return None
+    
+    @property
+    def thermal_free_corrected(self):
+        if self.G_corr is not None and self.single_point is not None:
+            return float(self.G_corr) + float(self.single_point)
         return None
 
 
@@ -380,8 +393,10 @@ class Molecule(Vector):
 
             if program.lower() == 'g16':
                 zero_point_correction = re.findall(r'Zero-point correction=\s+([-.\d]+)', log_content)
+                G_corr = re.findall(r'Thermal correction to Gibbs Free Energy=\s+([-.\d]+)', log_content)
                 if zero_point_correction:
                     self.zero_point = float(zero_point_correction[-1])
+                    self.G_corr = float(G_corr[-1])
                 free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
                 if free_energy:
                     self.free_energy = float(free_energy[-1])
@@ -563,7 +578,7 @@ class Molecule(Vector):
             self.coordinates[OH_index] = new_OH_H_position
 
 
-    def H_abstraction(self, NEB=False, products=False, num_molecules=None):
+    def H_abstraction(self, Cl=False, products=False, num_molecules=None):
         original_coords = self.coordinates.copy()
         atoms = self.atoms
         abstraction_molecules = []
@@ -592,7 +607,8 @@ class Molecule(Vector):
                         aldehyde_O = group['O']
                         aldehyde_C = group['C']
                         # Adjust settings specifically for aldehyde H
-                        distance_CH = 1.19481
+                        # distance_CH = 1.19481
+                        distance_CH = 1.41
                         distance_OH = 1.40971
                         reaction_angle = 145.503
                         water_angle = 96.138
@@ -617,7 +633,7 @@ class Molecule(Vector):
                         product_coords.pop(i)
                         product_atoms.pop(i)
                         # Add the product molecule to the list
-                        product_molecule = Molecule(self.file_path, program='g16', product=True)
+                        product_molecule = Molecule(self.file_path, product=True)
                         product_molecule.atoms = product_atoms
                         product_molecule.coordinates = product_coords
                         product_molecules.append(product_molecule)
@@ -646,19 +662,21 @@ class Molecule(Vector):
 
                     new_coords[i] = (new_H_position).tolist()
 
-                    new_atoms.append('O')
-                    new_atoms.append('H')
-                    new_coords.append(new_oxygen_position.tolist())
-                    new_coords.append(new_OH_H_position.tolist())
+                    if Cl:
+                        new_atoms.append('Cl')
+                        new_coords.append(new_oxygen_position.tolist())
+                        constrained_indexes = {'C': j+1, 'H': i+1, 'O': len(new_coords)}
+                    else:
+                        new_atoms.append('O')
+                        new_atoms.append('H')
+                        new_coords.append(new_oxygen_position.tolist())
+                        new_coords.append(new_OH_H_position.tolist())
+                        constrained_indexes = {'C': j+1, 'H': i+1, 'O': len(new_coords)-1, 'OH': len(new_coords)}
 
-                    if NEB:
-                        # NEB specific code goes here
-                        pass
-
-                    new_molecule = Molecule(self.file_path, program='g16')
+                    new_molecule = Molecule(self.file_path)
                     new_molecule.atoms = new_atoms
                     new_molecule.coordinates = new_coords
-                    new_molecule.constrained_indexes = {'C': j+1, 'H': i+1, 'O': len(new_coords)-1, 'OH': len(new_coords)}
+                    new_molecule.constrained_indexes = constrained_indexes
                     abstraction_molecules.append(new_molecule)
 
         if num_molecules is not None and 0 <= num_molecules <= len(abstraction_molecules):
@@ -801,7 +819,7 @@ class Molecule(Vector):
                 lower_line_content = line_content.lower()
                 if 'dlpno' in lower_line_content or 'f12' in lower_line_content:
                     return 'DLPNO'
-                elif 'ts' in lower_line_content or 'optts' in lower_line_content:
+                elif re.search(r'\bts\b', lower_line_content) or re.search(r'\boptts\b', lower_line_content):
                     return 'TS_opt_conf' if 'conf' in self.name else 'TS_opt'
                 elif 'opt' in lower_line_content:
                     return 'opt_constrain_conf' if 'conf' in self.name else 'optimization' if self.product or self.reactant else 'opt_constrain'
@@ -909,10 +927,14 @@ class Molecule(Vector):
         print(f"Multiplicity: {self.mult}")
         print(f"Charge: {self.charge}")
         print(f"Workflow: {self.workflow}")
-        print(f"Constrained Indexes: {self.constrained_indexes}")
+        if 'Cl' in self.atoms:
+            print(f"Constrained Indexes: [C: {self.constrained_indexes[0]}, H: {self.constrained_indexes[0]}, Cl: {self.constrained_indexes[0]}]")
+        else:
+            print(f"Constrained Indexes: {self.constrained_indexes}")
         print(f"Electronic Energy: {self.single_point}")
         print(f"Zero Point Corrected Energy: {self.zero_point_corrected}")
         print(f"Sum of electronic and thermal Free Energies: {self.free_energy}")
+        print(f"Thermal correction to Gibbs Free Energy: {self.G_corr}")
         print(f"Partition Function: {self.Q}")
         print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
         print(f"Current Step: {self.current_step}")
