@@ -44,7 +44,7 @@ SBATCH_PREFIX="REPLACE_sbatch_prefix " #group sbatch requirment
 #########################
 #The calculation can be performed in the current subfolder: "./"  OR
 #you can perform the calculations somewhere else, e.g. on scratch: "/scratch/$USER/"  (This is strongly recommended, especially for G16 or Orca calcs.)
-if [ "$1" != "-loc" ]
+if [ "$1" != "-loc" ] && [ ! -z "$SLURM_JOB_ID" ]
 then
   WRKDIR="REPLACE_wrkdir"
 else
@@ -98,13 +98,16 @@ function program_SBATCH {
   SBATCH_command+="--time $3 "
   SBATCH_command+="-N $4 "
   SBATCH_command+="--mem-per-cpu $5 " #NOTE: This line must be commented out on Mahti
-  if [ ! -z "$6" ]; then SBATCH_command+=" -n $6 --ntasks-per-node=$6 "; fi
   if [[ $(echo "$2" | grep -io "gpu") ]] || [ "$2" == "qa100" ];
   then
+    if [ ! -z "$6" ]; then SBATCH_command+=" --cpus-per-task $6 --ntasks-per-node=1 -n 1 "; fi
     SBATCH_command+="--gres=gpu:1 "
+  else
+    if [ ! -z "$6" ]; then SBATCH_command+=" --cpus-per-task 1 --ntasks-per-node=$6 -n $6 "; fi
   fi
   SBATCH_command+=$SBATCH_PREFIX" "
-  echo $SBATCH_command  
+  echo $SBATCH_command
+
 }
 ##########################################################################################
 
@@ -132,6 +135,8 @@ function program_PYTHON {
 # This is the file used for collecting and pickling file from QC outputs
 ##########################################################################################
 function program_JKQCpickle {
+  JKQCscriptpath=REPLACE_jkcs_path//JKQC/src
+  export PYTHONPATH=$JKQCscriptpath
   program_PYTHON REPLACE_jkcs_path/JKQC/JKQCpickle.py ${@}
 }
 ##########################################################################################
@@ -141,9 +146,9 @@ function program_JKQCpickle {
 # Running QML
 ##########################################################################################
 function program_JKML {
-  if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+  if [ ! -z "$SLURM_JOB_CPUS_PER_NODE" ]
   then 
-    export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+    export OMP_NUM_THREADS=$SLURM_JOB_CPUS_PER_NODE
   fi
   if [[ "${@}" != *"-nn"* ]] || [[ "${@}" != *"-painn"* ]]
   then
@@ -240,7 +245,7 @@ function program_JKML {
     fi
   fi
   ##
-  if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+  if [ ! -z "$SLURM_JOB_CPUS_PER_NODE" ]
   then
     echo JOBID = $SLURM_JOBID done
   fi
@@ -269,9 +274,9 @@ function program_ABC {
   then
     $MODULE_ABC 2>/dev/null
     module_abc_loaded="loaded"
-    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    if [ ! -z "$SLURM_JOB_CPUS_PER_NODE" ]
     then
-      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+      export OMP_NUM_THREADS=$SLURM_JOB_CPUS_PER_NODE
     fi
   fi
 
@@ -316,11 +321,11 @@ function program_GEOM {
   then
     $MODULE_GEOM 2>/dev/null
     module_abc_loaded="loaded"
-    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    if [ ! -z "$SLURM_JOB_CPUS_PER_NODE" ]
     then
       ulimit -s unlimited
       export OMP_STACKSIZE=1G
-      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+      export OMP_NUM_THREADS=$SLURM_JOB_CPUS_PER_NODE
     fi
   fi
 
@@ -339,11 +344,11 @@ function program_TOPGEN {
   then
     $MODULE_ABC 2>/dev/null
     module_abc_loaded="loaded"
-    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    if [ ! -z "$SLURM_JOB_CPUS_PER_NODE" ]
     then
       ulimit -s unlimited
       export OMP_STACKSIZE=1G
-      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+      export OMP_NUM_THREADS=$SLURM_JOB_CPUS_PER_NODE
     fi
   fi
 
@@ -382,11 +387,11 @@ function program_CREST {
   if [ "$module_xtb_loaded" != "loaded" ]
   then
     $MODULE_XTB 2>/dev/null
-    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    if [ ! -z "$SLURM_JOB_CPUS_PER_NODE" ]
     then
       ulimit -s unlimited
       export OMP_STACKSIZE=1G
-      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+      export OMP_NUM_THREADS=$SLURM_JOB_CPUS_PER_NODE
     fi
     module_xtb_loaded="loaded"
   fi
@@ -428,7 +433,7 @@ function program_CREST {
     cp $input calc.xyz
   fi
 
-  ${PATH_CREST}crest calc.xyz $method $args > $DIR/$output 2>&1
+  ${PATH_CREST}/crest calc.xyz $method $args &> $DIR/$output
 
   #COPYING RESULTS BACK
   if [ -e crest_conformers.xyz ]
@@ -487,11 +492,11 @@ function program_XTB {
   if [ "$module_xtb_loaded" != "loaded" ]
   then
     $MODULE_XTB 2>/dev/null
-    if [ ! -z "$SLURM_CPUS_ON_NODE" ]
+    if [ ! -z "$SLURM_JOB_CPUS_PER_NODE" ]
     then
       ulimit -s unlimited
       export OMP_STACKSIZE=1G
-      export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+      export OMP_NUM_THREADS=$SLURM_JOB_CPUS_PER_NODE
     fi
     module_xtb_loaded="loaded"
   fi  
@@ -551,7 +556,7 @@ function program_XTB {
   fi
   if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
 
-  $PATH_XTB/bin/xtb calc.xyz $method $args > $output 2>&1
+  $PATH_XTB/bin/xtb calc.xyz $method $args &> $output
   cp $output $DIR/$output
   
   #COPYING RESULTS BACK
@@ -563,10 +568,10 @@ function program_XTB {
     cp calc.xyz $DIR/$base.xyz
   fi  
   #COPY GRADIENT FOR FORCES
-  for i in $method $args
-  do
-    if [ "$i" == "-grad" ] || [ "$i" == "--grad" ]; then cp *.engrad $DIR/${base}.engrad; fi
-  done
+  #for i in $method $args
+  #do
+  #  if [ "$i" == "-grad" ] || [ "$i" == "--grad" ]; then cp *.engrad $DIR/${base}.engrad; fi
+  #done
 
   #CLEANING
   cd $DIR
@@ -628,7 +633,7 @@ function program_G16 {
   #CHANGE: G16, inputCOM, .log, adjust copying back
   echo """#!/bin/bash
 
-export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
+export OMP_NUM_THREADS=\$SLURM_JOB_CPUS_PER_NODE
 if [ \"\$module_g16_loaded\" != \"loaded\" ]
 then
   $MODULE_G16 2>/dev/null
@@ -653,7 +658,7 @@ mkdir \$CALC_NAME
 cp $inputCOM \$CALC_NAME/
 cd \$CALC_NAME
 
-$PATH_G16/g16/g16 < $inputCOM >& $DIR/$output
+$PATH_G16/g16/g16 < $inputCOM &> $DIR/$output
 
 #COPYING RESULTS BACK
 #if [ -e $DIR/$output ]
@@ -728,7 +733,7 @@ function program_ORCA {
 
   #CHANGE: ORCA, inputINP, .out
   echo """#!/bin/bash
-export OMP_NUM_THREADS=\$SLURM_CPUS_ON_NODE
+export OMP_NUM_THREADS=\$SLURM_JOB_CPUS_PER_NODE
 
 if [ \"\$module_orca_loaded\" != \"loaded\" ]
 then
@@ -755,7 +760,7 @@ if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
 cp $inputINP \$CALC_NAME/
 cd \$CALC_NAME
 
-$PATH_ORCA/orca $inputINP > $DIR/$output 2> $DIR/$output
+$PATH_ORCA/orca $inputINP &> $DIR/$output 
 
 #COPYING RESULTS BACK
 #if [ -e $DIR/$output ]
@@ -778,8 +783,97 @@ rm -rf \$CALC_NAME""" > $base.cmd
 }
 ##########################################################################################
 
+##########################################################################################
+# MINP script: dmrcc
+# 
+##########################################################################################
+function program_MRCC {
+  input=$1                     # file.xyz or MINP
+  if [ "$input" == MINP ]
+  then
+    base=mrcc_output
+  else    
+    base=$(basename $(basename $(basename $input .xyz) .com) .inp) # file
+  fi
+  inputXYZ=${base}.xyz           # file.xyz
+  output=$base.out             # file.out
+  args=${@:2}                  # all arguments except the first one
 
+  #load JKCS arguments
+  if [ -e ../arguments.txt ]
+  then
+    source ../arguments.txt
+  fi
 
+  #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
+  DIR=$PWD
+  #MINP or *.xyz or *.pkl
+  test=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
+  if [ "$test" == ".xyz" ] || [ "$test" == ".pkl" ]
+  then
+    if [ "$test" == ".pkl" ]; then program_JKQCpickle `echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}'` -extract $base -xyz -noname; input=${base}.xyz; inputXYZ=$input; fi
+    if [ -z "$MEMORY" ]; then MEMORY=4000mb; fi
+    #`echo $MEMORY | awk '{print tolower($0)}' | sed 's/mb//' | sed 's/gb/*1000/' | sed 's/tb/*1000000/'| bc`
+    if [ -z "$CPU" ]; then CPU=1; fi
+    if [ -z "$CHARGE" ]; then CHARGE=0; fi
+    if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    if [ -z "$method" ]; then method="calc=LCCSD(T) \nbasis=aug'-cc-pVTZ\nscfalg=direct"; fi
+    JKxyz2minp $input -mem $MEMORY -method "$method" -char $CHARGE -mult $MULTIPLICITY $args >/dev/null -cpu $CPU
+    #if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
+  fi
+
+  #CHANGE: ORCA, inputINP, .out
+  echo """#!/bin/bash
+export OMP_NUM_THREADS=\$SLURM_JOB_CPUS_PER_NODE
+
+if [ \"\$module_orca_loaded\" != \"loaded\" ]
+then
+  $MODULE_MRCC 2>/dev/null
+  module_orca_loaded=\"loaded\"
+fi
+export PATH=$PATH_MRCC:$PATH
+
+#CREATING WORKING DIRECTORY
+if [ ! -d $WRKDIR/TMP ]; then mkdir -p $WRKDIR/TMP; fi
+ADD=\"\"
+test=0
+while [ \$test -eq 0 ]
+do
+  CALC_NAME=$WRKDIR/TMP/MRCC\${SLURM_JOBID}_$base\${ADD}
+  if [ -d \$CALC_NAME ]; then ADD=\"_\${RANDOM}\"
+  else test=1;fi
+done
+
+#dirs
+mkdir \$CALC_NAME
+
+if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
+cp MINP \$CALC_NAME/
+cd \$CALC_NAME
+
+dmrcc > $DIR/$output 2> $DIR/$output
+
+#COPYING RESULTS BACK
+#if [ -e $DIR/$output ]
+#then
+#  mv $DIR/$output $DIR/${base}O.out
+#fi
+#cp $output $DIR/
+#cp trajectory.xyz $DIR/${base}_traj.xyz 2>/dev/null #only for MD
+#cp ${base}.xyz $DIR/${base}.xyz 2>/dev/null
+#cp *.err $DIR/ 2>/dev/null
+cp *.out *.log $DIR/ 2>/dev/null
+cd $DIR
+
+#CLEANING
+rm -rf \$CALC_NAME""" > $base.cmd
+  if [ -e ../submit ]
+  then
+    sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh
+  fi
+  sh $base.cmd
+}
+##########################################################################################
 
 ##########################################################################################
 # MATCH 

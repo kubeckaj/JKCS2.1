@@ -106,7 +106,7 @@ if [ -e $inputfile ]
 then
   M=`head -n 1 $inputfile | awk '{print $6}'`
 else
-  JKecho 0 "No ${cfYELLOW}${inputfile}${cfDEF} file. (${cfRED}Assuming M=1 if needed!!!${cfDEF})"
+  JKecho 1 "No ${cfYELLOW}${inputfile}${cfDEF} file. (${cfRED}Assuming M=1 if needed!!!${cfDEF})"
   M=1;
 fi
 

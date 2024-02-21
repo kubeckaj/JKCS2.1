@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -norc
 source ~/.JKCSusersetup.txt
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../../JKTS/"

@@ -1,5 +1,6 @@
 TOOLS/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl
 JKQC/JKCS
+**/__pycache__
 output
 .list.txt
 .log

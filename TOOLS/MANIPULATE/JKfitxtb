@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -norc
 ############################################################
 ## JAKUB KUBECKA 2023                                     ##
 ## Uses pickle files with e.g. DFT to reparametrize GFN1  ##
@@ -202,7 +202,7 @@ source ~/.JKCSusersetup.txt$loc
 
 sh $toolspath/SCRIPTS/XTB1_prepare_parameter_file.sh input.pkl
 if [ ! -z \"$INPUT\" ]; then cp \"$INPUT\" initial.txt; fi
-JKQC input.pkl -b -el -unit > B_El.txt
+$toolspath/MANIPULATE/JKQC input.pkl -b -el -unit > B_El.txt
 cat $toolspath/SCRIPTS/XTB3_runXTB.sh | sed \"s/AAAlocAAA/$loc/\" > XTB3_runXTB.sh
 
 program_PYTHON $toolspath/SCRIPTS/JKoptimizer.py -cpu $SCcpu -parallel $Qpar

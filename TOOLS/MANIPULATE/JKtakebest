@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/bin/bash -norc
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+export PATH=$scriptpath:$PATH              #MANIPULATE
+export PATH=$scriptpath/../../JKCSx:$PATH  #JKCSx
+
 INPUT=$*
 for i in $INPUT
 do

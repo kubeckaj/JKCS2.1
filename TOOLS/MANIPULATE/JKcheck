@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -norc
 Q_num=0;
 subfolders=""
 for i in $*

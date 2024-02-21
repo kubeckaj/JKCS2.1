@@ -1,17 +1,21 @@
 #!/bin/bash -norc
-#-norc for no source of bashrc 
-#SBATCH -p q64,q48,q40,q36,q28,q24,q20
-#SBATCH -N 1
-#SBATCH -n 1
-#SBATCH -c 1
-#SBATCH -t 72:00:00
-#SBATCH -e output
-#SBATCH -o output
-#SBATCH --open-mode=append
-
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 export PATH=$scriptpath:$PATH              #MANIPULATE
 export PATH=$scriptpath/../../JKCSx:$PATH  #JKCSx
+######
+
+number_of_folders=`ls -d SYS* | wc -w`
+
+echo """#!/bin/bash -norc
+scriptpath=\"\$( cd \"\$(dirname \"\$0\")\" ; pwd -P )\"
+export PATH=\$scriptpath:\$PATH              #MANIPULATE
+export PATH=\$scriptpath/../../JKCSx:\$PATH  #JKCSx
+folder=\`ls -d SYS* | xargs | awk -v VAR=\$SLURM_ARRAY_TASK_ID '{print \$VAR}'\`
+cd \$folder
+eval \"$@\"
+cd ..
+""" > cmd_jkforsend.sh
+
 
 ##UNCOMMENT THIS PART IF YOU OBTAIN ERROR OF TYPE:
 ##/var/spool/slurmd/job4726218/slurm_script: line 11: cd /wrk/users/ineefjes/DATABASE/SA_CLUSTERS/NEUTRAL/SYS_3SA/ABC/ABC_2_1_0_0; sh runJKCS2_explore.sh;: No such file or directory
@@ -21,8 +25,8 @@ then
  args=`echo $@`
  args="${args%\"}"
  args="${args#\"}"
- eval "$args"
+ sbatch --array=1-$number_of_folders JKsend sh cmd_jkforsend.sh
 else
 ##AND COMMENT THIS GUY:
- eval "$@"
+ sbatch --array=1-$number_of_folders JKsend sh cmd_jkforsend.sh
 fi

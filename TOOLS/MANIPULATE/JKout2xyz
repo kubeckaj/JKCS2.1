@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -norc
 
 #This script is used for generate xyz files from geometry optimization output file of ORCA
 #If the output file is not a geometry opt. file, running this script will generate empty xyz files

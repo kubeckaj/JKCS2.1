@@ -11,6 +11,7 @@ then
   fi
 fi
 
+echo Let me install some python packages
 eval $MODULE_PYTHON
 ### MAKING OWN ENVIRONMENT
 #echo """name: jkcs
@@ -36,7 +37,9 @@ if [[ "$parsedVersion" -gt "400" || "$parsedVersion" -lt "380" ]]   #
 
 echo "- creating environment"
 #conda env create --name JKCS --file jkcs.yaml
-$PYTHON -m venv --system-site-packages JKCS
+$PYTHON -m venv JKCS
+#$PYTHON -m venv --no-site-packages JKCS
+#$PYTHON -m venv --system-site-packages JKCS
 
 #echo "- loading anaconda"
 #module load anaconda3/5.0.1
@@ -64,35 +67,81 @@ source JKCS/bin/activate
 
 #echo y | conda install xtb-python
 #echo y | conda install numba
-PIP="$PYTHON -m pip " #--cache-dir=$PWD/JKCS/"
-#$PIP --version
-$PIP install --upgrade pip
-$PIP install scipy==1.9.3 $ADD 
-$PIP install pathlib #Perhaps this one is not necessary
-$PIP install numexpr==2.7.0 $ADD
-#NUMPY: the numpy is reinstalled later in the script because lapjv would not run with this version
-#this version is however needed for QML. When QML is installed with the newest version, it works ...I guess
-$PIP install numpy==1.21.4 $ADD #1.23.0 had some issues for qml np.distutils or something like that
-$PIP install pandas==1.3.4 $ADD
-$PIP install ase 
-if [[ "$*" == *"-descriptors"* ]]
-then
- $PIP install sklearn
- $PIP install cffi
- $PIP install dscribe
- #ADD="--force-reinstall --upgrade"
- #$PIP install install git+https://github.com/qmlcode/qml@develop $ADD
-fi
-if [[ "$*" == *"-qml "* ]]
-then
-  #$PIP install sklearn
-  #$PIP install cffi
-  #$PIP install dscribe
-  #ADD="--force-reinstall --upgrade"
-  $PIP install git+https://github.com/qmlcode/qml@develop $ADD
-fi
+PIP="$PYTHON -m pip --no-cache-dir " #--cache-dir=$PWD/JKCS/"
+
 if [[ "$*" == *"-mbdf"* ]]
 then
+  echo "======================"
+  echo "MBDF requires some old numpy, here you go:"
+  $PIP install numpy==1.21.4
+  echo "======================"
+  currdir=$PWD
+  cd JKCS/lib64/py*/site-packages/
+  git clone https://github.com/dkhan42/MBDF.git
+  cp MBDF/MBDF.py .
+  git clone https://github.com/dkhan42/qml2.git
+  cd qml2
+  cp readme.rst README.rst
+  $PYTHON setup.py install
+  cd $currdir
+fi
+
+echo "======================"
+$PIP install --upgrade pip
+echo "======================"
+$PIP install numpy
+#QML
+if [[ "$*" == *"-qml "* ]]
+then
+  echo "======================"
+  echo "QML requires some old numpy, here you go:"
+  $PIP install numpy==1.21.4
+  echo "======================"
+  $PIP install scikit-learn
+  echo "======================"
+  $PIP install qml          #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
+fi
+echo "======================"
+$PIP install lapjv
+echo "======================"
+#$PIP install numpy==1.26.3
+#echo "======================"
+$PIP install scipy==1.9.3   #I need this version for ArbAlign 
+echo "======================"
+$PIP install joblib==1.3.2  
+echo "======================"
+$PIP install ase==3.22.1
+echo "======================"
+$PIP install pathlib==1.0.1 #Perhaps this one is not necessary
+echo "======================"
+$PIP install numexpr==2.8.4 #2.7.0
+#echo "======================"
+#$PIP install pyarrow==15.0.0 #this bullshit is required by new pandas
+echo "======================"
+$PIP install pandas==1.3.4  #2.2.0  #for the newer one, I have to get rid of append
+echo "======================"
+$PIP install xlsxwriter     #important only for IMoS output but cheap to install
+#LAPJV can be installed directlty:
+#echo "======================"
+#module load gcc 2>/dev/null
+#$PIP install git+https://github.com/src-d/lapjv
+#$PIP install lapjv==1.3.1  #this bitch has some issues to see numpy
+
+
+if [[ "$*" == *"-descriptors"* ]]
+then
+  echo "======================"
+  $PIP install scikit-learn
+  echo "======================"
+  $PIP install cffi
+  echo "======================"
+  $PIP install dscribe
+fi
+
+
+if [[ "$*" == *"-mbdf"* ]]
+then
+  echo "======================"
   currdir=$PWD
   cd JKCS/lib64/py*/site-packages/
   git clone https://github.com/dkhan42/MBDF.git
@@ -103,8 +152,11 @@ then
   $PYTHON setup.py install 
   cd $currdir
 fi
+
+
 if [[ "$*" == *"-qml-lightning"* ]]
 then
+  echo "======================"
   currdir=$PWD
   cd JKCS/lib64/py*/site-packages/
   git clone https://github.com/nickjbrowning/qml-lightning.git
@@ -112,33 +164,41 @@ then
   $PYTHON setup.py build
   cd $currdir
 fi
+
+
 if [[ "$*" == *"-xtb"* ]]
 then
+  echo "======================"
   export CC=gcc
+  module load gcc 2>/dev/null
   $PIP install tblite
   ## Use following in Python script:
   #from tblite.ase import TBLite 
   #atoms.calc = TBLite(method="GFN1-xTB")
 fi
-$PIP install numpy==1.23.0
+
+
 if [[ "$*" == *"-nn"* ]]
 then
+  echo "======================"
   $PIP install torch
+  echo "======================"
   $PIP install lightning
+  echo "======================"
   $PIP install hydra-core
+  echo "======================"
   $PIP install schnetpack
   #AGOX was not able to use schnet calculator, this will resolve it:
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib64/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
+  echo "======================"
   $PIP install pytorch-lightning==2.0.6
+  echo "======================"
   $PIP install tensorboard
 fi
 
-#NOT IMPORTANT FOR ALL BUT CHEAP TO INSTALL
-$PIP install xlsxwriter
-
+echo "======================"
 #ArbAlign stuff:
-$PIP install lapjv
 cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$PYTHON/site-packages/ArbAlign.py
 
 #echo "- exporting environment"
