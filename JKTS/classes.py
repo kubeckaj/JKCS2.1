@@ -607,8 +607,8 @@ class Molecule(Vector):
                         aldehyde_O = group['O']
                         aldehyde_C = group['C']
                         # Adjust settings specifically for aldehyde H
-                        distance_CH = 1.19481
-                        # distance_CH = 1.41
+                        # distance_CH = 1.19481
+                        distance_CH = 1.41
                         distance_OH = 1.40971
                         reaction_angle = 145.503
                         water_angle = 96.138

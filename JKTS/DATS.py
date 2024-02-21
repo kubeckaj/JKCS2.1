@@ -519,7 +519,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
         while i < len(molecules):
             molecule = molecules[i]
             if molecule.error_termination_count >= 3:
-                logger.log(f"Molecule {molecule.name} is being dropped due to repeated error terminations.")
+                logger.log(f"!!! Dropping molecule conformer {molecule.name} due to repeated error terminations!!!")
                 molecules.pop(i)
                 # Check if all remaining molecules are converged
                 if all(m.converged for m in molecules):
@@ -567,7 +567,6 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                         transition_state = check_transition_state(molecule, logger)
                         if transition_state is True:
                             molecule.converged = True
-                            molecule.error_termination_count = 0
                             molecule.move_inputfile()
                         else:
                             molecule.error_termination_count += 1
@@ -597,6 +596,8 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                         molecule.move_inputfile()
                 elif error_termination_detected:
                     molecule.error_termination_count += 1
+                    if molecule.error_termination_count >= 3:
+                        continue
                     handle_error_termination(molecule, logger, last_lines)
                     continue
             else:
@@ -671,9 +672,10 @@ def handle_error_termination(molecule, logger, last_lines):
     elif detected_intervention_errors:
         error = detected_intervention_errors[0]
         logger.log(f"Error '{error}' detected in {molecule.name} which needs taken care of manually")
-        logger.log(f"Removing the conformer {molecule.name} for now so user can inspec error")
+        logger.log(f"Removing the conformer {molecule.name} for now so user can inspect error")
+        molecule.error_termination_count = 3
         if molecule.program.lower() == 'g16':
-            logger.log(f"Common G16 error are listed in: {G16_common_errors}")
+            logger.log(f"Common G16 errors can be found in: {G16_common_errors}")
         # molecule.set_active_site()
     else:
         logger.log(f"Error termination found in {molecule.name}. Trying to resubmit")
@@ -1022,70 +1024,74 @@ def Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1):
 
 
 def eckart(SP_TS, SP_reactant, SP_product, imag, T=[298.15]):
-    c=2.99792458e+8          # Speed of light (m s-1)
-    pi=np.pi               # π
-    kB=3.1668152e-6
-    h=2*pi
-    Na=6.0221409e+23         # Avogadro's number (mol-1)
+    try:
+        c=2.99792458e+8          # Speed of light (m s-1)
+        pi=np.pi               # π
+        kB=3.1668152e-6
+        h=2*pi
+        Na=6.0221409e+23         # Avogadro's number (mol-1)
 
-    E1 = SP_TS - SP_reactant
-    E2 = SP_TS - SP_product
-    mu = 1
-    v1=((E1*4184)/Na)/4.3597447222071e-18
-    v2=((E2*4184)/Na)/4.3597447222071e-18
-    wau=(imag*100)*c*2.418884326509e-17
-    m=mu*1822.888479
+        E1 = SP_TS - SP_reactant
+        E2 = SP_TS - SP_product
+        mu = 1
+        v1=((E1*4184)/Na)/4.3597447222071e-18
+        v2=((E2*4184)/Na)/4.3597447222071e-18
+        wau=(imag*100)*c*2.418884326509e-17
+        m=mu*1822.888479
 
-    # Calculate force constant, A, B and L
-    F=-4*(pi**2)*(wau**2)*m;
-    F2=-4*(pi**2)*(wau**2)*1;
-    A=v1-v2;
-    B=(np.sqrt(v2)+np.sqrt(v1))**2;
-    L=-pi*(A-B)*(B+A)/(np.sqrt(-2*F*B)*B);
+        # Calculate force constant, A, B and L
+        F=-4*(pi**2)*(wau**2)*m;
+        F2=-4*(pi**2)*(wau**2)*1;
+        A=v1-v2;
+        B=(np.sqrt(v2)+np.sqrt(v1))**2;
+        L=-pi*(A-B)*(B+A)/(np.sqrt(-2*F*B)*B);
 
-    # Defining reaction coordinate
-    x = np.arange(-3, 3, 0.01)
-    x = x/(np.sqrt(mu))      # Removing reduced mass from reaction coordinate in order to get a well defined potential
+        # Defining reaction coordinate
+        x = np.arange(-3, 3, 0.01)
+        x = x/(np.sqrt(mu))      # Removing reduced mass from reaction coordinate in order to get a well defined potential
 
-    # Calculating potential
-    y=[0 for i in range(len(x))]
-    V=[0 for i in range(len(x))]
-    xa=[0 for i in range(len(x))]
-    Va=[0 for i in range(len(x))]
+        # Calculating potential
+        y=[0 for i in range(len(x))]
+        V=[0 for i in range(len(x))]
+        xa=[0 for i in range(len(x))]
+        Va=[0 for i in range(len(x))]
 
-    for i in range(len(x)):
-        y[i]=-np.exp( (2*pi*x[i])/L )
-        V[i]=( (-(y[i]*A)/(1-y[i]) ) - ( (y[i]*B)/((1-y[i])**2)) )
-        xa[i]=0.529177*x[i]*np.sqrt(mu)         # reduced mass re-inserted for plotting
-        Va[i]=V[i]*627.509                        # potential converted to kcal/mol for plotting
+        for i in range(len(x)):
+            y[i]=-np.exp( (2*pi*x[i])/L )
+            V[i]=( (-(y[i]*A)/(1-y[i]) ) - ( (y[i]*B)/((1-y[i])**2)) )
+            xa[i]=0.529177*x[i]*np.sqrt(mu)         # reduced mass re-inserted for plotting
+            Va[i]=V[i]*627.509                        # potential converted to kcal/mol for plotting
 
-    # Calculating the correction factors for all T's
-    VB=[0,0]
-    VB[0]=V[0]                                                # value of potential at reactants
-    VB[1]=V[len(x)-1]                                           # value of potential at products
-    Emin=np.max(VB)                                           # minimum energy at which tunnelling can occur
-    Gdiff=1                                                   # initial convergence control set to 1
-    GSize=np.max(V)/50                                        # initial integration stepsize 
-    [Gold,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)                      # calculate G
-    GSize=GSize/10                                            # reduce integration stepsize
-    runs=0                                                    # initial number of runs
-    while Gdiff >= 0.001:                                        # convergence criteria
-        [Gnew,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)  # new G
-    #    print("Tunneling Factor", Gnew)                                         # display new correction factor
-        GSize=GSize/10                                        # reduce integration stepsize
-        Gdiffcalc=[0 for x in range(len(T))]
-        for j in range(len(T)):
-            Gdiffcalc[j]=abs(Gnew[j]-Gold[j])/Gold[j]         # calculate convergence
-        Gdiff=max(Gdiffcalc)                                  # max convergence control value
-    #    print("convergence control value", Gdiff)                                        # display convergence control value
-        Gold=Gnew                                             # replace old correction factor with new
-        runs=runs+1                                           # a run completed
-    #    print("runs done", runs)                                         # display run number
+        # Calculating the correction factors for all T's
+        VB=[0,0]
+        VB[0]=V[0]                                                # value of potential at reactants
+        VB[1]=V[len(x)-1]                                           # value of potential at products
+        Emin=np.max(VB)                                           # minimum energy at which tunnelling can occur
+        Gdiff=1                                                   # initial convergence control set to 1
+        GSize=np.max(V)/50                                        # initial integration stepsize 
+        [Gold,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)                      # calculate G
+        GSize=GSize/10                                            # reduce integration stepsize
+        runs=0                                                    # initial number of runs
+        while Gdiff >= 0.001:                                        # convergence criteria
+            [Gnew,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)  # new G
+        #    print("Tunneling Factor", Gnew)                                         # display new correction factor
+            GSize=GSize/10                                        # reduce integration stepsize
+            Gdiffcalc=[0 for x in range(len(T))]
+            for j in range(len(T)):
+                Gdiffcalc[j]=abs(Gnew[j]-Gold[j])/Gold[j]         # calculate convergence
+            Gdiff=max(Gdiffcalc)                                  # max convergence control value
+        #    print("convergence control value", Gdiff)                                        # display convergence control value
+            Gold=Gnew                                             # replace old correction factor with new
+            runs=runs+1                                           # a run completed
+        #    print("runs done", runs)                                         # display run number
 
-    [G,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)        #final G
+        [G,EKa,K,GK]=Gcalc(Emin,GSize,V,A,B,L,h,kB,m,T,v1)        #final G
 
-    kappa = G[0]
-    return kappa
+        kappa = G[0]
+        return kappa
+    except Exception as e:
+        print("Error in calculating the eckart tunneling. Returning tunneling coefficient 1")
+        return 1
 
 
 def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.15):
@@ -1137,11 +1143,6 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
                 imag = abs(lowest_TS.vibrational_frequencies[0])
                 kappa  = eckart(lowest_ZP_TS_kcalmol, lowest_ZP_reactant_kcalmol, lowest_ZP_product_kcalmol, imag)
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * np.exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
-
-                # k_free_energy = kappa * (k_b*T)/(h*p_ref) * np.exp(-((-116.111772740596 + 0.025548)*HtoJ - ((-40.453218374856 +0.025388) + (-75.669421083646 + -0.008282))*HtoJ) / (k_b * T))
-                # k_test = kappa * (k_b*T)/(h*p_ref) * (0.798763e+12/(0.111176e+10*0.609758e+08)) * np.exp(-((-116.060347740596)*HtoJ - (-75.660778083646 + -40.408163374856)*HtoJ) / (k_b * T))
-                # k_free_energy = kappa * (k_b*T)/(h*p_ref) * np.exp(-((lowest_TS.thermal_free_corrected)*HtoJ - ((lowest_reactant.thermal_free_corrected) + (OH.thermal_free_corrected))*HtoJ) / (k_b * T))
-                # print(k_free_energy, k_test)
             else:
                 print("Error in product molecules")
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * np.exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
@@ -1447,7 +1448,7 @@ def main():
             else:
                 handle_input_molecules(input_molecules, logger, threads)
                     
-        else:
+        elif not input_molecules and file_type != '.xyz':
             logger.log("Error when generating input molecules. Could not create list from given input")
             print("Error when generating input molecules. Could not create list from given input")
             if file_type in [".log", ".out"]:
