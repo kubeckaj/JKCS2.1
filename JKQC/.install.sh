@@ -69,6 +69,8 @@ source JKCS/bin/activate
 #echo y | conda install numba
 PIP="$PYTHON -m pip --no-cache-dir " #--cache-dir=$PWD/JKCS/"
 
+echo "======================"
+$PIP install --upgrade pip
 if [[ "$*" == *"-mbdf"* ]]
 then
   echo "======================"
@@ -85,11 +87,6 @@ then
   $PYTHON setup.py install
   cd $currdir
 fi
-
-echo "======================"
-$PIP install --upgrade pip
-echo "======================"
-$PIP install numpy
 #QML
 if [[ "$*" == *"-qml "* ]]
 then
@@ -104,7 +101,7 @@ fi
 echo "======================"
 $PIP install lapjv
 echo "======================"
-#$PIP install numpy==1.26.3
+$PIP install numpy==1.26.3
 #echo "======================"
 $PIP install scipy==1.9.3   #I need this version for ArbAlign 
 echo "======================"
