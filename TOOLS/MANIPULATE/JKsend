@@ -1,6 +1,6 @@
 #!/bin/bash -norc
 #-norc for no source of bashrc 
-#SBATCH -p q64,q48,q40,q36,q28,q24,q20
+#SBATCH -p q64,q48,q40,q36,q28
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 1

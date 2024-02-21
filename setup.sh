@@ -90,8 +90,8 @@ EXAMPLE:
     WRKDIR="/scratch/\\\$SLURM_JOB_ID/"
     time1="10-00:00:00"
     time2="10-00:00:00"
-    queue1="q64,q48,q40,q36,q24"
-    queue2="q64,q48,q40,q36,q24"
+    queue1="q64,q48,q40,q36"
+    queue2="q64,q48,q40,q36"
     continue
   fi
   if [ "$i" == "mahti" ]

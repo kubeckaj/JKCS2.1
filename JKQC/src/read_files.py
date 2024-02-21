@@ -45,6 +45,21 @@ def mergeDictionary(dict_1, dict_2):
       dict_3[key] = value + ml*[float("nan")] 
   return dict_3
 
+def is_nameable(input_array):
+  nameable_test = True
+  if len(input_array) % 2 == 0:
+    for input_array_i in input_array[0::2]:
+      if not input_array_i.isnumeric():
+        nameable_test = False
+        break
+    for input_array_i in input_array[1::2]:
+      if input_array_i.isnumeric():
+        nameable_test = False
+        break
+  else:
+    nameable_test = False
+  return nameable_test
+
 def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomoleext = "log", Qclustername = 1, Qforces = 0, Qanharm = 0):
   from os import path
   from re import split
@@ -98,11 +113,16 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
       file_basename_split = file_basename.split("-")[0].split("_")[0]
       split_numbers_letters = split('(\d+)',file_basename_split)[1:]
       cluster_type_array = seperate_string_number(file_basename_split)
-      cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
-      cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
-      cluster_type = zeros(cluster_type_array_sorted)
-      components = split_numbers_letters[1::2]
-      component_ratio = [int(i) for i in split_numbers_letters[0::2]]
+      if is_nameable(cluster_type_array):
+        cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
+        cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
+        cluster_type = zeros(cluster_type_array_sorted)
+        components = split_numbers_letters[1::2]
+        component_ratio = [int(i) for i in split_numbers_letters[0::2]]
+      else:
+        cluster_type = float("nan")
+        components = float("nan")
+        component_ratio = float("nan")
     all_locals = locals()
     dic = {("info",column):[all_locals.get(column)] for column in columns}
   
