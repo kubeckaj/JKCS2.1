@@ -354,7 +354,7 @@ def extract_job_id(output):
 def get_interval_seconds(molecule):
     job_type = molecule.current_step
     atoms = molecule.atoms
-    if molecule.reactant:
+    if molecule.reactant or molecule.product:
         heavy_count = 0
     else:
         heavy_count = -1
@@ -368,19 +368,17 @@ def get_interval_seconds(molecule):
     if 'H2O' in molecule.name or 'OH' in molecule.name:
         return 20
     elif 'TS' in job_type:
-        a = 42.1; b = -120.4; c = 732.5
-        interval = (a*heavy_count**2) + (b*heavy_count) + c
+        # a = 48.1; b = -120.4; c = 732.5
+        a = 4.59; b = -20.79; c = 182.33; d = -99.7
+        interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     elif job_type == 'crest_sampling':
         a = 27; b = 10
         interval = (a*heavy_count) + b
-    elif 'opt' in job_type:
-        a=0.4; b=2.5; c=13.4; d=4.8
-        interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     elif 'DLPNO' in job_type:
-        a=0.4; b=2.5; c=13.4; d=4.8
+        a = 3.03; b = -13.718; c = 120.33; d = -65.795
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     else:
-        a=2.26; b=-30.8; c=249.8; d=-114
+        a = 2.295; b = -10.39; c = 91.16; d = -49.85
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
 
     return max(interval, 30)
