@@ -247,166 +247,240 @@ def write_to_xyz(num_atoms, name, labels, coords):
    xyz.write(coords_to_xyz(labels, coords))
    xyz.close()
 
+def read_xyz_from_molecule(molecule, noHydrogens=False):
+    """
+    Reads molecule data into lists
+
+    molecule - Molecule object
+    noHydrogens - if true, hydrogens are ignored; if not, hydrogens are included
+
+    Returns a tuple (a, b)
+    where a is a list of coordinate labels and b is a set of coordinates
+    (i.e) a = ["O", "H", "H"], b = [[x0,y0,z0],[x1,y1,z1],[x2,y2,z2]]
+    """
+    if not molecule.atoms or not molecule.coordinates:
+        raise ValueError("Molecule object does not have atoms or coordinates data")
+
+    unsorted_labels = []
+    unsorted_coords = []
+    
+    for atom, coord in zip(molecule.atoms, molecule.coordinates):
+        if noHydrogens and atom.upper().startswith("H"):
+            continue
+        else:
+            unsorted_labels.append(atom.upper())
+            unsorted_coords.append(coord)
+
+    NA = len(unsorted_labels)
+    return unsorted_labels, unsorted_coords, NA
+
+def sorted_xyz_from_molecule(molecule, noHydrogens=False):
+    """
+    Reads molecule data into lists and sorts them
+
+    molecule - Molecule object
+    noHydrogens - if true, hydrogens are ignored; if not, hydrogens are included
+
+    Returns a tuple (a, b, c, d) sorted by atom labels and coordinates
+    where a is a list of coordinate labels, b is a set of coordinates, c is the number of atoms, and d is the sorted order
+    (i.e) a = ["O", "H", "H"], b = [[x0,y0,z0],[x1,y1,z1],[x2,y2,z2]]
+    Sorts by atom labels first and coordinates second 
+    such that atoms of the same label/type are grouped together
+    """
+    if not molecule.atoms or not molecule.coordinates:
+        raise ValueError("Molecule object does not have atoms or coordinates data")
+
+    sortedlines = []
+    atomcount = 0
+
+    for atom, coord in zip(molecule.atoms, molecule.coordinates):
+        if noHydrogens and atom.upper().startswith("H"):
+            continue
+        else:
+            sortedlines.append([atom.upper()] + coord + [atomcount])
+            atomcount += 1
+
+    # sort by element followed by first coordinate (x) then second coordinate (y)
+    sortedlines.sort(key=lambda x: (x[0], x[1], x[2]))
+
+    sortedlabels = [line[0] for line in sortedlines]
+    sortedcoords = [[line[1], line[2], line[3]] for line in sortedlines]
+    sortedorder = [line[4] for line in sortedlines]
+
+    NA = len(sortedlabels)
+    return sortedlabels, sortedcoords, NA, sortedorder
+
 def compare(in_a,in_b,simpleit=0,noHydrogens=0):
+   try:
       a_labels = in_a.get_chemical_symbols()
       b_labels = in_b.get_chemical_symbols()
       a_coords = in_a.get_positions()
       b_coords = in_b.get_positions()
       NA_a = len(a_labels)
       NA_b = len(b_labels)
-      b_init_labels = b_labels 
-      b_init_coords = b_coords
-      
-      #Calculate the initial unsorted all-atom RMSD as a baseline
-      A_all = np.array(a_coords)
-      B_all = np.array(b_coords)
+   except:
+      from classes import Molecule
+      a_labels, a_coords, NA_a = read_xyz_from_molecule(in_a, noHydrogens)
+      b_labels, b_coords, NA_b = read_xyz_from_molecule(in_b, noHydrogens)
 
-      #If the two molecules are of the same size, get 
-      if NA_a == NA_b:
-         InitRMSD_unsorted = kabsch(A_all,B_all)
-      else:
-         return("Error: unequal number of atoms. " + str(NA_a) + " is not equal to " + str(NA_b))
+   b_init_labels = b_labels 
+   b_init_coords = b_coords
+   
+   #Calculate the initial unsorted all-atom RMSD as a baseline
+   A_all = np.array(a_coords)
+   B_all = np.array(b_coords)
+
+   #If the two molecules are of the same size, get 
+   if NA_a == NA_b:
+      InitRMSD_unsorted = kabsch(A_all,B_all)
+   else:
+      return("Error: unequal number of atoms. " + str(NA_a) + " is not equal to " + str(NA_b))
  
 
-      """
-      If the initial RMSD is zero (<0.001), then the structured are deemed identical already and 
-      we don't need to do any reordering, swapping, or reflections
-      """
-      if InitRMSD_unsorted < 0.001:
-         return(float(InitRMSD_unsorted))
-      
-      """
-      Read in the original coordinates and labels of xyz1 and xyz2, 
-      and sort them by atom labels so that atoms of the same label/name are grouped together
+   """
+   If the initial RMSD is zero (<0.001), then the structured are deemed identical already and 
+   we don't need to do any reordering, swapping, or reflections
+   """
+   if InitRMSD_unsorted < 0.001:
+      return(float(InitRMSD_unsorted))
+   
+   """
+   Read in the original coordinates and labels of xyz1 and xyz2, 
+   and sort them by atom labels so that atoms of the same label/name are grouped together
 
-      Then, count how many types of atoms, and determine their numerical frequency
-      """
+   Then, count how many types of atoms, and determine their numerical frequency
+   """
+   try:
       a_labels, a_coords, NA_a, order = sorted_xyz(in_a, noHydrogens)
-      Uniq_a = list(set(a_labels))
-      list.sort(Uniq_a)
-      N_uniq_a = len(Uniq_a)
-      Atom_freq_a = dict(Counter(a_labels))
-
       b_labels, b_coords, NA_b, junk = sorted_xyz(in_b, noHydrogens)
-      Uniq_b = list(set(b_labels))
-      list.sort(Uniq_b)
-      N_uniq_b = len(Uniq_b)
-      Atom_freq_b = dict(Counter(b_labels))
+   except:
+      a_labels, a_coords, NA_a, order = sorted_xyz_from_molecule(in_a, noHydrogens)
+      b_labels, b_coords, NA_b, junk = sorted_xyz_from_molecule(in_b, noHydrogens)
 
-      """
-      If the number and type of atoms in the two structures are not equal, exit with 
-      an error message
-      """
-      if (NA_a == NA_b) & (Uniq_a == Uniq_b) & (Atom_freq_a == Atom_freq_b) :
-         num_atoms = NA_a
-         num_uniq = N_uniq_a
-         Uniq = Uniq_a  
-         Atom_freq = Atom_freq_a
-         Sorted_Atom_freq = sorted(Atom_freq.items(), key=operator.itemgetter(1), reverse=True)
-         """
-         Atom = sorted(Uniq, key=operator.itemgetter(0), reverse=True)
-         print Atom
-         print num_uniq
-         """
-      else:
-         return("Unequal number or type of atoms. Exiting ... ")
+   Uniq_a = list(set(a_labels))
+   list.sort(Uniq_a)
+   N_uniq_a = len(Uniq_a)
+   Atom_freq_a = dict(Counter(a_labels))
 
-      A_all = np.array(a_coords)
-      A_all = A_all - sum(A_all) / len(A_all)
-      B_all = np.array(b_coords)
-      B_all = B_all - sum(B_all) / len(B_all)
-      InitRMSD_sorted = kabsch(A_all,B_all)
+   Uniq_b = list(set(b_labels))
+   list.sort(Uniq_b)
+   N_uniq_b = len(Uniq_b)
+   Atom_freq_b = dict(Counter(b_labels))
+
+   """
+   If the number and type of atoms in the two structures are not equal, exit with 
+   an error message
+   """
+   if (NA_a == NA_b) & (Uniq_a == Uniq_b) & (Atom_freq_a == Atom_freq_b) :
+      num_atoms = NA_a
+      num_uniq = N_uniq_a
+      Uniq = Uniq_a  
+      Atom_freq = Atom_freq_a
+      Sorted_Atom_freq = sorted(Atom_freq.items(), key=operator.itemgetter(1), reverse=True)
+      """
+      Atom = sorted(Uniq, key=operator.itemgetter(0), reverse=True)
+      print Atom
+      print num_uniq
+      """
+   else:
+      return("Unequal number or type of atoms. Exiting ... ")
+
+   A_all = np.array(a_coords)
+   A_all = A_all - sum(A_all) / len(A_all)
+   B_all = np.array(b_coords)
+   B_all = B_all - sum(B_all) / len(B_all)
+   InitRMSD_sorted = kabsch(A_all,B_all)
+   
+   """
+   Dynamically generate hashes of coordinates and atom indices for every atom type
+   """
+   a_Coords = {}
+   a_Indices = {}
+   b_Coords = {}
+   b_Indices = {}
+   Perm = {}
+   for i in range(len(Uniq)):
+      a_Coords[Uniq[i]]  = 'a_' + Uniq[i] + 'coords' 
+      b_Coords[Uniq[i]]  = 'b_' + Uniq[i] + 'coords' 
+      a_Indices[Uniq[i]] = 'a_' + Uniq[i] + 'indices' 
+      b_Indices[Uniq[i]] = 'b_' + Uniq[i] + 'indices' 
+      Perm[Uniq[i]]      = 'perm_' + Uniq[i]
+      vars()[Perm[Uniq[i]]] = []
+      vars()[a_Coords[Uniq[i]]]  = parse_for_atom(a_labels, a_coords, str(Uniq[i]))
+      vars()[a_Indices[Uniq[i]]] = get_atom_indices(a_labels, str(Uniq[i]))
+      vars()[b_Coords[Uniq[i]]]  = parse_for_atom(b_labels, b_coords, str(Uniq[i]))
+      vars()[b_Indices[Uniq[i]]] = get_atom_indices(b_labels, str(Uniq[i]))
+
+   l = 0 
+   A = np.array(vars()[a_Coords[Uniq[l]]])
+   A = A - sum(A) / len(A)
+   B = np.array(vars()[b_Coords[Uniq[l]]])
+   B = B - sum(B) / len(B)
+
+   '''
+   For each atom type, we can do a Kuhn-Munkres assignment in the initial 
+   coordinates or the many swaps and reflections thereof
+
+   If a single Kuhn-Munkres assignment is requested with a -s or --simple flag,
+   no swaps and reflections are considered. Otherwise, the default is to perform 
+   a combination of 6 axes swaps and 8 reflections and do Kuhn-Munkres assignment 
+   on all 48 combinations. 
+   '''
+
+   swaps = [(0, 1, 2), (0, 2, 1), (1, 0, 2), (1, 2, 0), (2, 0, 1), (2, 1, 0)]
+   reflects = [(1, 1, 1), (-1, 1, 1), (1, -1, 1), (1, 1, -1),
+               (-1, -1, 1), (-1, 1, -1), (1, -1, -1), (-1, -1, -1)]
+   B_t = []
+   for i in swaps:
+      for j in reflects:
+         B_t.append([transform_coords(B, i, j), i, j])
+
+   rmsds = []
+   # Performs the munkres algorithm on each set of transformed coordinates
+   for i in range(len(B_t)):
+      l = 0
+      cost_matrix = np.array([[np.linalg.norm(a - b)
+                                 for b in B_t[i][0]] for a in A])
+      q1,q2,xx = lapjv.lapjv(cost_matrix)
+      LAP = (q1,q2)
+      vars()[Perm[Uniq[l]]] = []
+      for j in range(len(LAP[0])):
+         vars()[Perm[Uniq[l]]] += [(j,LAP[0][j])]
       
-      """
-      Dynamically generate hashes of coordinates and atom indices for every atom type
-      """
-      a_Coords = {}
-      a_Indices = {}
-      b_Coords = {}
-      b_Indices = {}
-      Perm = {}
-      for i in range(len(Uniq)):
-         a_Coords[Uniq[i]]  = 'a_' + Uniq[i] + 'coords' 
-         b_Coords[Uniq[i]]  = 'b_' + Uniq[i] + 'coords' 
-         a_Indices[Uniq[i]] = 'a_' + Uniq[i] + 'indices' 
-         b_Indices[Uniq[i]] = 'b_' + Uniq[i] + 'indices' 
-         Perm[Uniq[i]]      = 'perm_' + Uniq[i]
-         vars()[Perm[Uniq[i]]] = []
-         vars()[a_Coords[Uniq[i]]]  = parse_for_atom(a_labels, a_coords, str(Uniq[i]))
-         vars()[a_Indices[Uniq[i]]] = get_atom_indices(a_labels, str(Uniq[i]))
-         vars()[b_Coords[Uniq[i]]]  = parse_for_atom(b_labels, b_coords, str(Uniq[i]))
-         vars()[b_Indices[Uniq[i]]] = get_atom_indices(b_labels, str(Uniq[i]))
-
-      l = 0 
-      A = np.array(vars()[a_Coords[Uniq[l]]])
-      A = A - sum(A) / len(A)
-      B = np.array(vars()[b_Coords[Uniq[l]]])
-      B = B - sum(B) / len(B)
-
-      '''
-      For each atom type, we can do a Kuhn-Munkres assignment in the initial 
-      coordinates or the many swaps and reflections thereof
-
-      If a single Kuhn-Munkres assignment is requested with a -s or --simple flag,
-      no swaps and reflections are considered. Otherwise, the default is to perform 
-      a combination of 6 axes swaps and 8 reflections and do Kuhn-Munkres assignment 
-      on all 48 combinations. 
-      '''
-
-      swaps = [(0, 1, 2), (0, 2, 1), (1, 0, 2), (1, 2, 0), (2, 0, 1), (2, 1, 0)]
-      reflects = [(1, 1, 1), (-1, 1, 1), (1, -1, 1), (1, 1, -1),
-                  (-1, -1, 1), (-1, 1, -1), (1, -1, -1), (-1, -1, -1)]
-      B_t = []
-      for i in swaps:
-         for j in reflects:
-            B_t.append([transform_coords(B, i, j), i, j])
-
-      rmsds = []
-      # Performs the munkres algorithm on each set of transformed coordinates
-      for i in range(len(B_t)):
-         l = 0
-         cost_matrix = np.array([[np.linalg.norm(a - b)
-                                    for b in B_t[i][0]] for a in A])
-         q1,q2,xx = lapjv.lapjv(cost_matrix)
-         LAP = (q1,q2)
-         vars()[Perm[Uniq[l]]] = []
-         for j in range(len(LAP[0])):
-            vars()[Perm[Uniq[l]]] += [(j,LAP[0][j])]
-         
-         vars()[Perm[Uniq[l]]] = sorted( vars()[Perm[Uniq[l]]], key = lambda x: x[0])
-         vars()[Perm[Uniq[l]]] = [x[1] for x in vars()[Perm[Uniq[l]]]]
-         # If there's more than one atom type, loop through each unique atom type 
-         if num_uniq == 1:
-            b_perm = permute_atoms(b_coords, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
-            b_final = transform_coords(b_perm, B_t[i][1], B_t[i][2])
-            rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final, vars()[Perm[Uniq[l]]]])
+      vars()[Perm[Uniq[l]]] = sorted( vars()[Perm[Uniq[l]]], key = lambda x: x[0])
+      vars()[Perm[Uniq[l]]] = [x[1] for x in vars()[Perm[Uniq[l]]]]
+      # If there's more than one atom type, loop through each unique atom type 
+      if num_uniq == 1:
+         b_perm = permute_atoms(b_coords, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
+         b_final = transform_coords(b_perm, B_t[i][1], B_t[i][2])
+         rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final, vars()[Perm[Uniq[l]]]])
+         rmsds = sorted(rmsds, key = lambda x: x[0])
+      else: 
+         b_perm = permute_atoms(b_coords, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
+         b_trans = transform_coords(b_perm, B_t[i][1], B_t[i][2])
+         while l < num_uniq:
+            if l > 0:
+               vars()[b_Coords[Uniq[l]]] = parse_for_atom(b_labels, b_final, Uniq[l])
+            else:
+               vars()[b_Coords[Uniq[l]]] = parse_for_atom(b_labels, b_trans, Uniq[l])
+            lol1 = np.array(vars()[b_Coords[Uniq[l]]])
+            lol2 = np.array(vars()[a_Coords[Uniq[l]]])
+            cost_matrix = np.array([[np.linalg.norm(a-b) for b in lol1] for a in lol2])
+            q1,q2,xx = lapjv.lapjv(cost_matrix)
+            LAP = (q1,q2) #New one gives the indices fucked flipped Q_Q
+            vars()[Perm[Uniq[l]]] = []
+            for k in range(len(LAP[0])):
+               vars()[Perm[Uniq[l]]] += [(k,LAP[0][k])]
+            vars()[Perm[Uniq[l]]] = sorted( vars()[Perm[Uniq[l]]], key = lambda x: x[0])
+            vars()[Perm[Uniq[l]]] = [x[1] for x in vars()[Perm[Uniq[l]]]]
+            b_final = permute_atoms(b_trans, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
+            b_trans = b_final
+            l += 1
+            q = l - 1 
+            rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final])
             rmsds = sorted(rmsds, key = lambda x: x[0])
-         else: 
-            b_perm = permute_atoms(b_coords, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
-            b_trans = transform_coords(b_perm, B_t[i][1], B_t[i][2])
-            while l < num_uniq:
-               if l > 0:
-                  vars()[b_Coords[Uniq[l]]] = parse_for_atom(b_labels, b_final, Uniq[l])
-               else:
-                  vars()[b_Coords[Uniq[l]]] = parse_for_atom(b_labels, b_trans, Uniq[l])
-               lol1 = np.array(vars()[b_Coords[Uniq[l]]])
-               lol2 = np.array(vars()[a_Coords[Uniq[l]]])
-               cost_matrix = np.array([[np.linalg.norm(a-b) for b in lol1] for a in lol2])
-               q1,q2,xx = lapjv.lapjv(cost_matrix)
-               LAP = (q1,q2) #New one gives the indices fucked flipped Q_Q
-               vars()[Perm[Uniq[l]]] = []
-               for k in range(len(LAP[0])):
-                  vars()[Perm[Uniq[l]]] += [(k,LAP[0][k])]
-               vars()[Perm[Uniq[l]]] = sorted( vars()[Perm[Uniq[l]]], key = lambda x: x[0])
-               vars()[Perm[Uniq[l]]] = [x[1] for x in vars()[Perm[Uniq[l]]]]
-               b_final = permute_atoms(b_trans, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
-               b_trans = b_final
-               l += 1
-               q = l - 1 
-               rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final])
-               rmsds = sorted(rmsds, key = lambda x: x[0])
-      FinalRMSD = float(rmsds[0][0])
-      if FinalRMSD < float(InitRMSD_unsorted): 
-         return(float(rmsds[0][0]))
-      else:
-         return(float(InitRMSD_unsorted))
+   FinalRMSD = float(rmsds[0][0])
+   if FinalRMSD < float(InitRMSD_unsorted): 
+      return(float(rmsds[0][0]))
+   else:
+      return(float(InitRMSD_unsorted))
