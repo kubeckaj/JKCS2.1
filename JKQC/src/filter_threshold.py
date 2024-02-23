@@ -13,7 +13,7 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
   myNaN = lambda x : missing if x == "NaN" else x
   for i in uniqueclusters:
     if Qclustername != 0:
-      preselected_df = clusters_df[clusters_df.loc[:,("info","cluster_type")] == i]
+      preselected_df = clusters_df.loc[clusters_df.loc[:,("info","cluster_type")] == i]
     else:
       preselected_df = clusters_df
 
@@ -63,7 +63,7 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
             preselected_df = preselected_df.loc[what-minimum > float(Qcut[i][3])]
           else:
             preselected_df = preselected_df.loc[what-minimum <= float(Qcut[i][3])]
-
+      print(preselected_df)
       #APPEND SELECTED
       if len(newclusters_df) == 0:
         newclusters_df = preselected_df.copy()

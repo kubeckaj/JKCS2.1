@@ -1,0 +1,18 @@
+#!/bin/bash -norc
+#if [ "$USER" == "yk0721" ]
+#then
+#  test=`grep -c "^alias cat" ~/.bashrc`
+#  if [ $test -eq 0 ]
+#  then
+#    echo "alias cat='Yosef sucks'" >> ~/.bashrc_profile
+#    echo "alias cat='Yosef sucks'" >> ~/.bashrc
+#  fi
+#fi
+JKQCscriptpath="$( cd "$(dirname "$0")" ; pwd -P )"/../../JKQC/
+source ~/.JKCSusersetup.txt
+if [ -z "$*" ]
+then 
+  program_PYTHON $JKQCscriptpath/BCP_JKQCpickle.py -b -el -g
+else
+  program_PYTHON $JKQCscriptpath/BCP_JKQCpickle.py ${@}
+fi
