@@ -73,6 +73,8 @@ def submit_array_job(molecules, args, nnodes=1):
         file.write(f"#SBATCH --no-requeue\n")
         file.write(f"#SBATCH --mem={program_mem}\n")
         file.write(f"#SBATCH --array=$ARRAY\n\n")
+        if args.account:
+            file.write(f'#SBATCH --account={args.account}\n')
 
         file.write(f"source ~/.JKCSusersetup.txt\n")
 
@@ -169,6 +171,11 @@ def submit_job(molecule, args, nnodes=1):
     else:
         program_mem = mem
 
+    if args.account:
+        account_string = f'#SBATCH --account={args.account}'
+    else:
+        account_string = ''
+
 
     script_content_crest = f"""#!/bin/bash
 IN=$1
@@ -188,6 +195,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
 #SBATCH --mem={program_mem}
+{account_string}
 
 source ~/.JKCSusersetup.txt
 
@@ -222,6 +230,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
 #SBATCH --mem={program_mem}  # requested total memory in MB
+{account_string}
 
 source ~/.JKCSusersetup.txt
 eval \\$MODULE_G16
@@ -260,6 +269,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
 #SBATCH --mem={program_mem}  # requested memory per process in MB
+{account_string}
 
 source ~/.JKCSusersetup.txt
 export LD_LIBRARY_PATH=\\$PATH_ORCA:\\$LD_LIBRARY_PATH

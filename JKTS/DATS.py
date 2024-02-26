@@ -230,8 +230,13 @@ def check_transition_state(molecule, logger):
         displaced_coordinates_plus = [np.array(original) + np.array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
         displaced_coordinates_minus = [np.array(original) - np.array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
 
-        H_index = molecule.constrained_indexes['H']-1 # python 0-based indexing
-        O_index = molecule.constrained_indexes['O']-1
+        try:
+            H_index = molecule.constrained_indexes['H']-1 # python 0-based indexing
+            O_index = molecule.constrained_indexes['O']-1
+        except:
+            molecule.find_active_site()
+            H_index = molecule.constrained_indexes['H']-1 # python 0-based indexing
+            O_index = molecule.constrained_indexes['O']-1
 
         # Calculate original and new distances between H and O
         original_distance_HO = np.linalg.norm(np.array(molecule.coordinates[H_index]) - np.array(molecule.coordinates[O_index]))
@@ -279,7 +284,6 @@ def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
 
         for molecule in molecules:
             rmsd_value = compare(reference, molecule)
-            print(rmsd_value)
             # If RMSD is below or equal to the threshold, they are considered similar
             if rmsd_value <= RMSD_threshold:
                 # Compare their energies and keep the one with lower energy
@@ -918,11 +922,12 @@ def initiate_conformers(conformers, input_file=None, molecule=None):
             name = input_file.split(".")[0].replace("collection", "")
             name += f"_conf{n}"
             conformer_molecule = Molecule(name=name,
-            file_path=input_file,
             directory=start_dir,
             atoms=[atom[0] for atom in conformer_coords],
             coordinates=[atom[1:] for atom in conformer_coords],
             program='crest')
+            conformer_molecule.workflow = conformer_molecule.determine_workflow()
+            conformer_molecule.set_current_step()
             log_file_path = os.path.join(start_dir, f"{name}.log")
             if os.path.exists(log_file_path):
                 conformer_molecule.log_file_path = log_file_path
@@ -1241,6 +1246,7 @@ def main():
     additional_options.add_argument('-energy_cutoff', metavar="int", nargs='?', const=1, default=5, type=int, help='After preoptimization, remove conformers which are [int] kcal/mol higher in energy than the lowest conformer [def: 5 kcal/mol]')
     additional_options.add_argument('-filter', type=str2bool, metavar='<boolean>', default=True, help='Filter identical conformers after transition state optimization [def: True]')
 
+    additional_options.add_argument('--account', type=str, help=argparse.SUPPRESS) # For Finland Puhti
     additional_options.add_argument('-test', action='store_true', default=False, help=argparse.SUPPRESS) # Run TEST section in main() and exit
     additional_options.add_argument('-num_molecules', type=int, default=None, help=argparse.SUPPRESS) # Set the number of directories created to [int]. Used when doing limited testing
     additional_options.add_argument('-XQC', '-YQC', '-QC', action=SCFAction, nargs='*', const=[], default='SCF=(XQC)', dest='SCF', help='Use G16 SCF=(X,Y)QC algorithm for SCF procedure - https://gaussian.com/scf/')
@@ -1308,15 +1314,17 @@ def main():
 
     #####################################################################################################
     if args.test:
+        print(args)
+        exit()
         molecules = []
         threads = []
         logger = Logger(os.path.join(start_dir, "log_test"))
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
             molecules.append(molecule)
+            termination_status(molecule, logger)
 
-        ll = ArbAlign_compare_molecules(molecules, logger)
-        print(ll)
+
         exit()
     ####################################################################################################
 

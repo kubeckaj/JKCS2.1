@@ -4,7 +4,7 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../../JKTS/"
 
 # Default values
-SLURM_TIME="192:00:00"
+SLURM_TIME="240:00:00"
 SLURM_PARTITION="q24,q28,q36,q40,q48,q64"
 PYTHON_ARGS=()
 XYZ=0
@@ -17,6 +17,9 @@ COLLECT=0
 for arg in "$@"; do
   PYTHON_ARGS+=("$arg")
 done
+PYTHON_ARGS+=("$SBATCH_PREFIX")
+
+time_arg="" 
 
 for arg in "$@"; do
   case "$arg" in
@@ -61,17 +64,16 @@ for arg in "$@"; do
     -par)
       PAR_FLAG=1
       ;;
-    qtest)
-      SLURM_PARTITION="qtest"
-      SLURM_TIME="1:00:00"
-      ;;
     *)
       if [[ "$time_arg" == "-time" ]]; then
         SLURM_TIME="$arg"
         time_arg=""
-      elif [[ "$par_flag" -eq 1 ]]; then
+      elif [[ "$PAR_FLAG" -eq 1 ]]; then
         SLURM_PARTITION="$arg"
-        par_flag=0
+        PAR_FLAG=0
+        if [[ "$SLURM_PARTITION" == "qtest" ]]; then
+            SLURM_TIME="1:00:00"
+        fi
       fi
       ;;
   esac
@@ -91,6 +93,7 @@ submit_array_job() {
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2000
 #SBATCH --array=1-${#directories[@]}%${#directories[@]}
+#SBATCH $SBATCH_PREFIX
 
 DIR_INDEX=\$((\$SLURM_ARRAY_TASK_ID - 1))
 DIRS=(${directories[@]})
@@ -117,6 +120,7 @@ submit_job() {
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2000
+#SBATCH $SBATCH_PREFIX
 
 source ~/.JKCSusersetup.txt
 program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
@@ -137,8 +141,11 @@ for dir in */; do
     fi
 done
 
-if [ ${#directories[@]} -gt 0 ] && [ "$XYZ" -gt 0 ]; then
+if [ ${#directories[@]} -gt 1 ] && [ "$XYZ" -gt 0 ]; then
   submit_array_job
 elif [ "$PKL" -gt 0 ] || [ "$LOG" -gt 0 ]; then
   submit_job
+else
+  submit_job
 fi
+

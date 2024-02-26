@@ -312,7 +312,7 @@ class Molecule(Vector):
                             if neighbor == 'H' and self.is_nearby(C, H):
                                 # Since we already know the indexes of O and H in the OH radical,
                                 # we directly use them instead of iterating through all atoms again.
-                                if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[O_index]) > 160:
+                                if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[O_index]) > 140:
                                     # Check if the H from the molecule is close enough to the O from the OH radical
                                     # indicating a potential active site for hydrogen abstraction.
                                     if self.is_nearby(H, O_index):
@@ -327,7 +327,7 @@ class Molecule(Vector):
 
 
 
-    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=2.0):
+    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.6):
         distance = np.linalg.norm(np.array(self.coordinates[atom_index1]) - np.array(self.coordinates[atoms_index2]))
         return distance < threshold_distance
 
