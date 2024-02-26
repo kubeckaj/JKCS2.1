@@ -267,11 +267,33 @@ def check_transition_state(molecule, logger):
 
 
 def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
-    import ArbAlign
-    filtered_molecules = ArbAlign.main(molecules, RMSD_threshold)
-    Molecule.molecules_to_pickle(filtered_molecules, os.path.join(start_dir, "filtered_molecules.pkl"))
-    logger.log(f"Filtered {len(molecules)} to {len(filtered_molecules)}")
+    from ArbAlign import compare
+    initial_len = len(molecules)
+    filtered_molecules = []
 
+    while molecules:
+        reference = molecules.pop(0) # Take first molecule and assume its unique for now
+        filtered_molecules.append(reference)
+
+        non_similar_molecules = []
+
+        for molecule in molecules:
+            rmsd_value = compare(reference, molecule)
+            print(rmsd_value)
+            # If RMSD is below or equal to the threshold, they are considered similar
+            if rmsd_value <= RMSD_threshold:
+                # Compare their energies and keep the one with lower energy
+                if molecule.single_point < reference.single_point:
+                    filtered_molecules.pop()  # Remove the previous reference
+                    filtered_molecules.append(molecule)  # Add the new one with lower energy
+                    reference = molecule  # Update reference to the new molecule
+            else:
+                non_similar_molecules.append(molecule)
+
+        molecules = non_similar_molecules
+
+    logger.log(f"Filtered {initial_len} conformers to {len(filtered_molecules)} conformers")
+    # Molecule.molecules_to_pickle(filtered_molecules, os.path.join(start_dir, "filtered_molecules.pkl"))
     return filtered_molecules
 
 
@@ -299,7 +321,7 @@ def QC_input(molecule, constrain,  method, basis_set, TS):
     file_path = os.path.join(molecule.directory, file_name)
     atoms = molecule.atoms
     coords = molecule.coordinates
-    max_iter = 150 # Maximum iterations for geoemtry optimization
+    max_iter = 200 # Maximum iterations for geoemtry optimization
     freq = 'freq'
     SCF = 'NoTrah'
     disp = "" # 'EmpiricalDispersion=GD3BJ'
@@ -335,11 +357,11 @@ def QC_input(molecule, constrain,  method, basis_set, TS):
                     f.write(f"%pal nprocs {args.cpu} end\n")
                     f.write(f"%maxcore {round((args.mem+12000)/args.cpu)}\n") 
             elif TS:
-                f.write(f"! {method} {basis_set} TightSCF SlowConv OptTS {freq}\n")
+                f.write(f"! {method} {basis_set} TightSCF SlowConv OptTS defgrid3 {freq}\n")
                 f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {round(args.mem/args.cpu)}\n")
             else:
-                f.write(f"! {method} {basis_set} TightSCF SlowConv OPT\n")
+                f.write(f"! {method} {basis_set} TightSCF SlowConv OPT defgrid3\n")
                 f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {round(args.mem/args.cpu)}\n")
             if constrain:
@@ -896,6 +918,7 @@ def initiate_conformers(conformers, input_file=None, molecule=None):
             name = input_file.split(".")[0].replace("collection", "")
             name += f"_conf{n}"
             conformer_molecule = Molecule(name=name,
+            file_path=input_file,
             directory=start_dir,
             atoms=[atom[0] for atom in conformer_coords],
             coordinates=[atom[1:] for atom in conformer_coords],
@@ -1279,7 +1302,7 @@ def main():
     }
     error_strings = {
         "g16": "Error termination",
-        "orca": "ORCA finished by error termination",
+        "orca": "aborting the run",
         "crest": "Find my error message"
     }
 
@@ -1290,10 +1313,10 @@ def main():
         logger = Logger(os.path.join(start_dir, "log_test"))
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
-            check_transition_state(molecule, logger)
+            molecules.append(molecule)
 
-
-
+        ll = ArbAlign_compare_molecules(molecules, logger)
+        print(ll)
         exit()
     ####################################################################################################
 
