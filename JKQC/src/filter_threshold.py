@@ -63,12 +63,11 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
             preselected_df = preselected_df.loc[what-minimum > float(Qcut[i][3])]
           else:
             preselected_df = preselected_df.loc[what-minimum <= float(Qcut[i][3])]
-      print(preselected_df)
-      #APPEND SELECTED
-      if len(newclusters_df) == 0:
-        newclusters_df = preselected_df.copy()
-      else:
-        newclusters_df = newclusters_df.append(preselected_df.copy())
+    #APPEND SELECTED
+    if len(newclusters_df) == 0:
+      newclusters_df = preselected_df.copy()
+    else:
+      newclusters_df = newclusters_df.append(preselected_df.copy())
 
   if Qout >= 1:
     print("Threshold filtering: "+str(original_length)+" --> "+str(len(newclusters_df)))
