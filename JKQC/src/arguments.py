@@ -73,7 +73,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
-  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -110,6 +110,7 @@ def arguments(argument_list = []):
   Pextract = []
   Qreacted = 0 #Remove reacted structures?, 1 = yes; 2 = print the reverse 
   bonddistancethreshold = 1.75
+  Qbonded = []
   
   #global Qoutpkl,Qout,Pout,QUenergy,QUentropy
   Qoutpkl = 0 #Do I want to save output.pkl? 0=NO,1=YES
@@ -264,6 +265,26 @@ def arguments(argument_list = []):
     if last == "-solvation":
       last = ""
       Qsolvation = str(i)
+      continue
+    #bonded
+    if i == "-bonded":
+      last = "-bonded"
+      rem = []
+      continue
+    if last == "-bonded":
+      last = "-bonded1"
+      rem.append(str(i))
+      continue
+    if last == "-bonded1":
+      last = "-bonded2"
+      rem.append(str(i))
+      continue
+    if last == "-bonded2":
+      last = ""
+      rem.append(str(i))
+      Qbonded.append(rem)
+      rem = ""
+      Pout.append("-bonded")
       continue
     #IamIfo
     if i == "-IamIfo":

@@ -1,10 +1,11 @@
-def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclustername, Qt, Qcolumn, Pout = [], QUenergy = 1, QUentropy = 1):
+def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclustername, Qt, Qcolumn, Qbonded, Pout = [], QUenergy = 1, QUentropy = 1):
   """Print output from JKQC
   clusters_df = Pandas Dataframe
   Pout = list of outputs
   """
   missing = float("nan")
-  
+ 
+  Qbonded_index = -1 
   Qcolumn_i = 0
   output = []
   last = ''
@@ -158,6 +159,29 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
         except:
           continue
       print(" ".join([str(i) for i in list(set(atoms))]))
+      continue
+    #bonded
+    if i == "-bonded":
+      from numpy import array,sum
+      bonded = []
+      Qbonded_index += 1
+      for ind in clusters_df.index:
+        try:
+          aseCL = clusters_df.loc[ind,("xyz","structure")]
+          positions = aseCL.positions
+          symb = aseCL.get_chemical_symbols()
+          dist = lambda p1, p2: sum((p1-p2)**2)**0.5
+          symb_ind = array(aseCL.get_chemical_symbols())
+          mask1 = symb_ind == Qbonded[Qbonded_index][1]
+          mask2 = symb_ind == Qbonded[Qbonded_index][2]
+          dm = [dist(p1, p2) for p2 in positions[mask1] for p1 in positions[mask2]]
+          bonds = sum(test_i <= float(Qbonded[Qbonded_index][0]) for test_i in dm)
+          if Qbonded[Qbonded_index][1] == Qbonded[Qbonded_index][2]:
+            bonds = (bonds-sum(mask1))/2
+          bonded.append(str(int(bonds)))
+        except:
+          bonded.append(missing)
+      output.append(bonded)
       continue
     #Rg
     if i == "-rg":

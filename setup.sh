@@ -50,6 +50,7 @@ OPTIONS (cluster):
 OPTIONS (arguments):
   -r .............. rewrite the old installation
   -r2 ............. rewrite the old installation but skip Python installation
+  -up ............. (only) updates python libraries
   -python <str> ... define how do you call python (e.g. python3.9)
   -module \"<str>\" . define python module (e.g. \"module load python/3.9.4\")
 
@@ -65,6 +66,7 @@ OPTIONS (extra packages):
 EXAMPLE:
     sh setup.sh -python python3.9 -module "module load python"
     sh setup.sh grendel -r -qml -descriptors
+    sh setup.sh -up grendel -nn
     """
     exit
   fi
@@ -193,6 +195,11 @@ EXAMPLE:
     Qr=2
     continue
   fi 
+  if [ "$i" == "-up" ]
+  then
+    Qr=3
+    continue
+  fi
   if [ "$i" == "-python" ]
   then
     last="-python"
@@ -224,10 +231,13 @@ if [ ! -z "$QUmodulepython" ]; then MODULE_PYTHON="$QUmodulepython"; fi
 cat TOOLS/label_big
 
 # JKCS python environment
-if [ ! -e JKQC/JKCS ] || [ "$Qr" == "1" ] 
+if [ ! -e JKQC/JKCS ] || [ "$Qr" == "1" ] || [ "$Qr" == "3" ]
 then
   cd JKQC
-  rm -rf JKCS 
+  if  [ "$Qr" != "3" ]
+  then
+    rm -rf JKCS 
+  fi
   sh .install.sh "$PYTHON" "$MODULE_PYTHON" "$ADD"
   if [ ! -e JKCS ]
   then
@@ -236,84 +246,89 @@ then
   cd ..
 fi
 
-# START MODIFYING ~/.bashrc
-echo "-----------------------"
-echo 'Now, I will just test what is written in your ~/.bashrc file and modify it'
-
-# PATH DECLARATION
-path=$PWD
-path1="${path}/JKCSx"
-path2="${path}/TOOLS/MANIPULATE"
-
-# DOES ~/.bashrc exist?
-if [ ! -e ~/.bashrc ]
+if  [ "$Qr" != "3" ]
 then
-  touch ~/.bashrc
-fi
-
-function writetobashrc {
-  command="$1"
-  test=`grep -c "$command" ~/.bashrc`
-  if [ $test -ne 0 ]
-  then 
-    sed  "\#$command#d" ~/.bashrc > ~/.bashrc_help
-    mv ~/.bashrc_help ~/.bashrc
+  # START MODIFYING ~/.bashrc
+  echo "-----------------------"
+  echo 'Now, I will just test what is written in your ~/.bashrc file and modify it'
+  
+  # PATH DECLARATION
+  path=$PWD
+  path1="${path}/JKCSx"
+  path2="${path}/TOOLS/MANIPULATE"
+  
+  # DOES ~/.bashrc exist?
+  if [ ! -e ~/.bashrc ]
+  then
+    touch ~/.bashrc
   fi
-  echo "$command" >> ~/.bashrc
-}
-
-command1="export PATH=$path1:\$PATH"
-writetobashrc "$command1"
-
-command2="export PATH=$path2:\$PATH"
-writetobashrc "$command2"
-
-Qcolours=1
-source TOOLS/LOADING/colours.txt
-
-if [ ! -e TOOLS/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl ]
-then 
-  cd TOOLS/LOADING/JK_ACDC/ACDC_input
-  tar -xzf acdc_2020_07_20.pl.tar.gz
-  cd -
-fi
-
-printf "${cfGREEN}Write following command:${cfDEF}\n"
-printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}\n"
-echo "-----------------------"
-
-if [ ! -e ~/.JKCSusersetup.txt ] || [ $Qr -gt 0 ] 
-then
-  if [ -e ~/.JKCSusersetup.txt ]; then cp ~/.JKCSusersetup.txt ~/.oldJKCSusersetup.txt; fi
-  cp TOOLS/.JKCSusersetup.txt .help1
-  sed 's,REPLACE_jkcs_path,'"$PWD"',g' .help1 > .help2
-  sed 's,REPLACE_python,'"$PYTHON"',g' .help2 > .help3
-  sed 's,REPLACE_module_python,'"$MODULE_PYTHON"',g' .help3 > .help4
-  sed 's,REPLACE_abc3,'"$PATH_ABC3"',g' .help4 > .help4b
-  sed 's,REPLACE_abc,'"$PATH_ABC"',g' .help4b > .help5
-  sed 's,REPLACE_module_abc,'"$MODULE_ABC"',g' .help5 > .help6
-  sed 's,REPLACE_xtb,'"$PATH_XTB"',g' .help6 > .help6b
-  sed 's,REPLACE_crest,'"$PATH_CREST"',g' .help6b > .help7
-  sed 's,REPLACE_module_xtb,'"$MODULE_XTB"',g' .help7 > .help8
-  sed 's,REPLACE_g16,'"$PATH_G16"',g' .help8 > .help9
-  sed 's,REPLACE_module_g16,'"$MODULE_G16"',g' .help9 > .help10
-  sed 's,REPLACE_orca,'"$PATH_ORCA"',g' .help10 > .help11
-  sed 's,REPLACE_module_orca,'"$MODULE_ORCA"',g' .help11 > .help11b
-  sed 's,REPLACE_extra_orca_lines,'"$EXTRA_ORCA_LINES"',g' .help11b > .help12
-  sed 's,REPLACE_sbatch_prefix,'"$SBATCH_PREFIX"',g' .help12 > .help13
-  sed 's,REPLACE_wrkdir,'"$WRKDIR"',g' .help13 > .help14
-  sed 's,REPLACE_time1,'"$time1"',g' .help14 > .help15
-  sed 's,REPLACE_time2,'"$time2"',g' .help15 > .help16
-  sed 's/REPLACE_queue1/'"$queue1"'/g' .help16 > .help17
-  sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
-  mv .help18 ~/.JKCSusersetup.txt
-  rm .help*
-  printf "${cfGREEN}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
+  
+  function writetobashrc {
+    command="$1"
+    test=`grep -c "$command" ~/.bashrc`
+    if [ $test -ne 0 ]
+    then 
+      sed  "\#$command#d" ~/.bashrc > ~/.bashrc_help
+      mv ~/.bashrc_help ~/.bashrc
+    fi
+    echo "$command" >> ~/.bashrc
+  }
+  
+  command1="export PATH=$path1:\$PATH"
+  writetobashrc "$command1"
+  
+  command2="export PATH=$path2:\$PATH"
+  writetobashrc "$command2"
+  
+  Qcolours=1
+  source TOOLS/LOADING/colours.txt
+  
+  if [ ! -e TOOLS/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl ]
+  then 
+    cd TOOLS/LOADING/JK_ACDC/ACDC_input
+    tar -xzf acdc_2020_07_20.pl.tar.gz
+    cd -
+  fi
+  
+  printf "${cfGREEN}Write following command:${cfDEF}\n"
+  printf "          ${cfYELLOW}source ~/.bashrc${cfDEF}\n"
+  echo "-----------------------"
+  
+  if [ ! -e ~/.JKCSusersetup.txt ] || [ $Qr -gt 0 ] 
+  then
+    if [ -e ~/.JKCSusersetup.txt ]; then cp ~/.JKCSusersetup.txt ~/.oldJKCSusersetup.txt; fi
+    cp TOOLS/.JKCSusersetup.txt .help1
+    sed 's,REPLACE_jkcs_path,'"$PWD"',g' .help1 > .help2
+    sed 's,REPLACE_python,'"$PYTHON"',g' .help2 > .help3
+    sed 's,REPLACE_module_python,'"$MODULE_PYTHON"',g' .help3 > .help4
+    sed 's,REPLACE_abc3,'"$PATH_ABC3"',g' .help4 > .help4b
+    sed 's,REPLACE_abc,'"$PATH_ABC"',g' .help4b > .help5
+    sed 's,REPLACE_module_abc,'"$MODULE_ABC"',g' .help5 > .help6
+    sed 's,REPLACE_xtb,'"$PATH_XTB"',g' .help6 > .help6b
+    sed 's,REPLACE_crest,'"$PATH_CREST"',g' .help6b > .help7
+    sed 's,REPLACE_module_xtb,'"$MODULE_XTB"',g' .help7 > .help8
+    sed 's,REPLACE_g16,'"$PATH_G16"',g' .help8 > .help9
+    sed 's,REPLACE_module_g16,'"$MODULE_G16"',g' .help9 > .help10
+    sed 's,REPLACE_orca,'"$PATH_ORCA"',g' .help10 > .help11
+    sed 's,REPLACE_module_orca,'"$MODULE_ORCA"',g' .help11 > .help11b
+    sed 's,REPLACE_extra_orca_lines,'"$EXTRA_ORCA_LINES"',g' .help11b > .help12
+    sed 's,REPLACE_sbatch_prefix,'"$SBATCH_PREFIX"',g' .help12 > .help13
+    sed 's,REPLACE_wrkdir,'"$WRKDIR"',g' .help13 > .help14
+    sed 's,REPLACE_time1,'"$time1"',g' .help14 > .help15
+    sed 's,REPLACE_time2,'"$time2"',g' .help15 > .help16
+    sed 's/REPLACE_queue1/'"$queue1"'/g' .help16 > .help17
+    sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
+    mv .help18 ~/.JKCSusersetup.txt
+    rm .help*
+    printf "${cfGREEN}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
+  else
+    echo "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
+    echo "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
+    printf "          ${cfYELLOW}sh setup.sh -r${cfDEF}\n"
+  fi
+  echo "-----------------------"
+  echo "Anyway, you can check if everything is working by running:"
+  printf "          ${cfYELLOW}sh test.sh${cfDEF}\n"
 else
-  echo "File ~/.JKCSusersetup.txt already exists. However, check, if all paths in this file are correct."
-  echo "...or use the following command the rewrite the old ~/.JKCSusersetput.txt:"
-  printf "          ${cfYELLOW}sh setup.sh -r${cfDEF}\n"
+  printf "  Update finished"
 fi
-echo "-----------------------"
-echo "Anyway, you can check if everything is working by running:"
-printf "          ${cfYELLOW}sh test.sh${cfDEF}\n"
