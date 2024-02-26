@@ -93,7 +93,7 @@ submit_array_job() {
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2000
 #SBATCH --array=1-${#directories[@]}%${#directories[@]}
-#SBATCH --account=$SBATCH_PREFIX
+$SBATCH_PREFIX
 
 DIR_INDEX=\$((\$SLURM_ARRAY_TASK_ID - 1))
 DIRS=(${directories[@]})
@@ -120,7 +120,7 @@ submit_job() {
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2000
-#SBATCH --account=$SBATCH_PREFIX
+$SBATCH_PREFIX
 
 source ~/.JKCSusersetup.txt
 program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
