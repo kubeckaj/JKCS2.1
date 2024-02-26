@@ -17,7 +17,7 @@ COLLECT=0
 for arg in "$@"; do
   PYTHON_ARGS+=("$arg")
 done
-PYTHON_ARGS+="--account $SBATCH_PREFIX"
+PYTHON_ARGS+=("$SBATCH_PREFIX")
 
 time_arg="" 
 
