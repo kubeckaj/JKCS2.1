@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -norc
 source ~/.JKCSusersetup.txt
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../../JKTS/"
@@ -17,8 +17,10 @@ COLLECT=0
 for arg in "$@"; do
   PYTHON_ARGS+=("$arg")
 done
+PYTHON_ARGS+="-account $SBATCH_PREFIX"
 
-time_arg="" # Initialize this to handle -time correctly
+time_arg="" 
+
 for arg in "$@"; do
   case "$arg" in
     -h|--help|-help)
@@ -91,6 +93,7 @@ submit_array_job() {
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2000
 #SBATCH --array=1-${#directories[@]}%${#directories[@]}
+#SBATCH --account=$SBATCH_PREFIX
 
 DIR_INDEX=\$((\$SLURM_ARRAY_TASK_ID - 1))
 DIRS=(${directories[@]})
@@ -117,6 +120,7 @@ submit_job() {
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2000
+#SBATCH --account=$SBATCH_PREFIX
 
 source ~/.JKCSusersetup.txt
 program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
