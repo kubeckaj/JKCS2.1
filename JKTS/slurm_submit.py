@@ -74,7 +74,7 @@ def submit_array_job(molecules, args, nnodes=1):
         file.write(f"#SBATCH --mem={program_mem}\n")
         file.write(f"#SBATCH --array=$ARRAY\n\n")
         if args.account:
-            file.write(f'#SBATCH {args.account}\n')
+            file.write(f'#SBATCH --account={args.account}\n')
 
         file.write(f"source ~/.JKCSusersetup.txt\n")
 
@@ -172,7 +172,7 @@ def submit_job(molecule, args, nnodes=1):
         program_mem = mem
 
     if args.account:
-        account_string = f'#SBATCH {args.account}'
+        account_string = f'#SBATCH --account={args.account}'
     else:
         account_string = ''
 
