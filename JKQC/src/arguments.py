@@ -60,6 +60,10 @@ def print_help():
   print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     removes higher/lower rel. values compared to lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
+  print("   OR")
+  print(" -filter_</<=/==/>=/>/!=  X Y      filter absolute value of X compared to Y value (e.g. -filter_< rg 3.0)")
+  print(" -rel_filter_</<=/==/>=/>/!=  X Y  filter minimum-relative value of X compared to Y value (e.g. -filter_< el 5.0)")
+  print(" -filter_== bonded <float thr.> <element> <element> <Y>  filtering for number of bond distances")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
@@ -514,34 +518,88 @@ def arguments(argument_list = []):
       last = ""
       Quniq = str(i)
       continue
-    if i == "-cut":
+    if i == "-is" or i == "-filter_==":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["==","absolute"]
+      continue
+    if i == "-isnot" or i == "-filter_!=":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["!=","absolute"]
+      continue
+    if i == "-cut" or i == "-filter_<=":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<=","absolute"]
       continue
-    if i == "-cutr":
+    if i == "-filter_<":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["<","absolute"]
+      continue
+    if i == "-rel_filter_<":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["<","relative"]
+      continue
+    if i == "-cutr" or i == "-rel_filter_<=":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<=","relative"]
       continue
-    if i == "-pass":
+    if i == "-filter_<=":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["<=","absolute"]
+      continue
+    if i == "-pass" or i == "-filter_>":
       Qthreshold = 1
       last = "-threshold"
       attach = [">","absolute"]
       continue
-    if i == "-passr":
+    if i == "-filter_>=":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = [">=","absolute"]
+      continue
+    if i == "-passr" or i == "-rel_filter_>":
       Qthreshold = 1
       last = "-threshold"
       attach = [">","relative"]
       continue
+    if i == "-rel_filter_>=":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = [">=","relative"]
+      continue
+    #
     if last == "-threshold":
-      last = "-threshold2"
+      if str(i) == "bonded":
+        last = "-bonded_thr1"
+      else:
+        last = "-threshold2"
       attach.append(i)
       continue
     if last == "-threshold2":
       last = ""
       attach.append(str(i))
       Qcut.append(attach)
+      continue
+    #bonded threshold
+    if last == "-bonded_thr1":
+      last = "-bonded_thr2"
+      rem = [str(i)]
+      continue
+    if last == "-bonded_thr2":
+      last = "-bonded_thr3"
+      rem.append(str(i))
+      continue
+    if last == "-bonded_thr3":
+      last = "-threshold2"
+      rem.append(str(i))
+      attach.append(rem)
+      rem = ""
       continue 
     #ArbAlign
     if i == "-arbalign" or i == "-ArbAlign":
