@@ -178,6 +178,8 @@ fi
 if [[ "$*" == *"-nn"* ]]
 then
   echo "======================"
+  $PIP install scikit-learn
+  echo "======================"
   $PIP install torch
   echo "======================"
   $PIP install lightning

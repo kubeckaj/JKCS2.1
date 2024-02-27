@@ -10,6 +10,7 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
     uniqueclusters = "1"
   newclusters_df = []
 
+  bonded_incr = 0
   myNaN = lambda x : missing if x == "NaN" else x
   for i in uniqueclusters:
     if Qclustername != 0:
@@ -46,13 +47,33 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
           except:
             rg.append(missing)
         what = array(rg)
+      elif Qcut[i][2] == "bonded":
+        bonded = []
+        for ind in clusters_df.index:
+          try:
+            aseCL = clusters_df.loc[ind,("xyz","structure")]
+            positions = aseCL.positions
+            symb = aseCL.get_chemical_symbols()
+            dist = lambda p1, p2: sum((p1-p2)**2)**0.5
+            symb_ind = array(aseCL.get_chemical_symbols())
+            mask1 = symb_ind == Qcut[i][3][1]
+            mask2 = symb_ind == Qcut[i][3][2]
+            dm = [dist(p1, p2) for p2 in positions[mask1] for p1 in positions[mask2]]
+            bonds = sum(test_i <= float(Qcut[i][3][0]) for test_i in dm)
+            if Qcut[i][3][1] == Qcut[i][2][2]:
+              bonds = (bonds-sum(mask1))/2
+            bonded.append(int(bonds))
+          except:
+            bonded.append(missing)
+        what = array(bonded)       
+        bonded_incr = 1
       else:
         what = preselected_df.loc[:,("log",Qcut[i][2])].values
       if Qcut[i][1] == "relative":
         minimum = min(what)
       else:
         minimum = 0
-      if Qcut[i][3] == "nan" or Qcut[i][3] == "NA" or Qcut[i][3] == "na" or Qcut[i][3] == "NaN":
+      if Qcut[i][3+bonded_incr] == "nan" or Qcut[i][3+bonded_incr] == "NA" or Qcut[i][3+bonded_incr] == "na" or Qcut[i][3+bonded_incr] == "NaN":
         if Qcut[i][0] == ">":
           preselected_df = preselected_df.loc[isna(what-minimum)]
         else:
@@ -60,9 +81,20 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
       else:
         with errstate(invalid='ignore'):
           if Qcut[i][0] == ">":
-            preselected_df = preselected_df.loc[what-minimum > float(Qcut[i][3])]
+            preselected_df = preselected_df.loc[what-minimum > float(Qcut[i][3+bonded_incr])]
+          elif Qcut[i][0] == ">=":
+            preselected_df = preselected_df.loc[what-minimum >= float(Qcut[i][3+bonded_incr])]
+          elif Qcut[i][0] == "==":
+            preselected_df = preselected_df.loc[what-minimum == float(Qcut[i][3+bonded_incr])]
+          elif Qcut[i][0] == "!=":
+            preselected_df = preselected_df.loc[what-minimum != float(Qcut[i][3+bonded_incr])]
+          elif Qcut[i][0] == "<":
+            preselected_df = preselected_df.loc[what-minimum < float(Qcut[i][3+bonded_incr])] 
+          elif Qcut[i][0] == "<=":
+            preselected_df = preselected_df.loc[what-minimum <= float(Qcut[i][3+bonded_incr])]
           else:
-            preselected_df = preselected_df.loc[what-minimum <= float(Qcut[i][3])]
+            print("Something weird with the filtering")
+            exit()
     #APPEND SELECTED
     if len(newclusters_df) == 0:
       newclusters_df = preselected_df.copy()

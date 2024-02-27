@@ -60,6 +60,10 @@ def print_help():
   print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     removes higher/lower rel. values compared to lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
+  print("   OR")
+  print(" -filter_lt/le/==/ge/gt/ne  X Y      filter absolute value of X compared to Y value (e.g. -filter_le rg 3.0)")
+  print(" -rel_filter_lt/le/==/ge/gt/ne  X Y  filter minimum-relative value of X compared to Y value (e.g. -rel_filter_lt el 5.0)")
+  print(" -filter_== bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
@@ -73,7 +77,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
-  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -110,6 +114,7 @@ def arguments(argument_list = []):
   Pextract = []
   Qreacted = 0 #Remove reacted structures?, 1 = yes; 2 = print the reverse 
   bonddistancethreshold = 1.75
+  Qbonded = []
   
   #global Qoutpkl,Qout,Pout,QUenergy,QUentropy
   Qoutpkl = 0 #Do I want to save output.pkl? 0=NO,1=YES
@@ -264,6 +269,26 @@ def arguments(argument_list = []):
     if last == "-solvation":
       last = ""
       Qsolvation = str(i)
+      continue
+    #bonded
+    if i == "-bonded":
+      last = "-bonded"
+      rem = []
+      continue
+    if last == "-bonded":
+      last = "-bonded1"
+      rem.append(str(i))
+      continue
+    if last == "-bonded1":
+      last = "-bonded2"
+      rem.append(str(i))
+      continue
+    if last == "-bonded2":
+      last = ""
+      rem.append(str(i))
+      Qbonded.append(rem)
+      rem = ""
+      Pout.append("-bonded")
       continue
     #IamIfo
     if i == "-IamIfo":
@@ -493,34 +518,88 @@ def arguments(argument_list = []):
       last = ""
       Quniq = str(i)
       continue
-    if i == "-cut":
+    if i == "-is" or i == "-filter_==":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["==","absolute"]
+      continue
+    if i == "-isnot" or i == "-filter_ne":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["!=","absolute"]
+      continue
+    if i == "-cut" or i == "-filter_le":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<=","absolute"]
       continue
-    if i == "-cutr":
+    if i == "-filter_lt":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["<","absolute"]
+      continue
+    if i == "-rel_filter_lt":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["<","relative"]
+      continue
+    if i == "-cutr" or i == "-rel_filter_le":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<=","relative"]
       continue
-    if i == "-pass":
+    if i == "-filter_le":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = ["<=","absolute"]
+      continue
+    if i == "-pass" or i == "-filter_gt":
       Qthreshold = 1
       last = "-threshold"
       attach = [">","absolute"]
       continue
-    if i == "-passr":
+    if i == "-filter_ge":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = [">=","absolute"]
+      continue
+    if i == "-passr" or i == "-rel_filter_gt":
       Qthreshold = 1
       last = "-threshold"
       attach = [">","relative"]
       continue
+    if i == "-rel_filter_ge":
+      Qthreshold = 1
+      last = "-threshold"
+      attach = [">=","relative"]
+      continue
+    #
     if last == "-threshold":
-      last = "-threshold2"
+      if str(i) == "bonded":
+        last = "-bonded_thr1"
+      else:
+        last = "-threshold2"
       attach.append(i)
       continue
     if last == "-threshold2":
       last = ""
       attach.append(str(i))
       Qcut.append(attach)
+      continue
+    #bonded threshold
+    if last == "-bonded_thr1":
+      last = "-bonded_thr2"
+      rem = [str(i)]
+      continue
+    if last == "-bonded_thr2":
+      last = "-bonded_thr3"
+      rem.append(str(i))
+      continue
+    if last == "-bonded_thr3":
+      last = "-threshold2"
+      rem.append(str(i))
+      attach.append(rem)
+      rem = ""
       continue 
     #ArbAlign
     if i == "-arbalign" or i == "-ArbAlign":
