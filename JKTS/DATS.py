@@ -390,9 +390,9 @@ def QC_input(molecule, constrain,  method, basis_set, TS):
                     f.write("MaxStep 0.1\n")
                 else:
                     f.write("Recalc_Hess 10\n")
-                # f.write(f"TS_Mode {{ B {C_index} {H_index} }} end\n")
+                f.write(f"TS_Mode {{ B {H_index} {O_index} }} end\n")
                 f.write(f"TS_Active_Atoms {{ {C_index} {H_index} {O_index} }} end\n")
-                f.write("TS_Active_Atoms_Factor 3\n")
+                f.write("TS_Active_Atoms_Factor 2\n")
                 f.write("end\n")
             f.write("\n")
             f.write(f"* xyz {molecule.charge} {molecule.mult}\n") 
@@ -631,6 +631,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                     handle_error_termination(molecule, logger, last_lines)
                     continue
             else:
+                logger.log(f"Status {molecule} could not be determined. Ensure it is running. Job id: {molecule.job_id}")
                 continue
             time.sleep(10)
                 
@@ -1384,7 +1385,7 @@ def main():
     termination_strings = {
         "g16": "Normal termination",
         "orca": "****ORCA TERMINATED NORMALLY****",
-        "crest": "" # " CREST terminated normally."
+        "crest": "CREST done" # " CREST terminated normally."
     }
     error_strings = {
         "g16": "Error termination",
@@ -1463,6 +1464,7 @@ def main():
         for input_file in args.input_files:
             file_name, file_type = os.path.splitext(input_file)
             if file_type == '.pkl':
+                from pandas import DataFrame
                 molecules = Molecule.load_molecules_from_pickle(input_file)
                 if isinstance(molecules, DataFrame):
                     conformers = pkl_to_xyz(input_file)
@@ -1561,6 +1563,7 @@ def main():
                 handle_input_molecules(input_molecules, logger, threads)
                     
         elif not input_molecules and file_type != '.xyz':
+            logger = Logger(os.path.join(start_dir, "log"))
             logger.log("Error when generating input molecules. Could not create list from given input")
             print("Error when generating input molecules. Could not create list from given input")
             if file_type in [".log", ".out"]:

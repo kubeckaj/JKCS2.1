@@ -371,7 +371,7 @@ class Molecule(Vector):
         self._program = (value or global_program).lower()
         if self._program == 'orca':
             self.input = '.inp'
-            self.output = '.log' #.out
+            self.output = '.out' #.out
         elif self._program == 'g16':
             self.input = '.com'
             self.output = '.log'
