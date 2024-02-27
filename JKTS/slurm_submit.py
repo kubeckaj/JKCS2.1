@@ -130,8 +130,8 @@ def submit_array_job(molecules, args, nnodes=1):
             molecule.job_id = f"{job_id}_{n}"
         return job_id, interval
     except subprocess.CalledProcessError as e:
-        print(f"Error in job submission: {e}")
-        return None
+        print(f"Error in job submission: {e}!! Check {submit_name}")
+        exit()
 
 
 def submit_job(molecule, args, nnodes=1):
@@ -305,8 +305,8 @@ sbatch $SBATCH_PREFIX $SUBMIT
         molecule.job_id = f"{job_id}"
         return job_id, interval
     except subprocess.CalledProcessError as e:
-        print(f"Error in job submission: {e}")
-        return None
+        print(f"Error in job submission: {e}!! Check g16/orca_submit.sh")
+        exit()
 
 
 def update_molecules_status(molecules):
@@ -376,20 +376,22 @@ def get_interval_seconds(molecule):
         else:
             heavy_count += 1
     
+    a = 5.59; b = -20.79; c = 182.33; d = -99.7
+
     if 'H2O' in molecule.name or 'OH' in molecule.name:
         return 20
     elif 'TS' in job_type:
-        # a = 48.1; b = -120.4; c = 732.5
-        a = 4.59; b = -20.79; c = 182.33; d = -99.7
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     elif job_type == 'crest_sampling':
         a = 27; b = 10
         interval = (a*heavy_count) + b
     elif 'DLPNO' in job_type:
-        a = 3.03; b = -13.718; c = 120.33; d = -65.795
+        factor = 0.66
+        a*=factor; b*=factor; c*=factor; d*=factor
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
-    else:
-        a = 2.295; b = -10.39; c = 91.16; d = -49.85
+    else: # Geometry optimization
+        factor = 0.6
+        a*=factor; b*=factor; c*=factor; d*=factor
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
 
     return max(interval, 30)
