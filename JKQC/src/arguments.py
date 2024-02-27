@@ -61,9 +61,9 @@ def print_help():
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     removes higher/lower rel. values compared to lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("   OR")
-  print(" -filter_</<=/==/>=/>/!=  X Y      filter absolute value of X compared to Y value (e.g. -filter_< rg 3.0)")
-  print(" -rel_filter_</<=/==/>=/>/!=  X Y  filter minimum-relative value of X compared to Y value (e.g. -filter_< el 5.0)")
-  print(" -filter_== bonded <float thr.> <element> <element> <Y>  filtering for number of bond distances")
+  print(" -filter_lt/le/==/ge/gt/ne  X Y      filter absolute value of X compared to Y value (e.g. -filter_le rg 3.0)")
+  print(" -rel_filter_lt/le/==/ge/gt/ne  X Y  filter minimum-relative value of X compared to Y value (e.g. -rel_filter_lt el 5.0)")
+  print(" -filter_== bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
@@ -523,52 +523,52 @@ def arguments(argument_list = []):
       last = "-threshold"
       attach = ["==","absolute"]
       continue
-    if i == "-isnot" or i == "-filter_!=":
+    if i == "-isnot" or i == "-filter_ne":
       Qthreshold = 1
       last = "-threshold"
       attach = ["!=","absolute"]
       continue
-    if i == "-cut" or i == "-filter_<=":
+    if i == "-cut" or i == "-filter_le":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<=","absolute"]
       continue
-    if i == "-filter_<":
+    if i == "-filter_lt":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<","absolute"]
       continue
-    if i == "-rel_filter_<":
+    if i == "-rel_filter_lt":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<","relative"]
       continue
-    if i == "-cutr" or i == "-rel_filter_<=":
+    if i == "-cutr" or i == "-rel_filter_le":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<=","relative"]
       continue
-    if i == "-filter_<=":
+    if i == "-filter_le":
       Qthreshold = 1
       last = "-threshold"
       attach = ["<=","absolute"]
       continue
-    if i == "-pass" or i == "-filter_>":
+    if i == "-pass" or i == "-filter_gt":
       Qthreshold = 1
       last = "-threshold"
       attach = [">","absolute"]
       continue
-    if i == "-filter_>=":
+    if i == "-filter_ge":
       Qthreshold = 1
       last = "-threshold"
       attach = [">=","absolute"]
       continue
-    if i == "-passr" or i == "-rel_filter_>":
+    if i == "-passr" or i == "-rel_filter_gt":
       Qthreshold = 1
       last = "-threshold"
       attach = [">","relative"]
       continue
-    if i == "-rel_filter_>=":
+    if i == "-rel_filter_ge":
       Qthreshold = 1
       last = "-threshold"
       attach = [">=","relative"]
