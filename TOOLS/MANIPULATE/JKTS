@@ -13,13 +13,15 @@ PKL=0
 INFO=0
 PAR_FLAG=0
 COLLECT=0
+time_arg="" 
 
 for arg in "$@"; do
   PYTHON_ARGS+=("$arg")
 done
-PYTHON_ARGS+=("$SBATCH_PREFIX")
-
-time_arg="" 
+if [[ "$SBATCH_PREFIX" =~ [^[:space:]] ]]; then
+  # If SBATCH_PREFIX contains non-space characters, add it to PYTHON_ARGS
+  PYTHON_ARGS+=("$SBATCH_PREFIX")
+fi
 
 for arg in "$@"; do
   case "$arg" in
@@ -141,11 +143,11 @@ for dir in */; do
     fi
 done
 
-if [ ${#directories[@]} -gt 1 ] && [ "$XYZ" -gt 0 ]; then
+if [ ${#directories[@]} -gt 0 ] && [ "$XYZ" -gt 0 ]; then
   submit_array_job
 elif [ "$PKL" -gt 0 ] || [ "$LOG" -gt 0 ]; then
   submit_job
 else
-  submit_job
+  echo "Failed to submit JKTS manager"
 fi
 

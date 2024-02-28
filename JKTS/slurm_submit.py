@@ -105,9 +105,9 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write(f"cp \\$SLURM_SUBMIT_DIR/*.inp .\n\n")
 
             file.write('GJ=\\$(awk "NR == \\$SLURM_ARRAY_TASK_ID" $IN)\n')
-            file.write('LOG=\\${GJ%.*}.log\n\n')
+            file.write('LOG=\\${GJ%.*}.out\n\n')
 
-            file.write("\\${PATH_ORCA}orca \\$GJ > \\$SLURM_SUBMIT_DIR/\\$LOG\n\n")
+            file.write("\\${PATH_ORCA}/orca \\$GJ > \\$SLURM_SUBMIT_DIR/\\$LOG\n\n")
             file.write("!EOF\n\n")
 
         else:
@@ -118,6 +118,7 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write(f"program_CREST \\$MOLECULE_NAME -gfn{args.gfn} -ewin {args.ewin} -noreftopo\n")
             file.write(f"cp *pkl \\$SLURM_SUBMIT_DIR/.\n")
             file.write(f"cp *output \\$SLURM_SUBMIT_DIR/.\n")
+            file.write(f"echo 'CREST done' >> *.output")
             file.write(f"!EOF\n\n")
 
         file.write("sbatch $SBATCH_PREFIX $SUBMIT")
@@ -130,8 +131,8 @@ def submit_array_job(molecules, args, nnodes=1):
             molecule.job_id = f"{job_id}_{n}"
         return job_id, interval
     except subprocess.CalledProcessError as e:
-        print(f"Error in job submission: {e}")
-        return None
+        print(f"Error in job submission: {e}!! Check g16/orca_submit.sh")
+        exit()
 
 
 def submit_job(molecule, args, nnodes=1):
@@ -152,11 +153,11 @@ def submit_job(molecule, args, nnodes=1):
         slurm_time = seconds_to_hours(total_seconds)
 
     if molecule.reactant:
-        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo > {molecule.name}.log"
+        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo"
     elif molecule.product:
-        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1 > {molecule.name}.log"
+        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1"
     else:
-        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1 --cinp {dir}/constrain.inp > {molecule.name}.log"
+        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1 --cinp {dir}/constrain.inp"
 
     if molecule.program.lower() == "orca" or molecule.program.lower() == "g16":
         if molecule.current_step == 'DLPNO':
@@ -205,6 +206,7 @@ cp \\$SLURM_SUBMIT_DIR/{molecule.name}.xyz .
 program_CREST {crest_input}
 cp *pkl \\$SLURM_SUBMIT_DIR/.
 cp *output \\$SLURM_SUBMIT_DIR/.
+echo 'CREST done' >> *.output
 rm -rf /scratch/\\$SLURM_JOB_ID
 !EOF
 
@@ -234,14 +236,14 @@ cat > $SUBMIT <<!EOF
 
 source ~/.JKCSusersetup.txt
 eval \\$MODULE_G16
-export GAUSS_EXEDIR=\\${{PATH_G16}}g16/
+export GAUSS_EXEDIR=\\${{PATH_G16}}/g16/
 
 # Create scratch folder
 mkdir -p \\$WRKDIR || exit $?
 cd \\$PWD
 export GAUSS_SCRDIR=\\$WRKDIR
 
-\\${{PATH_G16}}g16/g16 $JOB.com > \\$SLURM_SUBMIT_DIR/$JOB.log
+\\${{PATH_G16}}/g16/g16 $JOB.com > \\$SLURM_SUBMIT_DIR/$JOB.log
 
 # Remove scratch folder
 rm -rf \\$WRKDIR
@@ -280,7 +282,7 @@ mkdir -p \\$WRKDIR || exit $?
 
 cd \\$WRKDIR
 cp \\$SLURM_SUBMIT_DIR/$JOB.inp .
-\\${{PATH_ORCA}}orca $JOB.inp > \\$SLURM_SUBMIT_DIR/$JOB.log
+\\${{PATH_ORCA}}/orca $JOB.inp > \\$SLURM_SUBMIT_DIR/$JOB.out
 
 # Remove scratch folder
 rm -rf \\$WRKDIR
@@ -305,8 +307,8 @@ sbatch $SBATCH_PREFIX $SUBMIT
         molecule.job_id = f"{job_id}"
         return job_id, interval
     except subprocess.CalledProcessError as e:
-        print(f"Error in job submission: {e}")
-        return None
+        print(f"Error in job submission: {e}!! Check g16/orca_submit.sh")
+        exit()
 
 
 def update_molecules_status(molecules):
@@ -376,20 +378,22 @@ def get_interval_seconds(molecule):
         else:
             heavy_count += 1
     
+    a = 5.59; b = -20.79; c = 182.33; d = -99.7
+
     if 'H2O' in molecule.name or 'OH' in molecule.name:
         return 20
     elif 'TS' in job_type:
-        # a = 48.1; b = -120.4; c = 732.5
-        a = 4.59; b = -20.79; c = 182.33; d = -99.7
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     elif job_type == 'crest_sampling':
         a = 27; b = 10
         interval = (a*heavy_count) + b
     elif 'DLPNO' in job_type:
-        a = 3.03; b = -13.718; c = 120.33; d = -65.795
+        factor = 0.66
+        a*=factor; b*=factor; c*=factor; d*=factor
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
-    else:
-        a = 2.295; b = -10.39; c = 91.16; d = -49.85
+    else: # Geometry optimization
+        factor = 0.6
+        a*=factor; b*=factor; c*=factor; d*=factor
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
 
     return max(interval, 30)

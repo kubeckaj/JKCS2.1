@@ -1,4 +1,5 @@
-import numpy as np
+from numpy import array, dot, cos, sin, cross, zeros_like, arccos, degrees, exp, pi, radians, all
+from numpy.linalg import norm
 import re
 import shutil
 import os
@@ -8,43 +9,43 @@ import random
 class Vector:
     @staticmethod
     def calculate_vector(coord1, coord2):
-        return np.array(coord1) - np.array(coord2)
+        return array(coord1) - array(coord2)
 
     @staticmethod
     def vector_length(vector):
-        return np.linalg.norm(vector)
+        return norm(vector)
 
     @staticmethod
     def atom_distance(atom1, atom2):
-        return np.linalg.norm(np.array(atom2) - np.array(atom1))
+        return norm(array(atom2) - array(atom1))
 
     @staticmethod
     def normalize_vector(vector):
-        norm = np.linalg.norm(vector)
-        if norm < 1e-8:
-            return np.zeros_like(vector)
-        return vector / norm
+        norm_ = norm(vector)
+        if norm_ < 1e-8:
+            return zeros_like(vector)
+        return vector / norm_
 
     @staticmethod
     def rotate_vector(vector, axis, angle):
-        cos_theta = np.cos(angle)
-        sin_theta = np.sin(angle)
-        cross_product = np.cross(axis, vector)
+        cos_theta = cos(angle)
+        sin_theta = sin(angle)
+        cross_product = cross(axis, vector)
         return (vector * cos_theta +
                 cross_product * sin_theta +
-                axis * np.dot(axis, vector) * (1 - cos_theta))
+                axis * dot(axis, vector) * (1 - cos_theta))
 
     @staticmethod
     def calculate_angle(coord1, coord2, coord3):
         vector1 = Vector.calculate_vector(coord2, coord1)
         vector2 = Vector.calculate_vector(coord2, coord3)
 
-        dot_product = np.dot(vector1, vector2)
+        dot_product = dot(vector1, vector2)
         magnitude1 = Vector.vector_length(vector1)
         magnitude2 = Vector.vector_length(vector2)
 
-        angle_rad = np.arccos(dot_product / (magnitude1 * magnitude2))
-        angle_deg = np.degrees(angle_rad)
+        angle_rad = arccos(dot_product / (magnitude1 * magnitude2))
+        angle_deg = degrees(angle_rad)
 
         return angle_deg
 
@@ -71,8 +72,7 @@ class Molecule(Vector):
         self.charge = 0
         self.vibrational_frequencies = []
         self.zero_point = None
-        self.G_corr = None
-        self.single_point = None
+        self.electronic_energy = None
         self.free_energy = None
         self.Q = None
         self._program = None
@@ -325,30 +325,21 @@ class Molecule(Vector):
             print(f"!!!Atoms involved in the transition state could not be determined for {self.name}\n Might be due to bad geometry!!!")
 
 
-
-
-    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.6):
-        distance = np.linalg.norm(np.array(self.coordinates[atom_index1]) - np.array(self.coordinates[atoms_index2]))
+    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.7):
+        distance = norm(array(self.coordinates[atom_index1]) - array(self.coordinates[atoms_index2]))
         return distance < threshold_distance
 
     @property
     def zero_point_corrected(self):
-        if self.zero_point is not None and self.single_point is not None:
-            return float(self.zero_point) + float(self.single_point)
+        if self.zero_point is not None and self.electronic_energy is not None:
+            return float(self.zero_point) + float(self.electronic_energy)
         return None
     
-    @property
-    def thermal_free_corrected(self):
-        if self.G_corr is not None and self.single_point is not None:
-            return float(self.G_corr) + float(self.single_point)
-        return None
-
 
     @staticmethod
     def load_from_pickle(file_path):
         with open(file_path, 'rb') as file:
             return pickle.load(file)
-
 
     @staticmethod
     def molecules_to_pickle(molecules, file_path):
@@ -373,7 +364,7 @@ class Molecule(Vector):
         self._program = (value or global_program).lower()
         if self._program == 'orca':
             self.input = '.inp'
-            self.output = '.log' #.out
+            self.output = '.out' #.out
         elif self._program == 'g16':
             self.input = '.com'
             self.output = '.log'
@@ -393,16 +384,13 @@ class Molecule(Vector):
 
             if program.lower() == 'g16':
                 zero_point_correction = re.findall(r'Zero-point correction=\s+([-.\d]+)', log_content)
-                G_corr = re.findall(r'Thermal correction to Gibbs Free Energy=\s+([-.\d]+)', log_content)
+                free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
                 if zero_point_correction:
                     self.zero_point = float(zero_point_correction[-1])
-                    self.G_corr = float(G_corr[-1])
-                free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
-                if free_energy:
                     self.free_energy = float(free_energy[-1])
-                single_point = re.findall(r'(SCF Done:  E\(\S+\) =)\s+([-.\d]+)', log_content)
-                if single_point:
-                    self.single_point = float(single_point[-1][-1])
+                electronic_energy = re.findall(r'(SCF Done:  E\(\S+\) =)\s+([-.\d]+)', log_content)
+                if electronic_energy:
+                    self.electronic_energy = float(electronic_energy[-1][-1])
                     freq_matches = re.findall(r"Frequencies --\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)?\s+(-?\d+\.\d+)?", log_content)
                     if freq_matches:
                         self.vibrational_frequencies = [float(freq) for match in freq_matches for freq in match if freq]
@@ -430,10 +418,15 @@ class Molecule(Vector):
                 # partition_function = re.search() # implement reading Q from log file
 
             elif program.lower() == 'orca' or self.current_step == 'DLPNO' or DLPNO:
-                single_point = re.findall(r'(FINAL SINGLE POINT ENERGY)\s+([-.\d]+)', log_content)
+                zero_point_correction = re.findall(r"Zero point energy\s+...\s+([-+]?\d*\.\d+|\d+)", log_content)
+                free_energy = re.findall(r"Final Gibbs free energy\s+...\s+([-+]?\d*\.\d+|\d+)", log_content)
+                electronic_energy = re.findall(r'(FINAL SINGLE POINT ENERGY)\s+([-.\d]+)', log_content)
                 # find ORCA zero point zorrected
-                if single_point:
-                    self.single_point = float(single_point[-1][-1])
+                if electronic_energy:
+                    self.electronic_energy = float(electronic_energy[-1][-1])
+                    if zero_point_correction and free_energy:
+                        self.zero_point = float(zero_point_correction[-1])
+                        self.free_energy = float(free_energy[-1])
                     freq_matches = re.findall(r'([-+]?\d*\.\d+)\s*cm\*\*-1', log_content)
                     if freq_matches:
                         n = 3*len(self.atoms)-6 # Utilizing the fact that non-linear molecules has 3N-6 degrees of freedom
@@ -472,7 +465,7 @@ class Molecule(Vector):
         for freq in self.vibrational_frequencies:
             if freq > 0:
                 f = freq * 100 * c
-                qvib *= 1 / (1 - np.exp(-(h * f) / (k_b * T))) 
+                qvib *= 1 / (1 - exp(-(h * f) / (k_b * T))) 
 
         # Rotational partition function
         if self.program.lower() == 'g16':
@@ -480,20 +473,20 @@ class Molecule(Vector):
             if len(rot_temps) == 1:
                 qrot = ((1/self.symmetry_num) * (T/rot_temps[0]))
             else:
-                qrot = (np.pi**0.5/self.symmetry_num) * ((T**3 / (rot_temps[0] * rot_temps[1] * rot_temps[2]))**0.5)
+                qrot = (pi**0.5/self.symmetry_num) * ((T**3 / (rot_temps[0] * rot_temps[1] * rot_temps[2]))**0.5)
         elif self.program.lower() == 'orca':
             rot_constants = self.rot_temps
             if 0.0 in rot_constants or len(rot_constants) == 1:
                 rot_constant = [e for e in rot_constants if e != 0.0]  
                 qrot = ((k_b*T)/(self.symmetry_num*h*c*100*rot_constant[0]))
             else:
-                qrot = (1/self.symmetry_num) * ((k_b*T)/(h*c*100))**1.5 * (np.pi / (rot_constants[0] * rot_constants[1] * rot_constants[2]))**0.5
+                qrot = (1/self.symmetry_num) * ((k_b*T)/(h*c*100))**1.5 * (pi / (rot_constants[0] * rot_constants[1] * rot_constants[2]))**0.5
 
 
         # Translational partition function
         mol_mass = self.mol_mass * 1.66053906660e-27
         V = k_b*T/P # R*T/P
-        qtrans = ((2 * np.pi * mol_mass * k_b * T) / h**2)**(3/2) * V
+        qtrans = ((2 * pi * mol_mass * k_b * T) / h**2)**(3/2) * V
 
         if 'OH' in self.name:
             qelec = 3 # OH radical with 2 low lying near degenerate energy level
@@ -549,24 +542,24 @@ class Molecule(Vector):
             vector_CH = self.calculate_vector(self.coordinates[C_index], self.coordinates[H_index])
             norm_vector_CH = self.normalize_vector(vector_CH)
             new_H_position = self.coordinates[C_index] - (norm_vector_CH * distance_CH)
-            if np.dot(self.calculate_vector(self.coordinates[C_index], new_H_position), vector_CH) < 0:
+            if dot(self.calculate_vector(self.coordinates[C_index], new_H_position), vector_CH) < 0:
                 new_H_position = self.coordinates[C_index] + (norm_vector_CH * distance_CH)
 
             # Set the H-C-O angle
             complement_angle = 180.0 - reaction_angle
-            rotation_angle = np.radians(complement_angle)
-            rotation_axis = self.normalize_vector(np.cross(norm_vector_CH, [1, 0, 0]))
-            if np.all(rotation_axis == 0):
-                rotation_axis = self.normalize_vector(np.cross(norm_vector_CH, [0, 1, 0]))
+            rotation_angle = radians(complement_angle)
+            rotation_axis = self.normalize_vector(cross(norm_vector_CH, [1, 0, 0]))
+            if all(rotation_axis == 0):
+                rotation_axis = self.normalize_vector(cross(norm_vector_CH, [0, 1, 0]))
             rotated_vector = self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
 
             # Set the H-O distance
             new_O_position = new_H_position - (rotated_vector * distance_HO)
-            if np.dot(self.calculate_vector(self.coordinates[C_index], new_O_position), vector_CH) < 0:
+            if dot(self.calculate_vector(self.coordinates[C_index], new_O_position), vector_CH) < 0:
                 new_O_position = new_H_position + rotated_vector * distance_HO 
             rotation_axis = self.normalize_vector(rotation_axis)
 
-            rotation_angle_H = np.radians(104.5)
+            rotation_angle_H = radians(104.5)
             new_OH_H_position = new_O_position - self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_H) * distance_OH_H
             HOH_angle = self.calculate_angle(new_OH_H_position, new_O_position, new_H_position)
             if HOH_angle < 95:
@@ -638,23 +631,23 @@ class Molecule(Vector):
                         product_molecule.coordinates = product_coords
                         product_molecules.append(product_molecule)
 
-                    new_H_position = np.array(original_coords[i]) + norm_vector_CH * (dist_CH - distance_CH)
+                    new_H_position = array(original_coords[i]) + norm_vector_CH * (dist_CH - distance_CH)
                     new_distance_CH = self.vector_length(self.calculate_vector(new_H_position, new_coords[j]))
                     if new_distance_CH < dist_CH:
-                        new_H_position = np.array(original_coords[i]) - norm_vector_CH * (dist_CH - new_distance_CH)
+                        new_H_position = array(original_coords[i]) - norm_vector_CH * (dist_CH - new_distance_CH)
 
-                    rotation_axis = self.normalize_vector(np.cross(perp_axis, norm_vector_CH))
-                    if np.all(rotation_axis == 0):
-                        rotation_axis = self.normalize_vector(np.cross(perp_axis2, norm_vector_CH))
+                    rotation_axis = self.normalize_vector(cross(perp_axis, norm_vector_CH))
+                    if all(rotation_axis == 0):
+                        rotation_axis = self.normalize_vector(cross(perp_axis2, norm_vector_CH))
 
-                    rotation_angle = np.radians(180 - reaction_angle)
+                    rotation_angle = radians(180 - reaction_angle)
                     rotated_vector = self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
 
                     new_oxygen_position = new_H_position - (rotated_vector * distance_OH)
                     if self.atom_distance(new_oxygen_position, original_coords[j]) < distance_OH:
                         new_oxygen_position = new_H_position + (rotated_vector * distance_OH)
 
-                    rotation_angle_H = np.radians(180-water_angle)
+                    rotation_angle_H = radians(180-water_angle)
                     norm_vector_OH = self.normalize_vector(self.calculate_vector(new_H_position, new_oxygen_position))
                     new_OH_H_position = new_oxygen_position - self.rotate_vector(norm_vector_OH, rotation_axis, rotation_angle_H) * distance_OH_H
                     if self.atom_distance(new_OH_H_position, new_H_position) < 1.5:
@@ -701,15 +694,15 @@ class Molecule(Vector):
                             norm_vector_cc = self.normalize_vector(vector_cc)
                             new_coords = coordinates.copy()
 
-                            perpendicular_axis = np.cross(norm_vector_cc, [0,1,0])
+                            perpendicular_axis = cross(norm_vector_cc, [0,1,0])
                             perpendicular_axis = self.normalize_vector(perpendicular_axis)
                             # shift carbon
-                            new_coords[i][1:] = np.array(new_coords[i][1:]) + norm_vector_cc * 0.1
+                            new_coords[i][1:] = array(new_coords[i][1:]) + norm_vector_cc * 0.1
                             # update oxygen in OH coordiantes
-                            oxygen_coords = np.array(new_coords[j][1:]) + perpendicular_axis * distance
+                            oxygen_coords = array(new_coords[j][1:]) + perpendicular_axis * distance
 
                             rotation_axis = norm_vector_cc
-                            rotation_angle_h = np.radians(45) 
+                            rotation_angle_h = radians(45) 
 
                             rotated_vector_h = self.rotate_vector(perpendicular_axis, rotation_axis, rotation_angle_h)
 
@@ -931,10 +924,9 @@ class Molecule(Vector):
             print(f"Constrained Indexes: [C: {self.constrained_indexes[0]}, H: {self.constrained_indexes[0]}, Cl: {self.constrained_indexes[0]}]")
         else:
             print(f"Constrained Indexes: {self.constrained_indexes}")
-        print(f"Electronic Energy: {self.single_point}")
-        print(f"Zero Point Corrected Energy: {self.zero_point_corrected}")
-        print(f"Sum of electronic and thermal Free Energies: {self.free_energy}")
-        print(f"Thermal correction to Gibbs Free Energy: {self.G_corr}")
+        print(f"Electronic Energy: {self.electronic_energy}")
+        print(f"Zero Point Correction: {self.zero_point}")
+        print(f"Gibbs free energy: {self.free_energy}")
         print(f"Partition Function: {self.Q}")
         print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
         print(f"Current Step: {self.current_step}")
@@ -953,7 +945,7 @@ class Molecule(Vector):
         logger.log(f"Product: {self.product}")
         logger.log(f"Workflow: {self.workflow}")
         if self.constrained_indexes: logger.log(f"Constrained Indexes: {self.constrained_indexes}")
-        logger.log(f"Electronic energy: {self.single_point}")
+        logger.log(f"Electronic energy: {self.electronic_energy}")
         logger.log(f"Zero Point Corrected Energy: {self.zero_point}")
         logger.log(f"Partition Function: {self.Q}")
         logger.log(f"Vibrational Frequencies: {self.vibrational_frequencies}")
