@@ -165,6 +165,11 @@ EXAMPLE:
     ADD+=" -qml -xtb -descriptors -nn "
     continue
   fi
+  if [ "$i" == "-xtb" ]
+  then
+    ADD+=" -xtb "
+    continue
+  fi
   if [ "$i" == "-qml" ] || [ "$i" == "qml" ]
   then
     ADD+=" -qml "

@@ -63,6 +63,7 @@ def print_help():
   print("   OR")
   print(" -filter_lt/le/==/ge/gt/ne  X Y      filter absolute value of X compared to Y value (e.g. -filter_le rg 3.0)")
   print(" -rel_filter_lt/le/==/ge/gt/ne  X Y  filter minimum-relative value of X compared to Y value (e.g. -rel_filter_lt el 5.0)")
+  print("                                     lt=less than/le=less or equal/ge=greater or equal/gt=greater than/ne=not equal")
   print(" -filter_== bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability")

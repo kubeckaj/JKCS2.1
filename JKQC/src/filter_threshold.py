@@ -51,20 +51,23 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
         bonded = []
         for ind in clusters_df.index:
           try:
-            aseCL = clusters_df.loc[ind,("xyz","structure")]
-            positions = aseCL.positions
-            symb = aseCL.get_chemical_symbols()
-            dist = lambda p1, p2: sum((p1-p2)**2)**0.5
-            symb_ind = array(aseCL.get_chemical_symbols())
-            mask1 = symb_ind == Qcut[i][3][1]
-            mask2 = symb_ind == Qcut[i][3][2]
-            dm = [dist(p1, p2) for p2 in positions[mask1] for p1 in positions[mask2]]
-            bonds = sum(test_i <= float(Qcut[i][3][0]) for test_i in dm)
-            if Qcut[i][3][1] == Qcut[i][2][2]:
-              bonds = (bonds-sum(mask1))/2
-            bonded.append(int(bonds))
+              aseCL = clusters_df.loc[ind,("xyz","structure")]
+            #if isna(aseCL):
+            #  bonded.append(float("nan"))
+            #else:
+              positions = aseCL.positions
+              symb = aseCL.get_chemical_symbols()
+              dist = lambda p1, p2: sum((p1-p2)**2)**0.5
+              symb_ind = array(aseCL.get_chemical_symbols())
+              mask1 = symb_ind == Qcut[i][3][1]
+              mask2 = symb_ind == Qcut[i][3][2]
+              dm = [dist(p1, p2) for p2 in positions[mask1] for p1 in positions[mask2]]
+              bonds = sum(test_i <= float(Qcut[i][3][0]) for test_i in dm)
+              if Qcut[i][3][1] == Qcut[i][2][2]:
+                bonds = (bonds-sum(mask1))/2
+              bonded.append(int(bonds))
           except:
-            bonded.append(missing)
+            bonded.append(float("nan"))
         what = array(bonded)       
         bonded_incr = 1
       else:
@@ -74,7 +77,7 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
       else:
         minimum = 0
       if Qcut[i][3+bonded_incr] == "nan" or Qcut[i][3+bonded_incr] == "NA" or Qcut[i][3+bonded_incr] == "na" or Qcut[i][3+bonded_incr] == "NaN":
-        if Qcut[i][0] == ">":
+        if Qcut[i][0] == "==":
           preselected_df = preselected_df.loc[isna(what-minimum)]
         else:
           preselected_df = preselected_df.drop(index=preselected_df[isna(what-minimum)].index)
