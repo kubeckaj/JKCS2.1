@@ -272,8 +272,6 @@ def check_transition_state(molecule, logger):
                 return False
 
 
-
-
 def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
     from ArbAlign import compare
     initial_len = len(molecules)
@@ -290,7 +288,7 @@ def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
             # If RMSD is below or equal to the threshold, they are considered similar
             if rmsd_value <= RMSD_threshold:
                 # Compare their energies and keep the one with lower energy
-                if molecule.single_point < reference.single_point:
+                if molecule.electronic_energy < reference.electronic_energy:
                     filtered_molecules.pop()  # Remove the previous reference
                     filtered_molecules.append(molecule)  # Add the new one with lower energy
                     reference = molecule  # Update reference to the new molecule
@@ -300,7 +298,7 @@ def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
         molecules = non_similar_molecules
 
     logger.log(f"Filtered {initial_len} conformers to {len(filtered_molecules)} conformers")
-    # Molecule.molecules_to_pickle(filtered_molecules, os.path.join(start_dir, "filtered_molecules.pkl"))
+    Molecule.molecules_to_pickle(filtered_molecules, os.path.join(start_dir, "filtered_molecules.pkl"))
     return filtered_molecules
 
 
@@ -532,9 +530,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
     max_terminations_allowed = 2
     pending, running = [], []
     job_type = molecules[0].current_step
-
-    termination = termination_strings.get(molecules[0].program.lower(), "")
-    error_termination = error_strings.get(molecules[0].program.lower(), "")
+    error_termination_detected = False
 
     all_converged = False
     for m in molecules:  # Initialize with all molecules not being converged and no terminations counted
@@ -585,8 +581,14 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                     molecule.error_termination_count += 1
                     continue
 
-                termination_detected = any(termination in line for line in last_lines)
-                error_termination_detected = any(error_termination in line for line in last_lines)
+                termination_detected = any(
+                termination in line.lower() for termination in termination_strings[molecule.program] for line in last_lines)
+                for error_termination in error_strings[molecule.program]:
+                    if any(error_termination in line.lower() for line in last_lines):
+                        error_termination_string = error_termination
+                        error_termination_detected = True
+                        break
+
 
                 if termination_detected:
                     logger.log(f"Normal termination detected in {log_file_name}")
@@ -628,7 +630,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                     molecule.error_termination_count += 1
                     if molecule.error_termination_count >= max_terminations_allowed:
                         continue
-                    handle_error_termination(molecule, logger, last_lines)
+                    handle_error_termination(molecule, logger, last_lines, error_termination_string)
                     continue
             else:
                 logger.log(f"Status {molecule} could not be determined. Ensure it is running. Job id: {molecule.job_id}")
@@ -686,7 +688,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
             return False
 
 
-def handle_error_termination(molecule, logger, last_lines):
+def handle_error_termination(molecule, logger, last_lines, error_termination_string):
     convergence_errors = ["l9999", "l508"]
     intervention_errors = ["l301"]
     G16_common_errors = "https://wongzit.github.io/gaussian-common-errors-and-solutions/"
@@ -959,7 +961,7 @@ def collect_DFT_and_DLPNO(molecules):
             if identifier:
                 for m_DLPNO in molecules:
                     if identifier in m_DLPNO.name and m_DLPNO.current_step == 'DLPNO':
-                        m.single_point = m_DLPNO.single_point
+                        m.electronic_energy = m_DLPNO.electronic_energy
                         m.update_step()
                         m.name = m.name.replace('TS', 'DLPNO')
                         collected_molecules.append(m)
@@ -1045,7 +1047,6 @@ def gcalc_optimized(emin, gsize, v, a, b, l, h, kb, m, t, v1):
 
 
 def eckart_optimized(sp_ts, sp_reactant, sp_product, imag, t=[298.15]):
-    from numpy import pi, arange, sqrt, exp, sum, array, trapz, zeros, cosh, max
     try:
         # Constants
         c = 2.99792458e+8  # speed of light (m s-1)
@@ -1247,10 +1248,10 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
 
             if product_molecules and H2O:
                 lowest_product = min(product_molecules, key=lambda molecule: molecule.zero_point_corrected)
-                lowest_ZP_product_kcalmol = float64((lowest_product.single_point + H2O.single_point) * Htokcalmol)
+                lowest_ZP_product_kcalmol = float64((lowest_product.electronic_energy + H2O.electronic_energy) * Htokcalmol)
 
                 imag = abs(lowest_TS.vibrational_frequencies[0])
-                kappa  = eckart(lowest_ZP_TS_kcalmol, lowest_ZP_reactant_kcalmol, lowest_ZP_product_kcalmol, imag)
+                kappa  = eckart_optimized(lowest_ZP_TS_kcalmol, lowest_ZP_reactant_kcalmol, lowest_ZP_product_kcalmol, imag)
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
             else:
                 print("Error in product molecules")
@@ -1365,12 +1366,6 @@ def main():
         
         return input_args[0], input_args[1]
 
-    # standard_high_level = ["uwb97xd", "6-31++g(d,p)"]
-    # standard_low_level = ["uwb97xd", "6-31+g(d,p)"]
-    #
-    # high_method, high_basis = extract_method_basis(args.high_level, standard_high_level)
-    # low_method, low_basis = extract_method_basis(args.low_level, standard_low_level)
-    
     global global_program
     if args.ORCA:
         global_program = "ORCA"
@@ -1382,28 +1377,36 @@ def main():
         global_program = "G16" # Default case
 
     global termination_strings, error_strings
+    # Keep in lower case
     termination_strings = {
-        "g16": "Normal termination",
-        "orca": "****ORCA TERMINATED NORMALLY****",
-        "crest": "CREST done" # " CREST terminated normally."
+    "g16": ["normal termination"],
+    "orca": ["****orca terminated normally****"],
+    "crest": ["crest done", "crest terminated normally."]  # Multiple possible termination messages
     }
     error_strings = {
-        "g16": "Error termination",
-        "orca": "aborting the run",
-        "crest": "Find my error message"
+    "g16": ["error termination", "another termination example"],
+    "orca": ["aborting the run", "this wavefunction is not fully converged", "not enough memory"],
+    "crest": ["some crest error message"]  # Multiple possible error messages
     }
 
     #####################################################################################################
     if args.test:
-        print(args)
-        exit()
         molecules = []
         threads = []
         logger = Logger(os.path.join(start_dir, "log_test"))
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
+            molecule.program = 'ORCA'
             molecules.append(molecule)
-            termination_status(molecule, logger)
+            log_file_path = input_file
+            last_lines = read_last_lines(log_file_path, logger, 30)
+
+            for error_termination in error_strings[molecule.program]:
+                if any(error_termination in line.lower() for line in last_lines):
+                    error_termination_string = error_termination
+                    error_termination_detected = True
+                    print(error_termination_detected, error_termination_string)
+                    break
 
 
         exit()

@@ -72,8 +72,7 @@ class Molecule(Vector):
         self.charge = 0
         self.vibrational_frequencies = []
         self.zero_point = None
-        self.G_corr = None
-        self.single_point = None
+        self.electronic_energy = None
         self.free_energy = None
         self.Q = None
         self._program = None
@@ -326,22 +325,16 @@ class Molecule(Vector):
             print(f"!!!Atoms involved in the transition state could not be determined for {self.name}\n Might be due to bad geometry!!!")
 
 
-    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.6):
+    def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.7):
         distance = norm(array(self.coordinates[atom_index1]) - array(self.coordinates[atoms_index2]))
         return distance < threshold_distance
 
     @property
     def zero_point_corrected(self):
-        if self.zero_point is not None and self.single_point is not None:
-            return float(self.zero_point) + float(self.single_point)
+        if self.zero_point is not None and self.electronic_energy is not None:
+            return float(self.zero_point) + float(self.electronic_energy)
         return None
     
-    @property
-    def thermal_free_corrected(self):
-        if self.G_corr is not None and self.single_point is not None:
-            return float(self.G_corr) + float(self.single_point)
-        return None
-
 
     @staticmethod
     def load_from_pickle(file_path):
@@ -391,16 +384,13 @@ class Molecule(Vector):
 
             if program.lower() == 'g16':
                 zero_point_correction = re.findall(r'Zero-point correction=\s+([-.\d]+)', log_content)
-                G_corr = re.findall(r'Thermal correction to Gibbs Free Energy=\s+([-.\d]+)', log_content)
+                free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
                 if zero_point_correction:
                     self.zero_point = float(zero_point_correction[-1])
-                    self.G_corr = float(G_corr[-1])
-                free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
-                if free_energy:
                     self.free_energy = float(free_energy[-1])
-                single_point = re.findall(r'(SCF Done:  E\(\S+\) =)\s+([-.\d]+)', log_content)
-                if single_point:
-                    self.single_point = float(single_point[-1][-1])
+                electronic_energy = re.findall(r'(SCF Done:  E\(\S+\) =)\s+([-.\d]+)', log_content)
+                if electronic_energy:
+                    self.electronic_energy = float(electronic_energy[-1][-1])
                     freq_matches = re.findall(r"Frequencies --\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)?\s+(-?\d+\.\d+)?", log_content)
                     if freq_matches:
                         self.vibrational_frequencies = [float(freq) for match in freq_matches for freq in match if freq]
@@ -428,10 +418,15 @@ class Molecule(Vector):
                 # partition_function = re.search() # implement reading Q from log file
 
             elif program.lower() == 'orca' or self.current_step == 'DLPNO' or DLPNO:
-                single_point = re.findall(r'(FINAL SINGLE POINT ENERGY)\s+([-.\d]+)', log_content)
+                zero_point_correction = re.findall(r"Zero point energy\s+...\s+([-+]?\d*\.\d+|\d+)", log_content)
+                free_energy = re.findall(r"Final Gibbs free energy\s+...\s+([-+]?\d*\.\d+|\d+)", log_content)
+                electronic_energy = re.findall(r'(FINAL SINGLE POINT ENERGY)\s+([-.\d]+)', log_content)
                 # find ORCA zero point zorrected
-                if single_point:
-                    self.single_point = float(single_point[-1][-1])
+                if electronic_energy:
+                    self.electronic_energy = float(electronic_energy[-1][-1])
+                    if zero_point_correction and free_energy:
+                        self.zero_point = float(zero_point_correction[-1])
+                        self.free_energy = float(free_energy[-1])
                     freq_matches = re.findall(r'([-+]?\d*\.\d+)\s*cm\*\*-1', log_content)
                     if freq_matches:
                         n = 3*len(self.atoms)-6 # Utilizing the fact that non-linear molecules has 3N-6 degrees of freedom
@@ -929,10 +924,9 @@ class Molecule(Vector):
             print(f"Constrained Indexes: [C: {self.constrained_indexes[0]}, H: {self.constrained_indexes[0]}, Cl: {self.constrained_indexes[0]}]")
         else:
             print(f"Constrained Indexes: {self.constrained_indexes}")
-        print(f"Electronic Energy: {self.single_point}")
-        print(f"Zero Point Corrected Energy: {self.zero_point_corrected}")
-        print(f"Sum of electronic and thermal Free Energies: {self.free_energy}")
-        print(f"Thermal correction to Gibbs Free Energy: {self.G_corr}")
+        print(f"Electronic Energy: {self.electronic_energy}")
+        print(f"Zero Point Correction: {self.zero_point}")
+        print(f"Gibbs free energy: {self.free_energy}")
         print(f"Partition Function: {self.Q}")
         print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
         print(f"Current Step: {self.current_step}")
@@ -951,7 +945,7 @@ class Molecule(Vector):
         logger.log(f"Product: {self.product}")
         logger.log(f"Workflow: {self.workflow}")
         if self.constrained_indexes: logger.log(f"Constrained Indexes: {self.constrained_indexes}")
-        logger.log(f"Electronic energy: {self.single_point}")
+        logger.log(f"Electronic energy: {self.electronic_energy}")
         logger.log(f"Zero Point Corrected Energy: {self.zero_point}")
         logger.log(f"Partition Function: {self.Q}")
         logger.log(f"Vibrational Frequencies: {self.vibrational_frequencies}")

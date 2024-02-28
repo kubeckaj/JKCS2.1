@@ -206,6 +206,7 @@ cp \\$SLURM_SUBMIT_DIR/{molecule.name}.xyz .
 program_CREST {crest_input}
 cp *pkl \\$SLURM_SUBMIT_DIR/.
 cp *output \\$SLURM_SUBMIT_DIR/.
+echo 'CREST done' >> *.output
 rm -rf /scratch/\\$SLURM_JOB_ID
 !EOF
 
