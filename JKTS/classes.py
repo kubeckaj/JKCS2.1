@@ -912,7 +912,7 @@ class Molecule(Vector):
                 else: return coordinates
 
 
-    def log_or_print_items(self, logger=None):
+    def print_items(self, logger=None):
         def output(message):
             if logger:
                 logger.log(message)

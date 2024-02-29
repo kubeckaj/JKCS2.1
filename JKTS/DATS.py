@@ -11,17 +11,13 @@ from classes import Molecule, Logger
 from slurm_submit import submit_array_job, submit_job, update_molecules_status
 
 global_molecules = []
+default_program = 'G16'
 ###############################################################################
-
 class SCFAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        # Determine the algorithm based on the option_string
         algorithm = option_string.strip('-').upper()
-        # Default SCF string when no additional arguments are provided
         scf_string = f"SCF=({algorithm})"
-        # Update the SCF string if additional arguments are provided
         if values is not None:
-            # Join additional arguments with a comma
             additional_args = ', '.join(values)
             if additional_args:
                 scf_string = f"SCF=({algorithm}, maxcycle={additional_args})"
@@ -528,7 +524,6 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
     max_terminations_allowed = 2
     pending, running = [], []
     job_type = molecules[0].current_step
-    error_termination_detected = False
 
     all_converged = False
     for m in molecules:  # Initialize with all molecules not being converged and no terminations counted
@@ -572,54 +567,13 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                 if molecule.job_id in pending:
                     pending.remove(molecule.job_id)
 
-                log_file_name = f"{molecule.name}{molecule.output}"
-                log_file_path = os.path.join(molecule.directory, log_file_name)
-                if not os.path.exists(log_file_path):
-                    molecule.error_termination_count += 1
-                    continue
-                else:
-                    molecule.log_file_path = log_file_path
-
                 normal_termination_detected, termination_string = termination_status(molecule, logger)
 
                 if normal_termination_detected:
-                    logger.log(termination_string)
-                    xyz_coordinates = molecule.log2xyz()
-                    molecule.coordinates = xyz_coordinates
-                    molecule.update_energy(logger)
-                    # if 'TS_opt' in job_type:
-                    #     transition_state = check_transition_state(molecule, logger)
-                    #     if transition_state is True:
-                    #         molecule.converged = True
-                    #         molecule.move_inputfile()
-                    #     else:
-                    #         molecule.error_termination_count += 1
-                    #         if molecule.error_termination_count >= max_terminations_allowed:
-                    #             continue
-                    #         resubmit_job(molecule, logger)
-                    #         time.sleep(30)
-                    #         continue
-                    # elif job_type == 'crest_sampling':
-                    #     crest_conformers = pkl_to_xyz(os.path.join(molecule.directory, f"collection{molecule.name}.pkl"))
-                    #     if crest_conformers:
-                    #         molecule.converged = True
-                    #         molecules = initiate_conformers(crest_conformers, molecule=molecule)
-                    #         all_converged = True
-                    #         break
-                    # elif job_type == 'DLPNO':
-                    #     molecule.converged = True
-                    #     molecule.update_energy(logger, DLPNO=True)
-                    #     molecule.update_step()
-                    #     logger.log(f"Yay! DLPNO single point for {molecule.name} molecule converged")
-                    #     molecule.move_inputfile()
-                    # else:
+                    if termination_string: logger.log(termination_string)
                     molecule.converged = True
-                    logger.log(f"**{molecule.name} converged**")
-                    xyz_coordinates = molecule.log2xyz()
-                    molecule.coordinates = xyz_coordinates
-                    # molecule.move_inputfile()
                 elif normal_termination_detected is False:
-                    if termination_string == 'Error string not found':
+                    if termination_string in ['Error string not found', 'Could not read molecule log file']:
                         continue
                     else:
                         molecule.error_termination_count += 1
@@ -683,9 +637,11 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
             logger.log(f"No conformer has managed to converge for job type: {job_type}")
             return False
 
+
 def handle_error_termination(molecule, logger, error_termination_string):
     if molecule.program.lower() == 'orca':
-        logger.log(f"Error termination '{error_termination_string}' found in {molecule.name}. Trying to resubmit")
+        print(error_termination_string)
+        logger.log(f"Error termination found in {molecule.name}. Trying to resubmit")
         xyz_coordinates = molecule.log2xyz()
         molecule.coordinates = xyz_coordinates
         resubmit_job(molecule, logger)
@@ -719,7 +675,7 @@ def handle_error_termination(molecule, logger, error_termination_string):
             resubmit_job(molecule, logger)
 
 
-def check_crest_products(molecules, logger, threads, interval, max_attempts):
+def check_crest(molecules, logger, threads, interval, max_attempts):
     initial_delay = args.initial_delay if args.initial_delay else int(interval * 3)
     interval = args.interval if args.interval else int(interval)
 
@@ -798,7 +754,7 @@ def submit_and_monitor(molecules, logger, threads):
     if job_id:
         if molecules[0].current_step == 'crest_sampling':
             logger.log("CREST TEST")
-            thread = Thread(target=check_crest_products, args=(molecules, logger, threads, interval, args.attempts))
+            thread = Thread(target=check_crest, args=(molecules, logger, threads, interval, args.attempts))
         else:
             thread = Thread(target=check_convergence, args=(molecules, logger, threads, interval, args.attempts))
         threads.append(thread)
@@ -851,6 +807,7 @@ def handle_termination(molecules, logger, threads, converged):
         if conf.converged is False:
             conf.program = QC_program
             conf.name = conf.name.replace("_TS", "").replace("_CREST", "").replace("_DLPNO", "")
+            conf.log_file_path = os.path.join(conf.directory, f"{conf.name}{conf.output}")
             job_type = conformer_molecules[0].current_step
 
             if job_type == 'crest_sampling':
@@ -887,25 +844,29 @@ def handle_termination(molecules, logger, threads, converged):
 def termination_status(molecule, logger):
     last_lines = read_last_lines(molecule.log_file_path, logger, 30)
     if not last_lines:
+        molecule.error_termination_count += 1
         return False, 'Could not read molecule log file'
 
     termination_detected = any(
         termination in line.lower() for termination in termination_strings[molecule.program] for line in last_lines)
     
     if termination_detected:
+        # Update geometry and energy
+        xyz_coordinates = molecule.log2xyz()
+        molecule.coordinates = xyz_coordinates
+        molecule.update_energy(logger)
         if 'TS' in molecule.current_step:
             ts_check_passed = check_transition_state(molecule, logger)
-            msg = f"Normal termination detected in {molecule.name}" if ts_check_passed else 'Normal termination, but transition state check didn’t pass'
+            msg = "" if ts_check_passed else 'Normal termination, but transition state check didn’t pass'
             return ts_check_passed, msg
         else:
-            return True, f"Normal termination detected in {molecule.name}"
+            return True, f"***{molecule.name}***"
 
     for error_termination in error_strings[molecule.program]:
         if any(error_termination in line.lower() for line in last_lines):
             return False, error_termination
 
     return False, 'Error string not found'
-
 
 
 def initiate_conformers(conformers, input_file=None, molecule=None):
@@ -1378,7 +1339,7 @@ def main():
     elif args.G16:
         QC_program = "G16"
     else:
-        QC_program = "G16"
+        QC_program = default_program
 
     global termination_strings, error_strings
     # Keep in lower case
@@ -1401,7 +1362,6 @@ def main():
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
             molecule.program = 'ORCA'
-            molecules.append(molecule)
 
 
            
@@ -1471,17 +1431,17 @@ def main():
                     conformers = pkl_to_xyz(input_file)
                     conformers = initiate_conformers(conformers, input_file) 
                     for conf in conformers:
-                        conf.log_or_print_items()
+                        conf.print_items()
                 else:
                     if isinstance(molecules, list):
                         for molecule in molecules:
-                            molecule.log_or_print_items()
-                    else: molecules.log_or_print_items()
+                            molecule.print_items()
+                    else: molecules.print_items()
             elif file_type in ['.log', '.out', '.com', '.inp']:
                 QC_program = 'ORCA' if file_type in ['.out', '.inp'] else 'G16'
                 input_file_path = os.path.join(start_dir, input_file)
                 molecule = Molecule(input_file_path, indexes=args.CHO, program=QC_program)
-                molecule.log_or_print_items()
+                molecule.print_items()
             else:
                 parser.error("Invalid input file format. Without a specified reaction type the program expects input files with extensions '.pkl', '.log', '.out', '.com', or '.inp'\nPlease ensure that your input file is in one of these formats and try again. If you provided a different type of file, convert it to a supported format or select an appropriate file for processing.")
 
@@ -1583,7 +1543,7 @@ def main():
         logger = Logger(os.path.join(start_dir, "log"))
         molecules_logger = Logger(os.path.join(start_dir, "molecules.txt"))
         for molecule in global_molecules: 
-            molecule.log_or_print_items(molecules_logger)
+            molecule.print_items(molecules_logger)
 
         if all(m.reactant for m in global_molecules):
             molecule_name = global_molecules[0].name.split("_")[0]
