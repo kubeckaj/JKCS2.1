@@ -57,6 +57,9 @@ for arg in "$@"; do
     *.log)
       LOG=1
       ;;
+    *.out)
+      LOG=1
+      ;;
     *.pkl)
       PKL=1
       ;;
@@ -88,7 +91,7 @@ submit_array_job() {
   cat > $SLURM_SCRIPT <<EOF
 #!/bin/sh
 #SBATCH --job-name=JKTS
-#SBATCH --output=JKTS_%a.out
+#SBATCH --output=JKTS_%a
 #SBATCH --time=$SLURM_TIME
 #SBATCH --partition=$SLURM_PARTITION
 #SBATCH --ntasks=1
@@ -100,7 +103,7 @@ submit_array_job() {
 DIR_INDEX=\$((\$SLURM_ARRAY_TASK_ID - 1))
 DIRS=(${directories[@]})
 cd \${DIRS[\$DIR_INDEX]}
-mv ../JKTS_\$SLURM_ARRAY_TASK_ID.out .
+mv ../JKTS_\$SLURM_ARRAY_TASK_ID .
 source ~/.JKCSusersetup.txt
 program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
 EOF
@@ -116,7 +119,7 @@ submit_job() {
   cat > $SLURM_SCRIPT <<EOF
 #!/bin/sh
 #SBATCH --job-name=JKTS
-#SBATCH --output=JKTS_%j_out
+#SBATCH --output=JKTS_%j
 #SBATCH --time=$SLURM_TIME
 #SBATCH --partition=$SLURM_PARTITION
 #SBATCH --ntasks=1

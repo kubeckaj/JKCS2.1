@@ -118,7 +118,6 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write(f"program_CREST \\$MOLECULE_NAME -gfn{args.gfn} -ewin {args.ewin} -noreftopo\n")
             file.write(f"cp *pkl \\$SLURM_SUBMIT_DIR/.\n")
             file.write(f"cp *output \\$SLURM_SUBMIT_DIR/.\n")
-            file.write(f"echo 'CREST done' >> *.output")
             file.write(f"!EOF\n\n")
 
         file.write("sbatch $SBATCH_PREFIX $SUBMIT")
@@ -206,7 +205,6 @@ cp \\$SLURM_SUBMIT_DIR/{molecule.name}.xyz .
 program_CREST {crest_input}
 cp *pkl \\$SLURM_SUBMIT_DIR/.
 cp *output \\$SLURM_SUBMIT_DIR/.
-echo 'CREST done' >> *.output
 rm -rf /scratch/\\$SLURM_JOB_ID
 !EOF
 
