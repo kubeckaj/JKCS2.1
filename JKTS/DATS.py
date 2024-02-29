@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 '''Dynamic Approach for Transition States'''
 ###############################LIBRARIES#####################################
-# from pandas import read_pickle, DataFrame
 import argparse
 import os
 import re
@@ -12,18 +11,13 @@ from classes import Molecule, Logger
 from slurm_submit import submit_array_job, submit_job, update_molecules_status
 
 global_molecules = []
-# np.set_printoptions(suppress=True, precision=6)
+default_program = 'G16'
 ###############################################################################
-
 class SCFAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        # Determine the algorithm based on the option_string
         algorithm = option_string.strip('-').upper()
-        # Default SCF string when no additional arguments are provided
         scf_string = f"SCF=({algorithm})"
-        # Update the SCF string if additional arguments are provided
         if values is not None:
-            # Join additional arguments with a comma
             additional_args = ', '.join(values)
             if additional_args:
                 scf_string = f"SCF=({algorithm}, maxcycle={additional_args})"
@@ -75,7 +69,6 @@ def pkl_to_xyz(pkl_file_path, max_conformers=50):
         df = read_pickle(f) 
         for xyz in df[('xyz', 'structure')]:
             coordinates_list = []
-            # np.set_printoptions(precision=6, suppress=True)
             coords = xyz.get_positions()
             atom = xyz.get_chemical_symbols()
             for atom, coord in zip(atom, coords):
@@ -195,7 +188,8 @@ def bad_geometry(molecule):
 
 
 def check_transition_state(molecule, logger):
-    import numpy as np
+    from numpy import array
+    from numpy.linalg import norm
     if args.freq_cutoff:
         freq_cutoff = -abs(args.freq_cutoff)
     else:
@@ -230,8 +224,8 @@ def check_transition_state(molecule, logger):
             return 
 
         # Copy original coordinates and apply displacement
-        displaced_coordinates_plus = [np.array(original) + np.array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
-        displaced_coordinates_minus = [np.array(original) - np.array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
+        displaced_coordinates_plus = [array(original) + array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
+        displaced_coordinates_minus = [array(original) - array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
 
         try:
             H_index = molecule.constrained_indexes['H']-1 # python 0-based indexing
@@ -242,9 +236,9 @@ def check_transition_state(molecule, logger):
             O_index = molecule.constrained_indexes['O']-1
 
         # Calculate original and new distances between H and O
-        original_distance_HO = np.linalg.norm(np.array(molecule.coordinates[H_index]) - np.array(molecule.coordinates[O_index]))
-        new_distance_HO_plus = np.linalg.norm(displaced_coordinates_plus[H_index] - displaced_coordinates_plus[O_index])
-        new_distance_HO_minus = np.linalg.norm(displaced_coordinates_minus[H_index] - displaced_coordinates_minus[O_index])
+        original_distance_HO = norm(array(molecule.coordinates[H_index]) - array(molecule.coordinates[O_index]))
+        new_distance_HO_plus = norm(displaced_coordinates_plus[H_index] - displaced_coordinates_plus[O_index])
+        new_distance_HO_minus = norm(displaced_coordinates_minus[H_index] - displaced_coordinates_minus[O_index])
 
         if new_distance_HO_plus < original_distance_HO and new_distance_HO_minus > original_distance_HO or new_distance_HO_plus > original_distance_HO and new_distance_HO_minus < original_distance_HO:
             logger.log_with_stars(f"Yay! Normal mode analysis indicate correct TS for {molecule.name} with imaginary frequency: {imag}")
@@ -498,7 +492,7 @@ def read_last_lines(filename, logger, num_lines, interval=200):
             time.sleep(interval)
 
     logger.log(f"Failed to find the file {filename} after {max_attempts} attempts.")
-    return False
+    return []
 
 
 def resubmit_job(molecule, logger, error=None):
@@ -530,7 +524,6 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
     max_terminations_allowed = 2
     pending, running = [], []
     job_type = molecules[0].current_step
-    error_termination_detected = False
 
     all_converged = False
     for m in molecules:  # Initialize with all molecules not being converged and no terminations counted
@@ -569,69 +562,24 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
             elif molecule.status in ['running', 'completed or not found'] or not molecule.converged:
                 if molecule.job_id not in running and molecule.status == 'running':
                     logger.log(f"Job {job_type} for {molecule.name} with job id {molecule.job_id} is running.")
+                    molecule.move_inputfile()
                     running.append(molecule.job_id)
                 if molecule.job_id in pending:
                     pending.remove(molecule.job_id)
 
-                log_file_name = f"{molecule.name}{molecule.output}"
-                log_file_path = os.path.join(molecule.directory, log_file_name)
-                molecule.log_file_path = log_file_path
-                last_lines = read_last_lines(log_file_path, logger, 30)
-                if not last_lines:
-                    molecule.error_termination_count += 1
-                    continue
+                normal_termination_detected, termination_string = termination_status(molecule, logger)
 
-                termination_detected = any(
-                termination in line.lower() for termination in termination_strings[molecule.program] for line in last_lines)
-                for error_termination in error_strings[molecule.program]:
-                    if any(error_termination in line.lower() for line in last_lines):
-                        error_termination_string = error_termination
-                        error_termination_detected = True
-                        break
-
-
-                if termination_detected:
-                    logger.log(f"Normal termination detected in {log_file_name}")
-                    xyz_coordinates = molecule.log2xyz()
-                    molecule.coordinates = xyz_coordinates
-                    molecule.update_energy(logger)
-                    if 'TS_opt' in job_type:
-                        transition_state = check_transition_state(molecule, logger)
-                        if transition_state is True:
-                            molecule.converged = True
-                            molecule.move_inputfile()
-                        else:
-                            molecule.error_termination_count += 1
-                            if molecule.error_termination_count >= max_terminations_allowed:
-                                continue
-                            resubmit_job(molecule, logger)
-                            time.sleep(30)
-                            continue
-                    elif job_type == 'crest_sampling':
-                        crest_conformers = pkl_to_xyz(os.path.join(molecule.directory, f"collection{molecule.name}.pkl"))
-                        if crest_conformers:
-                            molecule.converged = True
-                            molecules = initiate_conformers(crest_conformers, molecule=molecule)
-                            all_converged = True
-                            break
-                    elif job_type == 'DLPNO':
-                        molecule.converged = True
-                        molecule.update_energy(logger, DLPNO=True)
-                        molecule.update_step()
-                        logger.log(f"Yay! DLPNO single point for {molecule.name} molecule converged")
-                        molecule.move_inputfile()
-                    else:
-                        molecule.converged = True
-                        logger.log(f"**{molecule.name} converged**")
-                        xyz_coordinates = molecule.log2xyz()
-                        molecule.coordinates = xyz_coordinates
-                        molecule.move_inputfile()
-                elif error_termination_detected:
-                    molecule.error_termination_count += 1
-                    if molecule.error_termination_count >= max_terminations_allowed:
+                if normal_termination_detected:
+                    if termination_string: logger.log(termination_string)
+                    molecule.converged = True
+                elif normal_termination_detected is False:
+                    if termination_string in ['Error string not found', 'Could not read molecule log file']:
                         continue
-                    handle_error_termination(molecule, logger, last_lines, error_termination_string)
-                    continue
+                    else:
+                        molecule.error_termination_count += 1
+                        if molecule.error_termination_count >= max_terminations_allowed:
+                            continue
+                        handle_error_termination(molecule, logger, termination_string)
             else:
                 logger.log(f"Status {molecule} could not be determined. Ensure it is running. Job id: {molecule.job_id}")
                 continue
@@ -669,10 +617,12 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                     global_molecules.append(molecule)
                 if molecules[0].product and any(mol for mol in global_molecules if 'H2O' in mol.name) is False:
                     H2O = Molecule.create_H2O()
+                    H2O.program = QC_program
                     QC_input(H2O, constrain=False, method=args.method, basis_set=args.basis_set, TS=False)
                     submit_and_monitor(H2O, logger, threads)
                 elif molecules[0].reactant and any(mol for mol in global_molecules if 'OH' in mol.name) is False:
                     OH = Molecule.create_OH()
+                    OH.program = QC_program
                     QC_input(OH, constrain=False, method=args.method, basis_set=args.basis_set, TS=False)
                     submit_and_monitor(OH, logger, threads)
                 return True
@@ -688,37 +638,44 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
             return False
 
 
-def handle_error_termination(molecule, logger, last_lines, error_termination_string):
-    convergence_errors = ["l9999", "l508"]
-    intervention_errors = ["l301"]
-    G16_common_errors = "https://wongzit.github.io/gaussian-common-errors-and-solutions/"
-
-    detected_convergence_errors = [error for error in convergence_errors if any(error in line for line in last_lines)]
-    detected_intervention_errors = [error for error in intervention_errors if any(error in line for line in last_lines)]
-
-    if detected_convergence_errors:
-        error = detected_convergence_errors[0]
-        logger.log(f"Convergence error '{error}' termination found in {molecule.name}")
-        xyz_coordinates = molecule.log2xyz()
-        molecule.coordinates = xyz_coordinates
-        logger.log(f"Trying to resubmit job for {molecule.name} due to error termination")
-        resubmit_job(molecule, logger, error)
-    elif detected_intervention_errors:
-        error = detected_intervention_errors[0]
-        logger.log(f"Error '{error}' detected in {molecule.name} which needs taken care of manually")
-        logger.log(f"Removing the conformer {molecule.name} for now so user can inspect error")
-        molecule.error_termination_count = 3
-        if molecule.program.lower() == 'g16':
-            logger.log(f"Common G16 errors can be found in: {G16_common_errors}")
-        # molecule.set_active_site()
-    else:
+def handle_error_termination(molecule, logger, error_termination_string):
+    if molecule.program.lower() == 'orca':
+        print(error_termination_string)
         logger.log(f"Error termination found in {molecule.name}. Trying to resubmit")
         xyz_coordinates = molecule.log2xyz()
         molecule.coordinates = xyz_coordinates
         resubmit_job(molecule, logger)
+    else:
+        convergence_errors = ["l9999", "l508"]
+        intervention_errors = ["l301"]
+        G16_common_errors = "https://wongzit.github.io/gaussian-common-errors-and-solutions/"
+        last_lines = read_last_lines(molecule.log_file_path, logger, 30)
+
+        detected_convergence_errors = [error for error in convergence_errors if any(error in line for line in last_lines)]
+        detected_intervention_errors = [error for error in intervention_errors if any(error in line for line in last_lines)]
+
+        if detected_convergence_errors:
+            error = detected_convergence_errors[0]
+            logger.log(f"Convergence error '{error}' termination found in {molecule.name}")
+            xyz_coordinates = molecule.log2xyz()
+            molecule.coordinates = xyz_coordinates
+            logger.log(f"Trying to resubmit job for {molecule.name} due to error termination")
+            resubmit_job(molecule, logger, error)
+        elif detected_intervention_errors:
+            error = detected_intervention_errors[0]
+            logger.log(f"Error '{error}' detected in {molecule.name} which needs taken care of manually")
+            logger.log(f"Removing the conformer {molecule.name} for now so user can inspect error")
+            molecule.error_termination_count = 3
+            if molecule.program.lower() == 'g16':
+                logger.log(f"Common G16 errors can be found in: {G16_common_errors}")
+        else:
+            logger.log(f"Error termination found in {molecule.name}. Trying to resubmit")
+            xyz_coordinates = molecule.log2xyz()
+            molecule.coordinates = xyz_coordinates
+            resubmit_job(molecule, logger)
 
 
-def check_crest_products(molecules, logger, threads, interval, max_attempts):
+def check_crest(molecules, logger, threads, interval, max_attempts):
     initial_delay = args.initial_delay if args.initial_delay else int(interval * 3)
     interval = args.interval if args.interval else int(interval)
 
@@ -752,7 +709,7 @@ def check_crest_products(molecules, logger, threads, interval, max_attempts):
         try:
             files_in_directory = set(os.listdir(molecules[0].directory))
         except FileNotFoundError:
-            logger.log(f"Pickle files not generated yet. Retrying in {interval} seconds.")
+            logger.log(f"Pickle file(s) not generated yet. Retrying in {interval} seconds.")
             time.sleep(interval)
             attempts += 1
             continue
@@ -764,16 +721,13 @@ def check_crest_products(molecules, logger, threads, interval, max_attempts):
                     for n, conformer_coords in enumerate(conformers, start=1):
                         conformer_molecule = deepcopy(molecule)
                         conformer_molecule.name = f"{molecule.name}_conf{n}"
-                        conformer_molecule.mult = 2
-                        conformer_molecule.product = True
-                        conformer_molecule.set_current_step('crest_sampling')
                         conformer_molecule.atoms = [atom[0] for atom in conformer_coords]
                         conformer_molecule.coordinates = [atom[1:] for atom in conformer_coords]
                         all_conformers.append(conformer_molecule)
                 except Exception as e:
                     logger.log(f"Error processing molecule {molecule.name}: {e}")
                     return False
-            logger.log(f"CREST conformers for all products are generated. Proceeding with next step: {all_conformers[0].next_step}")
+            logger.log(f"CREST conformers are generated. Proceeding with next step: {all_conformers[0].next_step}")
             handle_termination(all_conformers, logger, threads, converged=True)
             return True
         else:
@@ -798,8 +752,9 @@ def submit_and_monitor(molecules, logger, threads):
         logger.log(f"Submitted SLURM array job with job id {job_id} for conformers in {molecules[0].directory}")
 
     if job_id:
-        if molecules[0].current_step == 'crest_sampling' and molecules[0].product:
-            thread = Thread(target=check_crest_products, args=(molecules, logger, threads, interval, args.attempts))
+        if molecules[0].current_step == 'crest_sampling':
+            logger.log("CREST TEST")
+            thread = Thread(target=check_crest, args=(molecules, logger, threads, interval, args.attempts))
         else:
             thread = Thread(target=check_convergence, args=(molecules, logger, threads, interval, args.attempts))
         threads.append(thread)
@@ -850,8 +805,9 @@ def handle_termination(molecules, logger, threads, converged):
 
     for conf in conformer_molecules:
         if conf.converged is False:
-            conf.program = global_program
+            conf.program = QC_program
             conf.name = conf.name.replace("_TS", "").replace("_CREST", "").replace("_DLPNO", "")
+            conf.log_file_path = os.path.join(conf.directory, f"{conf.name}{conf.output}")
             job_type = conformer_molecules[0].current_step
 
             if job_type == 'crest_sampling':
@@ -886,22 +842,31 @@ def handle_termination(molecules, logger, threads, converged):
 
 
 def termination_status(molecule, logger):
-    termination = termination_strings.get(molecule.program, "")
-    count = 0
-    if 'TS' in molecule.current_step and molecule.program.lower() == 'g16':
-        required_count = 2
-    else: required_count = 1
-    with open(molecule.log_file_path, 'r') as f:
-        for line in f:
-            if termination in line:
-                count += 1
-                if count >= required_count:
-                    if 'TS' in molecule.current_step:
-                        if check_transition_state(molecule, logger) is True:
-                            return True
-                        else: return False
-                    else: return True
-        return False
+    last_lines = read_last_lines(molecule.log_file_path, logger, 30)
+    if not last_lines:
+        molecule.error_termination_count += 1
+        return False, 'Could not read molecule log file'
+
+    termination_detected = any(
+        termination in line.lower() for termination in termination_strings[molecule.program] for line in last_lines)
+    
+    if termination_detected:
+        # Update geometry and energy
+        xyz_coordinates = molecule.log2xyz()
+        molecule.coordinates = xyz_coordinates
+        molecule.update_energy(logger)
+        if 'TS' in molecule.current_step:
+            ts_check_passed = check_transition_state(molecule, logger)
+            msg = "" if ts_check_passed else 'Normal termination, but transition state check didn’t pass'
+            return ts_check_passed, msg
+        else:
+            return True, f"***{molecule.name}***"
+
+    for error_termination in error_strings[molecule.program]:
+        if any(error_termination in line.lower() for line in last_lines):
+            return False, error_termination
+
+    return False, 'Error string not found'
 
 
 def initiate_conformers(conformers, input_file=None, molecule=None):
@@ -978,7 +943,7 @@ def handle_input_molecules(molecules, logger, threads):
         for m in molecules:
             m.directory = start_dir
             if os.path.exists(m.log_file_path):
-                converge_status = termination_status(m, logger)
+                converge_status, _ = termination_status(m, logger)
                 if current_step == 'Done' and converge_status is True:
                     global_molecules.append(m)
                 elif converge_status is True:
@@ -998,8 +963,8 @@ def handle_input_molecules(molecules, logger, threads):
             logger.log(f"Not all molecules given have converged. Non-converged will be calculated and converged ones will be skipped.")
             handle_termination(molecules, logger, threads, converged=False)
     else:
-        logger.log(f"Not all molecules in the given files are of the same type. Resubmitting from the last common step.")
-            # Implement way to find last common step and also log it so user can see
+        logger.log(f"Not all molecules in the given files are of the same type. Check if correct input is provided. Exiting for now.")
+        exit()
 
 
 def log2vib(molecule):
@@ -1199,7 +1164,7 @@ def eckart(sp_ts, sp_reactant, sp_product, imag, t=[298.15]):
         kappa = g[0]
         return kappa
     except Exception as e:
-        print("error in calculating the eckart tunneling. returning tunneling coefficient 1")
+        print("Error in calculating the eckart tunneling. returning tunneling coefficient 1")
         return 1
 
 
@@ -1366,15 +1331,15 @@ def main():
         
         return input_args[0], input_args[1]
 
-    global global_program
+    global QC_program
     if args.ORCA:
-        global_program = "ORCA"
+        QC_program = "ORCA"
         if args.method.lower() == "wb97xd":
             args.method = "WB97X-D3"
     elif args.G16:
-        global_program = "G16"
-    else: 
-        global_program = "G16" # Default case
+        QC_program = "G16"
+    else:
+        QC_program = default_program
 
     global termination_strings, error_strings
     # Keep in lower case
@@ -1397,16 +1362,9 @@ def main():
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
             molecule.program = 'ORCA'
-            molecules.append(molecule)
-            log_file_path = input_file
-            last_lines = read_last_lines(log_file_path, logger, 30)
 
-            for error_termination in error_strings[molecule.program]:
-                if any(error_termination in line.lower() for line in last_lines):
-                    error_termination_string = error_termination
-                    error_termination_detected = True
-                    print(error_termination_detected, error_termination_string)
-                    break
+
+           
 
 
         exit()
@@ -1480,9 +1438,9 @@ def main():
                             molecule.print_items()
                     else: molecules.print_items()
             elif file_type in ['.log', '.out', '.com', '.inp']:
-                if file_type in ['.out', '.inp']: global_program = 'ORCA'
+                QC_program = 'ORCA' if file_type in ['.out', '.inp'] else 'G16'
                 input_file_path = os.path.join(start_dir, input_file)
-                molecule = Molecule(input_file_path, indexes=args.CHO)
+                molecule = Molecule(input_file_path, indexes=args.CHO, program=QC_program)
                 molecule.print_items()
             else:
                 parser.error("Invalid input file format. Without a specified reaction type the program expects input files with extensions '.pkl', '.log', '.out', '.com', or '.inp'\nPlease ensure that your input file is in one of these formats and try again. If you provided a different type of file, convert it to a supported format or select an appropriate file for processing.")
@@ -1490,7 +1448,6 @@ def main():
     else: # We loop over all molecules given in the argument input and process them according to file type
         for n, input_file in enumerate(args.input_files, start=1):
             file_name, file_type = os.path.splitext(input_file)
-            if file_type in ['.out', 'inp']: global_program = 'ORCA'
 
             if file_type == '.xyz':
                 if os.path.basename(start_dir) == 'reactants':
@@ -1555,8 +1512,7 @@ def main():
             print(f"Tunneling coefficient: {kappa}")
             exit()
 
-
-
+        # FIX file_type variable
         if input_molecules and file_type != '.xyz':
             logger = Logger(os.path.join(start_dir, "log"))
             if args.collect:
@@ -1587,7 +1543,7 @@ def main():
         logger = Logger(os.path.join(start_dir, "log"))
         molecules_logger = Logger(os.path.join(start_dir, "molecules.txt"))
         for molecule in global_molecules: 
-            molecule.log_items(molecules_logger)
+            molecule.print_items(molecules_logger)
 
         if all(m.reactant for m in global_molecules):
             molecule_name = global_molecules[0].name.split("_")[0]

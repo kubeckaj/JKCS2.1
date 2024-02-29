@@ -118,10 +118,9 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write(f"program_CREST \\$MOLECULE_NAME -gfn{args.gfn} -ewin {args.ewin} -noreftopo\n")
             file.write(f"cp *pkl \\$SLURM_SUBMIT_DIR/.\n")
             file.write(f"cp *output \\$SLURM_SUBMIT_DIR/.\n")
-            file.write(f"echo 'CREST done' >> *.output")
             file.write(f"!EOF\n\n")
 
-        file.write("sbatch $SBATCH_PREFIX $SUBMIT")
+        file.write("sbatch $SUBMIT")
 
     submit_command = ['sh', path_submit_script, array_txt]
     try:
@@ -206,8 +205,6 @@ cp \\$SLURM_SUBMIT_DIR/{molecule.name}.xyz .
 program_CREST {crest_input}
 cp *pkl \\$SLURM_SUBMIT_DIR/.
 cp *output \\$SLURM_SUBMIT_DIR/.
-echo 'CREST done' >> *.output
-rm -rf /scratch/\\$SLURM_JOB_ID
 !EOF
 
 sbatch $SUBMIT
@@ -245,12 +242,9 @@ export GAUSS_SCRDIR=\\$WRKDIR
 
 \\${{PATH_G16}}/g16/g16 $JOB.com > \\$SLURM_SUBMIT_DIR/$JOB.log
 
-# Remove scratch folder
-rm -rf \\$WRKDIR
-
 !EOF
 
-sbatch $SBATCH_PREFIX $SUBMIT
+sbatch $SUBMIT
 """
 ######################################################################################################################
     script_content_orca = f"""#!/bin/bash
@@ -284,12 +278,9 @@ cd \\$WRKDIR
 cp \\$SLURM_SUBMIT_DIR/$JOB.inp .
 \\${{PATH_ORCA}}/orca $JOB.inp > \\$SLURM_SUBMIT_DIR/$JOB.out
 
-# Remove scratch folder
-rm -rf \\$WRKDIR
-
 !EOF
 
-sbatch $SBATCH_PREFIX $SUBMIT
+sbatch $SUBMIT
     """
 
     with open(path_submit_script, 'w') as file:

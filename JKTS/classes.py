@@ -162,7 +162,7 @@ class Molecule(Vector):
     @classmethod
     def create_OH(cls, directory=os.getcwd()):
         # Creates an OH radical molecule
-        molecule = cls(name='OH', directory=directory, atoms=['O', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.97, 0.0, 0.0]], reactant=True, program='g16')
+        molecule = cls(name='OH', directory=directory, atoms=['O', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.97, 0.0, 0.0]], reactant=True)
         molecule.mult = 2
         molecule.reactant = True
         molecule.workflow = molecule.determine_workflow()
@@ -172,7 +172,7 @@ class Molecule(Vector):
     @classmethod
     def create_H2O(cls, directory=os.getcwd()):
         # Creates a water (H2O) molecule
-        molecule = cls(name='H2O', directory=directory, atoms=['O', 'H', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.9572, 0.0, 0.0], [-0.239664, 0.926711, 0.0]], product=True, program='g16')
+        molecule = cls(name='H2O', directory=directory, atoms=['O', 'H', 'H'], coordinates=[[0.0, 0.0, 0.0], [0.9572, 0.0, 0.0], [-0.239664, 0.926711, 0.0]], product=True)
         molecule.mult = 1
         molecule.product = True
         molecule.workflow = molecule.determine_workflow()
@@ -219,13 +219,16 @@ class Molecule(Vector):
         self.log_file_path = destination
 
     def move_inputfile(self):
-        if not os.path.exists(os.path.join(self.directory, "input_files")):
-            os.makedirs(os.path.join(self.directory, "input_files"), exist_ok=True)
-        destination = os.path.join(self.directory, "input_files", f"{self.name}{self.input}")
+        input_files_dir = os.path.join(self.directory, "input_files")
+        if not os.path.exists(input_files_dir):
+            os.makedirs(input_files_dir, exist_ok=True)
+        source = os.path.join(self.directory, f"{self.name}{self.input}")
+        destination = os.path.join(input_files_dir, f"{self.name}{self.input}")
         if os.path.exists(destination):
             os.remove(destination)
-        shutil.move(os.path.join(self.directory, f"{self.name}{self.input}"), destination)
-        self.log_file_path = destination
+        if os.path.exists(source):
+            shutil.move(source, destination)
+            self.log_file_path = destination
 
     def move_failed(self):
         if not os.path.exists(os.path.join(self.directory, "failed_logs")):
@@ -909,52 +912,40 @@ class Molecule(Vector):
                 else: return coordinates
 
 
-    def print_items(self):
-        print(f"Molecule: {self.name}")
-        print(f"File Path: {self.file_path}")
-        print(f"Directory: {self.directory}")
-        print(f"Log File Path: {self.log_file_path}")
-        print(f"Program: {self.program.upper()}")
-        print(f"Reactant: {self.reactant}")
-        print(f"Product: {self.product}")
-        print(f"Multiplicity: {self.mult}")
-        print(f"Charge: {self.charge}")
-        print(f"Workflow: {self.workflow}")
+    def print_items(self, logger=None):
+        def output(message):
+            if logger:
+                logger.log(message)
+            else:
+                print(message)
+
+        output(f"Molecule: {self.name}")
+        output(f"File Path: {self.file_path}")
+        output(f"Directory: {self.directory}")
+        output(f"Log File Path: {self.log_file_path}")
+        output(f"Program: {self.program.upper()}")
+        output(f"Reactant: {self.reactant}")
+        output(f"Product: {self.product}")
+        output(f"Multiplicity: {self.mult}")
+        output(f"Charge: {self.charge}")
+        output(f"Workflow: {self.workflow}")
         if 'Cl' in self.atoms:
-            print(f"Constrained Indexes: [C: {self.constrained_indexes[0]}, H: {self.constrained_indexes[0]}, Cl: {self.constrained_indexes[0]}]")
+            output(f"Constrained Indexes: [C: {self.constrained_indexes[0]}, H: {self.constrained_indexes[0]}, Cl: {self.constrained_indexes[0]}]")
         else:
-            print(f"Constrained Indexes: {self.constrained_indexes}")
-        print(f"Electronic Energy: {self.electronic_energy}")
-        print(f"Zero Point Correction: {self.zero_point}")
-        print(f"Gibbs free energy: {self.free_energy}")
-        print(f"Partition Function: {self.Q}")
-        print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
-        print(f"Current Step: {self.current_step}")
-        print(f"Next Step: {self.next_step}")
-        print("Atoms and Coordinates:")
+            output(f"Constrained Indexes: {self.constrained_indexes}")
+        output(f"Electronic Energy: {self.electronic_energy}")
+        output(f"Zero Point Correction: {self.zero_point}")
+        output(f"Gibbs free energy: {self.free_energy}")
+        output(f"Partition Function: {self.Q}")
+        output(f"Vibrational Frequencies: {self.vibrational_frequencies}")
+        output(f"Current Step: {self.current_step}")
+        output(f"Next Step: {self.next_step}")
+        output("Atoms and Coordinates:")
         for atom, coord in zip(self.atoms, self.coordinates):
-            print(f"  {atom:2} {coord[0]:>9.6f} {coord[1]:>9.6f} {coord[2]:>9.6f}")
-        print("-----------------------------------------------------------------------")
-   
-    def log_items(self, logger):
-        logger.log(f"Molecule: {self.name}")
-        logger.log(f"File Path: {self.file_path}")
-        logger.log(f"Directory: {self.directory}")
-        logger.log(f"Log File Path: {self.log_file_path}")
-        logger.log(f"Reactant: {self.reactant}")
-        logger.log(f"Product: {self.product}")
-        logger.log(f"Workflow: {self.workflow}")
-        if self.constrained_indexes: logger.log(f"Constrained Indexes: {self.constrained_indexes}")
-        logger.log(f"Electronic energy: {self.electronic_energy}")
-        logger.log(f"Zero Point Corrected Energy: {self.zero_point}")
-        logger.log(f"Partition Function: {self.Q}")
-        logger.log(f"Vibrational Frequencies: {self.vibrational_frequencies}")
-        logger.log(f"Current Step: {self.current_step}")
-        logger.log(f"Next Step: {self.next_step}")
-        logger.log("Atoms and Coordinates:")
-        for atom, coord in zip(self.atoms, self.coordinates):
-            logger.log(f"  {atom}: {coord}")
-        logger.log("-----------------------------------------------------------------------")
+            coord_str = f"{coord[0]:>9.6f} {coord[1]:>9.6f} {coord[2]:>9.6f}"
+            output(f"  {atom:2} {coord_str}")
+        output("-----------------------------------------------------------------------")
+
 
 
 class Logger:
