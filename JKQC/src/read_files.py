@@ -69,6 +69,7 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
   Q_ORCA_used = 0
   Q_G16_used = 0
   Q_XTB_used = 0
+  Q_ABC_CREST_used = 0
 
   clusters_dict = {}
   rem_orcaextname = orcaextname
@@ -78,7 +79,7 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
     #############################
     folder_path       = path.abspath(file_i)[::-1].split("/",1)[1][::-1]+"/"
     file_basename     = file_i[:-4][::-1].split("/",1)[0][::-1]
-    file_i_ABC        = folder_path+file_basename+".log"
+    file_i_ABC_CREST  = folder_path+file_basename+".log"
     file_i_XTB        = folder_path+file_basename+".log"
     file_i_engrad     = folder_path+file_basename+".engrad"
     file_i_G16        = folder_path+file_basename+".log"
@@ -193,6 +194,20 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
               dic_xtb = read_xtb(mm)
               dic.update(dic_xtb)
               continue
+ 
+          ######################
+          #### ABC/CREST #######
+          ######################
+          if file_test == file_i_ABC_CREST:
+            testABC_CREST = mm.find(rb'ABC')+mm.find(rb'JXYZ')+2
+            if testABC_CREST > 0:
+              if Q_ABC_CREST_used == 0:
+                from read_abc_crest import read_abc_crest,read_abc_crest_init
+                read_abc_crest_init()
+                Q_ABC_CREST_used = 1
+              dic_abc_crest = read_abc_crest(mm)
+              dic.update(dic_abc_crest)
+              continue
   
     ###############
     ### ENGRAD ####
@@ -295,29 +310,4 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
   #    clusters_df = df_add_iter(clusters_df, mrccextname, "time", [str(cluster_id)], [out_time]) #TIME
   #    clusters_df = df_add_iter(clusters_df, mrccextname, "electronic_energy", [str(cluster_id)], [out_electronic_energy]) #O3
 
-  ######################
-  #### ABC/CREST #######
-  ######################
-  #if path.exists(file_i_ABC):
-  #  file = open(file_i_ABC, "r")
-  #  test = 0
-  #  for i in range(1):
-  #    line=file.readline()
-  #    if re.search("ABC", line):
-  #      test = 1
-  #      break
-  #    if re.search("JXYZ", line):
-  #      test = 1
-  #      break
-  #  if test == 1:
-  #    out_electronic_energy = missing  #1
-  #    for line in file:
-  #      if re.search("ABC energy:", line) or re.search("structure energy:", line): #1
-  #        try:
-  #          out_electronic_energy = float(line.split()[2])
-  #        except:
-  #          out_electronic_energy = missing
-  #    clusters_df = df_add_iter(clusters_df, "log", "electronic_energy", [str(cluster_id)], [out_electronic_energy])
-  #  file.close()
-  #
 
