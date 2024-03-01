@@ -1451,12 +1451,16 @@ def main():
 
             if file_type == '.xyz':
                 if os.path.basename(start_dir) == 'reactants':
+                    if args.reactants is False:
+                        exit()
                     input_file_path = os.path.join(start_dir, f"{file_name}_reactant.pkl")
                     logger = Logger(os.path.join(start_dir, "log"))
                     reactant = Molecule.load_from_pickle(input_file_path)
                     molecules.append(reactant)
 
                 elif os.path.basename(start_dir) == 'products':
+                    if args.products is False:
+                        exit()
                     logger = Logger(os.path.join(start_dir, "log"))
                     pickle_path = os.path.join(start_dir, "product_molecules.pkl")
                     product_molecules = Molecule.load_molecules_from_pickle(pickle_path)

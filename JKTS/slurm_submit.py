@@ -93,7 +93,7 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write("!EOF\n\n")
 
         elif job_program.lower() == "orca":
-            file.write("  ulimit -c 0\n")
+            file.write("ulimit -c 0\n")
             file.write("export LD_LIBRARY_PATH=\\$PATH_ORCA:\\$LD_LIBRARY_PATH\n")
             file.write("eval \\$MODULE_ORCA\n")
             
@@ -115,7 +115,7 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write(f'cp \\$SLURM_SUBMIT_DIR/\\$MOLECULE_NAME \\$WRKDIR/\n')
             file.write(f'cd \\$WRKDIR\n')
             # file.write(f"program_CREST \\$MOLECULE_NAME -gfn{args.gfn} -ewin {args.ewin} -noreftopo > \\${{MOLECULE_NAME%.xyz}}.log\n")
-            file.write(f"program_CREST \\$MOLECULE_NAME -gfn{args.gfn} -ewin {args.ewin} -noreftopo\n")
+            file.write(f"program_CREST \\$MOLECULE_NAME -gfn{args.gfn} -ewin {args.ewin} --tstep 1 -noreftopo\n")
             file.write(f"cp *pkl \\$SLURM_SUBMIT_DIR/.\n")
             file.write(f"cp *output \\$SLURM_SUBMIT_DIR/.\n")
             file.write(f"!EOF\n\n")
@@ -152,11 +152,11 @@ def submit_job(molecule, args, nnodes=1):
         slurm_time = seconds_to_hours(total_seconds)
 
     if molecule.reactant:
-        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo"
+        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --tstep 1"
     elif molecule.product:
-        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1"
+        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1 --tstep 1"
     else:
-        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1 --cinp {dir}/constrain.inp"
+        crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --uhf 1 --tstep 1 --cinp {dir}/constrain.inp"
 
     if molecule.program.lower() == "orca" or molecule.program.lower() == "g16":
         if molecule.current_step == 'DLPNO':
