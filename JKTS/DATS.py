@@ -568,7 +568,6 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                 if molecule.job_id in pending:
                     pending.remove(molecule.job_id)
 
-                molecule.print_items(logger)
                 normal_termination_detected, termination_string = termination_status(molecule, logger)
 
                 if normal_termination_detected:
@@ -725,6 +724,8 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
                         conformer_molecule.atoms = [atom[0] for atom in conformer_coords]
                         conformer_molecule.coordinates = [atom[1:] for atom in conformer_coords]
                         all_conformers.append(conformer_molecule)
+                    molecule.move_inputfile() #NOTE: test
+                    molecule.move_converged()
                 except Exception as e:
                     logger.log(f"Error processing molecule {molecule.name}: {e}")
                     return False
