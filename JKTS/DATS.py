@@ -315,13 +315,16 @@ def crest_constrain_file(molecule, force_constant=1.00):
         f.write(f"O: {O_index}\n")
 
 
-def QC_input(molecule, constrain,  method, basis_set, TS):
+def QC_input(molecule, constrain, method, basis_set, TS):
     file_name = f"{molecule.name}{molecule.input}"
     file_path = os.path.join(molecule.directory, file_name)
     atoms = molecule.atoms
     coords = molecule.coordinates
     max_iter = 150 # Maximum iterations for geoemtry optimization
-    freq = 'freq'
+    if molecule.product or method == 'DLPNO':
+        freq = ''
+    else:
+        freq = 'freq'
     SCF = 'NoTrah'
     disp = "" # 'EmpiricalDispersion=GD3BJ'
 
@@ -360,7 +363,7 @@ def QC_input(molecule, constrain,  method, basis_set, TS):
                 f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {round(args.mem/args.cpu)}\n")
             else:
-                f.write(f"! {method} {basis_set} TightSCF SlowConv OPT defgrid3\n")
+                f.write(f"! {method} {basis_set} TightSCF SlowConv OPT defgrid3 {freq}\n")
                 f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {round(args.mem/args.cpu)}\n")
             if constrain:
@@ -398,14 +401,14 @@ def QC_input(molecule, constrain,  method, basis_set, TS):
             f.write(f"%nprocshared={args.cpu}\n")
             f.write(f"%mem={args.mem}mb\n")
             if TS and constrain: # should only be in the case of hard convergence problems where some flexible parts should be constrained.
-                f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant,MaxCycles={max_iter}) freq {disp} {args.SCF}\n\n')
+                f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant,MaxCycles={max_iter}) {freq} {disp} {args.SCF}\n\n')
             elif TS and constrain is False:
                 if molecule.error_termination_count == 1:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},ReCalcFC=5,Maxstep=10) freq {disp} {args.SCF}\n\n') # RecalcFC=N also option, recalc Hessian every N iteration
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},ReCalcFC=5,Maxstep=10) {freq} {disp} {args.SCF}\n\n') # RecalcFC=N also option, recalc Hessian every N iteration
                 elif molecule.error_termination_count == 2:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,ReCalcFC=2,MaxCycles={max_iter},MaxStep=10) freq {disp} {args.SCF}\n\n')
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,ReCalcFC=2,MaxCycles={max_iter},MaxStep=10) {freq} {disp} {args.SCF}\n\n')
                 else:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},RecalcFC=10) freq {disp} {args.SCF}\n\n')
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},RecalcFC=10) {freq} {disp} {args.SCF}\n\n')
             elif TS is False and constrain:
                 f.write(f'# {method} {basis_set} opt=modredundant {disp} {args.SCF}\n\n')
             else:
@@ -1192,6 +1195,7 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
         # Find the lowest single point energies for reactant (excluding OH) and TS
         lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.zero_point_corrected)
         lowest_TS = min(TS_conformers, key=lambda molecule: molecule.zero_point_corrected)
+        lowest_reactant.print_items()
 
         # Lowest single point reactant and TS and convert from Hartree to joules and kcal/mol
         lowest_ZP_TS_J = float64(lowest_TS.zero_point_corrected * HtoJ)
