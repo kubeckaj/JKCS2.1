@@ -525,16 +525,19 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
     pending, running = [], []
     job_type = molecules[0].current_step
 
+    print(molecules[0].log_file_path)
     all_converged = False
     for m in molecules:  # Initialize with all molecules not being converged and no terminations counted
         m.converged = False
         m.error_termination_count = 0
         m.log_file_path = os.path.join(m.directory, f"{m.name}{m.output}")
+    print(molecules[0].log_file_path)
 
     logger.log(f"Waiting {initial_delay} seconds before first check")
     time.sleep(initial_delay)
 
     while attempts < max_attempts and not all_converged:
+        print(molecules[0].log_file_path)
         i = 0
         while i < len(molecules):
             molecule = molecules[i]
@@ -550,7 +553,9 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
         if all_converged:
             break
 
+        print(molecules[0].log_file_path)
         update_molecules_status(molecules)
+        print(molecules[0].log_file_path)
         for molecule in molecules:
             if molecule.converged:
                 continue
@@ -570,6 +575,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
 
                 molecule.print_items(logger)
                 normal_termination_detected, termination_string = termination_status(molecule, logger)
+                print(molecules[0].log_file_path)
 
                 if normal_termination_detected:
                     if termination_string: logger.log(termination_string)
@@ -845,6 +851,7 @@ def handle_termination(molecules, logger, threads, converged):
 
 
 def termination_status(molecule, logger):
+    print(molecule.log_file_path)
     last_lines = read_last_lines(molecule.log_file_path, logger, 30)
     if not last_lines:
         molecule.error_termination_count += 1

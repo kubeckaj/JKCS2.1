@@ -228,7 +228,6 @@ class Molecule(Vector):
             os.remove(destination)
         if os.path.exists(source):
             shutil.move(source, destination)
-            self.log_file_path = destination
 
     def move_failed(self):
         if not os.path.exists(os.path.join(self.directory, "failed_logs")):
