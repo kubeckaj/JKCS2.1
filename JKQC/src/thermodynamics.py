@@ -22,7 +22,10 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
       try:
-        test = len(clusters_df.at[i,("xyz","structure")].get_atomic_numbers())
+        structure = clusters_df.at[i,("xyz","structure")]
+        if pd.isna(structure): 
+          print("Structure is missing.")
+        test = len(structure.get_atomic_numbers())
       except:
         test = 0
         lf = 0

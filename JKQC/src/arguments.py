@@ -129,7 +129,7 @@ def arguments(argument_list = []):
   Qt = missing
   Qp = missing
   Qfc = 0 #Run QHA with vib. frequency cutoff
-  Qanh = 1
+  Qanh = "1"
   Qanharm = 0 #To collect anharmonicities from QC output
  
   #global Qpresplit,Qsplit,Qindex,Qdrop,Qout2log 
