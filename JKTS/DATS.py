@@ -706,7 +706,8 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
             if sleeping:
                 sleeping = 0
                 logger.log("All jobs are pending. Sleeping for now")
-            time.sleep(interval)
+                time.sleep(interval)
+            time.sleep(interval*2)
             continue
 
         try:
@@ -808,7 +809,6 @@ def handle_termination(molecules, logger, threads, converged):
         conformer_molecules = molecules
 
     for conf in conformer_molecules:
-        logger.log(conf.output)
         if conf.converged is False:
             conf.name = conf.name.replace("_TS", "").replace("_CREST", "").replace("_DLPNO", "")
             job_type = conformer_molecules[0].current_step
@@ -989,14 +989,69 @@ def log2vib(molecule):
     return vibrations
         
 
+def eckart_test(TS_E, reactant_E, product_E, imag, reduced_mass=1, temperature=298.15):
+    import numpy as np
+
+    # Define physical constants
+    c = 2.99792458e10
+    AMU_TO_KG = 1.66053886E-27
+    PI = 3.14159265359
+    reduced_mass_amu = 1
+
+    def barrier(transition_state_energy, reactant_energy, product_energy):
+        return (transition_state_energy ** 0.5 + (transition_state_energy - (product_energy - reactant_energy)) ** 0.5) ** 2
+    
+    def alpha(barrier_parameter, force_constant, transition_state_energy, reactant_energy, product_energy):
+        return (barrier_parameter * force_constant / (2 * transition_state_energy * (transition_state_energy - (product_energy - reactant_energy)))) ** 0.5
+    
+    def A(energy, reduced_mass_kg, alpha):
+        return 2 * PI * (2 * reduced_mass_kg * energy)**0.5 / alpha
+    
+    def B(energy, reduced_mass_kg, product_energy, reactant_energy, alpha):
+        return 2 * PI * (2 * reduced_mass_kg * (energy - (product_energy - reactant_energy)))**0.5 / alpha
+    
+    def delta(barrier_parameter, reduced_mass_kg, alpha):
+        return 2 * PI * abs((2 * reduced_mass_kg * barrier_parameter - (alpha/2)**2))**0.5 / alpha
+    
+    def P(a_argument, b_argument, d_argument):
+        return (np.cosh(a_argument + b_argument) - np.cosh(a_argument - b_argument)) / (np.cosh(a_argument + b_argument) + np.cosh(d_argument))
+
+    def force_constant(imag):
+        return (imag*2*np.pi*c)**2
+    
+    # Convert mass to kg and calculate parameters
+    reduced_mass_kg = reduced_mass_amu * AMU_TO_KG
+    force_constant = force_constant(imag)
+
+    barrier_parameter = barrier(TS_E, reactant_E, product_E)
+    alpha = alpha(barrier_parameter, force_constant, TS_E, reactant_E, product_E)
+
+    # Energy range for integration
+    energies = np.linspace(0, TS_E, 1000)
+    transmission_probabilities = np.zeros_like(energies)
+
+    # Calculate transmission probability for each energy
+    for i, energy in enumerate(energies):
+        a_argument = A(energy, reduced_mass_kg, alpha)
+        b_argument = B(energy, reduced_mass_kg, product_E, reactant_E, alpha)
+        d_argument = delta(barrier_parameter, reduced_mass_kg, alpha)
+        transmission_probabilities[i] = P(a_argument, b_argument, d_argument)
+
+    # Integrate transmission probability over the energy range using the trapezoidal rule
+    tunneling_correction_factor = np.trapz(transmission_probabilities, energies)
+
+    return tunneling_correction_factor
+
+
 def gcalc_optimized(emin, gsize, v, a, b, l, h, kb, m, t, v1):
+    from numpy import pi, arange, sqrt, cosh, exp, zeros, trapz
     pi = pi
     e = arange(emin, 2 * max(v), gsize)
     k = zeros(len(e))
     ek = e.copy()
     eka = e * 627.509
 
-    c = (h ** 2) / (8 * m * (l ** 2))  # Calculation of c factor, moved outside the loop
+    c = (h ** 2) / (8 * m * (l ** 2)) 
     for i, ei in enumerate(e):
         a = 0.5 * sqrt(ei / c)
         b = 0.5 * sqrt((ei - a) / c)
@@ -1006,7 +1061,6 @@ def gcalc_optimized(emin, gsize, v, a, b, l, h, kb, m, t, v1):
     g = zeros(len(t))
     for q, ti in enumerate(t):
         gk = k * exp(-ek / (kb * ti))
-        # Using trapz for integration
         gi = trapz(gk, ek)
         gi = gi * (exp(v1 / (kb * ti)) / (kb * ti))
 
@@ -1018,10 +1072,11 @@ def gcalc_optimized(emin, gsize, v, a, b, l, h, kb, m, t, v1):
 
 
 def eckart_optimized(sp_ts, sp_reactant, sp_product, imag, t=[298.15]):
+    from numpy import pi, sqrt, arange, exp
     try:
         # Constants
         c = 2.99792458e+8  # speed of light (m s-1)
-        pi = pi
+        pi = 3.141592653589
         kb = 3.1668152e-6
         h = 2 * pi
         na = 6.0221409e+23  # Avogadro's number (mol-1)
@@ -1068,6 +1123,7 @@ def eckart_optimized(sp_ts, sp_reactant, sp_product, imag, t=[298.15]):
 
     
 def gcalc(emin,gsize,v,a,b,l,h,kb,m,t,v1):
+    from numpy import pi, arange, sqrt, cosh, exp
     pi = pi
     e=arange(emin,2*max(v),gsize)
     k=[0 for x in range(len(e))]
@@ -1103,7 +1159,7 @@ def gcalc(emin,gsize,v,a,b,l,h,kb,m,t,v1):
 
 
 def eckart(sp_ts, sp_reactant, sp_product, imag, t=[298.15]):
-    from numpy import pi, arange, sqrt, exp, sum, array, trapz, zeros, cosh, max
+    from numpy import pi, sqrt, arange, exp
     try:
         c=2.99792458e+8          # speed of light (m s-1)
         pi=pi               # π
@@ -1175,7 +1231,7 @@ def eckart(sp_ts, sp_reactant, sp_product, imag, t=[298.15]):
 
 
 def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.15):
-    from numpy import pi, arange, sqrt, exp, sum, array, trapz, zeros, cosh, max, float64
+    from numpy import  exp, sum, float64
     k_b = 1.380649e-23  # Boltzmann constant in J/K
     h = 6.62607015e-34  # Planck constant in J*s
     HtoJ = 43.597447222e-19  # Conversion factor from Hartree to Joules
@@ -1195,7 +1251,6 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
         # Find the lowest single point energies for reactant (excluding OH) and TS
         lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.zero_point_corrected)
         lowest_TS = min(TS_conformers, key=lambda molecule: molecule.zero_point_corrected)
-        lowest_reactant.print_items()
 
         # Lowest single point reactant and TS and convert from Hartree to joules and kcal/mol
         lowest_ZP_TS_J = float64(lowest_TS.zero_point_corrected * HtoJ)
@@ -1220,10 +1275,12 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
 
             if product_molecules and H2O:
                 lowest_product = min(product_molecules, key=lambda molecule: molecule.zero_point_corrected)
-                lowest_ZP_product_kcalmol = float64((lowest_product.electronic_energy + H2O.electronic_energy) * Htokcalmol)
+                lowest_EE_product_kcalmol = float64((lowest_product.electronic_energy + H2O.electronic_energy) * Htokcalmol)
+                lowest_EE_TS_kcalmol = float64(lowest_TS.electronic_energy * Htokcalmol)
+                lowest_EE_reactant_kcalmol = float64((lowest_reactant.electronic_energy + OH.electronic_energy) * Htokcalmol)
 
                 imag = abs(lowest_TS.vibrational_frequencies[0])
-                kappa  = eckart_optimized(lowest_ZP_TS_kcalmol, lowest_ZP_reactant_kcalmol, lowest_ZP_product_kcalmol, imag)
+                kappa  = eckart(lowest_EE_TS_kcalmol, lowest_EE_reactant_kcalmol, lowest_EE_product_kcalmol, imag)
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
             else:
                 print("Error in product molecules")
