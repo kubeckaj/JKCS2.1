@@ -23,7 +23,7 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
     for i in range(len(clusters_df)):
       try:
         structure = clusters_df.at[i,("xyz","structure")]
-        if pd.isna(structure): 
+        if isna(structure): 
           print("Structure is missing.")
         test = len(structure.get_atomic_numbers())
       except:
@@ -33,7 +33,7 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
         if test != 0:
           try:
             QtOLD = clusters_df.at[i,("log","temperature")]
-            if pd.isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
+            if isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
               continue
           except:
             QtOLD = clusters_df.at[i,("log","temperature")]
@@ -91,7 +91,7 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
   if ~isnan(Qt):
     for i in range(len(clusters_df)):
       try:
-        if pd.isna(clusters_df.at[i,("log","vibrational_frequencies")]):
+        if isna(clusters_df.at[i,("log","vibrational_frequencies")]):
           clusters_df.at[i,("log","temperature")] = Qt
           continue
       except:
