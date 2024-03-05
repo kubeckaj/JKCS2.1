@@ -188,7 +188,7 @@ def read_orca(mmm, orcaextname, Qforces = 0):
   #FORCES
   if Qforces == 1:
     try:
-      out_forces = [array([float(line.split()[3]),float(line.split()[4]),float(line.split()[5])])/0.529177 for line in PATTERN_ORCA_out_forces.findall(mm)[-1].decode("utf-8").split("\n")[:-1]]
+      out_forces = [-array([float(line.split()[3]),float(line.split()[4]),float(line.split()[5])])/0.529177 for line in PATTERN_ORCA_out_forces.findall(mm)[-1].decode("utf-8").split("\n")[:-1]]
     except:
       out_forces = missing
 
