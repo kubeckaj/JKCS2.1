@@ -228,7 +228,6 @@ class Molecule(Vector):
             os.remove(destination)
         if os.path.exists(source):
             shutil.move(source, destination)
-            self.log_file_path = destination
 
     def move_failed(self):
         if not os.path.exists(os.path.join(self.directory, "failed_logs")):
@@ -338,7 +337,6 @@ class Molecule(Vector):
             return float(self.zero_point) + float(self.electronic_energy)
         return None
     
-
     @staticmethod
     def load_from_pickle(file_path):
         with open(file_path, 'rb') as file:
@@ -356,7 +354,6 @@ class Molecule(Vector):
         '''usage: loaded_molecules = Molecule.load_molecules_from_pickle('path_to_temp_pkl_file')'''
         with open(file_path, 'rb') as file:
             return pickle.load(file)
-
 
     @property
     def program(self):
@@ -947,7 +944,6 @@ class Molecule(Vector):
         output("-----------------------------------------------------------------------")
 
 
-
 class Logger:
     def __init__(self, log_file):
         self.log_file = log_file
@@ -972,4 +968,3 @@ class Logger:
         wrapped_string = f"\n{top_bottom_line}\n{middle_line}\n{top_bottom_line}\n"
 
         return wrapped_string
-

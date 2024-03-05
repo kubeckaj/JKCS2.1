@@ -315,13 +315,16 @@ def crest_constrain_file(molecule, force_constant=1.00):
         f.write(f"O: {O_index}\n")
 
 
-def QC_input(molecule, constrain,  method, basis_set, TS):
+def QC_input(molecule, constrain, method, basis_set, TS):
     file_name = f"{molecule.name}{molecule.input}"
     file_path = os.path.join(molecule.directory, file_name)
     atoms = molecule.atoms
     coords = molecule.coordinates
     max_iter = 150 # Maximum iterations for geoemtry optimization
-    freq = 'freq'
+    if molecule.product or method == 'DLPNO':
+        freq = ''
+    else:
+        freq = 'freq'
     SCF = 'NoTrah'
     disp = "" # 'EmpiricalDispersion=GD3BJ'
 
@@ -360,7 +363,7 @@ def QC_input(molecule, constrain,  method, basis_set, TS):
                 f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {round(args.mem/args.cpu)}\n")
             else:
-                f.write(f"! {method} {basis_set} TightSCF SlowConv OPT defgrid3\n")
+                f.write(f"! {method} {basis_set} TightSCF SlowConv OPT defgrid3 {freq}\n")
                 f.write(f"%pal nprocs {args.cpu} end\n")
                 f.write(f"%maxcore {round(args.mem/args.cpu)}\n")
             if constrain:
@@ -398,14 +401,14 @@ def QC_input(molecule, constrain,  method, basis_set, TS):
             f.write(f"%nprocshared={args.cpu}\n")
             f.write(f"%mem={args.mem}mb\n")
             if TS and constrain: # should only be in the case of hard convergence problems where some flexible parts should be constrained.
-                f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant,MaxCycles={max_iter}) freq {disp} {args.SCF}\n\n')
+                f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,modredundant,MaxCycles={max_iter}) {freq} {disp} {args.SCF}\n\n')
             elif TS and constrain is False:
                 if molecule.error_termination_count == 1:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},ReCalcFC=5,Maxstep=10) freq {disp} {args.SCF}\n\n') # RecalcFC=N also option, recalc Hessian every N iteration
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},ReCalcFC=5,Maxstep=10) {freq} {disp} {args.SCF}\n\n') # RecalcFC=N also option, recalc Hessian every N iteration
                 elif molecule.error_termination_count == 2:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,ReCalcFC=2,MaxCycles={max_iter},MaxStep=10) freq {disp} {args.SCF}\n\n')
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,ReCalcFC=2,MaxCycles={max_iter},MaxStep=10) {freq} {disp} {args.SCF}\n\n')
                 else:
-                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},RecalcFC=10) freq {disp} {args.SCF}\n\n')
+                    f.write(f'# {method} {basis_set} opt=(calcfc,ts,noeigen,MaxCycles={max_iter},RecalcFC=10) {freq} {disp} {args.SCF}\n\n')
             elif TS is False and constrain:
                 f.write(f'# {method} {basis_set} opt=modredundant {disp} {args.SCF}\n\n')
             else:
@@ -529,6 +532,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
     for m in molecules:  # Initialize with all molecules not being converged and no terminations counted
         m.converged = False
         m.error_termination_count = 0
+        m.log_file_path = os.path.join(m.directory, f"{m.name}{m.output}")
 
     logger.log(f"Waiting {initial_delay} seconds before first check")
     time.sleep(initial_delay)
@@ -640,7 +644,6 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
 
 def handle_error_termination(molecule, logger, error_termination_string):
     if molecule.program.lower() == 'orca':
-        print(error_termination_string)
         logger.log(f"Error termination found in {molecule.name}. Trying to resubmit")
         xyz_coordinates = molecule.log2xyz()
         molecule.coordinates = xyz_coordinates
@@ -724,6 +727,8 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
                         conformer_molecule.atoms = [atom[0] for atom in conformer_coords]
                         conformer_molecule.coordinates = [atom[1:] for atom in conformer_coords]
                         all_conformers.append(conformer_molecule)
+                    molecule.move_inputfile() #NOTE: test
+                    molecule.move_converged()
                 except Exception as e:
                     logger.log(f"Error processing molecule {molecule.name}: {e}")
                     return False
@@ -753,7 +758,6 @@ def submit_and_monitor(molecules, logger, threads):
 
     if job_id:
         if molecules[0].current_step == 'crest_sampling':
-            logger.log("CREST TEST")
             thread = Thread(target=check_crest, args=(molecules, logger, threads, interval, args.attempts))
         else:
             thread = Thread(target=check_convergence, args=(molecules, logger, threads, interval, args.attempts))
@@ -804,10 +808,9 @@ def handle_termination(molecules, logger, threads, converged):
         conformer_molecules = molecules
 
     for conf in conformer_molecules:
+        logger.log(conf.output)
         if conf.converged is False:
-            conf.program = QC_program
             conf.name = conf.name.replace("_TS", "").replace("_CREST", "").replace("_DLPNO", "")
-            conf.log_file_path = os.path.join(conf.directory, f"{conf.name}{conf.output}")
             job_type = conformer_molecules[0].current_step
 
             if job_type == 'crest_sampling':
@@ -816,12 +819,15 @@ def handle_termination(molecules, logger, threads, converged):
                 output_file_path = os.path.join(conf.directory, f"{conf.name}.xyz")
                 conf.write_xyz_file(output_file_path)
             elif job_type in ['opt_constrain', 'opt_constrain_conf']:
+                conf.program = QC_program
                 QC_input(conf, constrain=True, method=args.method, basis_set=args.basis_set, TS=False)
 
             elif job_type in ['optimization', 'optimization_conf']:
+                conf.program = QC_program
                 QC_input(conf, constrain=False, method=args.method, basis_set=args.basis_set, TS=False)
             
             elif job_type in ['TS_opt', 'TS_opt_conf']:
+                conf.program = QC_program
                 conf.name += '_TS'
                 QC_input(conf, constrain=False, method=args.method, basis_set=args.basis_set, TS=True)
 
@@ -860,7 +866,7 @@ def termination_status(molecule, logger):
             msg = "" if ts_check_passed else 'Normal termination, but transition state check didn’t pass'
             return ts_check_passed, msg
         else:
-            return True, f"***{molecule.name}***"
+            return True, f"***{molecule.name} converged***"
 
     for error_termination in error_strings[molecule.program]:
         if any(error_termination in line.lower() for line in last_lines):
@@ -895,7 +901,7 @@ def initiate_conformers(conformers, input_file=None, molecule=None):
             program='crest')
             conformer_molecule.workflow = conformer_molecule.determine_workflow()
             conformer_molecule.set_current_step()
-            log_file_path = os.path.join(start_dir, f"{name}.log")
+            log_file_path = os.path.join(start_dir, f"{name}{conformer_molecule.output}")
             if os.path.exists(log_file_path):
                 conformer_molecule.log_file_path = log_file_path
             if 'reactant' in input_file:
@@ -1189,6 +1195,7 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
         # Find the lowest single point energies for reactant (excluding OH) and TS
         lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.zero_point_corrected)
         lowest_TS = min(TS_conformers, key=lambda molecule: molecule.zero_point_corrected)
+        lowest_reactant.print_items()
 
         # Lowest single point reactant and TS and convert from Hartree to joules and kcal/mol
         lowest_ZP_TS_J = float64(lowest_TS.zero_point_corrected * HtoJ)
@@ -1361,7 +1368,9 @@ def main():
         logger = Logger(os.path.join(start_dir, "log_test"))
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
-            molecule.program = 'ORCA'
+            molecule.print_items()
+            a,b = termination_status(molecule, logger)
+            print(a,b)
 
 
            
