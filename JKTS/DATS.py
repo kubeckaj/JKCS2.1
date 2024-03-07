@@ -4,6 +4,7 @@
 import argparse
 import os
 import re
+from sys import exception
 import time
 from threading import Thread
 from copy import deepcopy
@@ -427,13 +428,13 @@ def QC_input(molecule, constrain, method, basis_set, TS):
         print(f"QC_input was called but no program was specified for {molecule.name}")
 
 
-def NEP_input(file_path, file_name):
-    if args.NEB:
-        with open(file_path + "/NEB_TS.inp", "w") as f:
-            f.write(f'! B3LYP 6-31+g(d,p)  NEB-TS FREQ\n')
-            f.write(f'%NEB PREOPT_ENDS TRUE NEB_END_XYZFILE "{file_path + "/" + file_name}_product.xyz" END\n')
-            f.write(f'* XYZfile 0 2 {file_path + "/" + file_name}_reactant.xyz\n')
-
+# def NEP_input(file_path, file_name):
+#     if args.NEB:
+#         with open(file_path + "/NEB_TS.inp", "w") as f:
+#             f.write(f'! B3LYP 6-31+g(d,p)  NEB-TS FREQ\n')
+#             f.write(f'%NEB PREOPT_ENDS TRUE NEB_END_XYZFILE "{file_path + "/" + file_name}_product.xyz" END\n')
+#             f.write(f'* XYZfile 0 2 {file_path + "/" + file_name}_reactant.xyz\n')
+#
 
 def energy_cutoff(molecules, logger, initial_cutoff=5, max_cutoff_increment=30.0, increment_step=5.0):
     """
@@ -523,7 +524,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
     initial_delay = args.initial_delay if args.initial_delay else int(interval * 3)
     interval = args.interval if args.interval else int(interval)
     attempts = 0
-    sleeping = 1
+    sleeping = False
     max_terminations_allowed = 2
     pending, running = [], []
     job_type = molecules[0].current_step
@@ -593,12 +594,18 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
             all_converged = True
             break
 
-        if len(pending) == len(molecules): # should maybe be majority instead of all
-            if sleeping:
-                logger.log(f"All the submitted jobs are pending. Sleeping for now.")
-                time.sleep(interval)
-                sleeping = 0
-            time.sleep(2*interval)
+        if len(pending) >= len(molecules)//2:
+            if len(pending) == len(molecules):
+                msg = "All the submitted jobs are pending. Sleeping for now."
+                sleep_time = 2*interval
+            else: 
+                msg = "Majority of submitted jobs are pending. Sleeping for now."
+                sleep_time = interval
+            if not sleeping:
+                logger.log(msg)
+                time.sleep(sleep_time)
+                sleeping = True
+            time.sleep(interval)
         else:
             attempts += 1
             if attempts % 10 == 0 or attempts == 1:
@@ -683,7 +690,7 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
     interval = args.interval if args.interval else int(interval)
 
     attempts = 0
-    sleeping = 1
+    sleeping = False
     pending = []
     all_conformers = []
     expected_files = {f"collection{molecule.name}.pkl" for molecule in molecules}
@@ -702,12 +709,18 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
             else:
                 if molecule.job_id in pending:
                     pending.remove(molecule.job_id)
-        if len(pending) == len(molecules):
-            if sleeping:
-                sleeping = 0
-                logger.log("All jobs are pending. Sleeping for now")
-                time.sleep(interval)
-            time.sleep(interval*2)
+        if len(pending) >= len(molecules)//2:
+            if len(pending) == len(molecules):
+                msg = "All the submitted jobs are pending. Sleeping for now."
+                sleep_time = 2*interval
+            else: 
+                msg = "Majority of submitted jobs are pending. Sleeping for now."
+                sleep_time = interval
+            if not sleeping:
+                logger.log(msg)
+                time.sleep(sleep_time)
+                sleeping = True
+            time.sleep(interval)
             continue
 
         try:
@@ -950,7 +963,7 @@ def handle_input_molecules(molecules, logger, threads):
             m.directory = start_dir
             if os.path.exists(m.log_file_path):
                 converge_status, _ = termination_status(m, logger)
-                if current_step == 'Done' and converge_status is True:
+                if current_step in ['Done', 'DLPNO'] and converge_status is True:
                     global_molecules.append(m)
                 elif converge_status is True:
                     m.converged = True
@@ -990,57 +1003,61 @@ def log2vib(molecule):
         
 
 def eckart_test(TS_E, reactant_E, product_E, imag, reduced_mass=1, temperature=298.15):
-    import numpy as np
+    try:
+        import numpy as np
 
-    # Define physical constants
-    c = 2.99792458e10
-    AMU_TO_KG = 1.66053886E-27
-    PI = 3.14159265359
-    reduced_mass_amu = 1
+        # Define physical constants
+        c = 2.99792458e10
+        AMU_TO_KG = 1.66053886E-27
+        PI = 3.14159265359
+        reduced_mass_amu = 1
 
-    def barrier(transition_state_energy, reactant_energy, product_energy):
-        return (transition_state_energy ** 0.5 + (transition_state_energy - (product_energy - reactant_energy)) ** 0.5) ** 2
-    
-    def alpha(barrier_parameter, force_constant, transition_state_energy, reactant_energy, product_energy):
-        return (barrier_parameter * force_constant / (2 * transition_state_energy * (transition_state_energy - (product_energy - reactant_energy)))) ** 0.5
-    
-    def A(energy, reduced_mass_kg, alpha):
-        return 2 * PI * (2 * reduced_mass_kg * energy)**0.5 / alpha
-    
-    def B(energy, reduced_mass_kg, product_energy, reactant_energy, alpha):
-        return 2 * PI * (2 * reduced_mass_kg * (energy - (product_energy - reactant_energy)))**0.5 / alpha
-    
-    def delta(barrier_parameter, reduced_mass_kg, alpha):
-        return 2 * PI * abs((2 * reduced_mass_kg * barrier_parameter - (alpha/2)**2))**0.5 / alpha
-    
-    def P(a_argument, b_argument, d_argument):
-        return (np.cosh(a_argument + b_argument) - np.cosh(a_argument - b_argument)) / (np.cosh(a_argument + b_argument) + np.cosh(d_argument))
+        def barrier(transition_state_energy, reactant_energy, product_energy):
+            return (transition_state_energy ** 0.5 + (transition_state_energy - (product_energy - reactant_energy)) ** 0.5) ** 2
+        
+        def alpha(barrier_parameter, force_constant, transition_state_energy, reactant_energy, product_energy):
+            return (barrier_parameter * force_constant / (2 * transition_state_energy * (transition_state_energy - (product_energy - reactant_energy)))) ** 0.5
+        
+        def A(energy, reduced_mass_kg, alpha):
+            return 2 * PI * (2 * reduced_mass_kg * energy)**0.5 / alpha
+        
+        def B(energy, reduced_mass_kg, product_energy, reactant_energy, alpha):
+            return 2 * PI * (2 * reduced_mass_kg * (energy - (product_energy - reactant_energy)))**0.5 / alpha
+        
+        def delta(barrier_parameter, reduced_mass_kg, alpha):
+            return 2 * PI * abs((2 * reduced_mass_kg * barrier_parameter - (alpha/2)**2))**0.5 / alpha
+        
+        def P(a_argument, b_argument, d_argument):
+            return (np.cosh(a_argument + b_argument) - np.cosh(a_argument - b_argument)) / (np.cosh(a_argument + b_argument) + np.cosh(d_argument))
 
-    def force_constant(imag):
-        return (imag*2*np.pi*c)**2
-    
-    # Convert mass to kg and calculate parameters
-    reduced_mass_kg = reduced_mass_amu * AMU_TO_KG
-    force_constant = force_constant(imag)
+        def force_constant(imag):
+            return (imag*2*np.pi*c)**2
+        
+        # Convert mass to kg and calculate parameters
+        reduced_mass_kg = reduced_mass_amu * AMU_TO_KG
+        force_constant = force_constant(imag)
 
-    barrier_parameter = barrier(TS_E, reactant_E, product_E)
-    alpha = alpha(barrier_parameter, force_constant, TS_E, reactant_E, product_E)
+        barrier_parameter = barrier(TS_E, reactant_E, product_E)
+        alpha = alpha(barrier_parameter, force_constant, TS_E, reactant_E, product_E)
 
-    # Energy range for integration
-    energies = np.linspace(0, TS_E, 1000)
-    transmission_probabilities = np.zeros_like(energies)
+        # Energy range for integration
+        energies = np.linspace(0, TS_E, 1000)
+        transmission_probabilities = np.zeros_like(energies)
 
-    # Calculate transmission probability for each energy
-    for i, energy in enumerate(energies):
-        a_argument = A(energy, reduced_mass_kg, alpha)
-        b_argument = B(energy, reduced_mass_kg, product_E, reactant_E, alpha)
-        d_argument = delta(barrier_parameter, reduced_mass_kg, alpha)
-        transmission_probabilities[i] = P(a_argument, b_argument, d_argument)
+        # Calculate transmission probability for each energy
+        for i, energy in enumerate(energies):
+            a_argument = A(energy, reduced_mass_kg, alpha)
+            b_argument = B(energy, reduced_mass_kg, product_E, reactant_E, alpha)
+            d_argument = delta(barrier_parameter, reduced_mass_kg, alpha)
+            transmission_probabilities[i] = P(a_argument, b_argument, d_argument)
 
-    # Integrate transmission probability over the energy range using the trapezoidal rule
-    tunneling_correction_factor = np.trapz(transmission_probabilities, energies)
+        # Integrate transmission probability over the energy range using the trapezoidal rule
+        tunneling_correction_factor = np.trapz(transmission_probabilities, energies)
 
-    return tunneling_correction_factor
+        return tunneling_correction_factor
+    except Exception as e:
+        print("Error in calculating the Eckart tunneling. Returning tunneling coefficient 1")
+        return 1
 
 
 def gcalc_optimized(emin, gsize, v, a, b, l, h, kb, m, t, v1):
@@ -1280,7 +1297,7 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
                 lowest_EE_reactant_kcalmol = float64((lowest_reactant.electronic_energy + OH.electronic_energy) * Htokcalmol)
 
                 imag = abs(lowest_TS.vibrational_frequencies[0])
-                kappa  = eckart(lowest_EE_TS_kcalmol, lowest_EE_reactant_kcalmol, lowest_EE_product_kcalmol, imag)
+                kappa = eckart(lowest_EE_TS_kcalmol, lowest_EE_reactant_kcalmol, lowest_EE_product_kcalmol, imag)
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
             else:
                 print("Error in product molecules")
@@ -1298,17 +1315,17 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
 
 
 def main():
-    parser = argparse.ArgumentParser(description='''   -Dynamic Approach for Transition State-
+    parser = argparse.ArgumentParser(description='''    Dynamic Approach for Transition State-
     Automated tool for generating input files, primarily 
     for transition state geometry optimization. 
     Calculation of tunneling corrected multi-configurational 
-    rate constants can also be calculated from log files.''',
+    rate constants can also be calculated from log and pickle files.''',
                                      prog="JKTS",
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog='''
     Examples of use:
-                JKTS pinonaldehyde.xyz -OH -auto false
-                JKTS CH4.xyz -OH -auto --low_method "am1 3-21g" --high_method "B3LYP 6-31+g(d,p)"
+                JKTS pinonaldehyde.xyz -OH
+                JKTS -smiles CO -Cl  # Methanol hydrogen abstraction with Cl radical
                 JKTS CH4_H1_opt_constrain.pkl -info
                 JKTS benzene.xyz -OH -ORCA -par qtest -auto false
                 JKTS *TS.log -time 5:00:00
@@ -1321,7 +1338,7 @@ def main():
     parser.add_argument('-reactants', type=str2bool, default=True, metavar='<boolean>', help='Prepare folder for reactants [def: True]')
     parser.add_argument('-products', type=str2bool, default=True, metavar='<boolean>', help='Prepare folder for products [def: True]')
     parser.add_argument('-transition_states', type=str2bool, default=True, metavar='<boolean>', help=argparse.SUPPRESS)
-    parser.add_argument('-NEB', type=str2bool, default=False, metavar='<boolean>', help='Prepare input file for Nudged Elastic Band')
+    # parser.add_argument('-NEB', type=str2bool, default=False, metavar='<boolean>', help='Prepare input file for Nudged Elastic Band')
     parser.add_argument('-auto', type=str2bool, default=True, metavar='<boolean>', help='Automated process with the following workflow:\n- CREST conformer sampling of xyz input file (GFN2-xTB -ewin=8 kcal/mol)\n- Preoptimization of geometry (Low Level of Theory)\n- Optimization towards transition state (High Level of Theory)\n- DLPNO-CCSD(T) SP energy calculations on top of TS conformers\n- Calculate rate constants and branching ratios for reaction type\n* Automatically resubmit failed calculations until convergence or wall-time limit is reached')
 
     # Argparse reactions
@@ -1335,8 +1352,9 @@ def main():
     additional_options = parser.add_argument_group("Additional arguments")
     # additional_options.add_argument('-restart', action='store_true', default=False, help='Restart and resume log files')
     additional_options.add_argument('-k', type=str2bool, metavar='<boolean>', default=True, help='Calculate Multiconformer Transition State rate constant [def: True]')
+    additional_options.add_argument('-smiles', metavar='string', type=str, help='Input molecule as a SMILES string')
     additional_options.add_argument('-info', action='store_true', default=False, help='Print information of molecules in log files or .pkl file')
-    parser.add_argument('-CHO', dest='CHO', action=ParseCHO, nargs='*', help="Set indexes of atoms for active site. Indexing starting from 1")
+    additional_options.add_argument('-CHO', dest='CHO', action=ParseCHO, nargs='*', help="Set indexes of atoms for active site. Indexing starting from 1")
     additional_options.add_argument('-collect', action='store_true', default=False, help='Collect thermochemical data from TS structures and single point correction from DLPNO')
     additional_options.add_argument('-method', type=str, default='wb97xd', help='Specify QC method to use for optimization and TS search [def: uwB97X-D]')
     additional_options.add_argument('-basis_set', type=str, default='6-31++g(d,p)', help='Specify basis set to use with QC method [def: 6-31++g(d,p)]')
@@ -1420,14 +1438,17 @@ def main():
 
     #####################################################################################################
     if args.test:
+        if args.smiles:
+            molecule = Molecule(smiles=args.smiles)
+            molecule.print_items()
         molecules = []
         threads = []
         logger = Logger(os.path.join(start_dir, "log_test"))
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
-            molecule.print_items()
-            a,b = termination_status(molecule, logger)
-            print(a,b)
+
+
+        file_name, file_type = (args.smiles, '.xyz') if args.smiles else os.path.splitext(input_file)
 
 
            
@@ -1444,10 +1465,14 @@ def main():
     molecules = []
 
     if args.init: # only executes if input file is an xyz file
-        input_file = args.input_files[0]
-        file_name, file_type = os.path.splitext(input_file)
-        input_file_path = os.path.join(start_dir, input_file)
-        input_molecule = Molecule(input_file_path, reactant=True) # Reuse input molecule as template for reactant
+        if args.smiles:
+            input_molecule = Molecule(smiles=args.smiles, reactant=True)
+            file_name, file_type = input_molecule.name, 'xyz'
+        else:
+            input_file = args.input_files[0]
+            file_name, file_type = os.path.splitext(input_file)
+            input_file_path = os.path.join(start_dir, input_file)
+            input_molecule = Molecule(input_file_path, reactant=True) # Reuse input molecule as template for reactant
 
         if args.OH or args.Cl:
             reacted_molecules, product_molecules = input_molecule.H_abstraction(Cl=args.Cl, products=args.products, num_molecules=args.num_molecules)
@@ -1488,6 +1513,9 @@ def main():
             Molecule.molecules_to_pickle(product_molecules, pickle_path)
 
     elif args.info:
+        if args.smiles:
+            smiles_molecule = Molecule(smiles=args.smiles, reactant=True)
+            smiles_molecule.print_items()
         for input_file in args.input_files:
             file_name, file_type = os.path.splitext(input_file)
             if file_type == '.pkl':
@@ -1512,6 +1540,9 @@ def main():
                 parser.error("Invalid input file format. Without a specified reaction type the program expects input files with extensions '.pkl', '.log', '.out', '.com', or '.inp'\nPlease ensure that your input file is in one of these formats and try again. If you provided a different type of file, convert it to a supported format or select an appropriate file for processing.")
 
     else: # We loop over all molecules given in the argument input and process them according to file type
+        if args.smiles:
+            input_molecule = Molecule(smiles=args.smiles, reactant=True)
+            args.input_files = [f"{input_molecule.name}.xyz"]
         for n, input_file in enumerate(args.input_files, start=1):
             file_name, file_type = os.path.splitext(input_file)
 

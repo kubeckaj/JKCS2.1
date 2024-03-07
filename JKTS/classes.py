@@ -5,6 +5,9 @@ import shutil
 import os
 import pickle
 import random
+from rdkit import Chem
+from rdkit.Chem import AllChem
+############################################################################################################################
 
 class Vector:
     @staticmethod
@@ -56,7 +59,8 @@ class Vector:
 
 
 class Molecule(Vector):
-    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, reactant=False, product=False, program=None, indexes=None):
+    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, reactant=False, product=False, program=None, indexes=None, smiles=None):
+        self.smiles = smiles
         self.name = name
         self.directory = directory
         self.file_path = file_path
@@ -88,6 +92,11 @@ class Molecule(Vector):
         # If XYZ file is given
         if self.file_path and self.file_path.split(".")[-1] == 'xyz':
             self.read_xyz_file()
+            self.workflow = self.determine_workflow()
+            self.set_current_step(self.workflow[0])
+
+        if self.smiles:
+            self.name, self.atoms, self.coordinates = self.smiles_to_atoms_coordinates(self.smiles)
             self.workflow = self.determine_workflow()
             self.set_current_step(self.workflow[0])
 
@@ -361,7 +370,7 @@ class Molecule(Vector):
 
     @program.setter
     def program(self, value):
-        self._program = (value or global_program).lower()
+        self._program = value.lower()
         if self._program == 'orca':
             self.input = '.inp'
             self.output = '.out' #.out
@@ -666,7 +675,7 @@ class Molecule(Vector):
                         new_coords.append(new_OH_H_position.tolist())
                         constrained_indexes = {'C': j+1, 'H': i+1, 'O': len(new_coords)-1, 'OH': len(new_coords)}
 
-                    new_molecule = Molecule(self.file_path)
+                    new_molecule = Molecule(self.file_path, smiles=self.smiles)
                     new_molecule.atoms = new_atoms
                     new_molecule.coordinates = new_coords
                     new_molecule.constrained_indexes = constrained_indexes
@@ -751,6 +760,17 @@ class Molecule(Vector):
         return methyl_C_indexes, aldehyde_groups, ketone_methyl_groups
 
 
+    def smiles_to_atoms_coordinates(self, smiles):
+        mol = Chem.MolFromSmiles(smiles)
+        mol = Chem.AddHs(mol)
+        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+        
+        atoms = [atom.GetSymbol() for atom in mol.GetAtoms()]
+        conf = mol.GetConformer()
+        coordinates = [(conf.GetAtomPosition(atom.GetIdx()).x, conf.GetAtomPosition(atom.GetIdx()).y, conf.GetAtomPosition(atom.GetIdx()).z) for atom in mol.GetAtoms()]
+        
+        molecular_formula = Chem.rdMolDescriptors.CalcMolFormula(mol)
+        return molecular_formula, atoms, coordinates
 
     def get_terminal_O(self, distance=1.5):
         O_index = []
@@ -816,8 +836,6 @@ class Molecule(Vector):
                     return 'TS_opt_conf' if 'conf' in self.name else 'TS_opt'
                 elif 'opt' in lower_line_content:
                     return 'opt_constrain_conf' if 'conf' in self.name else 'optimization' if self.product or self.reactant else 'opt_constrain'
-
-        
 
 
     def inp2xyz(self):

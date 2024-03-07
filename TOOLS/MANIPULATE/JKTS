@@ -51,7 +51,9 @@ for arg in "$@"; do
       ;;
     *.xyz)
       input_file="$arg"
-      base_name="${input_file%.*}"
+      XYZ=1
+      ;;
+    -smiles)
       XYZ=1
       ;;
     *.log)
@@ -141,7 +143,7 @@ fi
 
 for dir in */; do
     dir_name=${dir%/}
-    if [[ $dir_name =~ ^$base_name(_H[0-9]+|_C[0-9]+)$ ]] || [[ $dir_name == "reactants" ]] || [[ $dir_name == "products" ]]; then
+    if [[ $dir_name =~ _H[0-9]+$ ]] || [[ $dir_name == "reactants" ]] || [[ $dir_name == "products" ]]; then
         directories+=("$dir_name")
     fi
 done
@@ -153,4 +155,3 @@ elif [ "$PKL" -gt 0 ] || [ "$LOG" -gt 0 ]; then
 else
   echo "Failed to submit JKTS manager"
 fi
-
