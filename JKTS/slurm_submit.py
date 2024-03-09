@@ -369,17 +369,21 @@ def get_interval_seconds(molecule):
         else:
             heavy_count += 1
     
-    a = 5.59; b = -20.79; c = 182.33; d = -99.7
+    a = 5.80; b = -20.79; c = 182.33; d = -99.7
 
     if 'H2O' in molecule.name or 'OH' in molecule.name:
         return 20
-    elif 'TS' in job_type:
+    elif 'conf' in job_type:
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     elif job_type == 'crest_sampling':
         a = 27; b = 10
         interval = (a*heavy_count) + b
     elif 'DLPNO' in job_type:
         factor = 0.66
+        a*=factor; b*=factor; c*=factor; d*=factor
+        interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
+    elif 'TS' in job_type:
+        factor = 0.80
         a*=factor; b*=factor; c*=factor; d*=factor
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     else: # Geometry optimization

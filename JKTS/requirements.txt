@@ -1,6 +1,7 @@
-scipy==1.9.3  #the same as for JKQC which need this old version for ArbAlign
+scipy==1.9.3  # Same as for JKQC which need this old version for ArbAlign
 numpy==1.26.3
 pandas==2.2.0
+rdkit==2023.9.5 # If one wants to use SMILES strings to generate molecules
 
 # Non-Python dependencies, list of software with their version installed on the Grendel cluster at Centre for Scientific Computing in Aarhus (CSCAA)
 # Slurm: 23.02.7

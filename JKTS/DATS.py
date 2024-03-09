@@ -4,10 +4,11 @@
 import argparse
 import os
 import re
-from sys import exception
 import time
 from threading import Thread
 from copy import deepcopy
+
+from numpy import NaN
 from classes import Molecule, Logger
 from slurm_submit import submit_array_job, submit_job, update_molecules_status
 
@@ -267,7 +268,7 @@ def check_transition_state(molecule, logger):
                 return False
 
 
-def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
+def ArbAlign_compare_molecules(molecules, logger=None, pickle=True, RMSD_threshold=0.38):
     from ArbAlign import compare
     initial_len = len(molecules)
     filtered_molecules = []
@@ -280,6 +281,7 @@ def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
 
         for molecule in molecules:
             rmsd_value = compare(reference, molecule)
+            print(f"molecule: {molecule.name}, reference: {reference.name}, RMSD: {rmsd_value}")
             # If RMSD is below or equal to the threshold, they are considered similar
             if rmsd_value <= RMSD_threshold:
                 # Compare their energies and keep the one with lower energy
@@ -292,8 +294,11 @@ def ArbAlign_compare_molecules(molecules, logger, RMSD_threshold=0.38):
 
         molecules = non_similar_molecules
 
-    logger.log(f"Filtered {initial_len} conformers to {len(filtered_molecules)} conformers")
-    Molecule.molecules_to_pickle(filtered_molecules, os.path.join(start_dir, "filtered_molecules.pkl"))
+    if logger:
+        logger.log(f"Filtered {initial_len} conformers to {len(filtered_molecules)} conformers")
+    if pickle:
+        Molecule.molecules_to_pickle(filtered_molecules, os.path.join(start_dir, "filtered_molecules.pkl"))
+
     return filtered_molecules
 
 
@@ -502,18 +507,23 @@ def read_last_lines(filename, logger, num_lines, interval=200):
 def resubmit_job(molecule, logger, error=None):
     molecule.move_failed()
     job_type = molecule.current_step
-    if job_type == 'opt_constrain':
+    if job_type in ['opt_constrain', 'opt_constrain_conf']:
         QC_input(molecule, constrain=True, method=args.method, basis_set=args.basis_set, TS=False)
 
-    elif job_type == 'TS_opt':
+    elif job_type in ['optimization', 'optimization_conf']:
+        QC_input(molecule, constrain=False, method=args.method, basis_set=args.basis_set, TS=False)
+
+    elif job_type in ['TS_opt', 'TS_opt_conf']:
         QC_input(molecule, constrain=False,  method=args.method, basis_set=args.basis_set, TS=True)
 
     elif job_type == 'DLPNO':
-        molecule.program = 'ORCA'
         QC_input(molecule, constrain=False, method="DLPNO", basis_set=args.basis_set, TS=False)
 
     elif job_type == 'optimization':
         QC_input(molecule, constrain=False, method=args.method, basis_set=args.basis_set, TS=False)
+
+    else:
+        logger.log(f"Error determining job type for resubmission of {molecule.name}")
 
     job_id, _ = submit_job(molecule, args)
     molecule.job_id = f"{job_id}"
@@ -521,7 +531,7 @@ def resubmit_job(molecule, logger, error=None):
 
 
 def check_convergence(molecules, logger, threads, interval, max_attempts):
-    initial_delay = args.initial_delay if args.initial_delay else int(interval * 3)
+    initial_delay = args.initial_delay if args.initial_delay else int(interval * 2)
     interval = args.interval if args.interval else int(interval)
     attempts = 0
     sleeping = False
@@ -565,8 +575,8 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                 continue
 
             elif molecule.status in ['running', 'completed or not found'] or not molecule.converged:
-                if molecule.job_id not in running and molecule.status == 'running':
-                    logger.log(f"Job {job_type} for {molecule.name} with job id {molecule.job_id} is running.")
+                if molecule.job_id not in running:
+                    logger.log(f"Job {job_type} for {molecule.name} with job id {molecule.job_id} is running.") if molecule.status == 'running' else None
                     molecule.move_inputfile()
                     running.append(molecule.job_id)
                 if molecule.job_id in pending:
@@ -575,7 +585,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
                 normal_termination_detected, termination_string = termination_status(molecule, logger)
 
                 if normal_termination_detected:
-                    if termination_string: logger.log(termination_string)
+                    logger.log(termination_string) if termination_string else None
                     molecule.converged = True
                 elif normal_termination_detected is False:
                     if termination_string in ['Error string not found', 'Could not read molecule log file']:
@@ -594,7 +604,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts):
             all_converged = True
             break
 
-        if len(pending) >= len(molecules)//2:
+        if len(pending) >= max(1, int(len(molecules) / 1.5)):
             if len(pending) == len(molecules):
                 msg = "All the submitted jobs are pending. Sleeping for now."
                 sleep_time = 2*interval
@@ -686,7 +696,7 @@ def handle_error_termination(molecule, logger, error_termination_string):
 
 
 def check_crest(molecules, logger, threads, interval, max_attempts):
-    initial_delay = args.initial_delay if args.initial_delay else int(interval * 3)
+    initial_delay = args.initial_delay if args.initial_delay else int(interval * 2)
     interval = args.interval if args.interval else int(interval)
 
     attempts = 0
@@ -709,7 +719,7 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
             else:
                 if molecule.job_id in pending:
                     pending.remove(molecule.job_id)
-        if len(pending) >= len(molecules)//2:
+        if len(pending) >= max(1, int(len(molecules) / 1.5)):
             if len(pending) == len(molecules):
                 msg = "All the submitted jobs are pending. Sleeping for now."
                 sleep_time = 2*interval
@@ -735,6 +745,7 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
             for molecule in molecules:
                 try:
                     conformers = pkl_to_xyz(os.path.join(molecule.directory, f"collection{molecule.name}.pkl"))
+                    logger.log(f"{len(conformers)} generated for {molecule.name}")
                     for n, conformer_coords in enumerate(conformers, start=1):
                         conformer_molecule = deepcopy(molecule)
                         conformer_molecule.name = f"{molecule.name}_conf{n}"
@@ -746,7 +757,7 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
                 except Exception as e:
                     logger.log(f"Error processing molecule {molecule.name}: {e}")
                     return False
-            logger.log(f"CREST conformers are generated. Proceeding with next step: {all_conformers[0].next_step}")
+            logger.log(f"CREST conformers generated. Proceeding with next step: {all_conformers[0].next_step}")
             handle_termination(all_conformers, logger, threads, converged=True)
             return True
         else:
@@ -791,9 +802,9 @@ def handle_termination(molecules, logger, threads, converged):
             m.converged = False
             m.update_step()
     current_step = molecules[0].current_step
-    if args.skip_low and current_step in ["opt_constrain", "opt_constrain_conf"]:
+    if args.skip_preopt and current_step in ["opt_constrain", "opt_constrain_conf"]: # Works as long as only TS molecules are associated with the opt_constrain(_conf)
         for m in molecules:
-            m.update_step()
+            m.update_step() # Update step to skip preoptimization
         current_step = molecules[0].current_step
     logger.log(f"Job to be performed: {current_step}")
     if current_step == args.filter_step and converged and 'H2O' not in molecules[0].name:
@@ -1311,7 +1322,7 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
 
         return k, kappa # cm^3 molecules^-1 s^-1
 
-    return None
+    return NaN, NaN
 
 
 def main():
@@ -1360,7 +1371,7 @@ def main():
     additional_options.add_argument('-basis_set', type=str, default='6-31++g(d,p)', help='Specify basis set to use with QC method [def: 6-31++g(d,p)]')
     # additional_options.add_argument('--low_level', nargs='+', metavar='', help='Specify low-level theory for preoptimization [def: B3LYP 6-31+G(d,p)]')
     additional_options.add_argument('--gfn', default='2', choices=['1','2'], help='Specify the GFN version (1 or 2, default: 2)')
-    additional_options.add_argument('-skip_low', action='store_true', default=False, help='Skip the preoptimization of the structures at the low level of theory')
+    additional_options.add_argument('-skip_preopt', action='store_true', default=False, help='Skip the preoptimization of the structures before the TS search')
     additional_options.add_argument('-filter_step', type=str, default='DLPNO', help='Perform filtering using ArbAlign before [step] in the workflow [def: DLPNO]')
     additional_options.add_argument('-cpu', metavar="int", nargs='?', const=1, type=int, default=4, help='Number of CPUs [def: 4]')
     additional_options.add_argument('-mem', metavar="int", nargs='?', const=1, type=int, default=8000, help='Amount of memory allocated for the job [def: 8000MB]')
@@ -1417,7 +1428,7 @@ def main():
     if args.ORCA:
         QC_program = "ORCA"
         if args.method.lower() == "wb97xd":
-            args.method = "WB97X-D3"
+            args.method = "WB97X-D3BJ"
     elif args.G16:
         QC_program = "G16"
     else:
@@ -1438,20 +1449,16 @@ def main():
 
     #####################################################################################################
     if args.test:
-        if args.smiles:
-            molecule = Molecule(smiles=args.smiles)
-            molecule.print_items()
         molecules = []
         threads = []
         logger = Logger(os.path.join(start_dir, "log_test"))
         for n, input_file in enumerate(args.input_files, start=1):
             molecule = Molecule(input_file, indexes=args.CHO)
+            molecules.append(molecule)
 
 
-        file_name, file_type = (args.smiles, '.xyz') if args.smiles else os.path.splitext(input_file)
-
-
-           
+        molecules.sort(key=lambda x: x.electronic_energy)
+        molecules[0].print_items()
 
 
         exit()
@@ -1675,6 +1682,7 @@ def main():
                 product_pkl_name = os.path.basename(start_dir)
                 reactant_pkl_path = os.path.join(os.path.dirname(start_dir), f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
                 product_pkl_path = os.path.join(os.path.dirname(start_dir), f'products/Final_products_{product_pkl_name}.pkl')
+                logger.log(f"{product_pkl_path}, {reactant_pkl_path}")
                 if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
                     final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                     final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
@@ -1684,6 +1692,7 @@ def main():
                 else:
                     reactant_pkl_path = os.path.join(start_dir, f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
                     product_pkl_path = os.path.join(start_dir, f'products/Final_products_{product_pkl_name}.pkl')
+                    logger.log(f"{product_pkl_path}, {reactant_pkl_path}")
                     if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
                         final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                         final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
@@ -1691,7 +1700,7 @@ def main():
                         results_logger = Logger(os.path.join(start_dir, "results_log"))
                         results_logger.log_with_stars(f"1 {molecule_name}: {k} molecules cm^-3 s^-1 with tunneling coefficient {kappa}")
                     else:
-                        logger.log("Done")
+                        logger.log(f"Could not find pickle files in path: {product_pkl_name} and {reactant_pkl_path}")
 
 
 if __name__ == "__main__":

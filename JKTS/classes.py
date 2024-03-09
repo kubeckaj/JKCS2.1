@@ -157,7 +157,7 @@ class Molecule(Vector):
 
 
     def determine_workflow(self):
-        if self.reactant or self.product or 'OH' in self.name or 'H2O' in self.name: # Modify me back
+        if self.reactant or self.product or 'OH' in self.name or 'H2O' in self.name:
             if 'OH' in self.name or 'H2O' in self.name:
                 return ['optimization', 'DLPNO', 'Done']
             else:
@@ -635,7 +635,7 @@ class Molecule(Vector):
                         product_coords.pop(i)
                         product_atoms.pop(i)
                         # Add the product molecule to the list
-                        product_molecule = Molecule(self.file_path, product=True)
+                        product_molecule = Molecule(self.file_path, product=True, smiles=self.smiles)
                         product_molecule.atoms = product_atoms
                         product_molecule.coordinates = product_coords
                         product_molecules.append(product_molecule)
