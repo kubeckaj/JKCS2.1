@@ -1,4 +1,4 @@
-scipy==1.9.3  # Same as for JKQC which need this old version for ArbAlign
+scipy==1.11.1  # Same as for JKQC which need this old version for ArbAlign
 numpy==1.26.3
 pandas==2.2.0
 rdkit==2023.9.5 # If one wants to use SMILES strings to generate molecules
