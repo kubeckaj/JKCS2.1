@@ -512,6 +512,16 @@ function program_XTB {
     else test=1;fi     
   done
 
+  #ADD
+  next=0;method_help="";args_help="";
+  for i in $args
+  do
+    if [ "$i" == "-add" ]; then next=1;continue;fi
+    if [ "$next" == "1" ]; then next=0;EXTRAFILE=$i;continue;fi
+    args_help+=" $i"
+  done
+  args=$args_help
+
   #TEMPERATURE
   next=0;method_help="";args_help="";
   for i in $method
@@ -553,6 +563,10 @@ function program_XTB {
     echo "" >> calc.xyz
   else 
     cp $input calc.xyz
+  fi
+  if [ ! -z "$EXTRAFILE" ]
+  then
+    cat $EXTRAFILE >> calc.xyz
   fi
   if [ $next -eq 2 ]; then echo \$thermo >> calc.xyz; echo "    temp=$TEMP" >> calc.xyz; fi
 
