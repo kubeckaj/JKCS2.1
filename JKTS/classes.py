@@ -84,6 +84,8 @@ class Molecule(Vector):
         self.output = None
         self.status = None
         self.error_termination_count = 0
+        self.reactant_pair = None
+        self.product_pair = None
         self.program = program if program is not None else 'g16'
         self.init_molecule(indexes)
                         
@@ -612,8 +614,8 @@ class Molecule(Vector):
                         # distance_CH = 1.19481
                         distance_CH = 1.41
                         distance_OH = 1.40971
-                        reaction_angle = 145.503
-                        water_angle = 96.138
+                        reaction_angle = 153.569
+                        water_angle = 99.589
                         perp_axis = self.normalize_vector(self.calculate_vector(original_coords[aldehyde_O], original_coords[aldehyde_C]))
                         break
             for j, other_atom in enumerate(atoms):
