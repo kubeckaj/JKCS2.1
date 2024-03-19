@@ -75,7 +75,7 @@ if [[ "$*" == *"-mbdf"* ]]
 then
   echo "======================"
   echo "MBDF requires some old numpy, here you go:"
-  $PIP install numpy==1.21.4
+  $PIP install numpy==1.21.4 --force-reinstall
   echo "======================"
   currdir=$PWD
   cd JKCS/lib64/py*/site-packages/
@@ -92,16 +92,22 @@ if [[ "$*" == *"-qml "* ]]
 then
   echo "======================"
   echo "QML requires some old numpy, here you go:"
+  #$PIP install numpy==1.21.4 --force-reinstall
+  #$PIP uninstall numpy
+  #$PIP install numpy 
   $PIP install numpy==1.21.4
   echo "======================"
   $PIP install scikit-learn
   echo "======================"
-  $PIP install qml          #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
+  $PYTHON -m pip install qml          #
+  #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
+  #$PIP install git+https://github.com/qmlcode/qml@develop
+  #$PYTHON -m pip install qml  --global-option="build" --global-option="--compiler=intelem" --global-option="--fcompiler=intelem"
 fi
 echo "======================"
 $PIP install lapjv
 echo "======================"
-$PIP install numpy==1.26.3
+$PIP install numpy==1.25.0 --force-reinstall
 #echo "======================"
 $PIP install scipy==1.9.3   #I need this version for ArbAlign 
 echo "======================"

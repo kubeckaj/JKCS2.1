@@ -427,6 +427,15 @@ for i in sys.argv[1:]:
       exit
     last = "-trained"
     continue
+  #MIN
+  if i == "-min":
+    last = "-min"
+    continue
+  if last == "-min":
+    last = ""
+    Qmin = float(i)
+    method = "min"
+    continue
   #SPLIT
   if i == "-finishsplit":
     Qsplit=-1
@@ -997,7 +1006,7 @@ for sampleeach_i in sampleeach_all:
 
     ### DATABASE LOADING ###
     ## The high level of theory
-    clusters_df = train_high_database
+    clusters_df = train_high_database.sample(frac = 1, random_state = seed)
     if Qsampleeach != 0:
       clusters_df = clusters_df.iloc[sampledist]
     if Qforcemonomers == 1:
@@ -1005,7 +1014,7 @@ for sampleeach_i in sampleeach_all:
       clusters_df = clusters_df.append(clusters_df0, ignore_index=True)    
     ## The low level of theory
     if method == "delta":
-      clusters_df2 = train_low_database
+      clusters_df2 = train_low_database.sample(frac = 1, random_state = seed)
       if Qsampleeach != 0:
         clusters_df2 = clusters_df2.iloc[sampledist]
       if Qforcemonomers == 1:
@@ -1028,6 +1037,8 @@ for sampleeach_i in sampleeach_all:
     if method == "delta":
       ens2 = (clusters_df2[column_name_1][column_name_2]).values.astype("float")
       #str2 should be the same as str by principle
+    if method == "min": 
+      ens -= Qmin
 
     ### FORCES 
     if ("extra","forces") in clusters_df.columns and Qifforces == 1:
@@ -1364,7 +1375,7 @@ for sampleeach_i in sampleeach_all:
             val_m, val_s = mean_std(all_outputs_val)
             ep = trainer.current_epoch
             run_time = time.time() - start_time
-            print(f"\nEPOCH: %i TRAIN: %.4f +- %.4f kcal/mol VAL: %.4f +- %.4f kcal/mol LR: %.2e T: %.1f s "%(ep, tr_m, tr_s, val_m, val_s, task.lr, run_time))
+            print(f"\nEPOCH: %i TRAIN: %.4f +- %.4f [??] VAL: %.4f +- %.4f [??] LR: %.2e T: %.1f s "%(ep, tr_m, tr_s, val_m, val_s, task.lr, run_time))
             with open(parentdir+"/epoch_trE_trS_valE_valS_lr_t.txt", "a") as f:
               print(f"%i %.4f %.4f %.4f %.4f %e"%(ep, tr_m, tr_s, val_m, val_s, task.lr), file = f)
           
@@ -1632,6 +1643,9 @@ for sampleeach_i in sampleeach_all:
         #F_predicted = np.array([0.0367493*np.array(F_predicted)]) #Hartree/Ang
       else:
         Y_predicted = [np.array(Y_predicted)]
+    
+      if method == "min":
+        Y_predicted[0] += Qmin
 
     else:
       print("Wrong method or representation chosen.")
