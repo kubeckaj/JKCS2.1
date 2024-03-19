@@ -108,6 +108,8 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write('LOG=\\${GJ%.*}.out\n\n')
 
             file.write("\\${PATH_ORCA}/orca \\$GJ > \\$SLURM_SUBMIT_DIR/\\$LOG\n\n")
+            if args.IRC:
+                file.write(f"cp *xyz \\$SLURM_SUBMIT_DIR/.\n")
             file.write("!EOF\n\n")
 
         else:
@@ -136,7 +138,6 @@ def submit_array_job(molecules, args, nnodes=1):
 
 def submit_job(molecule, args, nnodes=1):
     input_file_name = f"{molecule.name}{molecule.input}"
-    job_name = f"{molecule.name}"
     dir = molecule.directory    
     submit_name = f"{molecule.program}_submit.sh"
     path_submit_script = os.path.join(dir, submit_name)
@@ -190,7 +191,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --nodes={nnodes}
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks={ncpus}
-#SBATCH --output=./slurm_output/{job_name}_%j.out
+#SBATCH --output=./slurm_output/${{JOB}}_%j.output
 #SBATCH --time={slurm_time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
@@ -224,7 +225,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --nodes={nnodes}
 #SBATCH --cpus-per-task={ncpus}
 #SBATCH --ntasks={nnodes}
-#SBATCH --output=./slurm_output/{job_name}_%j.out
+#SBATCH --output=./slurm_output/${{JOB}}_%j.output
 #SBATCH --time={slurm_time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
@@ -260,7 +261,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --nodes={nnodes}
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks={ncpus}
-#SBATCH --output=./slurm_output/{job_name}_%j.out
+#SBATCH --output=./slurm_output/${{JOB}}_%j.output
 #SBATCH --time={slurm_time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
@@ -277,19 +278,21 @@ mkdir -p \\$WRKDIR || exit $?
 cd \\$WRKDIR
 cp \\$SLURM_SUBMIT_DIR/$JOB.inp .
 \\${{PATH_ORCA}}/orca $JOB.inp > \\$SLURM_SUBMIT_DIR/$JOB.out
+cp *Full_trj.xyz \\$SLURM_SUBMIT_DIR/.
 
 !EOF
 
 sbatch $SUBMIT
     """
 
-    with open(path_submit_script, 'w') as file:
-        if molecule.program.lower() == 'g16':
-            file.write(script_content_G16)
-        elif molecule.program.lower() == 'orca':
-            file.write(script_content_orca)
-        elif molecule.program.lower() == 'crest':
-            file.write(script_content_crest)
+    if not os.path.exists(path_submit_script):
+        with open(path_submit_script, 'w') as file:
+            if molecule.program.lower() == 'g16':
+                file.write(script_content_G16)
+            elif molecule.program.lower() == 'orca':
+                file.write(script_content_orca)
+            elif molecule.program.lower() == 'crest':
+                file.write(script_content_crest)
 
     submit_command = ['sh', path_submit_script, input_file_name]
     try:

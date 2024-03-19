@@ -11,6 +11,7 @@ XYZ=0
 LOG=0
 PKL=0
 INFO=0
+RESTART=0
 PAR_FLAG=0
 COLLECT=0
 time_arg="" 
@@ -56,6 +57,9 @@ for arg in "$@"; do
     -smiles)
       XYZ=1
       ;;
+    -restart)
+      RESTART=1
+      ;;
     *.log)
       LOG=1
       ;;
@@ -86,41 +90,11 @@ for arg in "$@"; do
   esac
 done
 
-# Submit one array job for all directories
-submit_array_job() {
-  local SLURM_SCRIPT=$(mktemp /tmp/slurm-script.XXXXXX)
-
-  cat > $SLURM_SCRIPT <<EOF
-#!/bin/sh
-#SBATCH --job-name=JKTS
-#SBATCH --output=JKTS_%a
-#SBATCH --time=$SLURM_TIME
-#SBATCH --partition=$SLURM_PARTITION
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=2000
-#SBATCH --array=1-${#directories[@]}%${#directories[@]}
-#SBATCH $SBATCH_PREFIX
-
-DIR_INDEX=\$((\$SLURM_ARRAY_TASK_ID - 1))
-DIRS=(${directories[@]})
-cd \${DIRS[\$DIR_INDEX]}
-mv ../JKTS_\$SLURM_ARRAY_TASK_ID .
-source ~/.JKCSusersetup.txt
-program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
-EOF
-
-  sbatch $SLURM_SCRIPT
-  rm $SLURM_SCRIPT
-}
-
-
 submit_job() {
-  local SLURM_SCRIPT=$(mktemp /tmp/slurm-script.XXXXXX)
-
-  cat > $SLURM_SCRIPT <<EOF
+  local directory=$1
+sbatch <<EOF
 #!/bin/sh
-#SBATCH --job-name=JKTS
+#SBATCH --job-name=JKTS_$directory
 #SBATCH --output=JKTS_%j
 #SBATCH --time=$SLURM_TIME
 #SBATCH --partition=$SLURM_PARTITION
@@ -132,26 +106,20 @@ submit_job() {
 source ~/.JKCSusersetup.txt
 program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
 EOF
-
-  sbatch $SLURM_SCRIPT
-  rm $SLURM_SCRIPT
 }
 
 if [[ "$XYZ" -gt 0 ]]; then
-    program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -init
-fi
-
-for dir in */; do
-    dir_name=${dir%/}
-    if [[ $dir_name =~ _H[0-9]+$ ]] || [[ $dir_name == "reactants" ]] || [[ $dir_name == "products" ]]; then
-        directories+=("$dir_name")
-    fi
-done
-
-if [ ${#directories[@]} -gt 0 ] && [ "$XYZ" -gt 0 ]; then
-  submit_array_job
-elif [ "$PKL" -gt 0 ] || [ "$LOG" -gt 0 ]; then
-  submit_job
+  program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -init
+  for dir in */; do
+      dir_name=${dir%/}
+      if [[ $dir_name =~ _H[0-9]+$ ]] || [[ $dir_name == "reactants" ]] || [[ $dir_name == "products" ]]; then
+        cd $dir_name
+        submit_job "$dir_name"
+        cd ..
+      fi
+  done
+elif [ "$RESTART" -gt 0 ]; then
+  submit_job $(basename "$PWD")
 else
-  echo "Failed to submit JKTS manager"
+  echo "Incorrect input argument"
 fi
