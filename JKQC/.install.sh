@@ -94,8 +94,8 @@ then
   echo "QML requires some old numpy, here you go:"
   #$PIP install numpy==1.21.4 --force-reinstall
   #$PIP uninstall numpy
-  #$PIP install numpy 
-  $PIP install numpy==1.21.4
+  $PIP install numpy 
+  #$PIP install numpy==1.21.4
   echo "======================"
   $PIP install scikit-learn
   echo "======================"

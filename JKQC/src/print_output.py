@@ -422,6 +422,30 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
           population.append(missing)
       output.append(population)
       continue
+    # popEL
+    if i == "-popEL":
+      from math import isnan, exp
+      population = []
+      R = 1.987 #cal/mol/K #=8.31441
+      for pop in range(len(clusters_df)):
+        try:
+          if Qclustername != 0:
+            allsameclusters = clusters_df.loc[clusters_df.loc[:,("info","cluster_type")]==clusters_df.loc[pop,("info","cluster_type")]]
+          else:
+            allsameclusters = clusters_df
+          if isnan(Qt):
+            try:
+              Qt = float(clusters_df.loc[pop,("log","temperature")])
+            except:
+              Qt = 298.15
+          me=clusters_df.loc[pop,("log","electronic_energy")] #*627.503*1000/Qt/R
+          partition_function = sum([exp(iii) for iii in -(allsameclusters.loc[:,("log","electronic_energy")]-me)*627.503*1000/Qt/R])
+          ratio=exp(-0*627.503*1000/Qt/R)/partition_function
+          population.append(f"{ratio:8f}")
+        except:
+          population.append(missing)
+      output.append(population)
+      continue
     # G corr
     if i == "-gc":
       try:

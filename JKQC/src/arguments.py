@@ -66,7 +66,8 @@ def print_help():
   print("                                     lt=less than/le=less or equal/ge=greater or equal/gt=greater than/ne=not equal")
   print(" -filter_== bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
   print("\nFORMATION PROPERTIES:")
-  print(" -pop                    prints column of population probability")
+  print(" -pop                    prints column of population probability calculated from Gibbs free energy")
+  print(" -popEL                  prints column of population probability calculated from electronic energy")
   print(" -glob OR -globout       prints only values for clusters with the lowest -g OR -gout")
   print(" -bavg OR -bavgout       prints a value that is Boltzmann average over each cluster using -g OR -gout")
   print("                         NOTE: -g/-gout is treated correctly + -s not treated; use (G - H)/T")
@@ -697,6 +698,9 @@ def arguments(argument_list = []):
       continue
     if i == "-pop" or i == "--pop":
       Pout.append("-pop")
+      continue
+    if i == "-popEL" or i == "--popEL":
+      Pout.append("-popEL")
       continue
     if i == "-natoms":
       Pout.append("-natoms")
