@@ -450,13 +450,25 @@ do
     then
       ######################
       ### CREATE name.CLUSTER
-      echo $Nfiles >> $F1
+      #echo $Nfiles >> $F1
+      echo AAA >> $F1
+      totalfiles=0
       for var in `seq 1 $Nfiles`
       do
         num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
         path=`echo $files | awk -v var0=$var '{print $var0}'` 
-        echo $path $num >> $F1
+        if [ $num -gt 0 ]
+        then
+          totalfiles=`echo $totalfiles+1 | bc` 
+          echo $path $num >> $F1
+        fi
       done
+      if [ $totalfiles -ge 10 ]
+      then
+        JKecho 0 "There is some stupid issue with ABCluster that u cannot have more than 10 types files. Hence I am exit. Bye."
+        exit
+      fi
+      sed -i "s/AAA/$totalfiles/" $F1
       echo "* $BOX" >> $F1
       JKecho 3 "    File $F1 has been created." 
       ######################
