@@ -43,7 +43,7 @@ def submit_array_job(molecules, args, nnodes=1):
         file.write("[ `cut -c1 <<< $IN` == '-' ] && { submit=cat; IN=`cut -c2- <<< $IN`; }\n\n")
 
         file.write('[ -f "${IN:-##}" ] || { echo "File not found. Good Bye"; exit 1; }\n')
-        file.write("PAR=${2:-100}\n")
+        file.write("PAR=${2:-" + str(len(job_files)) + "}\n")
         file.write("egrep -q '^X[0-9]*$' <<< \"X${PAR}\" || { echo 'Illegal number, $PAR. Good Bye'; exit 1; }\n")
 
         file.write("MAX=$(wc -l < $IN)\n")
