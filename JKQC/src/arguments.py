@@ -389,6 +389,7 @@ def arguments(argument_list = []):
     if last == "-index":
       last = ""
       Qindex = str(i)
+      Qmodify = 1
       continue
     #UNDERSCORE
     if i == "-underscore":
