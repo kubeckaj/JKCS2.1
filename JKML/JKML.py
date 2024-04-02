@@ -857,10 +857,14 @@ def substract_monomers(the_clusters_df,the_monomers_df):
       nn = 0
       for j in i[0]:
         test = 0
+        #print(monomers_df["info"]["components"])
         for k in range(len(monomers_df)):
           monomer_k = monomers_df.iloc[k]
           monomer_k_name = monomer_k["info"]["components"]
-          if j == monomer_k_name[0]:
+          if type(monomer_k_name) == type([]):
+            monomer_k_name = monomer_k_name[0]
+          #print([j,monomer_k_name])
+          if j == monomer_k_name:
             the_ens_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
             test = 1
             break
