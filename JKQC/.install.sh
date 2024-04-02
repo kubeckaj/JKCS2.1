@@ -67,10 +67,12 @@ source JKCS/bin/activate
 
 #echo y | conda install xtb-python
 #echo y | conda install numba
-PIP="$PYTHON -m pip --no-cache-dir " #--cache-dir=$PWD/JKCS/"
+PIP="$PYTHON -m pip --no-cache-dir --disable-pip-version-check " #--cache-dir=$PWD/JKCS/"
 
 echo "======================"
-$PIP install --upgrade pip
+#$PIP install --upgrade pip
+$PIP install pip==22.0.4
+rm -r JKCS/lib/python3.9/site-packages/~* 2>/dev/null
 if [[ "$*" == *"-mbdf"* ]]
 then
   echo "======================"
@@ -91,23 +93,31 @@ fi
 if [[ "$*" == *"-qml "* ]]
 then
   echo "======================"
-  echo "QML requires some old numpy, here you go:"
   #$PIP install numpy==1.21.4 --force-reinstall
   #$PIP uninstall numpy
-  $PIP install numpy 
+  $PIP install numpy==1.25.2 
   #$PIP install numpy==1.21.4
   echo "======================"
   $PIP install scikit-learn
   echo "======================"
-  $PYTHON -m pip install qml          #
+  #$PYTHON -m pip install qml          #
   #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
   #$PIP install git+https://github.com/qmlcode/qml@develop
   #$PYTHON -m pip install qml  --global-option="build" --global-option="--compiler=intelem" --global-option="--fcompiler=intelem"
+  cd JKCS
+  if [ ! -e qml ]
+  then
+    git clone https://github.com/qmlcode/qml.git
+  fi
+  cd qml
+  sed -i 's/ -lpthread/-lpthread/' setup.py   # remove the stray space
+  $PIP install .
+  cd ../..
 fi
 echo "======================"
 $PIP install lapjv
 echo "======================"
-$PIP install numpy==1.25.0 --force-reinstall
+$PIP install numpy==1.25.2
 #echo "======================"
 $PIP install scipy==1.9.3   #I need this version for ArbAlign 
 echo "======================"

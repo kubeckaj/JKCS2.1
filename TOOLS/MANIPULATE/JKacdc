@@ -415,6 +415,8 @@ echo " -- ACDCrun.m"
 cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCrun.m .
 echo " -- acdc.pl [DO NOT FORGET TO CITE ACDC!]"
 cp $toolspath/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl .
+echo " -- JKget_evap.sh"
+cp $toolspath/LOADING/JK_ACDC/JKget_evap.sh .
 echo " -- G.txt"
 test=`head -n 1 ../../$inputfile | awk '{print $2}'`
 if [ ! -z "$test" ] 
@@ -511,6 +513,10 @@ cd '../';"""  >>  JKrun_single.m
 
 echo " -- JKrun_fluxes_out.m"
 cp $toolspath/LOADING/JK_ACDC/JKrun_fluxes_out.m .
+
+echo "module load matlab/R2022b" > JKrun_single.sh
+echo "ulimit -s unlimited" >> JKrun_single.sh
+echo "matlab -batch JKrun_single" >> JKrun_single.sh
 
 echo " ===================== "
 echo " run, e.g.:   "

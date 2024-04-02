@@ -54,7 +54,7 @@ def replace_first_occurrence(string, old_char, new_char):
    string = string[:index] + new_char + string[index+1:]  # Replace the character
   return string
 
-def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWHAT, Qiamifo, Qdrop, Qout2log,Qpresplit,Qindex):
+def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWHAT, Qiamifo, Qrebasename, Qdrop, Qout2log,Qpresplit,Qindex):
 
   #SPLIT THE DATABASE AT START  
   if Qpresplit > 0:

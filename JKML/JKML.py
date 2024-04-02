@@ -787,17 +787,23 @@ train_low_database = "none"
 monomers_high_database = "none"
 monomers_low_database = "none"
 if Qtrain == 1:
-  train_high_database = pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])
+  #train_high_database = pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])
+  train_high_database = pd.read_pickle(TRAIN_HIGH) 
   if method == "delta":
-    train_low_database = pd.read_pickle(TRAIN_LOW).sort_values([('info','file_basename')])
+    #train_low_database = pd.read_pickle(TRAIN_LOW).sort_values([('info','file_basename')])
+    train_low_database = pd.read_pickle(TRAIN_LOW)
 if Qeval == 1 or Qeval == 2 or Qopt > 0:
-  test_high_database = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
+  #test_high_database = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
+  test_high_database = pd.read_pickle(TEST_HIGH)
   if method == "delta":
-    test_low_database = pd.read_pickle(TEST_LOW).sort_values([('info','file_basename')])  
+    #test_low_database = pd.read_pickle(TEST_LOW).sort_values([('info','file_basename')])  
+    test_low_database = pd.read_pickle(TEST_LOW)
 if Qmonomers == 1:
-  monomers_high_database = pd.read_pickle(MONOMERS_HIGH).sort_values([('info','file_basename')])
+  #monomers_high_database = pd.read_pickle(MONOMERS_HIGH).sort_values([('info','file_basename')])
+  monomers_high_database = pd.read_pickle(MONOMERS_HIGH)
   if method == "delta":
-    monomers_low_database = pd.read_pickle(MONOMERS_LOW).sort_values([('info','file_basename')])
+    #monomers_low_database = pd.read_pickle(MONOMERS_LOW).sort_values([('info','file_basename')])
+    monomers_low_database = pd.read_pickle(MONOMERS_LOW)
 
 #LIBRARIES FOR GIVEN METHOD AND REPRESENTATION
 import_other_libraries2()
@@ -1375,9 +1381,9 @@ for sampleeach_i in sampleeach_all:
             val_m, val_s = mean_std(all_outputs_val)
             ep = trainer.current_epoch
             run_time = time.time() - start_time
-            print(f"\nEPOCH: %i TRAIN: %.4f +- %.4f [??] VAL: %.4f +- %.4f [??] LR: %.2e T: %.1f s "%(ep, tr_m, tr_s, val_m, val_s, task.lr, run_time))
+            print(f"\nEPOCH: %i TRAIN: %.5f +- %.5f [??] VAL: %.5f +- %.5f [??] LR: %.2e T: %.1f s "%(ep, tr_m, tr_s, val_m, val_s, task.lr, run_time))
             with open(parentdir+"/epoch_trE_trS_valE_valS_lr_t.txt", "a") as f:
-              print(f"%i %.4f %.4f %.4f %.4f %e"%(ep, tr_m, tr_s, val_m, val_s, task.lr), file = f)
+              print(f"%i %.6f %.6f %.6f %.6f %e %.1f"%(ep, tr_m, tr_s, val_m, val_s, task.lr,run_time), file = f)
           
  
       #MyPrintingCallback = pl.callbacks.LearningRateMonitor

@@ -250,7 +250,17 @@ do
   fi
   if [ "$last" == "-xtbhome" ] 
   then
+    if [ ! -e "$iter" ]
+    then
+      JKecho 0 "File $iter does not exist.[EXITING]"
+      exit
+    fi 
     Qxtbhome="$( cd "$iter"; pwd -P )"
+    if [ ! -e "$Qxtbhome/param_gfn"*"-xtb.txt" ]
+    then
+      JKecho 0 "File param_gfnXY-xtb.txt must be present in the path.[EXITING]"
+      exit
+    fi
     last=""
     continue
   fi

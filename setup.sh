@@ -86,8 +86,10 @@ EXAMPLE:
     MODULE_G16="source /comm/groupstacks/gaussian/bin/modules.sh --silent; module load gaussian16/Rev.B.01;"
     #PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.3/"
     #MODULE_ORCA="source /comm/groupstacks/gaussian/bin/modules.sh --silent; module load orca/5.0.3"
-    PATH_ORCA="/home/kubeckaj/Applications/orca_5_0_4_linux_x86-64_shared_openmpi411/"
-    MODULE_ORCA="module load gcc; module load openmpi"
+    #PATH_ORCA="/home/kubeckaj/Applications/orca_5_0_4_linux_x86-64_shared_openmpi411/"
+    #MODULE_ORCA="module load gcc; module load openmpi"
+    PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.4/"
+    MODULE_ORCA="ulimit -c 0;source /comm/groupstacks/chemistry/bin/modules.sh;ml orca/5.0.4;ml gcc/9.1.0;ml openmpi/3.1.3;"
     SBATCH_PREFIX=""
     WRKDIR="/scratch/\\\$SLURM_JOB_ID/"
     time1="10-00:00:00"
@@ -335,5 +337,5 @@ then
   echo "Anyway, you can check if everything is working by running:"
   printf "          ${cfYELLOW}sh test.sh${cfDEF}\n"
 else
-  printf "  Update finished"
+  printf "  Update finished\n"
 fi

@@ -1,5 +1,6 @@
 def load_addsp(clusters_df,input_pkl_sp,Qout):
   from pandas import read_pickle  
+  from numpy import array
 
   for i in range(len(input_pkl_sp)):
     newclusters_df_sp = read_pickle(input_pkl_sp[i])
@@ -26,7 +27,7 @@ def load_addsp(clusters_df,input_pkl_sp,Qout):
       except:
         continue
     for ii in newclusters_df_sp.loc[:,"out"].columns.values:
-      toadd = np.array(newclusters_df_sp.loc[index_new,("out",ii)], dtype=object)
+      toadd = array(newclusters_df_sp.loc[index_new,("out",ii)], dtype=object)
       clusters_df.at[index_old,("out",ii)]=toadd
 
   return clusters_df
