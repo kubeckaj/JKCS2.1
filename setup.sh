@@ -78,7 +78,7 @@ EXAMPLE:
     #PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.1-Linux/"
     PATH_ABC="/home/kubeckaj/Applications/ABCluster-3.2-Linux/"
     PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.2-Linux/"
-    MODULE_ABC="source /com/bin/modules.sh;module load gcc"
+    MODULE_ABC="module load gcc"
     PATH_XTB="/home/kubeckaj/Applications/XTB6.4/"
     MODULE_XTB=""
     PATH_CREST="/home/kubeckaj/Applications/crest/"
