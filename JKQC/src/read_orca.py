@@ -180,7 +180,7 @@ def read_orca(mmm, orcaextname, Qforces = 0):
 
   #ENTHALPY
   try:
-    line, idx = find_line(rb'Total Enthalpy', 1, idx)
+    line, idx = find_line(rb'Total enthalpy', 1, 0)
     out_enthalpy_energy = float(line.split()[3])
   except:
     out_enthalpy_energy = missing
