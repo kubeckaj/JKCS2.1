@@ -9,9 +9,9 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 ##################################################WORKFLOWS#################################################################
 # Change as you feel like
-OH_H2O_workflow = ['optimization', 'DLPNO', 'Done']
-reactant_product_workflow = ['crest_sampling', 'optimization', 'DLPNO', 'Done']
-TS_workflow = ['opt_constrain', 'TS_opt', 'crest_sampling', 'opt_constrain_conf', 'TS_opt_conf', 'DLPNO', 'Done']
+OH_H2O_workflow = ['optimization', 'DLPNO']
+reactant_product_workflow = ['crest_sampling', 'optimization', 'DLPNO']
+TS_workflow = ['opt_constrain', 'TS_opt', 'crest_sampling', 'opt_constrain_conf', 'TS_opt_conf', 'DLPNO']
 # TS_workflow = ['crest_sampling', 'opt_constrain_conf', 'TS_opt_conf', 'DLPNO', 'Done']
 ############################################################################################################################
 
@@ -65,9 +65,10 @@ class Vector:
 
 
 class Molecule(Vector):
-    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, electronic_energy=None, reactant=False, product=False, program=None, indexes=None, smiles=None):
+    def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, electronic_energy=None, reactant=False, product=False, program=None, indexes=None, smiles=None, method=''):
         self.smiles = smiles
         self.name = name
+        self.method = method
         self.directory = directory
         self.file_path = file_path
         self.log_file_path = log_file_path
@@ -85,6 +86,7 @@ class Molecule(Vector):
         self.electronic_energy = electronic_energy
         self.free_energy = None
         self.Q = None
+        self.dipole_moment = None
         self._program = None
         self.input = None
         self.output = None
@@ -139,6 +141,8 @@ class Molecule(Vector):
 
             self.workflow = self.determine_workflow()
             self.set_current_step()
+        if not self.method:
+            self.method = self.log2method()
 
 
     def set_current_step(self, step=None):
@@ -183,7 +187,9 @@ class Molecule(Vector):
         molecule.mult = 2
         molecule.reactant = True
         molecule.workflow = molecule.determine_workflow()
+        molecule.converged = False
         molecule.set_current_step()
+        molecule.method = molecule.log2method()
         return molecule
 
     @classmethod
@@ -193,7 +199,9 @@ class Molecule(Vector):
         molecule.mult = 1
         molecule.product = True
         molecule.workflow = molecule.determine_workflow()
+        molecule.converged = False
         molecule.set_current_step()
+        molecule.method = molecule.log2method()
         return molecule
 
 
@@ -272,7 +280,6 @@ class Molecule(Vector):
             self.next_step = None  # Indicates the end of the workflow
 
     def update_step(self):
-        # Advance to the next step in the workflow
         if self.next_step_index < len(self.workflow):
             self.current_step_index += 1
             self.update_current_and_next_step()
@@ -388,9 +395,11 @@ class Molecule(Vector):
             if program.lower() == 'g16':
                 zero_point_correction = re.findall(r'Zero-point correction=\s+([-.\d]+)', log_content)
                 free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
+                dipole_moment = re.findall(r"Tot=\s+([-\d.]+)", log_content)
                 if zero_point_correction:
                     self.zero_point = float(zero_point_correction[-1])
                     self.free_energy = float(free_energy[-1])
+                    self.dipole_moment = float(dipole_moment[-1])
                 electronic_energy = re.findall(r'(SCF Done:  E\(\S+\) =)\s+([-.\d]+)', log_content)
                 if electronic_energy:
                     self.electronic_energy = float(electronic_energy[-1][-1])
@@ -424,12 +433,14 @@ class Molecule(Vector):
                 zero_point_correction = re.findall(r"Zero point energy\s+...\s+([-+]?\d*\.\d+|\d+)", log_content)
                 free_energy = re.findall(r"Final Gibbs free energy\s+...\s+([-+]?\d*\.\d+|\d+)", log_content)
                 electronic_energy = re.findall(r'(FINAL SINGLE POINT ENERGY)\s+([-.\d]+)', log_content)
+                dipole_moment = re.findall(r"Magnitude \(Debye\)\s*:\s*([\d.]+)", log_content)
                 # find ORCA zero point zorrected
                 if electronic_energy:
                     self.electronic_energy = float(electronic_energy[-1][-1])
                     if zero_point_correction and free_energy:
                         self.zero_point = float(zero_point_correction[-1])
                         self.free_energy = float(free_energy[-1])
+                        self.dipole_moment = float(dipole_moment[-1])
                     freq_matches = re.findall(r'([-+]?\d*\.\d+)\s*cm\*\*-1', log_content)
                     if freq_matches:
                         n = 3*len(self.atoms)-6 # Utilizing the fact that non-linear molecules has 3N-6 degrees of freedom
@@ -739,7 +750,7 @@ class Molecule(Vector):
                             if abs(angle - 109.5) <= angle_tolerance:
                                 ketone_methyl_groups.append({'methyl_C': i, 'ketone_C': C_neighbor, 'O': O})
                     methyl_C_indexes.append(i)
-                elif len(H_neighbors) == 1:  # Potential for being part of an aldehyde group
+                elif len(H_neighbors) <= 2:  # Potential for being part of an aldehyde group
                     # Look for an oxygen atom double-bonded to this carbon
                     O_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'O' and self.atom_distance(self.coordinates[i], self.coordinates[j]) < distance]
                     for O in O_neighbors:
@@ -788,6 +799,75 @@ class Molecule(Vector):
             return None
         return None
 
+
+    def log2method(self):
+        methods = [
+            "wb97xd", "wb97x-d3", "wb97x-d3bj", "wb97x-d4", "b97-3c", "r2scan-3c", "pm3", "am1",
+            "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)"
+        ]
+        # if self.program.lower() == 'crest' or 'collection' in self.name or 'crest' in self.name.lower():
+        #     return 'crest'
+        
+        file_to_read = self.log_file_path if self.log_file_path else self.file_path if self.file_path else None
+        if not file_to_read:
+            method_file = os.path.join(self.directory, ".method")
+            if os.path.exists(method_file):
+                with open(method_file, 'r') as file:
+                    method = file.read().strip()
+                    if method in methods:
+                        return method
+            return 'wb97xd' if self.program.lower() == 'g16' else 'wb97x-d3bj'
+        
+        try:
+            with open(file_to_read, 'r') as file:
+                for line in file:
+                    line_content = ''
+                    if self.program.lower() == 'orca':
+                        if '|  1> !' in line:
+                            line_content = line.split('! ', 1)[-1]
+                    elif self.program.lower() == 'g16':
+                        if line.strip().startswith('#'):
+                            line_content = line
+                    
+                    for method in methods:
+                        if method.lower() in line_content.lower():
+                            return method
+        except FileNotFoundError:
+            method_file = os.path.join(self.directory, ".method")
+            if os.path.exists(method_file):
+                with open(method_file, 'r') as file:
+                    method = file.read().strip()
+                    if method in methods:
+                        return method
+            return 'wb97xd' if self.program.lower() == 'g16' else 'wb97x-d3bj'
+            
+        return 'wb97x-d3bj' if self.program.lower() == 'orca' else 'wb97xd'
+
+
+    # def log2method(self):
+    #     methods = ["wb97xd", "wb97x-d3", "wb97x-d3bj", "wb97x-d4", "b97-3c", "r2scan-3c", "pm3", "am1", "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)"]
+    #     if self.program.lower() == 'crest' or 'collection' in self.name or 'crest' in self.name.lower():
+    #         return 'crest'
+    #     
+    #     file_to_read = self.log_file_path if self.log_file_path else self.file_path if self.file_path else None
+    #     if not file_to_read:
+    #         return 'wb97xd' if self.program.lower() == 'g16' else 'wb97x-d3bj'
+    #     
+    #     with open(file_to_read, 'r') as file:
+    #         for line in file:
+    #             line_content = ''
+    #             if self.program.lower() == 'orca':
+    #                 if '|  1> !' in line:
+    #                     line_content = line.split('! ', 1)[-1]
+    #             elif self.program.lower() == 'g16':
+    #                 if line.strip().startswith('#'):
+    #                     line_content = line
+    #             
+    #             for method in methods:
+    #                 if method.lower() in line_content.lower():
+    #                     return method
+    #
+    #     return 'wb97x-d3bj' if self.program.lower() == 'orca' else 'wb97xd'
 
     def determine_current_step(self):
         # Handle cases not dependent on file contents first
@@ -924,6 +1004,7 @@ class Molecule(Vector):
                 print(message)
 
         output(f"Molecule: {self.name}")
+        output(f"Method: {self.method.upper()}")
         output(f"File Path: {self.file_path}")
         output(f"Directory: {self.directory}")
         output(f"Log File Path: {self.log_file_path}")
@@ -932,6 +1013,7 @@ class Molecule(Vector):
         output(f"Product: {self.product}")
         output(f"Multiplicity: {self.mult}")
         output(f"Charge: {self.charge}")
+        output(f"Dipole Moment: {self.dipole_moment}")
         output(f"Workflow: {self.workflow}")
         if 'Cl' in self.atoms[-2:]:
             output(f"Constrained Indexes: [C: {self.constrained_indexes['C']}, H: {self.constrained_indexes['H']}, Cl: {self.constrained_indexes['O']}]")

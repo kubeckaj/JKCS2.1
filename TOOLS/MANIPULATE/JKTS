@@ -2,6 +2,8 @@
 source ~/.JKCSusersetup.txt
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../../JKTS/"
+INPUT="$@"
+echo "COMMAND: $(basename $0) $@" >> "${PWD}/output"
 
 # Default values
 SLURM_TIME="240:00:00"
@@ -31,28 +33,8 @@ for arg in "$@"; do
       program_PYTHON "$toolspath/DATS.py" -h
       exit 0
       ;;
-    -test)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -test
-      exit 0
-      ;;
-    -loc)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -loc
-      exit 0
-      ;;
-    -info)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -info
-      exit 0
-      ;;
-    -collect)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -collect
-      exit 0
-      ;;
-    -pickle)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -pickle
-      exit 0
-      ;;
-    -init)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -init
+    -test|-loc|-info|-collect|-pickle|-init|-plot|-movie)
+      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}"
       exit 0
       ;;
     *.xyz)
