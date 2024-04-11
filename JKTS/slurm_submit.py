@@ -285,14 +285,13 @@ cp *Full_trj.xyz \\$SLURM_SUBMIT_DIR/.
 sbatch $SUBMIT
     """
 
-    if not os.path.exists(path_submit_script):
-        with open(path_submit_script, 'w') as file:
-            if molecule.program.lower() == 'g16':
-                file.write(script_content_G16)
-            elif molecule.program.lower() == 'orca':
-                file.write(script_content_orca)
-            elif molecule.program.lower() == 'crest':
-                file.write(script_content_crest)
+    with open(path_submit_script, 'w') as file:
+        if molecule.program.lower() == 'g16':
+            file.write(script_content_G16)
+        elif molecule.program.lower() == 'orca':
+            file.write(script_content_orca)
+        elif molecule.program.lower() == 'crest':
+            file.write(script_content_crest)
 
     submit_command = ['sh', path_submit_script, input_file_name]
     try:
@@ -372,7 +371,7 @@ def get_interval_seconds(molecule):
         else:
             heavy_count += 1
     
-    a = 5.80; b = -20.79; c = 182.33; d = -99.7
+    a = 5.90; b = -19.79; c = 182.33; d = -99.7
 
     if 'H2O' in molecule.name or 'OH' in molecule.name:
         return 20
