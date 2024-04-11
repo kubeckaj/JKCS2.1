@@ -503,7 +503,7 @@ class Molecule(Vector):
         qtrans = ((2 * pi * mol_mass * k_b * T) / h**2)**(3/2) * V
 
         if 'OH' in self.name:
-            qelec = 3 # OH radical with 2 low lying near degenerate energy level
+            qelec = 3.019 # OH radical with 2 low lying near degenerate energy level
         else:
             qelec = self.mult
 

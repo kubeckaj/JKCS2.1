@@ -33,7 +33,11 @@ for arg in "$@"; do
       program_PYTHON "$toolspath/DATS.py" -h
       exit 0
       ;;
-    -test|-loc|-info|-collect|-pickle|-init|-plot|-movie)
+    -loc|-collect)
+      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" | tee -a "${PWD}/output"
+      exit 0
+      ;;
+    -test|-info|-pickle|-init|-plot|-movie)
       program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}"
       exit 0
       ;;

@@ -198,7 +198,7 @@ def bad_active_site(molecule, CH_threshold=1.1, HO_threshold=1.95, CO_threshold=
     return False
 
 
-def check_transition_state(molecule, logger, threshold=0.6):
+def check_transition_state(molecule, threshold=0.5):
     from numpy import array
     from numpy.linalg import norm
     freq_cutoff = -abs(args.freq_cutoff) if args.freq_cutoff else -80
@@ -206,6 +206,7 @@ def check_transition_state(molecule, logger, threshold=0.6):
     HO_threshold = 1.95
     CO_threshold = 3.2
     angle_threshold = 160
+    msg = 'error'
     try:
         H_index = molecule.constrained_indexes['H']-1 # python 0-based indexing
         C_index = molecule.constrained_indexes['C']-1
@@ -351,7 +352,7 @@ def filter_molecules(molecules, logger=None, pickle=True, RMSD_threshold=0.34, E
         molecules = non_similar_molecules
 
     if logger:
-        logger.log(f"Filtered {initial_len} conformers to {len(unique_molecules)} conformers using RMSD threshold: {RMSD_threshold} Energy difference threshold: {Energy_threshold} Hartree Dipole moment difference threshold: {Dipole_threshold} Debye")
+        logger.log(f"Filtered {initial_len} conformers to {len(unique_molecules)} conformers using RMSD threshold: {RMSD_threshold}, Energy difference threshold: {Energy_threshold} Hartree, and Dipole moment difference threshold: {Dipole_threshold} Debye")
     else:
         print(f"Filtered {initial_len} conformers to {len(unique_molecules)} conformers using RMSD threshold: {RMSD_threshold} Energy difference threshold: {Energy_threshold} Hartree Dipole moment difference threshold: {Dipole_threshold} Debye")
 
@@ -403,8 +404,6 @@ def ArbAlign_pair(TS_conformers, reactants, products=None, threshold=0.8):
         if products:
             for product in products:
                 product_copy = deepcopy(product)
-                product_copy.atoms = [atom for idx, atom in enumerate(product_copy.atoms) if idx not in excluded_indexes_TS]
-                product_copy.coordinates = [coord for idx, coord in enumerate(product_copy.coordinates) if idx not in excluded_indexes_TS]
 
                 rmsd = compare(TS_copy, product_copy)
                 if rmsd < min_rmsd_product:
@@ -413,6 +412,7 @@ def ArbAlign_pair(TS_conformers, reactants, products=None, threshold=0.8):
 
         # Append the TS, reactant, and product tuple if both matches are found and within the threshold
         if best_match_reactant and min_rmsd_reactant and best_match_product and min_rmsd_product:
+            print(f"TS:{TS.name} R:{best_match_reactant.name} P:{best_match_product.name} - min_rmsd_R: {min_rmsd_reactant} - min_rmsd_P: {min_rmsd_product}")
             results.append((TS, best_match_reactant, best_match_product))
 
     return results
@@ -1021,7 +1021,7 @@ def termination_status(molecule, logger):
         molecule.coordinates = xyz_coordinates
         molecule.update_energy(logger)
         if 'TS' in molecule.current_step:
-            ts_check_passed, msg = check_transition_state(molecule, logger)
+            ts_check_passed, msg = check_transition_state(molecule)
             return ts_check_passed, msg
         else:
             return True, f"***{molecule.name} converged***"
@@ -1173,9 +1173,7 @@ def read_input():
             else:
                 if isinstance(pandas_molecules, list):
                     for molecule in pandas_molecules:
-                        if not 'H2O' in molecule.name:
-                            if not 'OH' in molecule.name:
-                                f(molecule)
+                        f(molecule)
                 else:
                     f(pandas_molecules)
         elif file_type in ['.log', '.out', '.com', '.inp', '.xyz']:
@@ -1358,21 +1356,20 @@ def rate_constant_pair(TS_conformers, reactant_conformers, product_conformers, T
         lowest_R_E = reactant_molecules[0].zero_point_corrected * HtoJ
         OH = next((mol for mol in reactant_conformers if 'OH' in mol.name))
         
-        product_molecules = sorted([mol for mol in product_conformers if 'H2O' not in mol.name], key=lambda molecule: molecule.zero_point_corrected)
+        product_molecules = sorted([mol for mol in product_conformers if 'H2O' not in mol.name], key=lambda molecule: molecule.electronic_energy)
         H2O = next((mol for mol in product_conformers if 'H2O' in mol.name), None)
 
         # Pair up reactants, TS, and products
         pairs = ArbAlign_pair(TS_conformers, reactant_molecules, product_molecules)
-        Q_TS = sum([exp(-(lowest_ZP_TS_J - float64(mol.zero_point_corrected * HtoJ)) / (k_b * T)) * float64(mol.Q) for mol in TS_conformers])
 
         sum_TS = 0
         sum_R = 0
         kappa = []
         for TS, reactant, product in pairs:
             imag = TS.vibrational_frequencies[0]
-            TS_energy = TS.zero_point_corrected * Htokcalmol
-            reactant_energy = reactant.zero_point_corrected * Htokcalmol
-            product_energy = product.zero_point_corrected * Htokcalmol
+            TS_energy = TS.electronic_energy * Htokcalmol
+            reactant_energy = reactant.electronic_energy * Htokcalmol
+            product_energy = product.electronic_energy * Htokcalmol
             k = eckart(TS_energy, reactant_energy, product_energy, imag)
             kappa.append(k)
             sum_TS += k * exp(-(lowest_TS_E - TS.zero_point_corrected*HtoJ)/(k_b*T)) * TS.Q
@@ -1558,22 +1555,26 @@ def main():
         molecules = []
         reactants = []
         products = []
+        TS = []
         threads = []
         logger = Logger(os.path.join(start_dir, "test.txt"))
 
         molecules = read_input()
-        #
-        # if molecules and isinstance(molecules, list):
-        #     for m in molecules:
-        #         if m.reactant: 
-        #             molecules.pop()
-        #             reactants.append(m)
-        #         elif m.product: 
-        #             molecules.pop()
-        #             products.append(m)
+        
+        if molecules and isinstance(molecules, list):
+            for m in molecules:
+                if m.reactant: 
+                    reactants.append(m)
+                elif m.product: 
+                    products.append(m)
+                else:
+                    TS.append(m)
 
-        for molecule in molecules:
-            print(molecule.name, check_transition_state(molecule, logger))
+        if molecules:
+            # print(rate_constant_pair(TS, reactants, products))
+
+            for molecule in molecules:
+                print(molecule.name, check_transition_state(molecule))
 
         # ArbAlign_pair(molecules, reactants, products)
         # molecules = filter_molecules(molecules, pickle=False)
