@@ -86,6 +86,7 @@ Qsplitargument=""
 
 Qspkmd=0
 Qlangevin=0
+Qnhc=0
 Qrpmd=0
 md_cutoff=5.0
 md_thermostatconstant=100
@@ -231,6 +232,13 @@ do
     Qspkmd=1
     continue
   fi
+  #MD Langevin
+  if [ "$iter" == "-nhc" ]
+  then
+    Qnhc=1
+    Qspkmd=1
+    continue
+  fi
   #SPKMD extra
   if [ "$iter" == "-spkmd_extra" ]
   then
@@ -326,6 +334,10 @@ do
         if [ $Qlangevin -gt 0 ]
         then
           md_what+=" +dynamics/thermostat=langevin dynamics.integrator.time_step=$md_timestep dynamics.thermostat.time_constant=$md_thermostatconstant "
+        fi
+        if [ $Qnhc -gt 0 ]
+        then
+          md_what+=" +dynamic/thermostat=nhc dynamics.integrator.time_step=$md_timestep "
         fi
         if [ -e "$md_folder/checkpoint.chk" ]
         then

@@ -67,6 +67,8 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
             bonded.append(float("nan"))
         what = array(bonded)       
         bonded_incr = 1
+      elif len(Qcut[i][2].split(",")) == 2:
+        what = preselected_df.loc[:,(Qcut[i][2].split(",")[0],Qcut[i][2].split(",")[1])].values
       else:
         what = preselected_df.loc[:,("log",Qcut[i][2])].values
       if Qcut[i][1] == "relative":
