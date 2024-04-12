@@ -1,5 +1,16 @@
 def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted, bonddistancethreshold, Qout):
 
+  #CHECK WHETHER CLUSTERNAME MAKE SENSE
+  if Qclustername == 1:
+    if ("info","cluster_type") in clusters_df.columns:
+      from pandas import isna
+      if isna(clusters_df.loc[:,("info","cluster_type")].values).any():
+        if Qout >= 1:
+          print("Cluter type with nan present (weird file names) -> Qclustername = 0")
+        Qclustername = 0
+    else:  
+      Qclustername = 0
+
   #IS SORTING NEEDED?
   if str(Qsort) == "0" and str(Qarbalign) != "0":
     if ("log","gibbs_free_energy") in clusters_df.columns:
