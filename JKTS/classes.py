@@ -169,11 +169,10 @@ class Molecule(Vector):
 
 
     def determine_workflow(self):
-        if self.reactant or self.product or 'OH' in self.name or 'H2O' in self.name:
-            if 'OH' in self.name or 'H2O' in self.name:
-                return OH_H2O_workflow
-            else:
-                return reactant_product_workflow
+        if self.name in ('OH', 'H2O', 'H2O_DLPNO', 'OH_DLPNO'):
+            return OH_H2O_workflow
+        elif self.reactant or self.product:
+            return reactant_product_workflow
         else:
             return TS_workflow
 
@@ -222,17 +221,20 @@ class Molecule(Vector):
             pickle.dump(self, file)
 
     def move_files(self, ignore_file=''):
-        dest_directory = os.path.join(self.directory, "log_files")
-        if not os.path.exists(dest_directory):
-            os.makedirs(dest_directory, exist_ok=True)
+        try:
+            dest_directory = os.path.join(self.directory, "log_files")
+            if not os.path.exists(dest_directory):
+                os.makedirs(dest_directory, exist_ok=True)
 
-        for filename in os.listdir(self.directory):
-            if filename.endswith(self.output):
-                file_path = os.path.join(self.directory, filename)
-                dest_file_path = os.path.join(dest_directory, filename)
-                if os.path.exists(dest_file_path):
-                    os.remove(dest_file_path)
-                shutil.move(file_path, dest_file_path)
+            for filename in os.listdir(self.directory):
+                if filename.endswith(self.output):
+                    file_path = os.path.join(self.directory, filename)
+                    dest_file_path = os.path.join(dest_directory, filename)
+                    if os.path.exists(dest_file_path):
+                        os.remove(dest_file_path)
+                    shutil.move(file_path, dest_file_path)
+        except:
+            pass
 
     def move_converged(self):
         if not os.path.exists(os.path.join(self.directory, "log_files")):
@@ -582,6 +584,7 @@ class Molecule(Vector):
     def H_abstraction(self, Cl=False, products=False, num_molecules=None):
         original_coords = self.coordinates.copy()
         atoms = self.atoms
+        method = self.method
         abstraction_molecules = []
         product_molecules = []
         methyl_C_indexes, aldehyde_groups, ketone_methyl_groups = self.identify_functional_groups()
@@ -634,7 +637,7 @@ class Molecule(Vector):
                         product_coords.pop(i)
                         product_atoms.pop(i)
                         # Add the product molecule to the list
-                        product_molecule = Molecule(self.file_path, product=True, smiles=self.smiles)
+                        product_molecule = Molecule(self.file_path, product=True, smiles=self.smiles, method=method)
                         product_molecule.atoms = product_atoms
                         product_molecule.coordinates = product_coords
                         product_molecules.append(product_molecule)
@@ -674,7 +677,7 @@ class Molecule(Vector):
                         new_coords.append(new_OH_H_position.tolist())
                         constrained_indexes = {'C': j+1, 'H': i+1, 'O': len(new_coords)-1, 'OH': len(new_coords)}
 
-                    new_molecule = Molecule(self.file_path, smiles=self.smiles)
+                    new_molecule = Molecule(self.file_path, smiles=self.smiles, method=method)
                     new_molecule.atoms = new_atoms
                     new_molecule.coordinates = new_coords
                     new_molecule.constrained_indexes = constrained_indexes
@@ -732,7 +735,7 @@ class Molecule(Vector):
         pass 
 
          
-    def identify_functional_groups(self, distance=1.5, angle_tolerance=5):
+    def identify_functional_groups(self, distance=1.5, angle_tolerance=5, hydrogens=1):
         methyl_C_indexes = []
         aldehyde_groups = []
         ketone_methyl_groups = []
@@ -750,7 +753,7 @@ class Molecule(Vector):
                             if abs(angle - 109.5) <= angle_tolerance:
                                 ketone_methyl_groups.append({'methyl_C': i, 'ketone_C': C_neighbor, 'O': O})
                     methyl_C_indexes.append(i)
-                elif len(H_neighbors) <= 2:  # Potential for being part of an aldehyde group
+                elif len(H_neighbors) in {1, 2}:  # Potential for being part of an aldehyde group
                     # Look for an oxygen atom double-bonded to this carbon
                     O_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'O' and self.atom_distance(self.coordinates[i], self.coordinates[j]) < distance]
                     for O in O_neighbors:
@@ -761,15 +764,25 @@ class Molecule(Vector):
 
     def smiles_to_atoms_coordinates(self, smiles):
         mol = Chem.MolFromSmiles(smiles)
+        if not mol:
+            # If it fails, try interpreting the input as a common name
+            mol = Chem.MolFromName(smiles)
+            if not mol:
+                return "Invalid input: neither a valid SMILES nor a recognized chemical name", [], []
+
         mol = Chem.AddHs(mol)
-        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-        
+        if AllChem.EmbedMolecule(mol, AllChem.ETKDG()) != 0:
+            return "Could not embed molecule", [], []
+
         atoms = [atom.GetSymbol() for atom in mol.GetAtoms()]
         conf = mol.GetConformer()
-        coordinates = [(conf.GetAtomPosition(atom.GetIdx()).x, conf.GetAtomPosition(atom.GetIdx()).y, conf.GetAtomPosition(atom.GetIdx()).z) for atom in mol.GetAtoms()]
-        
+        coordinates = [(conf.GetAtomPosition(atom.GetIdx()).x,
+                        conf.GetAtomPosition(atom.GetIdx()).y,
+                        conf.GetAtomPosition(atom.GetIdx()).z) for atom in mol.GetAtoms()]
+
         molecular_formula = Chem.rdMolDescriptors.CalcMolFormula(mol)
         return molecular_formula, atoms, coordinates
+
 
     def get_terminal_O(self, distance=1.5):
         O_index = []
@@ -803,20 +816,18 @@ class Molecule(Vector):
     def log2method(self):
         methods = [
             "wb97xd", "wb97x-d3", "wb97x-d3bj", "wb97x-d4", "b97-3c", "r2scan-3c", "pm3", "am1",
-            "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)"
+            "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)", "mp2"
         ]
-        # if self.program.lower() == 'crest' or 'collection' in self.name or 'crest' in self.name.lower():
-        #     return 'crest'
         
         file_to_read = self.log_file_path if self.log_file_path else self.file_path if self.file_path else None
         if not file_to_read:
             method_file = os.path.join(self.directory, ".method")
             if os.path.exists(method_file):
                 with open(method_file, 'r') as file:
-                    method = file.read().strip()
+                    method = file.read().strip().lower()
                     if method in methods:
                         return method
-            return 'wb97xd' if self.program.lower() == 'g16' else 'wb97x-d3bj'
+            return 'method could not be determined'
         
         try:
             with open(file_to_read, 'r') as file:
@@ -839,35 +850,54 @@ class Molecule(Vector):
                     method = file.read().strip()
                     if method in methods:
                         return method
-            return 'wb97xd' if self.program.lower() == 'g16' else 'wb97x-d3bj'
+            return 'method could not be determined'
             
-        return 'wb97x-d3bj' if self.program.lower() == 'orca' else 'wb97xd'
+        return 'method could not be determined'
 
 
-    # def log2method(self):
-    #     methods = ["wb97xd", "wb97x-d3", "wb97x-d3bj", "wb97x-d4", "b97-3c", "r2scan-3c", "pm3", "am1", "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)"]
-    #     if self.program.lower() == 'crest' or 'collection' in self.name or 'crest' in self.name.lower():
-    #         return 'crest'
-    #     
-    #     file_to_read = self.log_file_path if self.log_file_path else self.file_path if self.file_path else None
-    #     if not file_to_read:
-    #         return 'wb97xd' if self.program.lower() == 'g16' else 'wb97x-d3bj'
-    #     
-    #     with open(file_to_read, 'r') as file:
-    #         for line in file:
-    #             line_content = ''
-    #             if self.program.lower() == 'orca':
-    #                 if '|  1> !' in line:
-    #                     line_content = line.split('! ', 1)[-1]
-    #             elif self.program.lower() == 'g16':
-    #                 if line.strip().startswith('#'):
-    #                     line_content = line
-    #             
-    #             for method in methods:
-    #                 if method.lower() in line_content.lower():
-    #                     return method
-    #
-    #     return 'wb97x-d3bj' if self.program.lower() == 'orca' else 'wb97xd'
+    def compare_structures(self, mol2):
+        """Compares bond lengths and angles between two molecules."""
+        if len(self.atoms) != len(mol2.atoms):
+            raise ValueError("Molecules have different number of atoms, comparison not possible.")
+
+        for atom_self, atom_other in zip(self.atoms, mol2.atoms):
+            if atom_self != atom_other:
+                raise ValueError("Order or atoms between molecules is not the same, make sure order of atoms is identical")
+        
+        bond_length_errors = []
+        bond_angle_errors = []
+
+        # Calculate bond length errors
+        for i in range(len(self.atoms)):
+            for j in range(i + 1, len(self.atoms)):
+                dist1 = Vector.atom_distance(self.coordinates[i], self.coordinates[j])
+                dist2 = Vector.atom_distance(mol2.coordinates[i], mol2.coordinates[j])
+                bond_length_errors.append(abs(dist1 - dist2))
+
+        # Calculate bond angle errors
+        for i in range(len(self.atoms)):
+            for j in range(len(self.atoms)):
+                for k in range(j + 1, len(self.atoms)):
+                    if i != j and i != k:
+                        angle1 = Vector.calculate_angle(self.coordinates[i], self.coordinates[j], self.coordinates[k])
+                        angle2 = Vector.calculate_angle(mol2.coordinates[i], mol2.coordinates[j], mol2.coordinates[k])
+                        bond_angle_errors.append(abs(angle1 - angle2))
+        
+        total_weights = len(bond_length_errors)
+        wmae_bond_lengths = sum(bond_length_errors) / total_weights if bond_length_errors else 0
+        maxe_bond_lengths = max(bond_length_errors) if bond_length_errors else 0
+
+        total_weights = len(bond_angle_errors)
+        wmae_bond_angles = sum(bond_angle_errors) / total_weights if bond_angle_errors else 0
+        maxe_bond_angles = max(bond_angle_errors) if bond_angle_errors else 0
+
+        return {
+            'WMAE_bond_length': wmae_bond_lengths,
+            'MaxE_bond_length': maxe_bond_lengths,
+            'WMAE_bond_angle': wmae_bond_angles,
+            'MaxE_bond_angle': maxe_bond_angles
+        }
+
 
     def determine_current_step(self):
         # Handle cases not dependent on file contents first

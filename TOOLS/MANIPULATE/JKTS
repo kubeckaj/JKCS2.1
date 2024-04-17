@@ -10,7 +10,6 @@ SLURM_TIME="240:00:00"
 SLURM_PARTITION="q24,q28,q36,q40,q48,q64"
 PYTHON_ARGS=()
 XYZ=0
-IRC=0
 PKL=0
 INFO=0
 RESTART=0
@@ -48,11 +47,8 @@ for arg in "$@"; do
     -smiles)
       XYZ=1
       ;;
-    -restart)
+    -restart|-rerun|-IRC)
       RESTART=1
-      ;;
-    -IRC)
-      IRC=1
       ;;
     *.pkl)
       PKL=1
@@ -114,7 +110,7 @@ if [[ "$XYZ" -gt 0 ]]; then
         cd ..
       fi
   done
-elif [ "$RESTART" -gt 0 ] || [ "$IRC" -gt 0 ]; then
+elif [ "$RESTART" -gt 0 ]; then
   submit_job $(basename "$PWD")
 else
   echo "Incorrect input argument"

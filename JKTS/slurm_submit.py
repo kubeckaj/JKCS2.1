@@ -371,7 +371,7 @@ def get_interval_seconds(molecule):
         else:
             heavy_count += 1
     
-    a = 5.90; b = -19.79; c = 182.33; d = -99.7
+    a = 5.90; b = -19.79; c = 190.33; d = -90.7
 
     if 'H2O' in molecule.name or 'OH' in molecule.name:
         return 20

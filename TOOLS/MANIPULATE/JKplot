@@ -1,0 +1,17 @@
+#!/bin/bash -norc
+source ~/.JKCSusersetup.txt
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../SCRIPTS/"
+INPUT="$@"
+echo "COMMAND: $(basename $0) $@" >> "${PWD}/output"
+
+# Default values
+PYTHON_ARGS=()
+
+for arg in "$@"; do
+  PYTHON_ARGS+=("$arg")
+done
+
+# program_PYTHON "$toolspath/plot.py" "${PYTHON_ARGS[@]}" | tee -a "${PWD}/output"
+program_PYTHON "$toolspath/plot.py" "${PYTHON_ARGS[@]}"
+

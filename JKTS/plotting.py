@@ -35,9 +35,9 @@ def plot_relative_energy(molecules_level1, molecules_level2):
 
     # Plotting
     plt.figure(figsize=(8, 6))
-    plt.scatter(relative_energies_level1, relative_energies_level2, color='blue', label='Data points')
+    plt.scatter(relative_energies_level1, relative_energies_level2, s=60, alpha=0.7, edgecolors="k")
     x_fit = np.linspace(0, max(relative_energies_level1), num=100)  # Ensuring smooth line
-    plt.plot(x_fit, fit_fn(x_fit), color='red', label=f'Linear fit')  # Linear fit line
+    plt.plot(x_fit, fit_fn(x_fit), color="k", lw=2.5, label=f'Linear fit')  # Linear fit line
 
     plt.xlabel(f"Relative {xlabel} (kcal/mol)")
     plt.ylabel(f"Relative {ylabel} (kcal/mol)")
@@ -50,7 +50,6 @@ def plot_relative_energy(molecules_level1, molecules_level2):
 
     plt.savefig(f"relative_plot_{xlabel}_{ylabel}.png", dpi=500)
     plt.show()
-
 
 
 def plot_rmsd(molecules, cache_file='.rmsd_cache.pkl'):
