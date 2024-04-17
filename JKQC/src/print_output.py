@@ -186,6 +186,8 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
     #Rg
     if i == "-rg":
       from numpy import tile,sum
+      import warnings
+      warnings.filterwarnings("ignore", category=RuntimeWarning)
       rg = []
       for ind in clusters_df.index:
         try:

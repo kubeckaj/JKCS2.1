@@ -53,6 +53,8 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
        for separated_input in separated_inputs:
          if isinstance(separated_input,list):
            if separated_input[0] == "rg":
+             import warnings
+             warnings.filterwarnings("ignore", category=RuntimeWarning)
              compare_list.append("rg")
            elif separated_input[0] == "el":
              compare_list.append("electronic_energy")
@@ -66,6 +68,8 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
          else:
            #compare_list.append(separated_input)
            if separated_input == "rg":
+             import warnings
+             warnings.filterwarnings("ignore", category=RuntimeWarning)
              compare_list.append("rg")
              compare_list_num.append(2)
            elif separated_input == "el":

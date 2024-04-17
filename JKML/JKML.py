@@ -48,9 +48,9 @@ def import_other_libraries2():
       import pytorch_lightning as pl
     if Qeval > 0 or Qopt > 0 or Qopt > 0:
       from ase.units import Ha, Bohr
-      print("Test", flush = True)
+      #print("Test", flush = True)
       from schnetpack.interfaces import SpkCalculator
-      print("Test", flush = True)
+      #print("Test", flush = True)
     import torch
     import schnetpack as spk
   else:
@@ -787,23 +787,23 @@ train_low_database = "none"
 monomers_high_database = "none"
 monomers_low_database = "none"
 if Qtrain == 1:
-  #train_high_database = pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])
-  train_high_database = pd.read_pickle(TRAIN_HIGH) 
+  train_high_database = pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])
+  #train_high_database = pd.read_pickle(TRAIN_HIGH) 
   if method == "delta":
-    #train_low_database = pd.read_pickle(TRAIN_LOW).sort_values([('info','file_basename')])
-    train_low_database = pd.read_pickle(TRAIN_LOW)
+    train_low_database = pd.read_pickle(TRAIN_LOW).sort_values([('info','file_basename')])
+    #train_low_database = pd.read_pickle(TRAIN_LOW)
 if Qeval == 1 or Qeval == 2 or Qopt > 0:
-  #test_high_database = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
-  test_high_database = pd.read_pickle(TEST_HIGH)
+  test_high_database = pd.read_pickle(TEST_HIGH).sort_values([('info','file_basename')])
+  #test_high_database = pd.read_pickle(TEST_HIGH)
   if method == "delta":
-    #test_low_database = pd.read_pickle(TEST_LOW).sort_values([('info','file_basename')])  
-    test_low_database = pd.read_pickle(TEST_LOW)
+    test_low_database = pd.read_pickle(TEST_LOW).sort_values([('info','file_basename')])  
+    #test_low_database = pd.read_pickle(TEST_LOW)
 if Qmonomers == 1:
-  #monomers_high_database = pd.read_pickle(MONOMERS_HIGH).sort_values([('info','file_basename')])
-  monomers_high_database = pd.read_pickle(MONOMERS_HIGH)
+  monomers_high_database = pd.read_pickle(MONOMERS_HIGH).sort_values([('info','file_basename')])
+  #monomers_high_database = pd.read_pickle(MONOMERS_HIGH)
   if method == "delta":
-    #monomers_low_database = pd.read_pickle(MONOMERS_LOW).sort_values([('info','file_basename')])
-    monomers_low_database = pd.read_pickle(MONOMERS_LOW)
+    monomers_low_database = pd.read_pickle(MONOMERS_LOW).sort_values([('info','file_basename')])
+    #monomers_low_database = pd.read_pickle(MONOMERS_LOW)
 
 #LIBRARIES FOR GIVEN METHOD AND REPRESENTATION
 import_other_libraries2()
@@ -855,7 +855,14 @@ def substract_monomers(the_clusters_df,the_monomers_df):
     n = 0
     for i in np.transpose([the_clusters_df["info"]["components"].values,the_clusters_df["info"]["component_ratio"].values]):
       nn = 0
-      for j in i[0]:
+      #print(i)
+      if type(i[0]) == type([]):
+        all_mons = i[0]
+        all_mons_ratios = i[1]
+      else:
+        all_mons = [i[0]]
+        all_mons_ratios = [i[1]]
+      for j in all_mons:
         test = 0
         #print(monomers_df["info"]["components"])
         for k in range(len(monomers_df)):
@@ -865,7 +872,7 @@ def substract_monomers(the_clusters_df,the_monomers_df):
             monomer_k_name = monomer_k_name[0]
           #print([j,monomer_k_name])
           if j == monomer_k_name:
-            the_ens_correction[n] += monomer_k[column_name_1][column_name_2]*i[1][nn]
+            the_ens_correction[n] += monomer_k[column_name_1][column_name_2]*all_mons_ratios[nn]
             test = 1
             break
         if test == 0:
@@ -1523,6 +1530,8 @@ for sampleeach_i in sampleeach_all:
       Qforces = 1
     elif Qprintforces == 1 and Qeval == 1 and Qifforces == 1:
       Qforces = 1
+    elif Qprintforces == 1 and Qeval == 2 and Qifforces == 1:
+      Qforces = 1 
     else:
       Qforces = 0
 
@@ -1671,7 +1680,7 @@ for sampleeach_i in sampleeach_all:
     #print("Ypredicted = {" + ",".join([str(i) for i in Y_predicted[0]])+"};")
     if Qeval == 2:
       print("Ytest = " + lb + ",".join([str(i) for i in ens]) + rb + ";", flush = True)
-      if Qforces == 1:
+      if Qforces == 1 and ("extra","forces") in clusters_df.columns:
         if Qprintforces == 0:
           print("Ftest = I will not print the forces becuase it would be too many numbers. (Use -printforces)", flush = True)
         else:
@@ -1711,8 +1720,9 @@ for sampleeach_i in sampleeach_all:
       print("", flush = True)
       print("Results:", flush = True)
       mae = [multiplier*np.mean(np.abs(Y_predicted[i] - Y_validation))  for i in range(len(sigmas))]
+      std = [multiplier*np.std(np.abs(Y_predicted[i] - Y_validation))  for i in range(len(sigmas))]
       print("Mean Absolute Error:", flush = True)
-      print("mae = " + ",".join([str(i) for i in mae])+units, flush = True)
+      print("mae = " + ",".join([str(i) for i in mae])+units+"(+- "+str(std[0])+" )", flush = True)
       ### Calculate root-mean-squared-error (RMSE):
       rmse = [multiplier*np.sqrt(np.mean(np.abs(Y_predicted[i] - Y_validation)**2))  for i in range(len(sigmas))]
       print("Root Mean Squared Error", flush = True)
@@ -1739,11 +1749,12 @@ for sampleeach_i in sampleeach_all:
         return np.array([item for row in matrix for item in row])
       if Qforces == 1:
         multiplier = 627.503
-        units = " [kcal/mol]"
+        units = " [kcal/mol/Angstrom]"
         print("", flush = True)
         print("Results for forces:", flush = True)
         mae = [multiplier*np.mean(np.abs(flatten(F_predicted[i]) - flatten(F_test))) for i in range(len(sigmas))]
-        print("MAE = " + ",".join([str(i) for i in mae])+units, flush = True)
+        std = [multiplier*np.std(np.abs(flatten(F_predicted[i]) - flatten(F_test))) for i in range(len(sigmas))]
+        print("MAE = " + ",".join([str(i) for i in mae])+units+"(+- "+str(std[0])+" )", flush = True)
         rmse = [multiplier*np.sqrt(np.mean(np.abs(flatten(F_predicted[i]) - flatten(F_test))**2))  for i in range(len(sigmas))]
         print("RMSE = " + ",".join([str(i) for i in rmse])+units, flush = True)
   
@@ -1756,6 +1767,14 @@ for sampleeach_i in sampleeach_all:
         clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]+ens_correction[i]
       else:
         clustersout_df.loc[clustersout_df.iloc[i].name,(column_name_1,column_name_2)] = Y_predicted[0][i]+form_ens2[i]+ens_correction[i]
+      #print([multiplier*np.abs(Y_predicted[i] - Y_validation)  for i in range(len(sigmas))])
+      #clustersout_df.loc
+      #loadedmatrix = loadtxt(addcolumn[i][1], usecols=(0, 1), unpack=True, dtype=dtype)
+      #loadeddictionary = {loadedmatrix[0][idx] : loadedmatrix[1][idx] for idx in range(len(loadedmatrix[1]))}
+      #tobeadded = clusters_df.loc[:,("info",'file_basename')].map(loadeddictionary)
+      #clusters_df.loc[tobeadded.index,("extra",addcolumn[i][0])] = tobeadded.values
+      if Qeval == 2:
+        clustersout_df.loc[clustersout_df.iloc[i].name,("extra","error")] = multiplier*np.abs(Y_predicted[0][i] - Y_validation[i])
       if Qforces == 1:
         clustersout_df = df_add_iter(clustersout_df, "extra", "forces", [clustersout_df.iloc[i].index], [F_predicted[i]])
     clustersout_df.to_pickle(outfile)
@@ -1966,6 +1985,7 @@ for sampleeach_i in sampleeach_all:
       from ase.io import read,write
       for i in range(len(clusters_df)):
         atoms = clusters_df["xyz"]["structure"].values[i].copy()
+        print(atoms)
         atoms.calc = spk_calc
         if Qopt == 1:
           dyn = BFGS(atoms,maxstep=opt_maxstep)

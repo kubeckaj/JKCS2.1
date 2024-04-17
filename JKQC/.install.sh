@@ -210,6 +210,8 @@ then
   $PIP install pytorch-lightning==2.0.6
   echo "======================"
   $PIP install tensorboard
+  echo "======================"
+  $PIP install tensorboardX
 fi
 
 echo "======================"
