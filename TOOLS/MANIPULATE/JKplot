@@ -13,5 +13,10 @@ for arg in "$@"; do
 done
 
 # program_PYTHON "$toolspath/plot.py" "${PYTHON_ARGS[@]}" | tee -a "${PWD}/output"
+cp $toolspath/plotDEF.py plot.py 
+if [ -e "$1" ]
+then
+  sed -i "s/YOUR\-DATA\-FILE/$1/" plot.py
+fi
 program_PYTHON "$toolspath/plot.py" "${PYTHON_ARGS[@]}"
 

@@ -52,7 +52,7 @@ def print_help():
   print(" -v,-as [value]       anharmonicity scaling factor CITE: Grimme")
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
   print("\nFILTERING:")
-  print(" -sort <str>          sort by: g,gout,el,elout,<full name in database under log>")
+  print(" -sort <str>          sort by: b,g,gout,el,elout,<full name in database under log>")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip, or dup=duplicates")
   print(" -sample <int> <str>  selects <INT> distinct based on, e.g.: rg,el or rg,g or rg,el,dip")
@@ -79,7 +79,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
-  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -105,6 +105,7 @@ def arguments(argument_list = []):
   Qiamifo = 0 #This is calling renaming only for Ivo Neefjes
   Qrebasename = 0 #change names if they are the same 
   Qunderscore = 0 #underscore to dash
+  Qatomize = 0
   Qchangeall = 0 #do I want to some column to all
   Qcomplement = 0 #subtract these from the list base on basename of the new pickle file
   QcolumnDO = 0
@@ -150,6 +151,7 @@ def arguments(argument_list = []):
   Qthreshold = 0 #cut/pass something
   Qcut = [] #what will be cutted
   Qshuffle = 0 #shuffle rows
+  seed = 42
   
   #global Qglob,Qbavg,Qrh,QPsolvent,Qformation,Qconc,conc,CNTfactor,Qsolvation
   Qglob = 0 # 1=values for lowest -g, 2=values for lowest -gout
@@ -297,6 +299,10 @@ def arguments(argument_list = []):
       Qmodify = 1
       Qiamifo = 1
       continue
+    if i == "-atomize":
+      Qmodify = 1
+      Qatomize = 1
+      continue
     #FORCES
     if i == "-forces":
       Qforces = 1
@@ -352,10 +358,25 @@ def arguments(argument_list = []):
         continue
       else:
         print("File "+i+" does not exist. Sorry [EXITING]")
-        exit()       
+        exit()      
+    #SEED
+    if i == "-seed":
+      last = "-seed"
+      continue
+    if last == "-seed":
+      last = ""
+      seed = int(i)
+      continue 
     #NONAME
-    if i == "-noname":
+    if i == "-noname" or i == "-fullname":
       Qclustername = 0
+      Qiamifo = 1
+      Qmodify = 1
+      continue
+    #PRESHUFFLE
+    if i == "-preshuffle":
+      Qpresplit = -1
+      Qmodify = 1
       continue
     #PRESPLIT
     if i == "-presplit":
@@ -364,6 +385,7 @@ def arguments(argument_list = []):
     if last == "-presplit":
       last = ""
       Qpresplit = int(i)
+      Qmodify = 1
       continue
     # DROP
     if i == "-drop":

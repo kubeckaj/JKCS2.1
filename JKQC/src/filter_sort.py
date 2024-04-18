@@ -19,6 +19,8 @@ def filter_sort(clusters_df,Qsort):
       exit()
   elif str(Qsort) == "no":
     clusters_df = clusters_df
+  elif Qsort == "b":
+    clusters_df = clusters_df.sort_values([('info','file_basename')])
   else:
     clusters_df = clusters_df.sort_values([("log",Qsort)])
   return clusters_df

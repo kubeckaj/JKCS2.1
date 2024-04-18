@@ -51,7 +51,7 @@ if len(addcolumn) > 0:
 ## MODIFY
 if Qmodify > 0:
   from data_modification import data_modification
-  clusters_df = data_modification(clusters_df,Qunderscore,Qrename,Qclustername,QrenameWHAT,Qiamifo,Qrebasename,Qdrop,Qout2log,Qpresplit,Qindex)
+  clusters_df = data_modification(clusters_df,Qunderscore,Qrename,Qclustername,QrenameWHAT,Qiamifo,Qrebasename,Qdrop,Qout2log,Qpresplit,Qindex,seed,Qatomize)
   if Qout == 2:
     print("DONE] Database modified: "+str(time() - start));
 
@@ -78,7 +78,7 @@ if Qqha == 1:
 
 ## FILTERING ##
 from filter import filter
-clusters_df = filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted,bonddistancethreshold, Qout)
+clusters_df = filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted,bonddistancethreshold, Qout, seed)
 
 ## SAVE OUTPUT.pkl ##
 if Qoutpkl > 0:
@@ -112,7 +112,7 @@ if not len(output) == 0:
     if isnan(Qt):
       Qt = 298.15
     from take_bavg import take_bavg
-    output = take_bavg(output, clusters_df, Qbavg, Qt, QUenergy, Pout)
+    output = take_bavg(output, clusters_df, Qbavg, Qt, QUenergy, Pout, Qclustername)
 
   #PRINTING (if required)
   if not(Qout < 1 and (Qformation == 1 or Qsolvation != "0")):

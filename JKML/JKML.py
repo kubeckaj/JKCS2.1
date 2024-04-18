@@ -416,7 +416,7 @@ for i in sys.argv[1:]:
     Qopt = 2
     last = "-opt"
     continue
-  if i == "-monomers" or i == "-mon":
+  if i == "-monomers" or i == "-mon" or i == "-atoms":
     last = "-monomers"
     continue
   if i == "-trained":
@@ -1093,9 +1093,9 @@ for sampleeach_i in sampleeach_all:
       ### REPRESENTATION CALCULATION ###
       if Qrepresentation == "fchl":
         repres_dataframe = pd.DataFrame(index = strs.index, columns = ["xyz"])
-        max_atoms = max([len(strs[i].get_atomic_numbers()) for i in range(len(strs))])
+        max_atoms = max([len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))])
         for i in range(len(repres_dataframe)):
-          repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
+          repres_dataframe["xyz"].iloc[i] = generate_representation(strs.iloc[i].get_positions(), strs.iloc[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
         representations = np.array([mol for mol in repres_dataframe["xyz"]])
       elif Qrepresentation == "mbdf":
         X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
@@ -1352,6 +1352,14 @@ for sampleeach_i in sampleeach_all:
             global start_time
             start_time = time.time()    
             print("Training is starting", flush = True)
+
+        def on_fit_start(self, trainer, pl_module):
+            super().on_fit_start(trainer, pl_module)
+            #print(trainer.callbacks[3])
+            if trainer.callbacks[3].best_model_score is not None:
+              #trainer.callbacks[3].best_model_score  = None #torch.tensor(float("inf"))
+               trainer.callbacks[3].best_k_models = {}
+               trainer.callbacks[3].best_model_score = None
             
         def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, unused=0):
             super().on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)

@@ -32,7 +32,7 @@ def myif(cond,opt1,opt2,opt3,Pout):
   else:
     return opt1
 
-def take_bavg(output, clusters_df, Qbavg, Qt, QUenergy, Pout):
+def take_bavg(output, clusters_df, Qbavg, Qt, QUenergy, Pout, Qclustername):
   from numpy import unique,min,exp,log,sum,array
   from pandas import isna
   missing = float("nan")

@@ -54,11 +54,65 @@ def replace_first_occurrence(string, old_char, new_char):
    string = string[:index] + new_char + string[index+1:]  # Replace the character
   return string
 
-def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWHAT, Qiamifo, Qrebasename, Qdrop, Qout2log,Qpresplit,Qindex):
+def rearrange_formula(formula):
+    import re
+    # Define a regular expression pattern to capture elements and their counts
+    pattern = r'([A-Z][a-z]?)(\d*)'
+    
+    # Use re.findall to extract element symbols and their counts from the formula
+    elements = re.findall(pattern, formula)
+    
+    # Initialize lists to store rearranged parts of the formula
+    counts = []
+    symbols = []
+    
+    # Iterate through the extracted elements
+    for element, count in elements:
+        if count == '':  # If no count is specified, set count to 1
+            count = '1'
+        counts.append(count)
+        symbols.append(element)
+    
+    # Rearrange the elements and counts to the desired format 'count1symbol1count2symbol2...'
+    rearranged_formula = ''.join(counts[i] + symbols[i] for i in range(len(elements)))
+    
+    return rearranged_formula,counts,symbols
+
+def fitPlaneSVD(XYZ, res):
+    import numpy as np
+    XYZ = np.array([np.array(i) for i in XYZ])
+    res = np.array(res) 
+    rows, cols = XYZ.shape
+    A = np.hstack([XYZ, 0*np.ones((rows, 1))])
+    A_transpose_A_inv = np.linalg.pinv(np.dot(A.T, A))
+    refined_coeffs = np.dot(A_transpose_A_inv, np.dot(A.T, res))
+    #print(refined_coeffs)
+    refined_plane_coeffs = refined_coeffs[:-1]
+    
+    return refined_plane_coeffs
+
+def mergeDictionary(dict_1, dict_2):
+  if len(dict_1) == 0:
+    return dict_2
+  dict_3 = {**dict_1, **dict_2}
+  for key, value in dict_3.items():
+    if key in dict_1 and key in dict_2:
+      dict_3[key] = value + dict_1[key]
+    elif key in dict_1:
+      dict_3[key] = [float("nan")] + value
+    else:
+      ml = max([len(x) for x in dict_1.values()])
+      dict_3[key] = value + ml*[float("nan")]
+  return dict_3
+
+def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWHAT, Qiamifo, Qrebasename, Qdrop, Qout2log,Qpresplit,Qindex, seed,Qatomize):
 
   #SPLIT THE DATABASE AT START  
-  if Qpresplit > 0:
-    clusters_df = clusters_df.sample(n=Qpresplit, random_state=42)
+  if Qpresplit != 0:
+    if Qpresplit > 0:
+      clusters_df = clusters_df.sample(n=Qpresplit, random_state=seed)
+    else:
+      clusters_df = clusters_df.sample(n=len(clusters_df), random_state=seed)
   
   #SELECT INDEX
   if Qindex != "-1":
@@ -118,6 +172,61 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
         while values[i]+"-v"+str(version) in values:
           version += 1
         clusters_df.at[i,("info","file_basename")] = values[i]+"-v"+str(version)
+
+  if Qatomize == 1:
+    from numpy import array
+    overall_formulas = []
+    overall_counts = []
+    overall_symbols = []
+    overall_properties = []
+    #clusters_df.loc[:,("info", "component_ratio")].astype(object)
+    #clusters_df.loc[:,("info", "components")].astype(object)
+    #clusters_df.loc[:,("info", "cluster_type")].astype(object)
+    from pandas import option_context
+    with option_context('mode.chained_assignment', None):
+      clusters_df.loc[:,("info", "component_ratio")] = clusters_df.loc[:,("info", "component_ratio")].astype(object)
+      clusters_df.loc[:,("info", "components")] = clusters_df.loc[:,("info", "components")].astype(object)
+      clusters_df.loc[:,("info", "cluster_type")] = clusters_df.loc[:,("info", "cluster_type")].astype(object)
+    for cluster_id in clusters_df.index:
+      structure = clusters_df.loc[cluster_id,('xyz','structure')]
+      output_formula,output_counts,output_symbols = rearrange_formula(structure.get_chemical_formula())
+      overall_formulas.append(output_formula)
+      overall_counts.append(output_counts)
+      overall_symbols.append(output_symbols)
+      overall_properties.append(clusters_df.loc[cluster_id,('log','electronic_energy')])
+      clusters_df.at[cluster_id,("info", "component_ratio")] = [int(i) for i in output_counts]
+      clusters_df.at[cluster_id,("info", "components")] = output_symbols
+      clusters_df.at[cluster_id,("info", "cluster_type")] = output_formula
+    overall_counts_new = []
+    overall_symbols_new = list(set([item for sublist in output_symbols for item in sublist]))
+    for i in range(len(overall_counts)):
+      toappend = []
+      for j in range(len(overall_symbols_new)):
+        if overall_symbols_new[j] in overall_symbols[i]:
+          ind = overall_symbols[i].index(overall_symbols_new[j])
+          toappend.append(int(overall_counts[i][ind]))
+        else:
+          toappend.append(int(0))
+      overall_counts_new.append(toappend)
+    fitted = fitPlaneSVD(overall_counts_new,overall_properties)
+    mons_dic = {}
+    from numpy import array
+    from ase import Atoms
+    for i in range(len(overall_symbols_new)):
+      columns = ["folder_path","file_basename","cluster_type","components","component_ratio"]
+      folder_path = float("nan")
+      file_basename = "1"+overall_symbols_new[i]+"-artificial"
+      cluster_type = "1"+overall_symbols_new[i]
+      components = [overall_symbols_new[i]]
+      component_ratio = [int(1)]
+      all_locals = locals()
+      dic = {("info",column):[all_locals.get(column)] for column in columns}
+      dic.update({("log","electronic_energy"):[fitted[i]]})
+      dic.update({("xyz","structure"):[Atoms(overall_symbols_new[i], positions = [[0,0,0]])]})
+      mons_dic = mergeDictionary(mons_dic,dic)
+    from pandas import DataFrame
+    mons_df = DataFrame(mons_dic,index=range(len(overall_symbols_new)))
+    mons_df.to_pickle("atoms.pkl")
 
   if Qdrop != "0":
     if Qdrop in clusters_df:

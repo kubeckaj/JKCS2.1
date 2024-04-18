@@ -1,4 +1,4 @@
-def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted, bonddistancethreshold, Qout):
+def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted, bonddistancethreshold, Qout, seed):
 
   #CHECK WHETHER CLUSTERNAME MAKE SENSE
   if Qclustername == 1:
@@ -6,7 +6,7 @@ def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthresho
       from pandas import isna
       if isna(clusters_df.loc[:,("info","cluster_type")].values).any():
         if Qout >= 1:
-          print("Cluter type with nan present (weird file names) -> Qclustername = 0")
+          print("Cluter type with nan present (weird file names, use -noname) -> Qclustername = 0")
         Qclustername = 0
     else:  
       Qclustername = 0
@@ -60,6 +60,6 @@ def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthresho
 
   ### SHUFFLE
   if Qshuffle == 1:
-    clusters_df = clusters_df.sample(frac=1)
+    clusters_df = clusters_df.sample(frac=1, random_state=seed)
   
   return clusters_df

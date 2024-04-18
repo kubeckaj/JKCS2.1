@@ -199,11 +199,11 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       continue
     #Radius
     if i == "-radius" or i == "-radius0.5":
-      from numpy import sqrt,linalg,asarray,dot,prod
+      from numpy import sqrt,linalg,asarray,dot,prod,max
       radius = []
       for aseCL in clusters_df["xyz"]["structure"]:
         try:
-          dist = lambda p1, p2: sqrt(sum((p1-p2)**2))
+          dist = lambda p1, p2: sqrt(((p1-p2)**2).sum())
           centered = aseCL.positions-aseCL.positions.mean(axis = 0)
           ratios = sqrt(linalg.eigvalsh(dot(centered.transpose(),centered)/len(centered)))
           maxdist = max(asarray([[dist(p1, p2) for p2 in aseCL.positions] for p1 in aseCL.positions]))
@@ -308,7 +308,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       masses = []  
       for ind in clusters_df.index:
         try:
-          masses.append(str(sum(clusters_df.loc[ind,("xyz","structure")].get_masses())))
+          masses.append(str((clusters_df.loc[ind,("xyz","structure")].get_masses()).sum()))
         except:
           masses.append(missing)
       output.append(masses)
