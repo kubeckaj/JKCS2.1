@@ -21,7 +21,13 @@ def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthresho
     else:
       Qsort = "el"
   if ( str(Qselect) != "0" or ( str(Quniq) != "0" and str(Quniq) != "dup" )) and str(Qsort) == "0":
-    Qsort = "g"
+    if ("log","gibbs_free_energy") in clusters_df.columns:
+      if ("out","electronic_energy") in clusters_df.columns:
+        Qsort = "gout"
+      else:
+        Qsort = "g"
+    else:
+      Qsort = "el"
 
   #CUTOFF FILTERING
   if Qthreshold != 0:
