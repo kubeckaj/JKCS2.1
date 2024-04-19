@@ -1,0 +1,22 @@
+inp=$1
+A=`head -n 1 $inp`
+A2=`echo $A+2 | bc`
+head -n 1 $inp > .help
+echo "centered" >> .help
+maxX=`head -n $A2 $inp | tail -n $A | awk '{print $2}' | sort -n | head -n 1`
+minX=`head -n $A2 $inp | tail -n $A | awk '{print $2}' | sort -n | tail -n 1`
+maxY=`head -n $A2 $inp | tail -n $A | awk '{print $3}' | sort -n | head -n 1`
+minY=`head -n $A2 $inp | tail -n $A | awk '{print $3}' | sort -n | tail -n 1`
+maxZ=`head -n $A2 $inp | tail -n $A | awk '{print $4}' | sort -n | head -n 1`
+minZ=`head -n $A2 $inp | tail -n $A | awk '{print $4}' | sort -n | tail -n 1`
+#echo $maxY $minY
+difX=`echo "$maxX-($maxX-1.0*$minX)/2" | bc -l`
+difY=`echo "$maxY-($maxY-1.0*$minY)/2" | bc -l`
+difZ=`echo "$maxZ-($maxZ-1.0*$minZ)/2" | bc -l`
+#echo $difX $difY $difZ
+for i in `seq 3 $A2`
+do
+  head -n $i $inp | tail -n 1 | awk -v vX=$difX -v vY=$difY -v vZ=$difZ '{print $1 " " $2-vX " " $3-vY " " $4-vZ}' >> .help 
+done
+cat .help | column -t > $inp
+rm .help
