@@ -172,6 +172,7 @@ Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 Qremoveexploded=0 #Do I want to get rid of exploded. only with JKQC
 Qcomponents="" #If I want to overwrite components for ABCXTB calculations
+Qgeo=0         #JKCS2 suited for Georg
 
 last=""
 # loop over all arguments
@@ -247,6 +248,12 @@ do
     Qjpt=$iter
     continue
   fi
+  #geo 
+  if [ "$iter" == "-geo" ]
+  then
+    Qgeo=1
+    continue
+  fi 
   #Qarraymax
   if [ "$iter" == "-arraymax" ]
   then
@@ -492,18 +499,46 @@ max_geom_iters  0
       if [ -z "$Qcomponents" ]
       then
         echo "components" >> $F2
-        for var in `seq 1 $Nfiles`
-        do
-          num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
-          path=`echo $files | awk -v var0=$var '{print $var0}'`
-          if [ "$num" != "0" ]
-          then
-            echo "   $path $num" >> $F2
-            echo "   random -$BOX -$BOX -$BOX $BOX $BOX $BOX" >> $F2
-            echo "   * *" >> $F2
-            echo "   ****" >> $F2
-          fi
-        done
+        if [ $Qgeo -eq 0 ]
+        then
+          for var in `seq 1 $Nfiles`
+          do
+            num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
+            path=`echo $files | awk -v var0=$var '{print $var0}'`
+            if [ "$num" != "0" ]
+            then
+              echo "   $path $num" >> $F2
+              echo "   random -$BOX -$BOX -$BOX $BOX $BOX $BOX" >> $F2
+              echo "   * *" >> $F2
+              echo "   ****" >> $F2
+            fi
+          done
+        else
+          for var in `seq 1 $Nfiles`
+          do
+            num=`echo $i | sed -e 's/_/ /g' | awk -v var0=$var '{print $var0}'`
+            path=`echo $files | awk -v var0=$var '{print $var0}'`
+            thisfilename=`echo ${path##*/}`
+            if [ "$thisfilename" == "slab.xyz" ]
+            then
+              if [ "$num" != "0" ]
+              then
+                echo "   $path $num" >> $F2
+                echo "   fix 0 0 -2.8 0 0 0" >> $F2
+                echo "   * *" >> $F2
+                echo "   ****" >> $F2
+              fi
+            else
+              if [ "$num" != "0" ]
+              then
+                echo "   $path $num" >> $F2
+                echo "   random -$BOX -$BOX 0 $BOX $BOX $BOX" >> $F2
+                echo "   * *" >> $F2
+                echo "   ****" >> $F2
+              fi
+            fi
+          done
+        fi
         echo "end" >> $F2
       else
         cat $Qcomponents >> $F2
