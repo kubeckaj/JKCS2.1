@@ -417,7 +417,8 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
               Qt = float(clusters_df.loc[pop,("log","temperature")])
             except:
               Qt = 298.15
-          me=clusters_df.loc[pop,("log","gibbs_free_energy")] #*627.503*1000/Qt/R
+          iii = clusters_df.iloc[pop]
+          me=clusters_df.iloc[pop].loc[("log","gibbs_free_energy")] #*627.503*1000/Qt/R
           partition_function = sum([exp(iii) for iii in -(allsameclusters.loc[:,("log","gibbs_free_energy")]-me)*627.503*1000/Qt/R])
           ratio=exp(-0*627.503*1000/Qt/R)/partition_function
           population.append(f"{ratio:8f}")
@@ -442,7 +443,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
               Qt = float(clusters_df.loc[pop,("log","temperature")])
             except:
               Qt = 298.15
-          me=clusters_df.loc[pop,("log","zero_point_energy")] #*627.503*1000/Qt/R
+          me=clusters_df.iloc[pop].loc[("log","zero_point_energy")] #*627.503*1000/Qt/R
           everything=clusters_df.loc[:,("log","zero_point_energy")].values #*627.503*1000/Qt/R
           minimum=min(everything)
           partition_function = sum([exp(iii) for iii in -(everything-minimum)*627.503*1000/Qt/R])
