@@ -168,12 +168,23 @@ function JKloadsupercomputer {
   SCtime=`echo $supercomputerline | awk '{print $5}'`
   SCpar=`echo $supercomputerline | awk '{print $6}'`
   SCmem=`echo $supercomputerline | awk '{print $7}'`
+  SCextraADD=""
   # checking script arguments for change
   JKecho 2 "Loading parameters given by user"
   arguments_help=()
   last=''
   for i in "${!arguments[@]}"
   do
+    # -slurm
+    if [ "${arguments[i]}"  == "-slurm" ] || [ "${arguments[i]}"  == "-SLURM" ]; then
+      last="-slurm"
+      continue
+    fi
+    if [ "$last" == "-slurm" ]; then
+      SCextraADD=`echo " ${arguments[i]} "`
+      last=''
+      continue
+    fi
     # -maxtasks
     if [ "${arguments[i]}"  == "-tasks" ] || [ "${arguments[i]}"  == "-maxtasks" ]; then
       last="-maxtasks"
@@ -254,8 +265,8 @@ function JKloadsupercomputer {
     #SC_command="sh $toolspath/SCRIPTS/JKsend "
     SC_command="sh JKsend "
   else
-    #SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem $SCcpu`" $toolspath/SCRIPTS/JKsend "
-    SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem $SCcpu`" JKsend "
+    #SC_command=`program_SBATCH "$currentdir" $SCextraADD $SCpar $SCtime $SCnodes $SCmem $SCcpu`" $toolspath/SCRIPTS/JKsend "
+    SC_command=`program_SBATCH "$currentdir" $SCpar $SCtime $SCnodes $SCmem $SCcpu`" $SCextraADD JKsend "
     #SC_command="sbatch -J "$currentdir" -p $SCpar --time $SCtime -N $SCnodes --mem-per-cpu $SCmem -n $SCcpu $SBATCHuseradd $toolspath/SCRIPTS/JKsend "
   fi
 }
