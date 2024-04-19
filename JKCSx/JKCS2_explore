@@ -53,7 +53,7 @@ function help {
     -box \"X\" .......... box size [def=7+M]
     -pickle ............... pickles in the end to save space
     -exploded ............. removes exploded (>50 Angstrom) and pickles in the end
-    OTHERS: -components <file>
+    OTHERS: -components <file>, -geo
  
   ${cfMAGENTA}SYMBOLS:${cfDEF}
     M .... number of molecules
