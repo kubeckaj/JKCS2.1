@@ -79,7 +79,7 @@ EXAMPLE:
     PATH_ABC="/home/kubeckaj/Applications/ABCluster-3.3pre-Linux/"
     PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.3pre-Linux/"
     MODULE_ABC="module load gcc"
-    PATH_XTB="/home/kubeckaj/Applications/XTB6.4/"
+    PATH_XTB="/home/kubeckaj/Applications/XTB6.7.0/"
     MODULE_XTB=""
     PATH_CREST="/home/kubeckaj/Applications/crest/"
     PATH_G16="/comm/groupstacks/gaussian/gaussian/gaussian16/Rev.B.01/"
