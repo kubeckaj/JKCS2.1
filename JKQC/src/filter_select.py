@@ -13,7 +13,7 @@ def filter_select(clusters_df,Qselect,Qclustername,Qout):
      if Qclustername != 0:
        selected_df = clusters_df.loc[clusters_df.loc[:,("info","cluster_type")] == i][0:Qselect]
      else:
-       selected_df = clusters_df.loc[0:Qselect]
+       selected_df = clusters_df.iloc[0:Qselect]
      if len(newclusters_df) == 0:
        newclusters_df = selected_df
      else:
