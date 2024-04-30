@@ -171,7 +171,7 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
           ### ORCA ######
           ###############
           if file_test == file_i_ORCA:
-            testORCA = mm.find(rb'O   R   C   A')+mm.find(rb'ORCA')+2
+            testORCA = mm.find(rb'O   R   C   A')+mm.find(rb'ORCA')+mm.find(rb'SHARK')+3
             if testORCA > 0:
               if Q_ORCA_used == 0:
                 from read_orca import read_orca,read_orca_init
