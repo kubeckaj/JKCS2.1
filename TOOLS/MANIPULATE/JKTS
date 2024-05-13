@@ -7,7 +7,7 @@ echo "COMMAND: $(basename $0) $@" >> "${PWD}/output"
 
 # Default values
 SLURM_TIME="240:00:00"
-SLURM_PARTITION="q24,q28,q36,q40,q48,q64"
+SLURM_PARTITION="q64" # removed other partitions
 PYTHON_ARGS=()
 XYZ=0
 PKL=0
@@ -17,6 +17,9 @@ PAR_FLAG=0
 COLLECT=0
 time_arg="" 
 PICKLE=0
+SKIP_REACTANTS=0
+SKIP_PRODUCTS=0
+SKIP_TS=0
 
 for arg in "$@"; do
   PYTHON_ARGS+=("$arg")
@@ -39,6 +42,15 @@ for arg in "$@"; do
     -test|-info|-pickle|-init|-plot|-movie)
       program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}"
       exit 0
+      ;;
+    -reactants)
+      SKIP_REACTANTS=1
+      ;;
+    -products)
+      SKIP_PRODUCTS=1
+      ;;
+    -TS)
+      SKIP_TS=1
       ;;
     *.xyz)
       input_file="$arg"
@@ -104,7 +116,7 @@ if [[ "$XYZ" -gt 0 ]]; then
   program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -init
   for dir in */; do
       dir_name=${dir%/}
-      if [[ $dir_name =~ _H[0-9]+$ ]] || [[ $dir_name == "reactants" ]] || [[ $dir_name == "products" ]]; then
+      if { [[ $dir_name =~ _H[0-9]+$ ]] && [[ "$SKIP_TS" -eq 0 ]]; } || { [[ $dir_name == "reactants" ]] && [[ "$SKIP_REACTANTS" -eq 0 ]]; } || { [[ $dir_name == "products" ]] && [[ "$SKIP_PRODUCTS" -eq 0 ]]; }; then
         cd $dir_name
         submit_job "$dir_name"
         cd ..

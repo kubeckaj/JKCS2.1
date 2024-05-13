@@ -20,7 +20,12 @@ def submit_array_job(molecules, args, nnodes=1):
         interval = min(get_interval_seconds(molecules[0]), 3600/args.attempts)
         slurm_time = '1:00:00'
     else:
-        interval = get_interval_seconds(molecules[0])
+        if 'aug' in args.basis_set:
+            interval = 8640
+        else:
+            interval = get_interval_seconds(molecules[0])
+            if args.F12:
+                interval *= 5
         total_seconds = interval * (args.attempts + 3)
         slurm_time = seconds_to_hours(total_seconds)
     
@@ -148,7 +153,12 @@ def submit_job(molecule, args, nnodes=1):
         interval = min(get_interval_seconds(molecule), 3600/args.attempts)
         slurm_time = '1:00:00'
     else:
-        interval = get_interval_seconds(molecule)
+        if 'aug' in args.basis_set:
+            interval = 8640
+        else:
+            interval = get_interval_seconds(molecule)
+            if args.F12:
+                interval *= 5
         total_seconds = interval * (args.attempts + 3)
         slurm_time = seconds_to_hours(total_seconds)
 
@@ -378,7 +388,7 @@ def get_interval_seconds(molecule):
     elif 'conf' in job_type:
         interval = (a*heavy_count**3) + (b*heavy_count**2) + (c*heavy_count) + d
     elif job_type == 'crest_sampling':
-        a = 27; b = 10
+        a = 27; b = 15
         interval = (a*heavy_count) + b
     elif 'DLPNO' in job_type:
         factor = 0.66

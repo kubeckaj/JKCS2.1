@@ -72,8 +72,8 @@ class Molecule(Vector):
         self.directory = directory
         self.file_path = file_path
         self.log_file_path = log_file_path
-        self.reactant = True if 'reactant' in self.name.split("_") or 'OH' in self.name else reactant
-        self.product = True if 'product' in self.name.split("_") or 'H2O' in self.name else product
+        self.reactant = True if 'reactant' in self.name.split("_") else reactant
+        self.product = True if 'product' in self.name.split("_") else product
         self.job_id = ""
         self.atoms = atoms if atoms is not None else []
         self.coordinates = coordinates if coordinates is not None else []
@@ -122,14 +122,14 @@ class Molecule(Vector):
                 self.program = 'g16' if self.file_path.split(".")[-1] == 'com' else 'orca'
                 self.atoms, self.coordinates = self.inp2xyz()
 
-            if self.reactant or 'reactant' in self.name or 'OH' in self.name:
+            if self.reactant or 'reactant' in self.name or self.name in ('OH', 'OH_DLPNO'):
                 self.reactant = True
                 if 'OH' in self.name:
                     self.mult = 2
                 else:
                     self.mult = 1
                 
-            elif self.product or 'product' in self.name or 'H2O' in self.name:
+            elif self.product or 'product' in self.name or self.name in ('H2O', 'H2O_DLPNO'):
                 self.product = True
                 if 'H2O' in self.name:
                     self.mult = 1
@@ -237,32 +237,41 @@ class Molecule(Vector):
             pass
 
     def move_converged(self):
-        if not os.path.exists(os.path.join(self.directory, "log_files")):
-            os.makedirs(os.path.join(self.directory, "log_files"), exist_ok=True)
-        destination = os.path.join(self.directory, "log_files", f"{self.name}{self.output}")
-        if os.path.exists(destination):
-            os.remove(destination)
-        shutil.move(os.path.join(self.directory, f"{self.name}{self.output}"), destination)
-        self.log_file_path = destination
+        try:
+            if not os.path.exists(os.path.join(self.directory, "log_files")):
+                os.makedirs(os.path.join(self.directory, "log_files"), exist_ok=True)
+            destination = os.path.join(self.directory, "log_files", f"{self.name}{self.output}")
+            if os.path.exists(destination):
+                os.remove(destination)
+            shutil.move(os.path.join(self.directory, f"{self.name}{self.output}"), destination)
+            self.log_file_path = destination
+        except Exception:
+            pass
 
     def move_inputfile(self):
-        input_files_dir = os.path.join(self.directory, "input_files")
-        if not os.path.exists(input_files_dir):
-            os.makedirs(input_files_dir, exist_ok=True)
-        source = os.path.join(self.directory, f"{self.name}{self.input}")
-        destination = os.path.join(input_files_dir, f"{self.name}{self.input}")
-        if os.path.exists(destination):
-            os.remove(destination)
-        if os.path.exists(source):
-            shutil.move(source, destination)
+        try:
+            input_files_dir = os.path.join(self.directory, "input_files")
+            if not os.path.exists(input_files_dir):
+                os.makedirs(input_files_dir, exist_ok=True)
+            source = os.path.join(self.directory, f"{self.name}{self.input}")
+            destination = os.path.join(input_files_dir, f"{self.name}{self.input}")
+            if os.path.exists(destination):
+                os.remove(destination)
+            if os.path.exists(source):
+                shutil.move(source, destination)
+        except Exception:
+            pass
 
     def move_failed(self):
-        if not os.path.exists(os.path.join(self.directory, "failed_logs")):
-            os.makedirs(os.path.join(self.directory, "failed_logs"), exist_ok=True)
-        destination = os.path.join(self.directory, "failed_logs", f"{self.name}_{self.error_termination_count}{self.output}")
-        if os.path.exists(destination):
-            os.remove(destination)
-        shutil.move(os.path.join(self.directory, f"{self.name}{self.output}"), destination)
+        try:
+            if not os.path.exists(os.path.join(self.directory, "failed_logs")):
+                os.makedirs(os.path.join(self.directory, "failed_logs"), exist_ok=True)
+            destination = os.path.join(self.directory, "failed_logs", f"{self.name}_{self.error_termination_count}{self.output}")
+            if os.path.exists(destination):
+                os.remove(destination)
+            shutil.move(os.path.join(self.directory, f"{self.name}{self.output}"), destination)
+        except Exception:
+            pass
             
     def write_xyz_file(self, output_file_path):
         with open(output_file_path, 'w') as file:
@@ -398,10 +407,12 @@ class Molecule(Vector):
                 zero_point_correction = re.findall(r'Zero-point correction=\s+([-.\d]+)', log_content)
                 free_energy = re.findall(r'Sum of electronic and thermal Free Energies=\s+([-.\d]+)', log_content)
                 dipole_moment = re.findall(r"Tot=\s+([-\d.]+)", log_content)
+                partition_function = re.findall(r"Total V=0\s+([-\d.]+D[+-]\d+)", log_content)
                 if zero_point_correction:
                     self.zero_point = float(zero_point_correction[-1])
                     self.free_energy = float(free_energy[-1])
                     self.dipole_moment = float(dipole_moment[-1])
+                    self.Q = float(partition_function[-1].replace('D', 'E'))
                 electronic_energy = re.findall(r'(SCF Done:  E\(\S+\) =)\s+([-.\d]+)', log_content)
                 if electronic_energy:
                     self.electronic_energy = float(electronic_energy[-1][-1])
@@ -424,12 +435,11 @@ class Molecule(Vector):
                             self.mult = int(mult.group(1))
                         else: self.mult = 2
 
-                        self.partition_function()
+                        # self.partition_function()
                     elif 'TS' in self.name:
                         if logger:
                             logger.log(f"No frequencies found in {self.name}")
 
-                # partition_function = re.search() # implement reading Q from log file
 
             elif program.lower() == 'orca' or self.current_step == 'DLPNO' or DLPNO:
                 zero_point_correction = re.findall(r"Zero point energy\s+...\s+([-+]?\d*\.\d+|\d+)", log_content)
@@ -466,7 +476,6 @@ class Molecule(Vector):
 
                         self.partition_function()
                 
-                # partition_function = re.search() # implement reading Q from log file
 
 
     def partition_function(self,  T=298.15):
@@ -611,11 +620,10 @@ class Molecule(Vector):
                         aldehyde_O = group['O']
                         aldehyde_C = group['C']
                         # Adjust settings specifically for aldehyde H
-                        # distance_CH = 1.19481
-                        distance_CH = 1.41
-                        distance_OH = 1.40971
-                        reaction_angle = 153.569
-                        water_angle = 99.589
+                        distance_CH = 1.12092  # 1.41
+                        distance_OH = 1.84524 # 1.40971
+                        reaction_angle = 145.391 # 153.569
+                        water_angle = 94.051 # 99.589
                         perp_axis = self.normalize_vector(self.calculate_vector(original_coords[aldehyde_O], original_coords[aldehyde_C]))
                         break
             for j, other_atom in enumerate(atoms):
@@ -735,7 +743,7 @@ class Molecule(Vector):
         pass 
 
          
-    def identify_functional_groups(self, distance=1.5, angle_tolerance=5, hydrogens=1):
+    def identify_functional_groups(self, distance=1.5, angle_tolerance=5):
         methyl_C_indexes = []
         aldehyde_groups = []
         ketone_methyl_groups = []
@@ -816,8 +824,18 @@ class Molecule(Vector):
     def log2method(self):
         methods = [
             "wb97xd", "wb97x-d3", "wb97x-d3bj", "wb97x-d4", "b97-3c", "r2scan-3c", "pm3", "am1",
-            "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)", "mp2"
+            "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)", "mp2", "bhandhlyp"
         ]
+
+        if self.name in ('OH', 'H2O', 'OH_DLPNO', 'H2O_DLPNO'):
+            method_file = os.path.join(self.directory, ".method")
+            if os.path.exists(method_file):
+                with open(method_file, 'r') as file:
+                    method = file.read().strip().lower()
+                    if method in methods:
+                        return method
+            return 'method could not be determined'
+
         
         file_to_read = self.log_file_path if self.log_file_path else self.file_path if self.file_path else None
         if not file_to_read:
@@ -980,7 +998,7 @@ class Molecule(Vector):
                     if "Rotational" in line:
                         start_reading = False
                 if not coordinates:
-                    raise ValueError("Coordinates could not be found in the G16 log file.")
+                    return False
                 if atoms:
                     return (element, coordinates)
                 else: return coordinates
@@ -1019,7 +1037,7 @@ class Molecule(Vector):
                     if "CARTESIAN COORDINATES (A.U.)" in line:
                         start_reading = False
                 if not coordinates:
-                    raise ValueError("Coordinates could not be found in the ORCA log file.")
+                    return False
 
                 if atoms:
                     return (element, coordinates)
