@@ -238,6 +238,7 @@ def good_active_site(molecule, aldehyde=False):
     distance_HO = molecule.atom_distance(molecule.coordinates[H_index], molecule.coordinates[O_index])
     distance_CO = molecule.atom_distance(molecule.coordinates[C_index], molecule.coordinates[O_index])
     angle_CHO = molecule.calculate_angle(molecule.coordinates[C_index], molecule.coordinates[H_index], molecule.coordinates[O_index])
+    print(distance_CH, distance_HO, distance_CO, angle_CHO)
 
     if (CH_threshold_low <= distance_CH <= CH_threshold_high and
         HO_threshold_low <= distance_HO <= HO_threshold_high and
@@ -250,7 +251,7 @@ def check_transition_state(molecule, threshold=0.5):
     from numpy import array
     from numpy.linalg import norm
     freq_cutoff = -abs(args.freq_cutoff) if args.freq_cutoff else -80
-    aldehyde = False
+    aldehyde_TS = False
     msg = 'error'
     try:
         H_index = molecule.constrained_indexes['H']-1 # python 0-based indexing
@@ -265,10 +266,10 @@ def check_transition_state(molecule, threshold=0.5):
     methyl_C_indexes, aldehyde_groups, ketone_methyl_groups = molecule.identify_functional_groups()
     for aldehyde in aldehyde_groups:
         if aldehyde['C'] == C_index and aldehyde['H'] == H_index:
-            aldehyde = True
+            aldehyde_TS = True
             threshold = 0.3
 
-    good_TS = good_active_site(molecule, aldehyde=aldehyde)
+    good_TS = good_active_site(molecule, aldehyde=aldehyde_TS)
 
     sorted_freqs = sorted((freq for freq in molecule.vibrational_frequencies))
     if sorted_freqs:
@@ -309,8 +310,7 @@ def check_transition_state(molecule, threshold=0.5):
         combined_values_minus_plus = relative_change_CH_minus + relative_change_HO_plus
         combined_values_plus = relative_change_CH_plus + relative_change_HO_plus
         combined_values_minus = relative_change_CH_minus + relative_change_HO_minus
-        # print(f"{molecule.name}  {'!BAD Geometry!' if bad_TS else '':<2}   Over threshold:  {any(value > threshold for value in [combined_values_plus, combined_values_minus, combined_values_plus_minus, combined_values_minus_plus])}     imag: {imag:.2f}")
-        # print(combined_values_minus, combined_values_plus, combined_values_plus_minus, combined_values_minus_plus)
+        # print(f"{molecule.name}  {'!GOOD Geometry!' if good_TS else '':<2}   Over threshold:  {any(value > threshold for value in [combined_values_plus, combined_values_minus, combined_values_plus_minus, combined_values_minus_plus])}     imag: {imag:.2f}")
 
 
         if any(value > threshold for value in [combined_values_plus, combined_values_minus, combined_values_plus_minus, combined_values_minus_plus]) and good_TS:

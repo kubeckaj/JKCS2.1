@@ -160,7 +160,7 @@ def read_orca(mmm, orcaextname, Qforces = 0):
   #SYMMETRY NUMBER
   try:
     line, idx = find_line(rb'Symmetry Number', 1, idx)
-    out_rotational_symmetry_number = float(line.split()[5])
+    out_rotational_symmetry_number = float(line.split()[2])
   except:
     out_rotational_symmetry_number = missing
 

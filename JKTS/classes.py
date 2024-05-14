@@ -587,7 +587,10 @@ class Molecule(Vector):
         # Update positions
         self.coordinates[H_index] = new_H_position
         self.coordinates[O_index] = new_O_position
-        self.coordinates[OH_index] = new_OH_H_position
+        try:
+            self.coordinates[OH_index] = new_OH_H_position
+        except:
+            pass
 
 
     def H_abstraction(self, Cl=False, products=False, num_molecules=None):
