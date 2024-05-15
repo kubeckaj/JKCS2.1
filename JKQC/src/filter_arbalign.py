@@ -2,6 +2,8 @@ def filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout):
   from joblib import Parallel, delayed
   from os import environ
 
+  missing = float("nan")
+
   try:
     num_cores = int(environ['SLURM_JOB_CPUS_PER_NODE'])
   except:

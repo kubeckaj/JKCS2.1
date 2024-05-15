@@ -1,0 +1,5 @@
+JKQCscriptpath="$( cd "$(dirname "$0")" ; pwd -P )"/../../JKQC/src
+export PYTHONPATH=$JKQCscriptpath
+source ~/.JKCSusersetup.txt
+program_JKQCpickle ${@} -out db_for_rmsd.pkl
+program_PYTHON $JKQCscriptpath/../../TOOLS/SCRIPTS/JKrmsd.py db_for_rmsd.pkl 
