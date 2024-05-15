@@ -1,5 +1,21 @@
+if [[ "$*" == *"-help"* ]]; then
+  echo """   Help for JKrmsd:
+This script calculates RMSD between several structures.
+NOTE: Might take long for too many structures.
+  
+  COMMAND: JKrmsd <files>
+
+  EXAMPLES:
+  
+     JKrmsd *.xyz
+     JKrmsd database.pkl
+  """
+  exit
+fi
+
+
 JKQCscriptpath="$( cd "$(dirname "$0")" ; pwd -P )"/../../JKQC/src
 export PYTHONPATH=$JKQCscriptpath
 source ~/.JKCSusersetup.txt
-program_JKQCpickle ${@} -out db_for_rmsd.pkl
+program_JKQCpickle ${@} -out db_for_rmsd.pkl -noname
 program_PYTHON $JKQCscriptpath/../../TOOLS/SCRIPTS/JKrmsd.py db_for_rmsd.pkl 
