@@ -588,10 +588,10 @@ function program_XTB {
     cp calc.xyz $DIR/$base.xyz
   fi  
   #COPY GRADIENT FOR FORCES
-  #for i in $method $args
-  #do
-  #  if [ "$i" == "-grad" ] || [ "$i" == "--grad" ]; then cp *.engrad $DIR/${base}.engrad; fi
-  #done
+  for i in $method $args
+  do
+    if [ "$i" == "-grad" ] || [ "$i" == "--grad" ]; then cp *.engrad $DIR/${base}.engrad; fi
+  done
 
   #CLEANING
   cd $DIR

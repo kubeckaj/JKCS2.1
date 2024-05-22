@@ -213,26 +213,24 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
     ### ENGRAD ####
     ###############
     ### This part is not needed and is turned off
-    #if path.exists(file_i_engrad) and False:
-    #  if Qforces == 1:
-    #    from numpy import array
-    #    if path.exists(file_i_engrad):
-    #      print("HERE")
-    #      file = open(file_i_engrad, "r")
-    #      for gradi in range(3):
-    #        file.readline()
-    #      out_NAtoms = int(file.readline())
-    #      for gradi in range(7):
-    #        file.readline()
-    #      try:
-    #        save_forces = []
-    #        for gradi in range(3*out_NAtoms):
-    #          save_forces.append(float(file.readline())/0.529177)
-    #        out_forces = [array([save_forces[i],save_forces[i+1],save_forces[i+2]]) for i in range(0,len(save_forces),3)]
-    #      except:
-    #        out_forces = float("nan")
-    #      dic.update({("extra","forces"):[out_forces]})
-    #      file.close()
+    if path.exists(file_i_engrad) and Qforces == 1:
+      from numpy import array
+      if path.exists(file_i_engrad):
+        file = open(file_i_engrad, "r")
+        for gradi in range(3):
+          file.readline()
+        out_NAtoms = int(file.readline())
+        for gradi in range(7):
+          file.readline()
+        try:
+          save_forces = []
+          for gradi in range(3*out_NAtoms):
+            save_forces.append(-float(file.readline())/0.529177)
+          out_forces = [array([save_forces[i],save_forces[i+1],save_forces[i+2]]) for i in range(0,len(save_forces),3)]
+        except:
+          out_forces = float("nan")
+        dic.update({("extra","forces"):[out_forces]})
+        file.close()
 
     #combine into large dictionary
     clusters_dict = mergeDictionary(clusters_dict,dic)

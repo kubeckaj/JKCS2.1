@@ -165,12 +165,18 @@ def my_special_compare_with_asterix(string1,string2_array,howmany,what):
 
 def extract_clusters(clusters_df,Qextract,Pextract,Qclustername,Qout):
   from pandas import DataFrame,concat
-  
+
   #COMMA SEPARATED 
   # 1sa,2sa-02 -> ["1sa","2sa-02"]
   Pextract_comma = []
   for extract_i in Pextract:
-    comma_separated = comma(extract_i)
+    #EXTRACT IF STRING IS PICKLE FILE:
+    if extract_i[-4:] == ".pkl":
+      from pandas import read_pickle
+      for_extracting = read_pickle(extract_i)
+      comma_separated = for_extracting.loc[:,("info","file_basename")].values
+    else:
+      comma_separated = comma(extract_i)
     for separated_i in range(len(comma_separated)):
       Pextract_comma.append(comma_separated[separated_i])
   

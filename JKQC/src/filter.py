@@ -1,4 +1,4 @@
-def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted, bonddistancethreshold, Qout, seed):
+def filter(clusters_df, Qsort, Qreverse, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted, bonddistancethreshold, Qout, seed):
 
   #CHECK WHETHER CLUSTERNAME MAKE SENSE
   if Qclustername == 1:
@@ -47,7 +47,7 @@ def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthresho
   #SORTING
   if str(Qsort) != "0" and str(Qsort) != "no":
     from filter_sort import filter_sort
-    clusters_df = filter_sort(clusters_df,Qsort)
+    clusters_df = filter_sort(clusters_df,Qsort,Qreverse)
 
   #ArbAlign
   if Qarbalign > 0:
@@ -57,7 +57,7 @@ def filter(clusters_df, Qsort, Qarbalign, Quniq, Qsample, Qclustername, Qthresho
   #TODO: not sure if this sorting is necessary but maybe after uniqueness filtering yes
   #SORTING (AGAIN)
   if str(Qsort) != "0" and str(Qsort) != "no":
-    clusters_df = filter_sort(clusters_df,Qsort)
+    clusters_df = filter_sort(clusters_df,Qsort,Qreverse)
 
   #SELECT
   if str(Qselect) != "0":

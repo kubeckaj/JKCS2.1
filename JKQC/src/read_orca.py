@@ -9,7 +9,7 @@ def read_orca_init(Qforces = 0):
   PATTERN_ORCA_out_mulliken_charges = compile(rb'MULLIKEN ATOMIC CHARGES\s*-{2,}\n((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\n)+)Sum') 
   if Qforces == 1:
     global PATTERN_ORCA_out_forces
-    PATTERN_ORCA_out_forces = compile(rb'CARTESIAN GRADIENT\n*-{2,}\n\n((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\n)+)\nDifference') 
+    PATTERN_ORCA_out_forces = compile(rb'CARTESIAN GRADIENT.*\w*\n*-{2,}\n*((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\n)+)\s*\n[D,N]') 
 
 def find_line(bytes_string,take_first = 0,idx = 0):
   mm.seek(idx)

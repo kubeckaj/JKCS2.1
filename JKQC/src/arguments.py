@@ -15,7 +15,7 @@ def print_help():
   print(" -folder X   takes in all X/*.log files (use -R for resursive)")
   print(" -noname     the file names are not analysed (e.g. 1000-10_1.xyz)")
   print(" -rename X Y renames e.g. 1X2sa to 1Y2sa")
-  print(" -extract X  prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
+  print(" -extract X  prints only selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0 or file.pkl)")
   print(" -except X   prints only non-selected clusters (e.g. 1sa1w,1sa3-4w or 1sa1w-1_0)")
   print(" -reacted    removes (the minority of) reacted structures")
   print(" -noexample,-noex does not print an example")
@@ -80,6 +80,7 @@ def print_help():
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize")
+  print(" -reverse")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -143,6 +144,7 @@ def arguments(argument_list = []):
   
   #global Qsort,Qselect,Qsample,Quniq,Qarbalign,formation_input_file,Qthreshold,Qcut,Qshuffle
   Qsort = 0 # 0=no sorting, otherwise string
+  Qreverse = True
   Qselect = 0 # 0=nothing, otherwise the number of selected structures
   Qsample = 0 # The same as uniqueness but adjustable automatically
   Quniq = 0 # uniqie based on given arguments
@@ -518,6 +520,10 @@ def arguments(argument_list = []):
     if last == "-sort":
       last = ""
       Qsort = str(i)
+      continue
+    # REVERSE
+    if i == "-reverse":
+      Qreverse = False
       continue
     # SELECT
     if i == "-select" or i == "--select":

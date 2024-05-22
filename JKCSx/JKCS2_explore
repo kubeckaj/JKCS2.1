@@ -93,7 +93,9 @@ function helpxtb {
     -box \"X\" .......... ranomly placed molecules from -X to X box [def=7+M]
     -repeat \"X\" ....... each simulation is repeated X-times [def=1]
  
-    OTHERS: -gfn \"X\" .. defines GFN1-xTB or GFN2-xTB [def=1]
+    OTHERS: -gfn \"X\" ............ defines GFN1-xTB or GFN2-xTB [def=1]
+            -constraints <string> . contrastrained interactions (thx to Jakko Kahara)
+                                    uses GFN-FF and requires the bonding info
 
   ${cfMAGENTA}SYMBOLS:${cfDEF}
     M .... number of molecules
@@ -103,7 +105,8 @@ function helpxtb {
   ${cfMAGENTA}EXAMPLES:${cfDEF}
     
             $scriptfile -abcxtb -gen 2000 -box 3
-            $scriptfile -abcxtb -gen 1000 -box 3+M -repeat 5\n"""
+            $scriptfile -abcxtb -gen 1000 -box 3+M -repeat 5
+            $scriptfile -gen 10 -constraints \"-nfiles 100\"\n"""
   printf "#################################################################\n"
   exit
 }
@@ -173,6 +176,8 @@ Qarraymax=0 #max jobs per array
 Qremoveexploded=0 #Do I want to get rid of exploded. only with JKQC
 Qcomponents="" #If I want to overwrite components for ABCXTB calculations
 Qgeo=0         #JKCS2 suited for Georg
+Qconstrains=0 #Add constraints to ABC_XTB
+Qcinput="" #Inputs for Constraints
 
 last=""
 # loop over all arguments
@@ -334,7 +339,21 @@ do
     fi
     continue
   fi
-  # 
+  # CONSTARINTS
+  if [ "$iter" == "-constraints" ]
+  then
+    Qabcxtb=1
+    Qconstrains=1
+    last="-constraints"
+    continue
+  fi
+  if [ "$last" == "-constraints" ]
+  then
+    Qcinput="$iter"
+    last=""
+    continue
+  fi
+  #### 
   arguments_help+=( "${arguments[i]}" )
 done
 arguments=("${arguments_help[@]}")
@@ -543,8 +562,10 @@ max_geom_iters  0
       else
         cat $Qcomponents >> $F2
       fi
- 
-      echo """
+      
+      if [ $Qconstrains -eq 0 ]
+      then 
+        echo """
 xtb # charge, uhf, gfn
   $CHARGE `echo $MULTIPLICITY-1 | bc` $GFN
 end
@@ -552,6 +573,52 @@ end
 commands
     \$xtb\$
 end""" >> $F2     
+      else
+        echo """
+commands 
+    sh runxTB.sh \$inp\$ \$out\$ \$xxx\$ $CHARGE `echo $MULTIPLICITY-1 | bc` $GFN
+end""" >> $F2
+
+    ######################
+    ### CREATE runxTB.sh
+        echo """source ~/.JKCSusersetup.txt
+cp \$1 \$3.xyz
+if [ ! -e constraints0.inp ]
+then
+    program_PYTHON $toolspath/SCRIPTS/Constraints.py calc.inp $Qcinput 2>/dev/null
+fi
+
+min=0
+n=\`echo \$1 | sed 's/.*-//' | sed 's/\..*//'\`
+
+# Optimization with constraints
+for c in constraints*
+do
+    i=\`basename \${c:11} .inp\`
+
+    program_XTB \$3.xyz "--input \$c -o loose --gfnff"
+    # more efficients to run tight opt afterwards
+    #program_XTB -o tight --gfn 1 xtbopt.xyz > \$3.out 2>/dev/null
+
+    # Do NOT change!
+    energy=\`awk 'NR==2{print \$2}' \$3.xyz\` ; sed  \"2s/^.*/\${energy}/g\" \$3.xyz > temp
+    
+    if (( \$(echo \"\$energy < \$min\" | bc -l) ))
+    then
+        if [ -e \$2 ]
+        then
+            mv \$2 $name-LM/\$n\_\$i.xyz
+        fi
+        mv temp \$2
+        min=\$energy
+    else 
+        mv temp $name-LM/\$n\_\$i.xyz
+    fi
+done
+
+rm \$3.xyz \$3.log charges wbo xtbopt.log xtbopt.xyz xtbrestart xtbtopo.mol .xtboptok gfnff* 2>/dev/null
+""" >> runxTB.sh
+      fi
     fi
     ######################
     ### CREATE rename.sh
