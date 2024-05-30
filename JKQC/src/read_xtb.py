@@ -29,7 +29,7 @@ def read_xtb(mmm):
   from io import open
   missing = float("nan")
   
-  columns = ["program","method","time","NAtoms","electronic_energy","mulliken_charges","dipole_moment","vibrational_frequencies","enthalpy_energy","gibbs_free_energy","entropy"]
+  columns = ["program","method","time","NAtoms","electronic_energy","mulliken_charges","dipole_moment","vibrational_frequencies","enthalpy_energy","gibbs_free_energy","entropy","zero_point_correction","zero_point_energy"]
 
   #PROGRAM VERSION
   try:
@@ -100,6 +100,15 @@ def read_xtb(mmm):
     out_vibrational_frequencies = [float(item) for line in lines[1:-1] for item in line.split()[2:]]
   except:
     out_vibrational_frequencies = missing
+
+  #ZERO POINT ENERGY CORRECTION + ENERGY
+  try:
+    line, idx = find_line(rb':: zero point energy', 1, idx)
+    out_zero_point_correction = float(line.split()[4])
+    out_zero_point_energy = out_electronic_energy + out_zero_point_correction
+  except:
+    out_zero_point_correction = missing  
+    out_zero_point_energy = missing
 
   #GIBBS FREE ENERGY
   try:

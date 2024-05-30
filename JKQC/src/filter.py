@@ -5,8 +5,8 @@ def filter(clusters_df, Qsort, Qreverse, Qarbalign, Quniq, Qsample, Qclustername
     if ("info","cluster_type") in clusters_df.columns:
       from pandas import isna
       if isna(clusters_df.loc[:,("info","cluster_type")].values).any():
-        if Qout >= 1:
-          print("Cluter type with nan present (weird file names, use -noname) -> Qclustername = 0")
+        #if Qout >= 1:
+        #  print("Cluster type with nan present (weird file names, use -noname) -> Qclustername = 0")
         Qclustername = 0
     else:  
       Qclustername = 0

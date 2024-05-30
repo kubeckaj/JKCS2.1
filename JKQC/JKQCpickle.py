@@ -89,7 +89,7 @@ if Qoutpkl > 0:
 from numpy import array
 if Qsolvation != "0" or Qformation != 0:
   if len(Pout) > 0:
-    if Pout[0] != "-b" and Pout[0] != "-ct":
+    if Pout[0] != "-ct":
       Pout.insert(0,"-ct")
 if len(Pout) > 0:
   from print_output import print_output

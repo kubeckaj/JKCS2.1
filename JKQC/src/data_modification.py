@@ -184,9 +184,18 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
     #clusters_df.loc[:,("info", "cluster_type")].astype(object)
     from pandas import option_context
     with option_context('mode.chained_assignment', None):
-      clusters_df.loc[:,("info", "component_ratio")] = clusters_df.loc[:,("info", "component_ratio")].astype(object)
-      clusters_df.loc[:,("info", "components")] = clusters_df.loc[:,("info", "components")].astype(object)
-      clusters_df.loc[:,("info", "cluster_type")] = clusters_df.loc[:,("info", "cluster_type")].astype(object)
+      if ("info", "component_ratio") in clusters_df:
+        clusters_df.loc[:,("info", "component_ratio")] = clusters_df.loc[:,("info", "component_ratio")].astype(object)
+      else:
+        clusters_df.loc[:,("info", "component_ratio")] = array(len(clusters_df)*[float('nan')]).astype(object)
+      if ("info", "components") in clusters_df:
+        clusters_df.loc[:,("info", "components")] = clusters_df.loc[:,("info", "components")].astype(object)
+      else:
+        clusters_df.loc[:,("info", "components")] = array(len(clusters_df)*[float('nan')]).astype(object)
+      if ("info", "cluster_type") in clusters_df:
+        clusters_df.loc[:,("info", "cluster_type")] = clusters_df.loc[:,("info", "cluster_type")].astype(object)
+      else:
+        clusters_df.loc[:,("info", "cluster_type")] = array(len(clusters_df)*[float('nan')]).astype(object)
     for cluster_id in clusters_df.index:
       structure = clusters_df.loc[cluster_id,('xyz','structure')]
       output_formula,output_counts,output_symbols = rearrange_formula(structure.get_chemical_formula())

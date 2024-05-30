@@ -5,7 +5,7 @@ def read_orca_init(Qforces = 0):
   from re import compile
   global PATTERN_ORCA_out_method,PATTERN_ORCA_out_vibrational_frequencies,PATTERN_ORCA_out_mulliken_charges
   PATTERN_ORCA_out_method = compile(rb"\n\|.*>.*!.*")
-  PATTERN_ORCA_out_vibrational_frequencies = compile(rb'VIBRATIONAL FREQUENCIES.*\n.*-{2,}\n.*\nScaling factor for frequencies.*\n.*\n((?:\s*\d+:\s*\d+\.\d+\s*cm\*\*-1.*\n)+)\n')
+  PATTERN_ORCA_out_vibrational_frequencies = compile(rb'VIBRATIONAL FREQUENCIES.*\n.*-{2,}\n.*\nScaling factor for frequencies.*\n.*\n((?:\s*\d+:\s*[-]?\d+\.\d+\s*cm\*\*-1.*\n)+)\n')
   PATTERN_ORCA_out_mulliken_charges = compile(rb'MULLIKEN ATOMIC CHARGES\s*-{2,}\n((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\n)+)Sum') 
   if Qforces == 1:
     global PATTERN_ORCA_out_forces
