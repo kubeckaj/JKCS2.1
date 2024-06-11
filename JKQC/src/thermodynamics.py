@@ -33,10 +33,13 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
         if test != 0:
           try:
             QtOLD = clusters_df.at[i,("log","temperature")]
+          except:
+            QtOLD = 298.15
+          try: 
             if isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
               continue
           except:
-            QtOLD = clusters_df.at[i,("log","temperature")]
+            continue
           try:
             lf = float(clusters_df.at[i,("log","vibrational_frequencies")][0])
           except:
@@ -91,11 +94,15 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
   if ~isnan(Qt):
     for i in range(len(clusters_df)):
       try:
-        if isna(clusters_df.at[i,("log","vibrational_frequencies")]):
-          clusters_df.at[i,("log","temperature")] = Qt
+        if isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
           continue
       except:
+        continue
+      try:
         QtOLD = clusters_df.at[i,("log","temperature")]
+        clusters_df.at[i,("log","temperature")] = Qt
+      except: 
+        QtOLD = 298.15
       if Qt != QtOLD:
         try:
           lf = float(clusters_df.at[i,("log","vibrational_frequencies")][0])

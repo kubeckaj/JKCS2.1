@@ -24,6 +24,7 @@
 
 input=""
 Qlog=0 #create LOG files for energies
+Qevery=1
 
 next=""
 for i in $@
@@ -54,6 +55,19 @@ do
     input=$i
     continue
   fi
+  #every
+  if [ "$i" == "-every" ]
+  then
+    next="-every"
+    continue
+  fi
+  if [ "$next" == "-every" ]
+  then
+    next=""
+    Qevery=$i
+    continue
+  fi
+  #
   echo "I do not understand the input $i."
   exit
 done
@@ -82,5 +96,5 @@ do
     echo "structure energy: $energy" >> str${file}.log
   fi
   file=`echo $file+1 | bc`
-  l=`echo $l+$atoms2 | bc`
+  l=`echo $l+$Qevery*$atoms2 | bc`
 done
