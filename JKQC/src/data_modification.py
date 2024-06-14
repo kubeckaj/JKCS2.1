@@ -207,7 +207,7 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
       clusters_df.at[cluster_id,("info", "components")] = output_symbols
       clusters_df.at[cluster_id,("info", "cluster_type")] = output_formula
     overall_counts_new = []
-    overall_symbols_new = list(set([item for sublist in output_symbols for item in sublist]))
+    overall_symbols_new = list(set([item for sublist in overall_symbols for item in sublist]))
     for i in range(len(overall_counts)):
       toappend = []
       for j in range(len(overall_symbols_new)):

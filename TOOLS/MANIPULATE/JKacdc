@@ -11,6 +11,7 @@ QconcNUM=""
 QconcTYP=""
 Qtemp=""
 Qrun="0"
+Qall=0 #print a lot of outgrowing clusters
 last=""
 for i in $@
 do 
@@ -30,6 +31,12 @@ do
    folder="$i"
    last=""
    continue
+  fi
+  #all
+  if [ "$i" == "-all" ]
+  then
+    Qall=1
+    continue
   fi
   #CONC
   if [ "$i" == "-conc" ]
@@ -292,7 +299,7 @@ do
         fi
       fi
     fi
-    if [ $molecules -eq $maxmonomersP1 ]
+    if [ $molecules -eq $maxmonomersP1 ] || [ $Qall -eq 1 ]
     then
       if [[ "$clustercompositions" != *"$composition"* ]]; then
         testlower=0
@@ -306,7 +313,7 @@ do
             fi
           done
         fi
-        if [ $testlower -eq 1 ] || [ $molecules -eq 1 ]
+        if [ $testlower -eq 1 ] 
         then
           outgrowingclusters+=" $composition"
         fi
