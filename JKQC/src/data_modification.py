@@ -48,6 +48,19 @@ def zeros(input_array):
     output_string += input_array[i]
   return output_string
 
+def combine_same(input_array):
+  output_array = []
+  for i in range(0,len(input_array)-1,2):
+    test = 0 
+    for j in range(0,len(output_array)-1,2):
+      if input_array[i+1] == output_array[j+1]:
+        test = 1
+        output_array[j] = str(int(output_array[j]) + int(input_array[i]))
+    if test == 0:
+      output_array.append(input_array[i])
+      output_array.append(input_array[i+1])
+  return output_array
+
 def replace_first_occurrence(string, old_char, new_char):
   index = string.find(old_char)  # Find the index of the first occurrence
   if index != -1:  # If the character is found
@@ -125,6 +138,7 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
       except:
         print("Error selecting given index")
         exit()
+    clusters_df = clusters_df.reset_index(drop=True)
 
   if Qrename == 1:
     if Qclustername == 1:
@@ -140,6 +154,7 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
         if is_nameable(cluster_type_array):
           for QrenameONE in QrenameWHAT:
             cluster_type_array = [w.replace(QrenameONE[0],QrenameONE[1]) if QrenameONE[0] == w else w for w in cluster_type_array]
+          cluster_type_array = combine_same(cluster_type_array)
           l4.append("".join(cluster_type_array)+file_i_BASE.replace(file_i_BASE.split("-")[0].split("_")[0],""))
           cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
           cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
@@ -149,10 +164,15 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
           l1.append(cluster_type_string)
           l2.append(components)
           l3.append(component_ratio)
-      clusters_df.loc[:,("info", "cluster_type")] =  array(l1)
-      clusters_df.loc[:,("info", "components")] = array(l2, dtype=object)
-      clusters_df.loc[:,("info", "component_ratio")] = array(l3, dtype=object)
-      clusters_df.loc[:,("info", "file_basename")] = array(l4)
+      from pandas import options
+      options.mode.chained_assignment = None
+      for i in range(len(clusters_df)):
+        clusters_df.at[i,("info", "cluster_type")] =  l1[i]
+        clusters_df.at[i,("info", "file_basename")] = l4[i]
+        clusters_df.at[i,("info", "components")] = array(l2[i], dtype=object)
+        clusters_df.at[i,("info", "component_ratio")] = array(l3[i], dtype=object)
+      #clusters_df.loc[:,("info", "components")] = array(l2, dtype=object)
+      #clusters_df.loc[:,("info", "component_ratio")] = array(l3, dtype=object)
 
   if Qunderscore == 1:
     for cluster_id in clusters_df.index:

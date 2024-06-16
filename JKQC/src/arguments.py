@@ -53,6 +53,7 @@ def print_help():
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
   print("\nFILTERING:")
   print(" -sort <str>          sort by: b,g,gout,el,elout,<full name in database under log>")
+  print(" -reverse             reverse sorting")
   print(" -select <int>        selects <int> best structures from each cluster")
   print(" -uniq,-unique <str>  selects only unique based on, e.g.: rg,el or rg,g or rg,el,dip, or dup=duplicates")
   print(" -sample <int> <str>  selects <INT> distinct based on, e.g.: rg,el or rg,g or rg,el,dip")
@@ -80,7 +81,6 @@ def print_help():
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize")
-  print(" -reverse")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
