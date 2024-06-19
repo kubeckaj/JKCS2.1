@@ -1,8 +1,8 @@
 ####################################################################################################
 
 def print_help():
-  print("##################################################")
-  print("### python JKQC.py [FILES] [ARGUMENTS] [PRINT] ###")
+  print("########################################")
+  print("### JKQC [FILES] [ARGUMENTS] [PRINT] ###")
   print("\nFILES:")
   print(" any .xyz .log .out files")
   print(" any .pkl (you can also use -in/-out)")

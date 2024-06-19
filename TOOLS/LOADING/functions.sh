@@ -434,6 +434,9 @@ function JKloadcolours {
   if [ "$numJK" == "2" ]
   then
     scriptfile="${cfBLUE}J${cfRED}K${cfDEF}"`echo $scriptfile | cut -c3-`
+  elif [ "$numJK" == "JKMD" ]
+  then
+    scriptfile="${cfBLUE}J${cfRED}K${cfGREEN}M${cfYELLOW}D${cfDEF}"`echo $scriptfile | cut -c5-`
   else
     scriptfile="${cfBLUE}J${cfRED}K${cfGREEN}C${cfYELLOW}S${cfDEF}"`echo $scriptfile | cut -c5-`
   fi

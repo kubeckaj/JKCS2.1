@@ -6,9 +6,9 @@ def seperate_string_number2(string):
     for x, i in enumerate(string[1:]):
         if i == "_" or previous_character == "_":
             newword += i
-        elif i.isalpha() and previous_character.isalpha():
+        elif i != "-" and i.isalpha() and previous_character.isalpha():
             newword += i
-        elif (i.isnumeric() or i == ".") and (previous_character.isnumeric() or previous_character == "."):
+        elif (i.isnumeric() or i == ".") and (previous_character.isnumeric() or previous_character == "." or previous_character == "-"):
             newword += i
         else:
             if previous_character != ",":
@@ -72,6 +72,9 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
              warnings.filterwarnings("ignore", category=RuntimeWarning)
              compare_list.append("rg")
              compare_list_num.append(2)
+           elif separated_input == "mass":
+             compare_list.append("mass")
+             compare_list_num.append(2)
            elif separated_input == "el":
              compare_list.append("electronic_energy")
              compare_list_num.append(3)
@@ -85,7 +88,7 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
              compare_list.append(separated_input)
              compare_list_num.append(1)
        scale_test=1
-       scale=1.0
+       scale=0
        scale_scale = 0.1
        scale_iter = 0
        while scale_test == 1:
@@ -93,7 +96,7 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
          tocompare = []
          for compare_element_i in range(len(compare_list)):
            j = compare_list[compare_element_i]
-           jj = scale*compare_list_num[compare_element_i]
+           jj = scale+compare_list_num[compare_element_i]
            if j == "rg":
              rg = []
              for aseCL in preselected_df["xyz"]["structure"]:
@@ -102,6 +105,14 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
                except:
                  rg.append(missing)
              values = [floor(myNaN(o)*10**jj) for o in rg]
+           elif j == "mass":
+             mass = []
+             for aseCL in preselected_df["xyz"]["structure"]:
+               try:
+                 mass.append(sum(aseCL.get_masses()))
+               except:
+                 mass.append(missing)
+             values = [floor(myNaN(o)*10**jj) for o in mass]
            elif j == "gout":
              gout = []
              for Gouti in range(len(preselected_df)):
@@ -118,11 +129,15 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
          if Qsample > 0 and len(uniqueindexes) > Qsample and scale_iter < 100:
            if scale_scale > 0:
              scale_scale = -0.9*scale_scale
-           scale = scale + scale_scale
-         elif Qsample > 0 and len(uniqueindexes) < Qsample and len(compare_list) >= Qsample and scale_iter < 100:
+           else:
+             scale_scale = 1.1*scale_scale
+           scale = scale - abs(scale_scale)
+         elif Qsample > 0 and len(uniqueindexes) < Qsample and len(preselected_df) >= Qsample and scale_iter < 100:
            if scale_scale < 0:
              scale_scale = -0.9*scale_scale
-           scale = scale + scale_scale
+           else:
+             scale_scale = 1.1*scale_scale       
+           scale = scale + abs(scale_scale)
          else:
            scale_test = 0
        selected_df = preselected_df.iloc[uniqueindexes]

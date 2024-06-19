@@ -1,7 +1,7 @@
 #!/bin/bash -norc
 ############################################################
-## JAKUB KUBECKA 2018                                     ##
-## Program that runs QML on pickled databases             ## 
+## JAKUB KUBECKA 2021                                     ##
+## Program that runs ML on pickled databases              ## 
 ## To understand program run help:                        ##
 ##       for help use arguement -help                     ##
 ############################################################

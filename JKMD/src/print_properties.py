@@ -1,0 +1,75 @@
+
+def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, split = None):
+  from ase.md.velocitydistribution import Stationary
+  from ase.md.velocitydistribution import ZeroRotation
+  from ase import units
+  #from ase.io import read, write
+  global current_time, current_step
+ 
+  ### """Function to print the potential, kinetic and total energy"""
+  epot = species.get_potential_energy()/0.043364115308770496 #kcal/mol
+  ekin = species.get_kinetic_energy()/0.043364115308770496    #kca/lmol
+
+  ### CONSTRAINTS
+  CS = species.constraints
+  del species.constraints
+  species_copy = species.copy()
+  species.set_constraint(CS)
+
+  ### DISTANCE
+  if Qconstraints == True:
+    from numpy import srqt, sum
+    dist_n = sqrt(sum(((species_copy[0:split].get_center_of_mass()-species_copy[split:].get_center_of_mass())**2)))
+    spread_a = species_copy[0:split].get_all_distances().max()
+    spread_b = species_copy[split:].get_all_distances().max()
+  else:
+    dist_n = 0.0
+    spread_a = 0.0
+    spread_b = 0.0
+
+  ### """ TEMPERATURES """
+  T_temp = species_copy.get_temperature()
+  Stationary(species_copy, False)
+  T_com = species_copy.get_temperature()
+  ZeroRotation(species_copy, False)
+  T_rotate = species_copy.get_temperature()
+  T_tr =  len(species_copy)*(T_temp-T_com)
+  T_rot = len(species_copy)*(T_com-T_rotate)
+  if len(species_copy) > 2:
+    T_vib = len(species_copy)/(len(species_copy)-2)*T_rotate
+  elif len(species_copy) == 2:
+    T_vib = 3*len(species_copy)/(3*len(species_copy)-5)*T_rotate
+  else:
+    T_vib = 0
+  if current_step == 0:
+    print('      STEP_[-] TIME_[fs] | Et[kcal/mol] Ep[kcal/mol] Ek[kcal/mol] | T_[K] Tt[K] Tr[K] Tv[K] | COMd_[A] MaxA_[A] MaxB_[A]', flush=True)
+  print('JKMD: %-*i %-*.1f | %-*.3f %-*.3f %-*.3f | %-*.0f %-*.0f %-*.0f %-*.0f | %-8.2f %-8.2f %-8.2f' % (8,current_step, 9,current_time, 12,epot + ekin, 12,epot, 12,ekin, 5,T_temp, 5,T_tr, 5,T_rot, 5,T_vib, dist_n, spread_a, spread_b), flush=True)
+
+
+  from os import path
+  folder_path = path.abspath("./test")[::-1].split("/",1)[1][::-1]+"/"
+  dic = {("info","folder_path"):[folder_path]}
+  dic.update({("info","file_basename"):["str-"+str(current_step)]})
+  dic.update({("xyz","structure"):[species_copy]})
+  dic.update({("log","electronic_energy"):[epot]})
+  dic.update({("log","kinetic_energy"):[ekin]})
+  dic.update({("log","total_energy"):[epot+ekin]})
+  dic.update({("log","temperature"):[T_temp]})
+  dic.update({("log","translational_temperature"):[T_tr]})
+  dic.update({("log","rotational_temperature"):[T_rot]})
+  dic.update({("log","vibrational_temperature"):[T_vib]})
+  if Qconstraints != 0:
+    dic.update({("log","COM_distance"):[dist_n]})
+    dic.update({("log","maxA_distance"):[spread_a]})
+    dic.update({("log","maxB_distance"):[spread_b]})
+  #write("traj.xyz", a, append = True)
+  
+  current_time = current_time + interval*timestep
+  current_step = current_step + interval
+  
+  return dic
+
+def init(Qtime,Qstep):
+  global current_step, current_time
+  current_time = Qtime
+  current_step = Qstep

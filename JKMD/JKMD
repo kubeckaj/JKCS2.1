@@ -1,0 +1,284 @@
+#!/bin/bash -norc
+############################################################
+## JAKUB KUBECKA 2024                                     ##
+## Program that automates and runs MD via Python          ##
+## To understand program run help:                        ##
+##       for help use arguement -help                     ##
+############################################################
+## Kurva hosi gutentag                                    ##
+##                                          Jakub Kubecka ##
+############################################################
+
+###############################################################################
+############################### DECLARATIONS ##################################
+###############################################################################
+
+# locate TOOLS path
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../TOOLS"
+
+# load names
+source $toolspath/LOADING/names.txt
+# load functions
+source $toolspath/LOADING/functions.sh
+# load user setup
+source ~/.JKCSusersetup.txt
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      #
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+# check what everything wants user to print
+JKloadprint
+
+# load colours
+JKloadcolours JKMD     # some coloured output
+
+# check -help option
+function help {
+  export PYTHONPATH=$scriptpath/src
+  program_PYTHON $scriptpath/JKMD.py -help
+  exit
+}
+
+JKloadhelp             # check if user asks for -help
+
+# check for folderbasename_something arguments and in case enter directories
+JKloaddirs
+currentdir=${PWD##*/}
+currentdirpath=$PWD
+
+# load amount of molecules
+if [ -e $inputfile ]
+then
+  M=`head -n 1 $inputfile | awk '{print $6}'`
+#else
+#  JKecho 0 "No ${cfYELLOW}${inputfile}${cfDEF} file. (${cfRED}Assuming M=1 if needed!!!${cfDEF})"
+#  M=1;
+fi
+
+# -loc or load supercomputer parameters
+JKloadsupercomputer
+
+Qjpt=1 #jobs per task
+Qrepeat=1
+Qarray=1 #submit jobs as array?
+Qarraymax=0 #max jobs per array
+Qnewfolderasked=0
+
+last=""
+# loop over all arguments
+JKecho 2 "Going to loop through your arguments."
+arguments_help=()
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  # new folder
+  if [ "$iter" == "-nf" ] || [ "$iter" == "-newfolder" ]
+  then
+    last="-nf"
+    continue
+  fi
+  if [ "$last" == "-nf" ]
+  then
+    last=""
+    Qnewfolderasked=1
+    Qnewfolder="$iter"
+    if [ -e "$Qnewfolder" ]
+    then
+      JKecho 0 "Folder $Qnewfolder already exists.[EXITING]"
+      exit
+    fi
+    continue
+  fi
+  #Qarraymax
+  if [ "$iter" == "-arraymax" ]
+  then
+    last="-arraymax"
+    Qarray=1
+    continue
+  fi
+  if [ "$last" == "-arraymax" ]
+  then
+    Qarraymax="$iter"
+    last=""
+    continue
+  fi
+  # Jobs per task !!! it is actually tasks per job -tpj
+  if [ "$iter" == "-tpj" ] || [ "$iter" == "-jpt" ]
+  then
+    last="-jpt"
+    continue
+  fi
+  if [ "$last" == "-jpt" ];
+  then
+    last=""
+    Qjpt=$iter
+    continue
+  fi
+  # REPEAT
+  if [ "$iter" == "-repeat" ]
+  then
+    last="-repeat"
+    continue
+  fi
+  if [ "$last" == "-repeat" ]
+  then
+    last=""
+    Qrepeat=$iter
+    continue
+  fi
+  # FILES
+  end=`echo $iter | rev | cut -c-4 | rev`
+  if [ "$end" == ".xyz" ] || [ "$end" == ".pkl" ]
+  then
+    if [ ! -e "$iter" ]
+    then
+      JKecho 0 "File $iter does not exist. [EXITING]"
+      exit
+    fi
+    arguments_help+=( "$( cd "$(dirname "$iter")" ; pwd -P )/"$(basename $iter) )
+    continue
+  fi
+  ####
+  arguments_help+=( "${arguments[i]}" )
+done
+arguments=("${arguments_help[@]}")
+therest=${arguments[@]}
+
+#Folder
+if [ $Qnewfolderasked -eq 0 ]
+then
+  num=1
+  Qnewfolder=SIM$num
+  while [ -e "$Qnewfolder" ]
+  do
+    num=`echo $num+1 | bc`
+    Qnewfolder=SIM$num
+  done
+fi
+mkdir $Qnewfolder
+cd $Qnewfolder
+
+# print inserted command
+JKecho 2 "Writting your command to the output file."
+echoCOMMAND COMMAND: JKMD "$@" >> output
+if [ "$METHODsupercomputer" == "loc" ]
+then
+  loc=" -loc"
+  Qarray=0
+else
+  loc=""
+fi
+
+JKecho 2 "Calculations will be performed in directory ${cfBLUE}$Qfolder/${name}-LM${cfDEF}"
+LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?--\d+(\.\d+)?")
+if [ ! -z "$LOOPresult" ]
+then 
+  LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
+  LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $3}'`
+  LOOPby=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
+else
+  LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?")
+  if [ ! -z "$LOOPresult" ]
+  then
+    LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
+    LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
+    LOOPby=1
+  else
+    LOOPfrom=1
+    LOOPto=1
+    LOOPby=1
+  fi
+fi
+const_iter=0
+Qjpt_iter=0
+jobscount=0
+for i in `seq $LOOPfrom $LOOPby $LOOPto`
+do
+  for j in `seq 1 $Qrepeat`
+  do
+    if [ $LOOPto -gt 1 ]; then ADDsim="_$i"; else ADDsim=""; fi
+    if [ $Qrepeat -gt 1 ]; then ADDrep="_v$j"; else ADDrep=""; fi
+    subfolder=${name}-LM${ADDsim}$ADDrep
+    mkdir $subfolder
+    if [ $Qjpt_iter -eq 0 ]
+    then
+      commandTODO="source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src;"
+    fi
+    
+    Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
+    const_iter=`echo $const_iter+1 |bc`
+
+    #COMMAND
+    newtherest=`echo $therest | sed "s/$LOOPresult/$i/"`
+    commandTODO+="cd $PWD/$subfolder; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $subfolder;"
+
+    if [ $Qjpt_iter -eq $Qjpt ]
+    then
+      commandTODOover_iterations=$commandTODO
+      echo "$commandTODOover_iterations" >> commands_TODO.txt
+      Qjpt_iter=0
+      jobscount=`echo $jobscount+1 | bc`
+      commandTODOover_iterations=""
+    fi
+  done
+done
+if [ ! -z "$commandTODOover_iterations" ]
+then
+  echo "$commandTODOover_iterations" >> commands_TODO.txt
+  jobscount=`echo $jobscount+1|bc`
+  commandTODOover_iterations=""
+fi
+SCtasks=$jobscount
+if [ $SCtasks -eq 1 ]
+then
+  Qarray=0
+fi
+
+calc=0
+# generating the script
+JKecho 2 "Going to generate submission script."
+commands_TODO_lines=`cat commands_TODO.txt | wc -l`
+for i in `seq $SCtasks -1 1`
+do
+  if [ $Qarray -eq 1 ]
+  then
+    if [ $i -eq 1 ]
+    then
+      if [ $Qarraymax -gt 0 ]
+      then
+        arraymax="%$Qarraymax"
+      else
+        arraymax=""
+      fi
+      SC_command_sub=`echo $SC_command | sed "s/sbatch/sbatch --array=1-$SCtasks$arraymax/"`
+      echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" >> output
+      echo "$SC_command_sub 'head -n $commands_TODO_lines commands_TODO.txt | tail -n \${SLURM_ARRAY_TASK_ID} | head -n 1 | sh'" > .run
+      job=$(/bin/bash .run)
+      if [ ! -z "$job" ] ;then echo $job;fi
+      echo $job | awk '{print $4}'  >> .jobs.txt
+    fi
+  else
+    echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" >> output
+    echo "$SC_command 'head -n $commands_TODO_lines commands_TODO.txt | tail -n $i | head -n 1 | sh'" > .run
+    #echo "$SC_command \"source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src; time program_PYTHON $scriptpath/JKMD.py $therest \"" >> output
+    #echo "$SC_command \"source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src; time program_PYTHON $scriptpath/JKMD.py $therest \"" > .run
+  
+    JKecho 2 "Submission ready. Submitting"
+    if [ "$METHODsupercomputer" == "loc" ]
+    then
+      /bin/bash .run | tee -a output
+    else
+      job=$(/bin/bash .run)
+      if [ ! -z "$job" ] ;then echo $job;fi
+      echo $job | awk '{print $4}'  >> .jobs.txt
+    fi
+    cd ..
+  fi
+done
+
+JKecho 1 "Calculations submitted or calculations done (-loc)."
+exit
+
