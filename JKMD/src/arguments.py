@@ -42,6 +42,8 @@ def print_help():
     -follow           takes the last structure and performes subsequent simulation
     -test             see detailed output
     -noex             minimize print on screen
+    -repeat <int>     repeat x times
+    --                use for looping (e.g. 0--10, or 0--0.2--5)
     
   EXAMPLES:
       ### Water equilibration followed by longer simulation. 
