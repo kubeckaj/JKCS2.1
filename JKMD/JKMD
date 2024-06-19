@@ -212,7 +212,12 @@ do
     const_iter=`echo $const_iter+1 |bc`
 
     #COMMAND
-    newtherest=`echo $therest | sed "s/$LOOPresult/$i/"`
+    if [ ! -z "$LOOPresult" ]
+    then
+      newtherest=`echo $therest | sed "s/$LOOPresult/$i/"`
+    else
+      newtherest=$therest
+    fi
     commandTODO+="cd $PWD/$subfolder; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $subfolder;"
 
     if [ $Qjpt_iter -eq $Qjpt ]
