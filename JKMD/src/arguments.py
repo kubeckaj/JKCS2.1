@@ -6,11 +6,15 @@ def print_help():
     [ SPECIE ] [[OTHER SPECIE]] [ CALCULATOR ] [ THERMOSTAT ] [ SIMULATION_SETUP ] [[ CONSTRAINS ]]
 
   SPECIE:
-    <file>        xyz or pickle file (last structure taken)
-    -char <int>   charge [default = 0]
-    -recenter     move to [0,0,0]
-    -move <array> move center to [x,y,z] (e.g., [5,0,0])
-    -mb <int>     initiate vel. from Maxwell-Boltzmann distribution ex. at <int> K
+    -index <int>          index of structure to be taken from pickle file [default = -1 (i.e., last)]
+    <file>                xyz or pickle file (last structure taken)
+    -char <int>           charge [default = 0]
+    -recenter             move to [0,0,0]
+    -move,-moveby <array> move center of mass by [x,y,z] vector (e.g., [5,0,0])
+    -moveto <array>       move center of mass to [x,y,z] coordinates (e.g., [5,0,0])
+    -mb <int>             initiate vel. from Maxwell-Boltzmann distribution ex. at <int> K
+    -setvel <0/1>         1) removes COM velocites, 2) removes all velocities
+    -vel <array>          adds velocities as a vector [x,y,z] in Angstrom/fs
 
   CALCULATOR
     -xtb1            GFN1-xTB {XTBlite} [set as default]
@@ -72,6 +76,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   Qfolder = ""
   
   #SPECIES
+  Qindex = -1
   Qcharge = charge_from_previous_run
   if len(species_from_previous_run) == 0:
     Qindex_of_specie = -1
@@ -127,6 +132,15 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qout = 2
       continue
 
+    #INDEX
+    if i == "-index":
+      last = "-index"
+      continue
+    if last == "-index":
+      last = ""
+      Qindex = int(i)
+      continue
+
     #FOLDER
     if i == "-nf":
       last = "-nf"
@@ -146,11 +160,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       from ase.io import read
       species.append(read(i,"-2"))
       Qindex_of_specie = Qindex_of_specie + 1
+      Qindex = -1
       continue
     if i[-4:] == ".pkl":
       from pandas import read_pickle
-      species.append(read_pickle(i)[-1])
+      species.append(read_pickle(i).iloc[Qindex][("xyz","structure")])
       Qindex_of_specie = Qindex_of_specie + 1
+      Qindex = -1
       continue
  
     # CHARGE
@@ -168,13 +184,21 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
   
     #MOVE
-    if i == "-move":
+    if i == "-move" or i == "-moveby":
       last = "-move"
       continue
     if last == "-move":
       last = ""
       from ast import literal_eval
       species[Qindex_of_specie].translate(literal_eval(i))
+      continue
+    if i == "-moveto":
+      last = "-moveto"
+      continue
+    if last == "-moveto":
+      last = ""
+      from ast import literal_eval
+      species[Qindex_of_specie].translate(-species[Qindex_of_specie].get_center_of_mass()+literal_eval(i))
       continue
 
     #INITIATE VELOCITIES
@@ -185,6 +209,31 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
       MaxwellBoltzmannDistribution(species[Qindex_of_specie], temperature_K = int(i), force_temp = True)
+      continue
+    #SETVEL 0/1
+    if i == "-setvel":
+      last = "-setvel"
+      continue
+    if last == "-setvel":
+      last = ""
+      if int(i) == 1:
+        from ase.md.velocitydistribution import Stationary
+        Stationary(species[Qindex_of_specie])
+        continue
+      elif int(i) == 0:
+        species[Qindex_of_specie].set_velocities(0*species[Qindex_of_specie].get_velocities())
+        continue
+      else:
+        print("WTF")
+        exit()
+    #vel 
+    if i == "-vel":
+      last = "-vel"
+      continue
+    if last == "-vel":
+      last = ""
+      from ast import literal_eval
+      species[Qindex_of_specie].set_velocities(species[Qindex_of_specie].get_velocities()+literal_eval(i))
       continue
  
     #CALCULATOR
