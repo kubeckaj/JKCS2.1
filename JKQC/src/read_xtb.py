@@ -3,8 +3,9 @@
 ##############
 def read_xtb_init():
   from re import compile
-  global PATTERN_XTB_out_dipole_moment,PATTERN_XTB_out_vibrational_frequencies,PATTERN_XTB_out_mulliken_charges
+  global PATTERN_XTB_out_dipole_moment,PATTERN_XTB_out_dipole_moment2,PATTERN_XTB_out_vibrational_frequencies,PATTERN_XTB_out_mulliken_charges
   PATTERN_XTB_out_dipole_moment = compile(rb"dipole moment from electron density .*\n.*\n.*total .*Debye.*\n")
+  PATTERN_XTB_out_dipole_moment2 = compile(rb"molecular dipole:.*\n.*tot .*Debye.*\n.*q only:.*\n.*full.*\n")
   PATTERN_XTB_out_vibrational_frequencies = compile(rb'projected vibrational frequencies.*\n((?:.*eigval\s*:.*\n)+).*reduced masses.*\n')
   PATTERN_XTB_out_mulliken_charges = compile(rb'Mulliken.*\n((?:\s+\d+\w+\s+.*\n)+)\n') 
 
@@ -63,7 +64,11 @@ def read_xtb(mmm):
     lines = PATTERN_XTB_out_dipole_moment.findall(mm)[-1].decode("utf-8").split("\n")
     out_dipole_moment = float(lines[-2].split()[-1])
   except:
-    out_dipole_moment = missing
+    try:
+      lines = PATTERN_XTB_out_dipole_moment2.findall(mm)[-1].decode("utf-8").split("\n")
+      out_dipole_moment = float(lines[-2].split()[-1])
+    except:
+      out_dipole_moment = missing
 
   #ELECTRONIC ENERGY
   try:
