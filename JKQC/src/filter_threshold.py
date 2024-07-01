@@ -77,7 +77,7 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
       else:
         minimum = 0
       if Qcut[i][3+bonded_incr] == "nan" or Qcut[i][3+bonded_incr] == "NA" or Qcut[i][3+bonded_incr] == "na" or Qcut[i][3+bonded_incr] == "NaN":
-        if Qcut[i][0] == "==":
+        if Qcut[i][0] == "==" or Qcut[i][0] == ">=" or Qcut[i][0] == "<=":
           preselected_df = preselected_df.loc[isna(what-minimum)]
         else:
           preselected_df = preselected_df.drop(index=preselected_df[isna(what-minimum)].index)
