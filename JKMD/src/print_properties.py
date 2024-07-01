@@ -18,7 +18,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, spl
 
   ### DISTANCE
   if Qconstraints == True:
-    from numpy import srqt, sum
+    from numpy import sqrt, sum
     dist_n = sqrt(sum(((species_copy[0:split].get_center_of_mass()-species_copy[split:].get_center_of_mass())**2)))
     spread_a = species_copy[0:split].get_all_distances().max()
     spread_b = species_copy[split:].get_all_distances().max()

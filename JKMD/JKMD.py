@@ -23,10 +23,14 @@ current_step = 0
 #READ ARGUMENTS
 from arguments import arguments
 Qfollow_activated = -1
-if not Qfollow_activated == 0:
+while not Qfollow_activated == 0:
   if Qfollow_activated == -1:
     locals().update(arguments(argv[1:]))
+    if Qfollow_activated == 1 and Qout == 2:
+      print([Qfollow,Qfollow_activated])
   else:
+    if Qout == 2:
+      print("Next -follow")
     locals().update(arguments(Qfollow,all_species))
   if Qout == 2:
     from time import time
@@ -87,6 +91,14 @@ if not Qfollow_activated == 0:
     #               taup=1000 * units.fs, compressibility_au=4.57e-5 / units.bar)
     if Qfixcm == 1:
       dyn.zero_center_of_mass_momentum(verbose = 1)
+  elif Qthermostat == "B":
+    from ase import units
+    #from ase.md.bussi import Bussi
+    from ase_bussi import Bussi
+    dyn = Bussi(all_species, Qdt * units.fs, temperature_K = Qtemp, taut = Qthermostat_NH * units.fs)
+  else:
+    print("Some weird thermostat.")
+    exit()
  
   #DUMPING
   if Qdump != 0:

@@ -146,6 +146,7 @@ do
 done
 arguments=("${arguments_help[@]}")
 therest=${arguments[@]}
+JKecho 3 "therest = $therest"
 
 #Folder
 if [ $Qnewfolderasked -eq 0 ]
@@ -173,16 +174,18 @@ else
 fi
 
 JKecho 2 "Calculations will be performed in directory ${cfBLUE}$Qfolder/${name}-LM${cfDEF}"
-LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?--\d+(\.\d+)?")
+LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
 if [ ! -z "$LOOPresult" ]
 then 
+  JKecho 3 "LOOPresult = $LOOPresult"
   LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
   LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $3}'`
   LOOPby=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
 else
-  LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?")
+  LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
   if [ ! -z "$LOOPresult" ]
   then
+    JKecho 3 "LOOPresult = $LOOPresult"
     LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
     LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
     LOOPby=1
@@ -195,6 +198,7 @@ fi
 const_iter=0
 Qjpt_iter=0
 jobscount=0
+JKecho 2 "Time to loop if possible. LOOP = $LOOPresult = $LOOPfrom $LOOPby $LOOPto"
 for i in `seq $LOOPfrom $LOOPby $LOOPto`
 do
   for j in `seq 1 $Qrepeat`
@@ -213,12 +217,13 @@ do
 
     #COMMAND
     if [ ! -z "$LOOPresult" ]
-    then
-      newtherest=`echo $therest | sed "s/$LOOPresult/$i/"`
+    then  
+      newtherest=`echo $therest | sed "s/$LOOPresult/$i/g"`
+      JKecho 3 "newtherest = $newtherest"
     else
       newtherest=$therest
     fi
-    commandTODO+="cd $PWD/$subfolder; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $subfolder;"
+    commandTODO+="cd $PWD/$subfolder; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $subfolder >> output;"
 
     if [ $Qjpt_iter -eq $Qjpt ]
     then

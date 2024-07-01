@@ -13,7 +13,7 @@ def print_help():
     -move,-moveby <array> move center of mass by [x,y,z] vector (e.g., [5,0,0])
     -moveto <array>       move center of mass to [x,y,z] coordinates (e.g., [5,0,0])
     -mb <int>             initiate vel. from Maxwell-Boltzmann distribution ex. at <int> K
-    -setvel <0/1>         1) removes COM velocites, 2) removes all velocities
+    -setvel <0/1>         0) removes COM velocites, 1) removes all velocities
     -vel <array>          adds velocities as a vector [x,y,z] in Angstrom/fs
 
   CALCULATOR
@@ -27,7 +27,8 @@ def print_help():
   THERMOSTAT:
     -vv                  Velocity Verlet [set as default]
     -langevin <float>    Langevin thermostat with friction <float> 1/fs (e.g., 0.01)
-    -nose_hoover <float> Nose-Hoover NVT thermostat with <float> constant (e.g., 25)
+    -nose_hoover <float> Nose-Hoover NVT thermostat with <float> time constant (e.g., 25)
+    -csvr,bussi <float>  CSVR, stochastic velocity rescaling alg., def. by time const (e.g., 25)
     -fix_COM             the center of mass is not fixed by default
     -temp <float>        temperature (for langevin and nose_hoover) [default = 300]
 
@@ -63,7 +64,7 @@ def print_help():
       ### Umbrella sampling step
        JKMD w.xyz -mb 300 -langevin 0.01 -nf EQ1
        JKMD simEQ1.pkl -langevin 0.01 -nf EQ2 -ns 100
-       JKMD simEQ1.pkl -recenter -move [-3,0,0] simEQ2.pkl -recenter -move [3,0,0] -nose_hoover 25 -ns 10000 -harm 6.0 -nf SIMULATION_at_6
+       JKMD simEQ1.pkl -recenter simEQ2.pkl -moveto [0--0.2--10,0,0] -nose_hoover 25 -ns 10000 -harm 0--0.2--10 -nf US_w_w_NPT
 
 """)
 
@@ -72,6 +73,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   from os import path
   missing = float("nan")
 
+  Qseed = 42
   Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
   Qfolder = ""
   
@@ -100,9 +102,10 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   Qdump = 1  #dump every
   Qtemp = 300
   
-  Qthermostat = "VV" #VV = Velocity Verlet, L = Langevin, NH = Nose-Hoover
+  Qthermostat = "VV" #VV = Velocity Verlet, L = Langevin, NH = Nose-Hoover, B = Bussi
   Qthermostat_L = 0.01
   Qthermostat_NH = 25
+  Qthermostat_B = 25
   Qfixcm = 0
 
   Qfollow_activated = 0
@@ -216,11 +219,11 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
     if last == "-setvel":
       last = ""
-      if int(i) == 1:
+      if int(i) == 0:
         from ase.md.velocitydistribution import Stationary
         Stationary(species[Qindex_of_specie])
         continue
-      elif int(i) == 0:
+      elif int(i) == 1:
         species[Qindex_of_specie].set_velocities(0*species[Qindex_of_specie].get_velocities())
         continue
       else:
@@ -323,6 +326,14 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       Qthermostat = "NH"
       Qthermostat_NH = float(i)
+      continue
+    if i == "-csvr" or i == "-bussi":
+      last = "-csvr"
+      continue
+    if last == "-csvr":
+      last = ""
+      Qthermostat = "B"
+      Qthermostat_B = float(i)
       continue
  
     #CONSTRAINTS
