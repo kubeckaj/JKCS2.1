@@ -12,6 +12,8 @@ QconcTYP=""
 Qtemp=""
 Qrun="0"
 Qall=0 #print a lot of outgrowing clusters
+Qjk=0
+Qjkconc="10^6"
 last=""
 for i in $@
 do 
@@ -29,6 +31,19 @@ do
   if [ "$last" == "-folder" ]
   then
    folder="$i"
+   last=""
+   continue
+  fi
+  #JK
+  if [ "$i" == "-jk" ]
+  then
+    last="-jk"
+    continue
+  fi
+  if [ "$last" == "-jk" ]
+  then
+   Qjkconc="$i"
+   Qjk=1
    last=""
    continue
   fi
@@ -189,6 +204,11 @@ function lowerclusters {
 }
 
 function properties {
+  if [ $Qjk == 1 ]
+  then
+    echo "$1 0 - - - 50.0  1500.0 -1  1"  | awk -v V=$2 '{print $V}'
+    return
+  fi
   case $1 in
     #1monomer 2charge 30 4-1 5+1 6mass 7density 8bs 9as 
     "sa")  echo "sa  0 - - - 98.08  1830.0 -1  2"  | awk -v V=$2 '{print $V}'
@@ -468,7 +488,7 @@ predefined=`echo $QconcMOL | wc -w`
 for i in `seq 1 $Nmonomers`
 do
   moni=`echo $monomers | awk -v V=$i '{print $V}'`
-  if [[ "$QconcMOL" == *"$moni"* ]]
+  if [[ "$QconcMOL" == *"$moni"* ]] || [ $Qjk -eq 1 ]
   then
     position=0
     for j in `seq 1 $predefined`
@@ -480,8 +500,14 @@ do
         break
       fi 
     done
-    typ=`echo $QconcTYP | awk -v var=$position '{print $var}'`
-    conc=`echo $QconcNUM | awk -v var=$position '{print $var}'`
+    if [ $Qjk -eq 1 ] 
+    then
+      typ="cmmc"
+      conc=$Qjkconc
+    else
+      typ=`echo $QconcTYP | awk -v var=$position '{print $var}'`
+      conc=`echo $QconcNUM | awk -v var=$position '{print $var}'`
+    fi
     if [ "$typ" == "ppt" ]
     then
       echo "${moni}_conc=${conc}; %ppt" >> JKrun_single.m
@@ -532,11 +558,11 @@ echo "    module load matlab/R2022b"
 echo "    ulimit -s unlimited"
 echo "    matlab -batch JKrun_single"
 echo "or:"
-echo "    cd $folder;sbatch JKsend 'module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single'"
+echo "    cd $folder;sbatch JKsend 'if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single'"
 
 if [ "$Qrun" == "1" ]
 then
   echo ""
   echo "ok, I will do even the submission for you:"
-  sbatch -J $folder JKsend "module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single"
+  sbatch -J $folder JKsend "if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load matlab/R2022b;ulimit -s unlimited;matlab -batch JKrun_single"
 fi
