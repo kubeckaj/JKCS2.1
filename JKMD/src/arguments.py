@@ -83,12 +83,12 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   if len(species_from_previous_run) == 0:
     Qindex_of_specie = -1
     species = []
+    Qconstraints = 0
   else:
     Qindex_of_specie = 0
     species = [species_from_previous_run]
 
   #CONSTRAINTS
-  Qconstraints = 0
   Qharm = 10
   Qk_bias = 100
 
@@ -162,12 +162,16 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if i[-4:] == ".xyz":
       from ase.io import read
       species.append(read(i,"-2"))
+      if Qindex_of_specie == 0:
+        Qlenfirst = len(species[0])
       Qindex_of_specie = Qindex_of_specie + 1
       Qindex = -1
       continue
     if i[-4:] == ".pkl":
       from pandas import read_pickle
       species.append(read_pickle(i).iloc[Qindex][("xyz","structure")])
+      if Qindex_of_specie == 0:
+        Qlenfirst = len(species[0])
       Qindex_of_specie = Qindex_of_specie + 1
       Qindex = -1
       continue
