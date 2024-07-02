@@ -142,8 +142,8 @@ for key in cluster_dic:
   cluster_dic[key] = cluster_dic[key][::-1]
 clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
 try:
-  clusters_df.to_pickle("../sim"+Qfolder+".pkl")
-  print("The sim"+Qfolder+".pkl has been hopefully created.")
+  clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
+  print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
 except:
   print("Something got fucked up.")
   
