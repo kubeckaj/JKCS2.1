@@ -218,7 +218,14 @@ do
     then
       if [ $Qorca -eq 1 ]
       then
-        addORCA="$MODULE_ORCA;export ORCA_COMMAND=$PATH_ORCA/orca;export LD_LIBRARY_PATH=$PATH_ORCA;"
+        testik=`echo $MODULE_ORCA | rev | cut -c-1`
+        if [ "$testik" == ";" ]
+        then 
+          addORCA="$MODULE_ORCA"
+        else
+          addORCA="$MODULE_ORCA;"
+        fi
+        addORCA="export ORCA_COMMAND=$PATH_ORCA/orca;export LD_LIBRARY_PATH=$PATH_ORCA;"
       fi
 
       commandTODO="source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src;$addORCA"
