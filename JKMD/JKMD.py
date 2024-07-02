@@ -8,12 +8,12 @@ from os import system
 
 import os
 import psutil
-os.system("if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load intel; module load openmpi;")
+#os.system("if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load intel; module load openmpi;")
 os.system("if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load gcc openmpi mkl")
 os.environ['OMP_STACKSIZE'] = '4G'
 os.environ['OMP_NUM_THREADS'] = f'{len(psutil.Process().cpu_affinity())}'
                                #f'{len(psutil.Process().cpu_affinity())},1'
-#os.environ['OMP_MAX_ACTIVE_LEVELS'] = '1'
+os.environ['OMP_MAX_ACTIVE_LEVELS'] = '1'
 #import resource
 #resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
 

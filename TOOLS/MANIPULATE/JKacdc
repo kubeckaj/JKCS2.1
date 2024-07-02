@@ -5,7 +5,7 @@ toolspath="$JKQCpath/../"
 
 if [ -z "$1" ]; then echo "Missing input"; exit; fi
 
-function help() {
+function help {
   echo """Help for JKacdc:
 
     JKacdc <file> [ARGUMENTS]
@@ -18,14 +18,23 @@ function help() {
     -concppt <monomer> <float> . concentration in ppt (e.g., -concppt am 10000)
     -temp <float> .............. temperature !!! carfull with this !!! (check w JK)
     -run ....................... submit immediately
+    -cs ........................ add CS (--use_cs --cs exp_loss --exp_loss_coefficient 0.001 --exp_loss_exponent -1.6)    -cs1sa ..................... the above with rest to 1sa +(-exp_loss_ref_cluster 1sa)
+    -int <monomrs> ............. integrate monomers concentration over clusters (e.g., constant 1sa 10^6 -1am1sa...)
+                                 [only one monomer can be interated over for now, easy to fix]
     OTHERS: -jk
+
+    EXAMPLES: 
+      JKacdc G.txt 
+      JKacdc G.txt -conc sa 10^7 -concppt am 1000 -cs1sa -int sa
 """
 }
+Qmonomerinclusters=""
 folder="ACDCrun"
 QconcMOL=""
 QconcNUM=""
 QconcTYP=""
 Qtemp=""
+Qcs=0
 Qrun="0"
 Qall=0 #print a lot of outgrowing clusters
 Qjk=0
@@ -36,7 +45,31 @@ do
   #HELP
   if [ "$i" == "-help" ]
   then
-    echo "oh, this fucking Jakub was even so lazy to write any help."; exit;
+    help
+    exit
+  fi
+  # INT
+  if [ "$i" == "-int" ]
+  then
+    last="-int"
+    continue
+  fi
+  if [ "$last" == "-int" ]
+  then
+    last=""
+    Qmonomerinclusters="$i"
+    continue
+  fi
+  # CS
+  if [ "$i" == "-cs" ]
+  then
+    Qcs=1
+    continue
+  fi
+  if [ "$i" == "-cs1sa" ]
+  then
+    Qcs=2
+    continue
   fi
   #FOLDER
   if [ "$i" == "-folder" ]
@@ -418,8 +451,14 @@ do
   moni=`echo $monomers | awk -v V=$i '{print $V}'`
   echo "" >> ACDCsource.m
   echo ""
-  echo "  fprintf(fileID,\"constant 1$moni %3.3e \n\",c$i);" >> ACDCsource.m
-  echo "  fprintf(fileID,\"constant 1$moni %3.3e \n\",c$i);"
+  if [ "$moni" == "$Qmonomerinclusters" ]
+  then
+    REMOVE="-`cat ../../$inputfile | awk '{print $1}' | grep "1$moni" | xargs | sed "s/ /-/g"`"
+  else
+    REMOVE=""
+  fi
+  echo "  fprintf(fileID,\"constant 1$moni %3.3e $REMOVE \n\",c$i);" >> ACDCsource.m
+  echo "  fprintf(fileID,\"constant 1$moni %3.3e $REMOVE \n\",c$i);"
 done
 
 echo """
@@ -453,7 +492,15 @@ echo "           \\\\\\\\\\\\||||//////"
 echo ""
 
 echo " -- ACDCinit.m"
-cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCinit.m .
+if [ $Qcs -eq 0 ]
+then
+  cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCinit.m .
+elif [ $Qcs -eq 1 ]
+then
+  cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCinit2.m ACDCinit.m
+else
+  cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCinit3.m ACDCinit.m
+fi
 echo " -- ACDCrun.m"
 cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCrun.m .
 echo " -- acdc.pl [DO NOT FORGET TO CITE ACDC!]"

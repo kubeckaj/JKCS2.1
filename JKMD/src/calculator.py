@@ -35,6 +35,13 @@ def calculator(Qcalculator, Qcalculator_input, Qcharge):
   elif Qcalculator == "ORCA":
     from ase.calculators.orca import ORCA
     import psutil
+    import os
+    #os.system("if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load intel; module load openmpi;")
+    os.system("if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load gcc openmpi mkl")
+    os.environ['OMP_STACKSIZE'] = '4G'
+    os.environ['OMP_NUM_THREADS'] = f'{len(psutil.Process().cpu_affinity())}'
+                               #f'{len(psutil.Process().cpu_affinity())},1'
+    os.environ['OMP_MAX_ACTIVE_LEVELS'] = '1'
     cpus = f'{len(psutil.Process().cpu_affinity())}'
     return ORCA(charge=Qcharge,
                 mult=1,
