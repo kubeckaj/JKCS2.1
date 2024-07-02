@@ -34,10 +34,12 @@ def calculator(Qcalculator, Qcalculator_input, Qcharge):
   ### ORCA ###
   elif Qcalculator == "ORCA":
     from ase.calculators.orca import ORCA
+    import psutil
+    cpus = f'{len(psutil.Process().cpu_affinity())}'
     return ORCA(charge=Qcharge,
                 mult=1,
                 orcasimpleinput=Qcalculator_input,
-                orcablocks='%pal nprocs 1 end')
+                orcablocks='%pal nprocs '+cpus+' end')
 
   elif Qcalculator == "NN":
     from schnetpack.interfaces import SpkCalculator

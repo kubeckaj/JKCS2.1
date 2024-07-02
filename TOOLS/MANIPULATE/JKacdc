@@ -5,6 +5,22 @@ toolspath="$JKQCpath/../"
 
 if [ -z "$1" ]; then echo "Missing input"; exit; fi
 
+function help() {
+  echo """Help for JKacdc:
+
+    JKacdc <file> [ARGUMENTS]
+
+  ARGUMENTS:
+    -help ...................... print help
+    -folder .................... folder name
+    -all ....................... ougrow everywhere (not only the largest clusters)
+    -conc <monomer> <float> .... concentration in cm-3 (e.g., -conc sa 10^8)
+    -concppt <monomer> <float> . concentration in ppt (e.g., -concppt am 10000)
+    -temp <float> .............. temperature !!! carfull with this !!! (check w JK)
+    -run ....................... submit immediately
+    OTHERS: -jk
+"""
+}
 folder="ACDCrun"
 QconcMOL=""
 QconcNUM=""
@@ -443,7 +459,7 @@ cp $toolspath/LOADING/JK_ACDC/ACDC_input/ACDCrun.m .
 echo " -- acdc.pl [DO NOT FORGET TO CITE ACDC!]"
 cp $toolspath/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl .
 echo " -- JKget_evap.sh"
-cp $toolspath/LOADING/JK_ACDC/JKget_evap.sh .
+cp $toolspath/LOADING/JK_ACDC/JKget_evap.sh ../
 echo " -- G.txt"
 test=`head -n 1 ../../$inputfile | awk '{print $2}'`
 if [ ! -z "$test" ] 
