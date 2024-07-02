@@ -155,6 +155,17 @@ arguments=("${arguments_help[@]}")
 therest=${arguments[@]}
 JKecho 3 "therest = $therest"
 
+# print inserted command
+JKecho 2 "Writting your command to the output file."
+echoCOMMAND COMMAND: JKMD "$@" >> output
+if [ "$METHODsupercomputer" == "loc" ]
+then
+  loc=" -loc"
+  Qarray=0
+else
+  loc=""
+fi
+
 #Folder
 if [ $Qnewfolderasked -eq 0 ]
 then
@@ -168,17 +179,6 @@ then
 fi
 mkdir $Qnewfolder
 cd $Qnewfolder
-
-# print inserted command
-JKecho 2 "Writting your command to the output file."
-echoCOMMAND COMMAND: JKMD "$@" >> output
-if [ "$METHODsupercomputer" == "loc" ]
-then
-  loc=" -loc"
-  Qarray=0
-else
-  loc=""
-fi
 
 JKecho 2 "Calculations will be performed in directory ${cfBLUE}$Qfolder/${name}-LM${cfDEF}"
 LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
@@ -225,10 +225,10 @@ do
         else
           addORCA="$MODULE_ORCA;"
         fi
-        addORCA="export ORCA_COMMAND=$PATH_ORCA/orca;export LD_LIBRARY_PATH=$PATH_ORCA;"
+        addORCA+="export ORCA_COMMAND=$PATH_ORCA/orca;export LD_LIBRARY_PATH=$PATH_ORCA/;"
       fi
 
-      commandTODO="source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src;$addORCA"
+      commandTODO="source ~/.JKCSusersetup.txt$loc; program_PYTHON --version;export PYTHONPATH=$scriptpath/src;$addORCA"
     fi
     
     Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
