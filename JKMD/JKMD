@@ -67,6 +67,8 @@ Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 Qnewfolderasked=0
 
+Qorca=0
+
 last=""
 # loop over all arguments
 JKecho 2 "Going to loop through your arguments."
@@ -128,6 +130,11 @@ do
     last=""
     Qrepeat=$iter
     continue
+  fi
+  # ORCA
+  if [ "$iter" == "-orca" ]
+  then
+    Qorca=1
   fi
   # FILES
   end=`echo $iter | rev | cut -c-4 | rev`
@@ -209,7 +216,12 @@ do
     mkdir $subfolder
     if [ $Qjpt_iter -eq 0 ]
     then
-      commandTODO="source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src;"
+      if [ $Qorca -eq 1 ]
+      then
+        addORCA="$MODULE_ORCA;export ORCA_COMMAND=$PATH_ORCA/orca;export LD_LIBRARY_PATH=$PATH_ORCA;"
+      fi
+
+      commandTODO="source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src;$addORCA"
     fi
     
     Qjpt_iter=`echo $Qjpt_iter + 1 |bc`

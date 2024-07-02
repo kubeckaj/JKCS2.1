@@ -58,13 +58,13 @@ OPTIONS (extra packages):
   -qml ............ quantum machine learning program
   -nn ............. schnetpack [!needs: module load gcc]
   -descriptors .... dscribe library
-  -xtb ............ python xtblite
+  -calculators .... python TBlite, XTB, ORCA
   -all ............ all above = qml,nn,descriptors,xtb
   -mbdf ........... MBDF for categorization trick
   experimental: -qml-lightning
 
 EXAMPLE:
-    sh setup.sh -python python3.9 -module "module load python"
+    sh setup.sh -python python3.9 -module \"module load python\"
     sh setup.sh grendel -r -qml -descriptors
     sh setup.sh -up grendel -nn
     """
@@ -90,7 +90,7 @@ EXAMPLE:
     #MODULE_ORCA="module load gcc; module load openmpi"
     PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.4/"
     #MODULE_ORCA="ulimit -c 0;source /com/bin/modules.sh;source /comm/groupstacks/chemistry/bin/modules.sh;ml orca/5.0.4;ml gcc/9.1.0;ml openmpi/3.1.3;"
-    MODULE_ORCA="ulimit -c 0;source /comm/groupstacks/chemistry/bin/modules.sh source /com/bin/modules.sh;ml orca/5.0.4;ml gcc/9.1.0;ml openmpi;export OMPI_MCA_btl_openib_allow_ib=1;export OMPI_MCA_btl=^openib;export OMPI_MCA_mca_base_component_show_load_errors=0"
+    MODULE_ORCA="ulimit -c 0;source /comm/groupstacks/chemistry/bin/modules.sh; source /com/bin/modules.sh;ml orca/5.0.4;ml gcc/9.1.0;ml openmpi;export OMPI_MCA_btl_openib_allow_ib=1;export OMPI_MCA_btl=^openib;export OMPI_MCA_mca_base_component_show_load_errors=0"
     SBATCH_PREFIX=""
     WRKDIR="/scratch/\\\$SLURM_JOB_ID/"
     time1="10-00:00:00"
@@ -168,7 +168,7 @@ EXAMPLE:
     ADD+=" -qml -xtb -descriptors -nn "
     continue
   fi
-  if [ "$i" == "-xtb" ]
+  if [ "$i" == "-xtb" ] || [ "$i" == "-calculators" ]
   then
     ADD+=" -xtb "
     continue

@@ -135,6 +135,8 @@ $PIP install numexpr==2.8.4 #2.7.0
 echo "======================"
 $PIP install pandas==1.3.4  #2.2.0  #for the newer one, I have to get rid of append
 echo "======================"
+$PIP install psutil
+echo "======================"
 $PIP install xlsxwriter     #important only for IMoS output but cheap to install
 #LAPJV can be installed directlty:
 #echo "======================"
@@ -181,12 +183,14 @@ then
 fi
 
 
-if [[ "$*" == *"-xtb"* ]]
+if [[ "$*" == *"-xtb"* ]] || [[ "$*" == *"-calcs"* ]]
 then
   echo "======================"
   export CC=gcc
   module load gcc 2>/dev/null
   $PIP install tblite
+  $PIP install XTB
+  $PIP install ORCA
   ## Use following in Python script:
   #from tblite.ase import TBLite 
   #atoms.calc = TBLite(method="GFN1-xTB")

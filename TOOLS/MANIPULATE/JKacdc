@@ -547,7 +547,8 @@ cd '../';"""  >>  JKrun_single.m
 echo " -- JKrun_fluxes_out.m"
 cp $toolspath/LOADING/JK_ACDC/JKrun_fluxes_out.m .
 
-echo "module load matlab/R2022b" > JKrun_single.sh
+echo "if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi;" > JKrun_single.sh
+echo "module load matlab/R2022b" >> JKrun_single.sh
 echo "ulimit -s unlimited" >> JKrun_single.sh
 echo "matlab -batch JKrun_single" >> JKrun_single.sh
 

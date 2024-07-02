@@ -33,8 +33,6 @@ def calculator(Qcalculator, Qcalculator_input, Qcharge):
 
   ### ORCA ###
   elif Qcalculator == "ORCA":
-    print("I need to make some small adjustments to make linking to ORCA working, sorry.")
-    exit()
     from ase.calculators.orca import ORCA
     return ORCA(charge=Qcharge,
                 mult=1,
