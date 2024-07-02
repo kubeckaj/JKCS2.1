@@ -235,7 +235,7 @@ do
     else
       newtherest=$therest
     fi
-    commandTODO+="cd $PWD/$subfolder; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $subfolder >> output;"
+    commandTODO+="cd $PWD/$subfolder; cd \$WRKDIR; mkdir TMP; cd TMP; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $PWD/$subfolder >> $PWD/$subfolder/output;"
 
     if [ $Qjpt_iter -eq $Qjpt ]
     then
