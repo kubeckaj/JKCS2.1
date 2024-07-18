@@ -197,6 +197,20 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
           rg.append(missing)
       output.append(rg)
       continue
+    #ERRPA
+    if i == "-errpa":
+      err = []
+      for ind in clusters_df.index:
+        try:
+          aseCL = clusters_df.loc[ind,("xyz","structure")]
+          symb = aseCL.get_chemical_symbols()
+          er = clusters_df.loc[ind,("extra","error")]
+          atoms = len(symb)
+          err.append(float(er/atoms))
+        except:
+          err.append(float("nan"))
+      output.append(err)
+      continue
     #Radius
     if i == "-radius" or i == "-radius0.5":
       from numpy import sqrt,linalg,asarray,dot,prod,max
@@ -653,7 +667,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
     if i == "-column":
       try:
         output.append(clusters_df.loc[:,(Qcolumn[Qcolumn_i][0],Qcolumn[Qcolumn_i][1])])
-        Qcolumn_i += 1
+        Qcolumn_i = Qcolumn_i + 1
       except:
         output.append([missing]*len(clusters_df))
       continue

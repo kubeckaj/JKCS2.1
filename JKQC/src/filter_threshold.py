@@ -38,8 +38,21 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
           print("The out-el.energy column is not present.")
           exit()
         what = multiplier*(preselected_df.loc[:,("log","gibbs_free_energy")].values-preselected_df.loc[:,("log","electronic_energy")].values+preselected_df.loc[:,("out","electronic_energy")].values)
+      elif Qcut[i][2] == "errpa":
+        errpa = []
+        for ind in clusters_df.index:
+          try:
+            aseCL = clusters_df.loc[ind,("xyz","structure")]
+            symb = aseCL.get_chemical_symbols()
+            err =  clusters_df.loc[ind,("extra","error")] 
+            atoms = len(symb)
+            errpa.append(float(err/atoms))
+          except:
+            errpa.append(float("nan"))
+        what = array(errpa)
       elif Qcut[i][2] == "lf":
-        what = array([array(ii) if isna([ii]).any() else array(ii[0]) for ii in preselected_df.loc[:,("log","vibrational_frequencies")].values], dtype=object)
+        what = array([array(ii) if type(ii)==type(array([])) else array(ii[0]) for ii in preselected_df.loc[:,("log","vibrational_frequencies")].values], dtype=object)
+        #what = array([array(ii) if isna([ii]).any() else array(ii[0]) for ii in preselected_df.loc[:,("log","vibrational_frequencies")].values], dtype=object)
       elif Qcut[i][2] == "rg":
         rg = []
         for aseCL in preselected_df.loc[:,("xyz","structure")].values:

@@ -78,7 +78,7 @@ def print_help():
   print("                         use -cnt for self-consistent dG")
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
-  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>")
+  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize")
 
@@ -835,6 +835,9 @@ def arguments(argument_list = []):
       continue
     if i == "-t" or i == "--t" or i == "-time" or i == "--time":
       Pout.append("-t")
+      continue
+    if i == "-errpa":
+      Pout.append("-errpa")
       continue
     if i == "-termination" or i == "--termination":
       Pout.append("-termination")

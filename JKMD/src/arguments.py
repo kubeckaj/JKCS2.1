@@ -73,10 +73,6 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   from os import path
   missing = float("nan")
 
-  Qseed = 42
-  Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
-  Qfolder = ""
-  
   #SPECIES
   Qindex = -1
   Qcharge = charge_from_previous_run
@@ -84,29 +80,34 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qindex_of_specie = -1
     species = []
     Qconstraints = 0
+
+    Qseed = 42
+    Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
+    Qfolder = ""
+  
+    #CONSTRAINTS
+    Qharm = 10
+    Qk_bias = 100
+  
+    #CALCULATOR
+    Qcalculator = "XTB1"
+    Qcalculator_input = ""
+   
+    #THERMOSTAT AND SIMULATION
+    Qdt = 1    #timestep
+    Qns = 1000 #number of steps
+    Qdump = 1  #dump every
+    Qtemp = 300
+    
+    Qthermostat = "VV" #VV = Velocity Verlet, L = Langevin, NH = Nose-Hoover, B = Bussi
+    Qthermostat_L = 0.01
+    Qthermostat_NH = 25
+    Qthermostat_B = 25
+    Qfixcm = 0
+
   else:
     Qindex_of_specie = 0
     species = [species_from_previous_run]
-
-  #CONSTRAINTS
-  Qharm = 10
-  Qk_bias = 100
-
-  #CALCULATOR
-  Qcalculator = "XTB1"
-  Qcalculator_input = ""
- 
-  #THERMOSTAT AND SIMULATION
-  Qdt = 1    #timestep
-  Qns = 1000 #number of steps
-  Qdump = 1  #dump every
-  Qtemp = 300
-  
-  Qthermostat = "VV" #VV = Velocity Verlet, L = Langevin, NH = Nose-Hoover, B = Bussi
-  Qthermostat_L = 0.01
-  Qthermostat_NH = 25
-  Qthermostat_B = 25
-  Qfixcm = 0
 
   Qfollow_activated = 0
   Qfollow = []
@@ -156,6 +157,38 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     #FIX COM
     if i == "-fix_COM":
       Qfixcm = 1
+      continue
+
+    #CALCULATOR
+    if i == "-xtb1":
+      Qcalculator = "XTB1"  
+      continue
+    if i == "-xtb2":
+      Qcalculator = "XTB2"
+      continue
+    if i == "-xtb":
+      Qcalculator = "XTB"
+      last = "-xtb"
+      continue
+    if last == "-xtb":
+      last = ""
+      Qcalculator_input = i
+      continue
+    if i == "-orca":
+      Qcalculator = "ORCA"
+      last = "-orca"
+      continue
+    if last == "-orca":
+      last = ""
+      Qcalculator_input = i
+      continue
+    if i == "-nn_model":
+      Qcalculator = "NN"
+      last = "-nn_model"
+      continue
+    if last == "-nn_model":
+      last = ""
+      Qcalculator_input = i
       continue
 
     #SPECIES
@@ -243,38 +276,6 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       species[Qindex_of_specie].set_velocities(species[Qindex_of_specie].get_velocities()+literal_eval(i))
       continue
  
-    #CALCULATOR
-    if i == "-xtb1":
-      Qcalculator = "XTB1"  
-      continue
-    if i == "-xtb2":
-      Qcalculator = "XTB2"
-      continue
-    if i == "-xtb":
-      Qcalculator = "XTB"
-      last = "-xtb"
-      continue
-    if last == "-xtb":
-      last = ""
-      Qcalculator_input = i
-      continue
-    if i == "-orca":
-      Qcalculator = "ORCA"
-      last = "-orca"
-      continue
-    if last == "-orca":
-      last = ""
-      Qcalculator_input = i
-      continue
-    if i == "nn_model":
-      Qcalculator = "NN"
-      last = "-nn_model"
-      continue
-    if last == "-nn_model":
-      last = ""
-      Qcalculator_input = i
-      continue
-
     #TIMESTEP
     if i == "-dt":
       last = "-dt"

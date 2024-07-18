@@ -3,6 +3,8 @@ def mytofloat(string,element,QUentropy,QUenergy,Pout):
       try:
         if Pout[element] == "-s":
           multiplier = QUentropy
+        elif Pout[element] == "-pXYZ":
+          multiplier = 1
         else:
           multiplier = QUenergy
       except:

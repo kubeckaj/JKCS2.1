@@ -1,0 +1,22 @@
+#!/bin/bash
+
+source ~/.JKCSusersetup.txt
+
+currentdir=$PWD
+if [ ! -e ~/Applications ]
+then
+  mkdir ~/Applications
+fi
+if [ ! -e ~/Applications/umbrella_integration ]
+then
+  cd ~/Applications
+  git clone https://github.com/ATB-UQ/umbrella_integration.git
+  cd $currentdir
+fi
+
+if [ ! -e umbrella_integration ]; then mkdir umbrella_integration; fi
+cd umbrella_integration
+JKQC ../simcalc-LM_*.pkl -column log md_time -column log COM_distance -column log harm_distance -column log k_bias -noex -filter_gt log,md_time 100000 | awk '{print $1 " " $2 " " $3 " " $4*4.184}' | column -t > input.txt
+module load python/2.7.14
+python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -pp pic1 -ph pic2 -o out -m 2.4 10.0
+cd ..

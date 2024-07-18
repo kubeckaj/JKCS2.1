@@ -10,26 +10,26 @@ def calculator(Qcalculator, Qcalculator_input, Qcharge):
   
   ### XTB-Lite ###
   if Qcalculator == "XTB1":
-    if Qcharge != 0:
-      print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
-      exit()
+    #if Qcharge != 0:
+    #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
+    #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN1-xTB", verbosity = 0)
+    return TBLite(method="GFN1-xTB", charge=Qcharge, verbosity = 0)
 
   elif Qcalculator == "XTB2":
-    if Qcharge != 0:
-      print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
-      exit()
+    #if Qcharge != 0:
+    #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
+    #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN2-xTB", verbosity = 0)
+    return TBLite(method="GFN2-xTB", charge=Qcharge, verbosity = 0)
 
   ### XTB ###
   elif Qcalculator == "XTB":
-    if Qcharge != 0:
-      print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
-      exit()
+    #if Qcharge != 0:
+    #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
+    #  exit()
     from xtb.ase.calculator import XTB
-    return XTB(method=Qcalculator_input)
+    return XTB(method=Qcalculator_input+" --chrg "+Qcharge)#, charge=Qcharge)
 
   ### ORCA ###
   elif Qcalculator == "ORCA":

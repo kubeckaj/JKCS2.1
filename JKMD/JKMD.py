@@ -81,11 +81,12 @@ while not Qfollow_activated == 0:
     from ase import units
     from ase.md.npt import NPT
     from numpy import identity
-    class myNPT(NPT):
-      def zero_center_of_mass_momentum(self, verbose=0):
-        pass
     all_species.set_cell(2 * identity(3))
-    dyn = myNPT(atoms = all_species, timestep = Qdt * units.fs, temperature_K = Qtemp, ttime = Qthermostat_NH * units.fs, externalstress = None)
+    #TODO the npt library is outdated and I adjusted it manually to make this working
+      #line 148
+      #if externalstress is not None:
+      #  self.set_stress(externalstress)
+    dyn = NPT(atoms = all_species, timestep = Qdt * units.fs, temperature_K = Qtemp, ttime = Qthermostat_NH * units.fs, externalstress = None)
     #from ase.md.nptberendsen import NPTBerendsen
     #dyn = NPTBerendsen(all_species, timestep=0.1 * units.fs, temperature_K=300,
     #               taut=100 * units.fs, pressure_au=1.01325 * units.bar,
@@ -121,7 +122,8 @@ while not Qfollow_activated == 0:
 
     init(current_time,current_step)
     #global cluster_dic
-    cluster_dic = {}
+    if current_step == 0:
+      cluster_dic = {}
     def save():
       global cluster_dic,current_time,current_step
       toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, split = Qlenfirst)

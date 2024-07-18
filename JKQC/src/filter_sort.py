@@ -17,6 +17,18 @@ def filter_sort(clusters_df,Qsort,Qreverse):
     else:
       print("Cannot sort this")
       exit()
+  elif str(Qsort) == "errpa":
+    err = []
+    for ind in clusters_df.index:
+      try:
+        aseCL = clusters_df.loc[ind,("xyz","structure")]
+        symb = aseCL.get_chemical_symbols()
+        atoms = len(symb)
+        err.append(float(atoms))
+      except:
+        err.append(float("nan"))
+    sorted_indices = (clusters_df.loc[:,("extra","error")]/err).sort_values(ascending = Qreverse).index
+    clusters_df = clusters_df.loc[sorted_indices]
   elif str(Qsort) == "no":
     clusters_df = clusters_df
   elif Qsort == "b":

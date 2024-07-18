@@ -51,6 +51,8 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, spl
   dic = {("info","folder_path"):[folder_path]}
   dic.update({("info","file_basename"):["str-"+str(current_step)]})
   dic.update({("xyz","structure"):[species_copy]})
+  dic.update({("log","md_time"):[current_time]})
+  dic.update({("log","md_step"):[current_step]})
   dic.update({("log","electronic_energy"):[epot]})
   dic.update({("log","kinetic_energy"):[ekin]})
   dic.update({("log","total_energy"):[epot+ekin]})
