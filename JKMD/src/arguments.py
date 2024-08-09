@@ -210,7 +210,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
  
     # CHARGE
-    if i == "-chrg" or i == "char":
+    if i == "-chrg" or i == "-char":
       last = "-char"
       continue
     if last == "-char":

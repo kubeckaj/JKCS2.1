@@ -62,6 +62,9 @@ while not Qfollow_activated == 0:
   all_species.set_calculator(calculator(Qcalculator, Qcalculator_input, Qcharge))
   if Qout == 2:
     print(all_species)
+    #print(all_species.get_positions())
+    #print(all_species.get_potential_energy())
+    #exit()
   
   #THERMOSTAT
   if Qthermostat == "VV":

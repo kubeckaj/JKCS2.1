@@ -30,7 +30,7 @@ def read_xtb(mmm):
   from io import open
   missing = float("nan")
   
-  columns = ["program","method","time","NAtoms","electronic_energy","mulliken_charges","dipole_moment","vibrational_frequencies","enthalpy_energy","gibbs_free_energy","entropy","zero_point_correction","zero_point_energy"]
+  columns = ["program","method","time","NAtoms","electronic_energy","mulliken_charges","dipole_moment","vibrational_frequencies","enthalpy_energy","gibbs_free_energy","entropy","zero_point_correction","zero_point_energy","rotational_symmetry_number"]
 
   #PROGRAM VERSION
   try:
@@ -69,6 +69,13 @@ def read_xtb(mmm):
       out_dipole_moment = float(lines[-2].split()[-1])
     except:
       out_dipole_moment = missing
+
+  #rotational number
+  try:
+    line,idx = find_line(rb':  rotational number', 0, 0)
+    out_rotational_symmetry_number = float(line.split()[3])
+  except:
+    out_rotational_symmetry_number = missing
 
   #ELECTRONIC ENERGY
   try:

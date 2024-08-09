@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH -p serial
+#SBATCH -p q64,q48,q40,q36,q28,q24,q20
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 1

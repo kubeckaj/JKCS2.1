@@ -191,6 +191,7 @@ then
   $PIP install tblite
   $PIP install XTB
   $PIP install ORCA
+  cp ../TOOLS/LOADING/JKase.py JKCS/lib/python3.9/site-packages/tblite/ase.py
   ## Use following in Python script:
   #from tblite.ase import TBLite 
   #atoms.calc = TBLite(method="GFN1-xTB")

@@ -74,6 +74,11 @@ function help {
      $scriptfile -p G16 -rf XTB -nf DFT -bc I -m \"#wb97xd GEN Pseudo=Read Opt Int=UltraFine Freq MaxDisk=32GB\" -mem 12GB -cpu 16
      $scriptfile -p ORCA -rf paths.txt -nf DLPNO -m \"! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK\" -maxtasks 100 -cpu 8 -par q24,q28,q36,q40,q48,q64 -time 10-00:00:00 
      $scriptfile -p ORCA -rf XTB -nf DFT -add I -m \"! aug-cc-pVTZ wB97X-D3BJ OPT FREQ\" -cpu 4 -mem 8000
+   ${cfYELLOW}FORCES:${cfDEF}
+     $scriptfile -p G16  -rf todo.txt -nf FORCES -m \"# wb97xd 6-31++g** force\"
+     $scriptfile -p XTB  -rf todo.txt -nf FORCES -m \"--gfn 1 --sp --grad\"
+     $scriptfile -p ORCA -rf todo.txt -nf FORCES -m \"! CCSD(T) aug-cc-pVDZ engrad numgrad\"
+     $scriptfile -p ORCA -rf todo.txt -nf FORCES -m \"! B97-3c ENGRAD\"
 """
   printf "#################################################################\n"
   exit

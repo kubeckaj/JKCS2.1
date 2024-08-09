@@ -17,16 +17,19 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
     #LEVELS
     if i == "-levels":
       from pandas import set_option, isna
-      set_option('display.max_colwidth', None)
-      if not isna(clusters_df["log"]["program"]).all():
-        print("# LOG #")
-        print(clusters_df["log"][["program","method"]].drop_duplicates())
-        print("#######")   
-      if "out" in clusters_df:
-        if not isna(clusters_df["out"]["program"]).all():
-          print("# OUT #")
-          print(clusters_df["out"][["program","method"]].drop_duplicates())
+      try:
+        set_option('display.max_colwidth', None)
+        if not isna(clusters_df["log"]["program"]).all():
+          print("# LOG #")
+          print(clusters_df["log"][["program","method"]].drop_duplicates())
           print("#######")   
+        if "out" in clusters_df:
+          if not isna(clusters_df["out"]["program"]).all():
+            print("# OUT #")
+            print(clusters_df["out"][["program","method"]].drop_duplicates())
+            print("#######")  
+      except:
+        print("For some reason, I cannot print programs/methods.") 
       continue
     #EXTRA
     if i == "-extra":
@@ -48,7 +51,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       from ase.io import write
       for ind in clusters_df.index:
         try:
-          write(clusters_df.loc[ind,("info","file_basename")]+".xyz",clusters_df.loc[ind,("xyz","structure")])
+          write(clusters_df.loc[ind,("info","file_basename")]+".xyz",clusters_df.loc[ind,("xyz","structure")], format='xyz')
         except:
           print("Corrupted structure saved for "+clusters_df["info"]["file_basename"][ind])
       continue
@@ -538,6 +541,8 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
               level += clusters_df.at[ind,("out","program")]+"_"+clusters_df.at[ind,("out","method")]
             else:
               level += "nan"
+          if level == "":
+            level = "nan"
         except: 
           level = "nan"
         levels.append(level.replace(" ","_"))

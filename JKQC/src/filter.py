@@ -54,9 +54,8 @@ def filter(clusters_df, Qsort, Qreverse, Qarbalign, Quniq, Qsample, Qclustername
     from filter_arbalign import filter_arbalign
     clusters_df = filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout) 
   
-  #TODO: not sure if this sorting is necessary but maybe after uniqueness filtering yes
   #SORTING (AGAIN)
-  if str(Qsort) != "0" and str(Qsort) != "no":
+  if str(Qsort) != "0" and str(Qsort) != "no" and Qarbalign > 0:
     clusters_df = filter_sort(clusters_df,Qsort,Qreverse)
 
   #SELECT

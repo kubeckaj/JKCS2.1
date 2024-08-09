@@ -29,6 +29,24 @@ def filter_sort(clusters_df,Qsort,Qreverse):
         err.append(float("nan"))
     sorted_indices = (clusters_df.loc[:,("extra","error")]/err).sort_values(ascending = Qreverse).index
     clusters_df = clusters_df.loc[sorted_indices]
+  elif str(Qsort) == "rg":
+    from numpy import array, tile, errstate, unique, sum
+    rg = []
+    for aseCL in clusters_df.loc[:,("xyz","structure")].values:
+      try:
+        rg.append((sum(sum((aseCL.positions-tile(aseCL.get_center_of_mass().transpose(),(len(aseCL.positions),1)))**2,axis=-1)*aseCL.get_masses())/sum(aseCL.get_masses()))**0.5)
+      except:
+        rg.append(float("nan"))
+    #sorted_indices = rg.sort_values(ascending = Qreverse).index
+    #sorted_indices = sorted(range(len(rg)), key=lambda x: rg[x])
+    #HA HA THIS IS SO STUPID CODE
+    #print(rg)
+    from pandas import DataFrame
+    df = DataFrame({"rg":rg},index=range(len(rg)))
+    df = df.loc[:,("rg")].sort_values(ascending = Qreverse)
+    sorted_indices = df.index
+    #print(DataFrame({"rg":rg},index=range(len(rg))).loc[:,"rg"])
+    clusters_df = clusters_df.loc[sorted_indices]
   elif str(Qsort) == "no":
     clusters_df = clusters_df
   elif Qsort == "b":
