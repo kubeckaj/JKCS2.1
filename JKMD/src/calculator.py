@@ -63,7 +63,7 @@ def calculator(Qcalculator, Qcalculator_input, Qcharge):
         model_file = Qcalculator_input,
         device="cpu",
         #neighbor_list=spk.transform.ASENeighborList(cutoff=10.0),
-        neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+        neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0,cutoff_shell=2.0),
         #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
         energy_key='energy',
         force_key='forces',

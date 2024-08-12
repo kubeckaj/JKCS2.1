@@ -31,7 +31,7 @@ while not Qfollow_activated == 0:
   else:
     if Qout == 2:
       print("Next -follow")
-    locals().update(arguments(Qfollow,all_species))
+    locals().update(arguments(Qfollow,all_species,charge_from_previous_run=Qcharge))
   if Qout == 2:
     from time import time
     start = time()

@@ -15,6 +15,7 @@ def print_help():
     -mb <int>             initiate vel. from Maxwell-Boltzmann distribution ex. at <int> K
     -setvel <0/1>         0) removes COM velocites, 1) removes all velocities
     -vel <array>          adds velocities as a vector [x,y,z] in Angstrom/fs
+    -box <float>          set cell of size LxLxL Angstrom with PBC 
 
   CALCULATOR
     -xtb1            GFN1-xTB {XTBlite} [set as default]
@@ -238,7 +239,10 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-moveto":
       last = ""
       from ast import literal_eval
-      species[Qindex_of_specie].translate(-species[Qindex_of_specie].get_center_of_mass()+literal_eval(i))
+      themove=literal_eval(i)
+      #if themove[0]<=6:
+      #  themove[0]=6
+      species[Qindex_of_specie].translate(-species[Qindex_of_specie].get_center_of_mass()+themove)
       continue
 
     #INITIATE VELOCITIES
@@ -274,6 +278,16 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       from ast import literal_eval
       species[Qindex_of_specie].set_velocities(species[Qindex_of_specie].get_velocities()+literal_eval(i))
+      continue
+
+    #BOX
+    if i == "-box":
+      last = "-box"
+      continue
+    if last == "-box":
+      last = ""
+      species[Qindex_of_specie].set_cell([float(i),float(i),float(i)])
+      species[Qindex_of_specie].set_pbc([1,1,1])
       continue
  
     #TIMESTEP

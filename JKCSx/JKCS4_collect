@@ -151,7 +151,7 @@ do
       continue
     fi
     # Forces
-    if [ "$iter" == "-forces" ]
+    if [ "$iter" == "-forces" ] || [ "$iter" == "-force" ]
     then
       Qforces=1
       continue

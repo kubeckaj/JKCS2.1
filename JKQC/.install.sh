@@ -110,6 +110,7 @@ then
     git clone https://github.com/qmlcode/qml.git
   fi
   cd qml
+  module load gcc
   sed -i 's/ -lpthread/-lpthread/' setup.py   # remove the stray space
   $PIP install .
   cd ../..

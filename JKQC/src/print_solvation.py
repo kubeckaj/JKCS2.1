@@ -103,6 +103,7 @@ def print_solvation(output,Qsolvation,Qt,Qrh,QPsolvent,Pout,QUenergy,Qout):
   R = 1.987 #cal/mol/K #=8.31441
 
   #PRINT SOLVATION
+  unique_clusters.append('')
   for i in unique_clusters:
     indexes = []
     for j in range(len(no_solvent_cluster_types)):

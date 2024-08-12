@@ -306,7 +306,7 @@ def arguments(argument_list = []):
       Qatomize = 1
       continue
     #FORCES
-    if i == "-forces":
+    if i == "-forces" or i == "-force":
       Qforces = 1
       continue
     #ORCA EXTENSION
