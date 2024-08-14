@@ -36,7 +36,7 @@ def import_other_libraries2():
       JKML_sym_kernel = get_local_symmetric_kernel_mbdf
       JKML_kernel = get_local_kernel_mbdf
   # SchNetPack
-  elif Qmethod == "nn" and Qrepresentation == "painn":
+  elif Qmethod == "nn" and ( Qrepresentation == "painn" or Qrepresentation == "schnet" or Qrepresentation == "so3net" ):
     global ASEAtomsData, AtomsDataModule, trn, pl, Ha, Bohr, SpkCalculator, spk
     if Qtrain > 0:
       from schnetpack.data import ASEAtomsData
