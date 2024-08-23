@@ -82,7 +82,9 @@ do
       newline=`echo $line | awk '{print $1}'`
       startcol=2
     fi
-    if [[ "${newline}" == @(ipeashift|s9|cnd2) ]]; then continue; fi
+    #XTB1: perhaps useless ipeashift|s9|cnd2
+    #XTB2: perhaps useless kdiff|ipeashift|gam3d2
+    #if [[ "${newline}" == @(ipeashift|s9|cnd2) ]]; then continue; fi
     if [ $Qhalogens -eq 0 ] && [[ "${newline}" == @(xbdamp|xbrad) ]]; then continue; fi
     for j in `seq $startcol $columns`
     do
