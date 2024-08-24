@@ -838,7 +838,7 @@ function program_MRCC {
     if [ -z "$CHARGE" ]; then CHARGE=0; fi
     if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
     if [ -z "$method" ]; then method="calc=LCCSD(T) \nbasis=aug'-cc-pVTZ\nscfalg=direct"; fi
-    JKxyz2minp $input -mem $MEMORY -method "$method" -char $CHARGE -mult $MULTIPLICITY $args >/dev/null -cpu $CPU
+    #JKxyz2minp $input -mem $MEMORY -method "$method" -char $CHARGE -mult $MULTIPLICITY $args >/dev/null -cpu $CPU
     #if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
   fi
 
@@ -868,7 +868,8 @@ done
 mkdir \$CALC_NAME
 
 if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
-cp MINP \$CALC_NAME/
+#cp MINP \$CALC_NAME/
+JKxyz2minp $inputXYZ -mem $MEMORY -method \"$method\" -char $CHARGE -mult $MULTIPLICITY $args -cpu $CPU
 cd \$CALC_NAME
 
 dmrcc > $DIR/$output 2> $DIR/$output
