@@ -825,6 +825,11 @@ function program_MRCC {
     source ../arguments.txt
   fi
 
+  if [ -e $input ]
+  then
+    cp $input ./  2>/dev/null # .XYZ
+  fi
+
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
   #MINP or *.xyz or *.pkl
@@ -869,8 +874,8 @@ mkdir \$CALC_NAME
 
 if [ -e $inputXYZ ]; then cp $inputXYZ \$CALC_NAME/; fi
 #cp MINP \$CALC_NAME/
-JKxyz2minp $inputXYZ -mem $MEMORY -method \"$method\" -char $CHARGE -mult $MULTIPLICITY $args -cpu $CPU
 cd \$CALC_NAME
+JKxyz2minp $inputXYZ -mem $MEMORY -method \"$method\" -char $CHARGE -mult $MULTIPLICITY $args -cpu $CPU
 
 dmrcc > $DIR/$output 2> $DIR/$output
 
