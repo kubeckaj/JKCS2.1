@@ -7,6 +7,7 @@ def print_help():
 
   SPECIE:
     -index <int>          index of structure to be taken from pickle file [default = -1 (i.e., last)]
+    -indexrange <int>     random index from the range from <int> to -1 (e.g., -10)
     <file>                xyz or pickle file (last structure taken)
     -char <int>           charge [default = 0]
     -recenter             move to [0,0,0]
@@ -144,6 +145,16 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-index":
       last = ""
       Qindex = int(i)
+      continue
+    if i == "-indexrange":
+      last = "-indexrange"
+      continue
+    if last == "-indexrange":
+      from random import randint
+      last = ""
+      range_end = abs(int(i))
+      print("STRUCTURE USED: "+str(range_end))
+      Qindex = randint(-range_end, -1)
       continue
 
     #FOLDER
