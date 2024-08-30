@@ -1,5 +1,5 @@
 
-def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, split = None):
+def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None):
   from ase.md.velocitydistribution import Stationary
   from ase.md.velocitydistribution import ZeroRotation
   from ase import units
@@ -17,7 +17,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, spl
   species.set_constraint(CS)
 
   ### DISTANCE
-  if Qconstraints > 0:
+  if Qconstraints > 0 or Qdistance == 1:
     from numpy import sqrt, sum
     dist_n = sqrt(sum(((species_copy[0:split].get_center_of_mass()-species_copy[split:].get_center_of_mass())**2)))
     spread_a = species_copy[0:split].get_all_distances().max()
@@ -60,7 +60,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, spl
   dic.update({("log","translational_temperature"):[T_tr]})
   dic.update({("log","rotational_temperature"):[T_rot]})
   dic.update({("log","vibrational_temperature"):[T_vib]})
-  if Qconstraints != 0:
+  if Qconstraints != 0 or Qdistance == 1: 
     dic.update({("log","COM_distance"):[dist_n]})
     dic.update({("log","maxA_distance"):[spread_a]})
     dic.update({("log","maxB_distance"):[spread_b]})

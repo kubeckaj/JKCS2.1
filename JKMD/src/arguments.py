@@ -46,6 +46,7 @@ def print_help():
  
   OTHER:
     -nf <str>         folder where the simulation will be performed
+    -distout          save distance between two molecules
     -follow           takes the last structure and performes subsequent simulation
     -test             see detailed output
     -noex             minimize print on screen
@@ -82,6 +83,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qindex_of_specie = -1
     species = []
     Qconstraints = 0
+    Qdistance = 0
 
     Qseed = 42
     Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
@@ -382,6 +384,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       Qconstraints = 1
       Qk_bias = float(i)
+      continue
+    if i == "-distout":
+      Qdistance = 1
       continue
 
     #UNKNOWN ARGUMENT

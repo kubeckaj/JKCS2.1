@@ -54,6 +54,10 @@ while not Qfollow_activated == 0:
     from umbrellaconstraint import UmbrellaConstraint
     all_species.set_constraint(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm))
     Qconstraints = 2
+  if Qdistance == 1:
+    if len(species) != 2:
+      print("Nice try. The -distout part of JKMD is yet not ready for your jokes.")
+      exit()
     
   #SET CALCULATOR
   if Qout == 2:
@@ -129,7 +133,7 @@ while not Qfollow_activated == 0:
       cluster_dic = {}
     def save():
       global cluster_dic,current_time,current_step
-      toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, split = Qlenfirst)
+      toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst)
       toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
       if Qconstraints != 0:
         toupdate.update({("log","k_bias"):[Qk_bias],("log","harm_distance"):[Qharm]})
