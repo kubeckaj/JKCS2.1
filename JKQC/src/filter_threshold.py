@@ -51,7 +51,7 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
             errpa.append(float("nan"))
         what = array(errpa)
       elif Qcut[i][2] == "lf":
-        what = array([array(ii) if type(ii)==type(array([])) else array(ii[0]) for ii in preselected_df.loc[:,("log","vibrational_frequencies")].values], dtype=object)
+        what = array([array(ii) if (isna([ii]).any() or type(ii)==type(array([]))) else array(ii[0]) for ii in preselected_df.loc[:,("log","vibrational_frequencies")].values], dtype=object)
         #what = array([array(ii) if isna([ii]).any() else array(ii[0]) for ii in preselected_df.loc[:,("log","vibrational_frequencies")].values], dtype=object)
       elif Qcut[i][2] == "rg":
         rg = []
