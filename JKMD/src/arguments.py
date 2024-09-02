@@ -290,7 +290,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-vel":
       last = ""
       from ast import literal_eval
-      species[Qindex_of_specie].set_velocities(species[Qindex_of_specie].get_velocities()+literal_eval(i))
+      from ase.units import Ang, fs
+      from numpy import array
+      species[Qindex_of_specie].set_velocities(species[Qindex_of_specie].get_velocities()+array(literal_eval(i))*Ang/fs)
       continue
 
     #BOX
