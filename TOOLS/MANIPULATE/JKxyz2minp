@@ -123,8 +123,19 @@ NAtoms2=`echo $NAtoms+2 | bc`
 
 if [ -e MINP ]; then rm MINP; fi
 
+
 echo -e "$Qmethod" > MINP
-echo "mem=$Qmem" >> MINP
+#l=$(echo "($Qmem*$Qcpu*0.90)/1" | bc); echo "mem=${l}GB" >> MINP
+#echo "mem=${Qmem}GB" >> MINP
+
+#MEMORY handling
+Qmem=${Qmem%GB}
+if [[ $Qmem == *MB ]]; then
+    Qmem=$(echo "scale=2; ${Qmem%MB}/1024" | bc)
+fi
+l=$(echo "($Qmem*$Qcpu*0.90)/1" | bc)
+echo "mem=${l}GB" >> MINP
+
 echo "charge=$Qcharge" >> MINP
 echo "mult=$Qmult" >> MINP
 echo "ccsdthreads=$Qcpu" >> MINP 

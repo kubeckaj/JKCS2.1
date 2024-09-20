@@ -150,6 +150,8 @@ def read_g16(mmm, Qforces = 0, Qanharm = 0):
   #VIBRATIONAL FREQUENCIES
   try:
     lines,idx = find_lines(rb" Frequencies -- ", 1, 0)
+    if Qanharm == 1:
+      lines = lines[0:int(len(lines)/3)]
     out_vibrational_frequencies = [float(element) for line in lines for element in line.split()[2:]]
     if len(out_vibrational_frequencies) == 0:
       out_vibrational_frequencies = [missing]
@@ -254,7 +256,7 @@ def read_g16(mmm, Qforces = 0, Qanharm = 0):
   if Qanharm == 1:
     try:
       lines = PATTERN_G16_out_anharm.findall(mm)[-1].decode("utf-8").split("\n")[:-1]
-      out_anharm = [float(line.split()[-4]) for line in lines][-1:1:-1]
+      out_anharm = [float(line.split()[-4]) for line in lines][-1::-1]
     except:
       out_anharm = missing
 
