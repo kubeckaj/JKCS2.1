@@ -1,4 +1,4 @@
-def filter(clusters_df, Qsort, Qreverse, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted, bonddistancethreshold, Qout, seed):
+def filter(clusters_df, Qsort, Qreverse, Qarbalign, QMWarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted, bonddistancethreshold, Qout, seed):
 
   #CHECK WHETHER CLUSTERNAME MAKE SENSE
   if Qclustername == 1:
@@ -50,9 +50,9 @@ def filter(clusters_df, Qsort, Qreverse, Qarbalign, Quniq, Qsample, Qclustername
     clusters_df = filter_sort(clusters_df,Qsort,Qreverse)
 
   #ArbAlign
-  if Qarbalign > 0:
+  if Qarbalign > 0 or QMWarbalign > 0:
     from filter_arbalign import filter_arbalign
-    clusters_df = filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout) 
+    clusters_df = filter_arbalign(clusters_df,Qclustername,Qarbalign,QMWarbalign,Qout) 
   
   #SORTING (AGAIN)
   if str(Qsort) != "0" and str(Qsort) != "no" and Qarbalign > 0:

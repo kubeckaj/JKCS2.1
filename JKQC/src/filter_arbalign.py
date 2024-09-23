@@ -1,4 +1,4 @@
-def filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout):
+def filter_arbalign(clusters_df,Qclustername,Qarbalign,QMWarbalign,Qout):
   from joblib import Parallel, delayed
   from os import environ
 
@@ -9,6 +9,11 @@ def filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout):
   except:
     from multiprocessing import cpu_count
     num_cores = cpu_count()
+
+  if Qarbalign > 0:
+    comparison_threshold = Qarbalign
+  else:
+    comparison_threshold = QMWarbalign
 
   if Qclustername != 0:
     from numpy import unique
@@ -25,7 +30,10 @@ def filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout):
     tobecompared = comparepairs[arg]
     AAci = preselected_df.loc[allindexes[tobecompared[0]],("xyz","structure")]
     AAcj = preselected_df.loc[allindexes[tobecompared[1]],("xyz","structure")]
-    return compare(AAci,AAcj)
+    if QMWarbalign > 0:
+      return compare(AAci,AAcj,mass_weighted=1)
+    else:
+      return compare(AAci,AAcj)
 
   for i in uniqueclusters:
      if Qclustername != 0:
@@ -45,7 +53,7 @@ def filter_arbalign(clusters_df,Qclustername,Qarbalign,Qout):
          comparepairs.append(pair)
        comparison = Parallel(n_jobs=num_cores)(delayed(compare_pair)(i) for i in range(len(comparepairs)))
        for AAc in range(len(comparison)):
-         if comparison[AAc] < Qarbalign:
+         if comparison[AAc] < comparison_threshold:
            removedindexes.append(allindexes[comparepairs[AAc][1]])
      clusters_df = clusters_df.drop(removedindexes)
 

@@ -4,7 +4,6 @@ import numpy as np
 import lapjv
 from collections import Counter 
 import operator
-from ase.data import atomic_numbers, atomic_masses
 
 
 # ArbAlign Lite Edit
@@ -14,6 +13,7 @@ from ase.data import atomic_numbers, atomic_masses
 #  - Uses the labjv Jonker–Volgenant algorithm instead of the python2 hungarian library
 #  - Disabled options: Will always do swap/reflections and will always include H.¨
 #  - Simplified output: Will always just return the lowest RMSD as a float
+
 
 def kabsch(A, B):
    """
@@ -59,78 +59,11 @@ def kabsch(A, B):
 
    return rmsd(A, B)
 
-def mw_kabsch(A, B, w):
-    """
-    ##############
-    MODIFIED BY H.W. FOR MASS--WEIGHTED RMSD
-    ##############
-    Kabsch Algorithm as implemented by Jimmy Charnley Kromann
-
-    Calculate RMSD between two XYZ files
-
-    by: Jimmy Charnley Kromann <jimmy@charnley.dk> and 
-    Lars Andersen Bratholm <larsbratholm@gmail.com>
-    project: https://github.com/charnley/rmsd
-    license: https://github.com/charnley/rmsd/blob/master/LICENSE
-
-    A - set of coordinates
-    B - set of coordinates
-    w - weight vector (mass weights, should be normalized)
-
-    Performs the Kabsch algorithm to calculate the mass-weighted RMSD between A and B.
-
-    Returns an RMSD
-    """
-
-    A = np.array(A)
-    B = np.array(B)
-    # Mass-weighted centroids for A and B
-    A_weighted_centroid = np.sum(A.T * w, axis=1)
-    B_weighted_centroid = np.sum(B.T * w, axis=1)
-
-    # Center the coordinates based on the mass-weighted centroids
-    A = A - A_weighted_centroid
-    B = B - B_weighted_centroid
-
-    # Compute the weighted covariance matrix
-    C = np.dot((A.T * w), B)
-
-    # Perform Singular Value Decomposition (SVD)
-    V, S, W = np.linalg.svd(C)
-    d = (np.linalg.det(V) * np.linalg.det(W)) < 0.0
-
-    if d:
-        S[-1] = -S[-1]
-        V[:, -1] = -V[:, -1]
-
-    # Compute the rotation matrix
-    U = np.dot(V, W)
-
-    # Rotate A
-    A = np.dot(A, U)
-
-    # Compute and return mass-weighted RMSD
-    return mw_rmsd(A, B, w)
-    
-def mw_rmsd(A, B, w):
-    """
-    Calculate the mass-weighted RMSD between aligned coordinates A and B.
-    
-    A - aligned set of coordinates (N x 3 matrix)
-    B - aligned set of coordinates (N x 3 matrix)
-    w - weight vector for each point (normalized such that sum(w) == 1)
-    
-    Returns the mass-weighted RMSD.
-    """
-    diff = A - B
-    weighted_sq_diff = np.sum(w * np.sum(diff**2, axis=1))
-    return np.sqrt(weighted_sq_diff)
-    
 def rmsd(V, W):
     """
     V - set of coordinates
     W - set of coordinates
-    
+
     Returns root-mean-square deviation from two sets of vectors V and W.
     """
     D = len(V[0])
@@ -139,29 +72,6 @@ def rmsd(V, W):
     for v, w in zip(V, W):
         rmsd += sum([(v[i]-w[i])**2.0 for i in range(D)])
     return np.sqrt(rmsd/N)
-    
-def get_weight(atomic_labels):
-    """
-    Generate mass and atomic number vectors based on input atomic labels.
-    
-    atomic_labels - list or array of atomic symbols (e.g., ['H', 'O', 'C'])
-    
-    Returns:
-    atomic_numbers_vector - vector of atomic numbers corresponding to the labels
-    masses_vector - vector of atomic masses corresponding to the labels
-    """
-    # Convert atomic labels to atomic numbers using ase.data.atomic_numbers
-    atomic_numbers_vector = np.array([atomic_numbers[label] for label in atomic_labels])
-    atomic_numbers_vector = calc_weight(atomic_numbers_vector) 
-    # Convert atomic numbers to atomic masses using ase.data.atomic_masses
-    masses_vector = np.array([atomic_masses[atomic_numbers[label]] for label in atomic_labels])
-    masses_vector = calc_weight(masses_vector)
-
-    return atomic_numbers_vector, masses_vector
-
-def calc_weight(v):
-    weight = v/sum(v)
-    return weight
 
 
 def sorted_xyz(filename, noHydrogens):
@@ -400,7 +310,7 @@ def sorted_xyz_from_molecule(molecule, noHydrogens=False):
     NA = len(sortedlabels)
     return sortedlabels, sortedcoords, NA, sortedorder
 
-def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
+def compare(in_a,in_b,simpleit=0,noHydrogens=0):
    try:
       a_labels = in_a.get_chemical_symbols()
       b_labels = in_b.get_chemical_symbols()
@@ -419,17 +329,10 @@ def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
    #Calculate the initial unsorted all-atom RMSD as a baseline
    A_all = np.array(a_coords)
    B_all = np.array(b_coords)
-   if mass_weighted == 1:
-     a_nw, a_mw = get_weight(a_labels)
-     a_mw = np.array(a_mw)
-     a_nw = np.array(a_nw)
 
    #If the two molecules are of the same size, get 
    if NA_a == NA_b:
-      if mass_weighted == 1:
-        InitRMSD_unsorted = mw_kabsch(A_all,B_all,a_mw)
-      else:
-        InitRMSD_unsorted = kabsch(A_all,B_all)       
+      InitRMSD_unsorted = kabsch(A_all,B_all)
    else:
       return("Error: unequal number of atoms. " + str(NA_a) + " is not equal to " + str(NA_b))
  
@@ -486,15 +389,7 @@ def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
    A_all = A_all - sum(A_all) / len(A_all)
    B_all = np.array(b_coords)
    B_all = B_all - sum(B_all) / len(B_all)
-   if mass_weighted == 1:
-     #get weight vectors
-     a_nw, a_mw = get_weight(a_labels)
-     a_mw = np.array(a_mw)
-     a_nw = np.array(a_nw)
-     
-     InitRMSD_sorted = mw_kabsch(A_all,B_all,a_mw)
-   else: 
-     InitRMSD_sorted = kabsch(A_all,B_all)
+   InitRMSD_sorted = kabsch(A_all,B_all)
    
    """
    Dynamically generate hashes of coordinates and atom indices for every atom type
@@ -558,10 +453,7 @@ def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
       if num_uniq == 1:
          b_perm = permute_atoms(b_coords, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
          b_final = transform_coords(b_perm, B_t[i][1], B_t[i][2])
-         if mass_weighted == 1:
-           rmsds.append([mw_kabsch(a_coords, b_final, a_mw), B_t[i][1], B_t[i][2], b_final, vars()[Perm[Uniq[l]]]])
-         else:
-           rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final, vars()[Perm[Uniq[l]]]])
+         rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final, vars()[Perm[Uniq[l]]]])
          rmsds = sorted(rmsds, key = lambda x: x[0])
       else: 
          b_perm = permute_atoms(b_coords, vars()[Perm[Uniq[l]]], vars()[b_Indices[Uniq[l]]])
@@ -585,10 +477,7 @@ def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
             b_trans = b_final
             l += 1
             q = l - 1 
-            if mass_weighted == 1:
-              rmsds.append([mw_kabsch(a_coords, b_final, a_mw), B_t[i][1], B_t[i][2], b_final])
-            else:
-              rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final])
+            rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final])
             rmsds = sorted(rmsds, key = lambda x: x[0])
    FinalRMSD = float(rmsds[0][0])
    if FinalRMSD < float(InitRMSD_unsorted): 

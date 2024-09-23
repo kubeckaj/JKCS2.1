@@ -78,7 +78,7 @@ if Qqha == 1:
 
 ## FILTERING ##
 from filter import filter
-clusters_df = filter(clusters_df, Qsort, Qreverse, Qarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted,bonddistancethreshold, Qout, seed)
+clusters_df = filter(clusters_df, Qsort, Qreverse, Qarbalign, QMWarbalign, Quniq, Qsample, Qclustername, Qthreshold, Qcut, Qshuffle, Qselect, Qreacted,bonddistancethreshold, Qout, seed)
 
 ## SAVE OUTPUT.pkl ##
 if Qoutpkl > 0:

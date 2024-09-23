@@ -16,4 +16,10 @@ def load_pickles(input_pkl,Qout):
       else:
         clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
     clusters_df = clusters_df.reset_index(drop=True)
+
+  #if not ("xyz","id1") in clusters_df.columns and ("xyz","structure") in clusters_df.columns: 
+  #  from functions import df_add_iter
+  #  i#  identify_1
+  #  variables = []
+  #  clusters_df = df_add_iter(clusters_df,"xyz","id1",0:len(clusters_df),variables) 
   return clusters_df

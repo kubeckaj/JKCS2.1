@@ -59,6 +59,7 @@ def print_help():
   print(" -sample <int> <str>  selects <INT> distinct based on, e.g.: rg,el or rg,g or rg,el,dip")
   print("                      use e.g. rg2,el0.5 to define threshold as 10**-x [def: rg=2, el/g=3, dip=1]")
   print(" -arbalign <float>    use (modified) ArbAlign program to compare RMSD (by def sort -el). CITE ArbAlign!!")
+  print(" -MWarbalign <float>  use (modified) ArbAlign program to compare Mass-Weighted RMSD (by def sort -el). CITE ArbAlign!!")
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     removes higher/lower rel. values compared to lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("   OR")
@@ -149,6 +150,7 @@ def arguments(argument_list = []):
   Qsample = 0 # The same as uniqueness but adjustable automatically
   Quniq = 0 # uniqie based on given arguments
   Qarbalign = 0 #use ArbAlign with float parameter
+  QMWarbalign = 0 #use ArbAlign with float parameter with mass-weighted RMSD
   formation_input_file = ""
   Qthreshold = 0 #cut/pass something
   Qcut = [] #what will be cutted
@@ -640,6 +642,13 @@ def arguments(argument_list = []):
       last = ""
       Qarbalign = float(i)
       continue
+    if i == "-MWarbalign" or i == "-MWArbAlign":
+      last = "-MWarbalign"
+      continue
+    if last == "-MWarbalign":
+      last = ""
+      QMWarbalign = float(i)
+      continue
     #SHUFFLE
     if i == "-shuffle":
       Qshuffle = 1
@@ -945,7 +954,8 @@ def arguments(argument_list = []):
     if len(Pout) == 0:
       if Qoutpkl == 0:
         Qoutpkl = 1
-      print("Number of files: "+str(len(files)))
+      if Qout == 2:
+        print("Number of files: "+str(len(files)))
     else:
       if Qoutpkl == 0:
         Qoutpkl = 1

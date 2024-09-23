@@ -140,15 +140,11 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
     #### XYZ #######
     ################
     if path.exists(file_i_XYZ):
-      from ase.io import read
-      try:
-        out = read(file_i_XYZ)
-        #from rdkit import Chem
-        #print(out)
-        #print(out.MolToSmiles)
-      except:
-        out = float("nan")
+      from read_xyz import read_xyz,identify_1
+      out = read_xyz(file_i_XYZ)
       dic.update({("xyz","structure"):[out]})
+      out = identify_1(out)
+      dic.update({("xyz","id1"):[out]})
 
     for file_test_ext in list(set(["log","out",turbomoleext,orcaext])):
       file_test = folder_path+file_basename+"."+file_test_ext
