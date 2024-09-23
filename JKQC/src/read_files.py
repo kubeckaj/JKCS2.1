@@ -143,6 +143,9 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
       from ase.io import read
       try:
         out = read(file_i_XYZ)
+        #from rdkit import Chem
+        #print(out)
+        #print(out.MolToSmiles)
       except:
         out = float("nan")
       dic.update({("xyz","structure"):[out]})

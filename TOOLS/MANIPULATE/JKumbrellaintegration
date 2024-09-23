@@ -1,17 +1,68 @@
 #!/bin/bash
 
-FROM=2.4
+FROM=0.0
 TO=10.0
-if [ "$1" == "-help" ]
-then
+SKIP=0
+
+arguments=("$@")       # arguments of this script
+arguments_help=()      # 
+arguments_help_pass=() # arguments which are passed if all arguments are passed
+
+function print_help(){
   echo "No help ... Muhaha"
+  sleep 2
+  echo "ok, at least some examples:"
+  echo "  cd SIMULATION #multiple simcalc_LM_X_Y.pkl should be present here"
+  echo "  JKumbrellaintegration"
+  echo "    or"
+  echo "  JKumbrellaintegration -skip 10000 -range 3.4 10.0"
+  echo "  SKIP - default skipping nothing, number of steps"
+  echo "  range - only for graphical visulazation"
+  echo "  THIS SHOULD PRODUCE FREE ENERGY PROFILES BUT YET NOT FREE ENERGIES" 
   exit
-fi
-if [ ! -z "$2" ]
-then
-  FROM=$1
-  TO=$2
-fi
+}
+
+last=""
+for i in "${!arguments[@]}"
+do
+  iter="${arguments[$i]}"
+  # select
+  if [ "$iter" == "-help" ]
+  then
+    print_help
+    exit
+  fi
+  if [ "$iter" == "-range" ]
+  then
+    last="-range"
+    continue
+  fi
+  if [ "$last" == "-range" ]
+  then
+    FROM=$iter
+    last="-range2"
+    continue
+  fi
+  if [ "$last" == "-range2" ]
+  then
+    TO=$iter
+    last=""
+    continue
+  fi
+  if [ "$iter" == "-skip" ]
+  then
+    last="-skip"
+    continue
+  fi
+  if [ "$last" == "-skip" ]
+  then
+    last=""
+    SKIP=$iter
+    continue
+  fi
+  echo "I do not understand this: $iter"
+  exit
+done
 
 source ~/.JKCSusersetup.txt
 

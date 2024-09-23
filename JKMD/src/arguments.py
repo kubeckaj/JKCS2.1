@@ -13,6 +13,7 @@ def print_help():
     -recenter             move to [0,0,0]
     -move,-moveby <array> move center of mass by [x,y,z] vector (e.g., [5,0,0])
     -moveto <array>       move center of mass to [x,y,z] coordinates (e.g., [5,0,0])
+    -moveto2 <float> <array> move center of mass to [x,y,z] coordinates while true x=max(float,x) (e.g., 6 [5,0,0] moves to [6,0,0])
     -mb <int>             initiate vel. from Maxwell-Boltzmann distribution ex. at <int> K
     -setvel <0/1>         0) removes COM velocites, 1) removes all velocities
     -vel <array>          adds velocities as a vector [x,y,z] in Angstrom/fs
@@ -255,6 +256,21 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       themove=literal_eval(i)
       #if themove[0]<=6:
       #  themove[0]=6
+      species[Qindex_of_specie].translate(-species[Qindex_of_specie].get_center_of_mass()+themove)
+      continue
+    if i == "-moveto2":
+      last = "-moveto2"
+      continue
+    if last == "-moveto2":
+      last = "-moveto2b"
+      moveTHR=float(i)
+      continue
+    if last == "-moveto2b":
+      last = ""
+      from ast import literal_eval
+      themove=literal_eval(i)
+      if themove[0]<=moveTHR:
+        themove[0]=moveTHR
       species[Qindex_of_specie].translate(-species[Qindex_of_specie].get_center_of_mass()+themove)
       continue
 

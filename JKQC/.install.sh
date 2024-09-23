@@ -139,6 +139,8 @@ echo "======================"
 $PIP install psutil
 echo "======================"
 $PIP install xlsxwriter     #important only for IMoS output but cheap to install
+echo "======================"
+$PIP install rdkit     #important only for IMoS output but cheap to install
 #LAPJV can be installed directlty:
 #echo "======================"
 #module load gcc 2>/dev/null
