@@ -110,7 +110,7 @@ then
     git clone https://github.com/qmlcode/qml.git
   fi
   cd qml
-  if ! command -v <gcc> 2>&1 >/dev/null
+  if ! command -v gcc 2>&1 >/dev/null
   then
     echo "I cannot see gcc so I am trying to: module load gcc"
     echo "The newest version of gcc had some issues with QML"
