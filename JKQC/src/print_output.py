@@ -46,6 +46,13 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       except:
         output.append([missing]*len(clusters_df))
       continue
+    #ID 
+    if i == "-id1":
+      try:
+        output.append(clusters_df["xyz"]["id1"].values)
+      except:
+        output.append([missing]*len(clusters_df))
+      continue
     #XYZ
     if i == "-xyz":
       from ase.io import write

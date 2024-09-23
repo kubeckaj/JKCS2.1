@@ -666,6 +666,10 @@ def arguments(argument_list = []):
     if i == "-atoms":
       Pout.append("-atoms")
       continue
+    # ID
+    if i == "-id1":
+      Pout.append("-id1")
+      continue
     # XYZ
     if i == "-xyz" or i == "--xyz" or i == "-XYZ" or i == "--XYZ":
       Pout.append("-xyz")

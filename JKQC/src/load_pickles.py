@@ -17,9 +17,9 @@ def load_pickles(input_pkl,Qout):
         clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
     clusters_df = clusters_df.reset_index(drop=True)
 
-  #if not ("xyz","id1") in clusters_df.columns and ("xyz","structure") in clusters_df.columns: 
-  #  from functions import df_add_iter
-  #  i#  identify_1
-  #  variables = []
-  #  clusters_df = df_add_iter(clusters_df,"xyz","id1",0:len(clusters_df),variables) 
+  if not ("xyz","id1") in clusters_df.columns and ("xyz","structure") in clusters_df.columns: 
+    from functions import df_add_iter
+    from read_xyz import identify_1
+    variables = [ identify_1(ase_ID) for ase_ID in clusters_df.loc[:,("xyz","structure")] ]
+    clusters_df = df_add_iter(clusters_df,"xyz","id1", range(len(clusters_df)),variables) 
   return clusters_df
