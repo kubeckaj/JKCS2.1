@@ -1,7 +1,6 @@
 import sys
 import os.path
-from sys import argv
-from src.JKML_nn import *
+import subprocess
 
 def import_other_libraries1():
   import numpy as np
@@ -37,7 +36,7 @@ def import_other_libraries2():
       JKML_sym_kernel = get_local_symmetric_kernel_mbdf
       JKML_kernel = get_local_kernel_mbdf
   # SchNetPack
-  elif Qmethod == "nn" and Qrepresentation == "painn":
+  elif Qmethod == "nn" and ( Qrepresentation == "painn" or Qrepresentation == "schnet" or Qrepresentation == "so3net" ):
     global ASEAtomsData, AtomsDataModule, trn, pl, Ha, Bohr, SpkCalculator, spk
     if Qtrain > 0:
       from schnetpack.data import ASEAtomsData
@@ -178,7 +177,6 @@ def help_nn():
 
 #PREDEFINED ARGUMENTS
 method = "direct"
-Qmin = 0.0 # I have absolutely no idea what is for, but user must use -min to call it
 size = "full"
 seed = 42
 TRAIN_HIGH = ""
@@ -257,13 +255,492 @@ outfile="predicted.pkl"
 varsoutfile="model.pkl"
 
 #TREATING ARGUMENTS
-from src.arguments import arguments
-Qfollow_activated = -1
-while not Qfollow_activated == 0:
-  if Qfollow_activated == -1:
-    locals().update(arguments(argv[1:]))
-
-  Qfollow_activated = 0
+last=""
+for i in sys.argv[1:]:
+  #HELP
+  if i == "-help" or i == "-help_nn" or i == "-help_adv" or i == "-help_krr":
+    help()
+    if i == "-help_nn":
+      help_nn()
+    if i == "-help_adv":
+      help_adv()
+    if i == "-help_krr":
+      help_krr()
+    print("#################################################################", flush = True)
+    exit()
+  #VARS OUT FILE
+  if i == "-varsout" or i == "-modelout":
+    last = "-varsout"
+    continue
+  if last == "-varsout": 
+   varsoutfile = i
+   varsoutfile = varsoutfile.split(".pkl")[0]+".pkl"
+   last = ""
+   continue
+  #OUT FILE
+  if i == "-out":
+    last = "-out"
+    continue
+  if last == "-out":
+   outfile = i
+   outfile = outfile.split(".pkl")[0]+".pkl"
+   last = ""
+   continue
+  #METHOD
+  if i == "-method":
+    last = "-method"
+    continue
+  if i == "direct" or last == "-method" or i == "delta":
+    last = ""
+    if i == "direct":
+      method = "direct"
+    elif i == "delta":
+      method = "delta"
+    else:
+      print("I do not understand your input:")
+      print(i)
+      exit()
+    continue
+  #FORCE MONOMERS
+  if i == "-forcemonomers":
+    Qforcemonomers = 1
+    continue
+  #TIME
+  if i == "-time":
+    last = "-time"
+    continue
+  if last == "-time":
+    last = ""
+    from datetime import timedelta
+    def parse_duration(s):
+      if "-" in s:
+        days, time_str = s.split('-')
+      else:
+        days = 0
+        time_str = s
+      time_str_split = time_str.split(':')
+      if len(time_str_split) == 3:
+        hours, minutes, seconds = map(int, time_str_split)
+      elif len(time_str_split) == 4:
+        days, hours, minutes, seconds = map(int, time_str_split)
+      elif len(time_str_split) == 1:
+        print("it is too short time")
+        exit()
+      else:
+        hours = 0
+        minutes, seconds = map(int, time_str_split)
+      return timedelta(days=int(days), hours=hours, minutes=minutes, seconds=seconds) -  timedelta(days=0, hours=0, minutes=20, seconds=0)
+    if i is not None:
+      Qtime=parse_duration(i)
+      #print(f"JKML will stop training after: {Qtime} [valid for -nn]")
+    continue
+  #SEED
+  if i == "-seed":
+    last = "-seed"
+    continue
+  if last == "-seed":
+    last = ""
+    seed = int(i)
+    continue
+  #Parent dir
+  if i == "-dir":
+    last = "-dir"
+    continue
+  if last == "-dir":
+    last = ""
+    parentdir = str(i)
+    continue
+  #WOLFRAM
+  if i == "-wolfram":
+    Qwolfram = 1
+    continue
+  #PRINT FORCES
+  if i == "-printforces":
+    Qprintforces = 1
+    continue
+  #COLUMN
+  if i == "-column":
+    last = "-column"
+    continue
+  if last == "-column":
+    column_name_1 = i
+    last = "-column2"
+    continue  
+  if last == "-column2":
+    column_name_2 = i
+    last = ""
+    continue 
+  #HYPERPARAMETERS
+  if i == "-sigma":
+    last = "-sigma"
+    continue
+  if last == "-sigma":
+    last = ""
+    sigmas = [float(i)]
+    continue
+  if i == "-lambda":
+    last = "-lambda"
+    continue
+  if last == "-lambda":
+    last = ""
+    lambdas = [float(i)]*len(sigmas)
+    continue
+  #TRAINING SIZE
+  if i == "-size":
+    last = "-size"
+    continue
+  if last == "-size":
+    last = ""
+    try:
+      if i != "full":
+        size = int(i)
+    except:
+      print("Wrong argument for size [EXITING]", flush = True)
+      exit()
+    continue
+  #DATABASES
+  if i == "-train":
+    last = "-train"
+    continue
+  if i == "-test":
+    last = "-test"
+    continue
+  if i == "-eval":
+    last = "-eval"
+    continue
+  if i == "-opt" or i == "-optimize":
+    Qopt = 1
+    last = "-opt"
+    continue
+  if i == "-md":
+    Qopt = 2
+    last = "-opt"
+    continue
+  if i == "-monomers" or i == "-mon" or i == "-atoms":
+    last = "-monomers"
+    continue
+  if i == "-trained":
+    if Qtrain == 0:
+      Qtrain = 2
+    else:
+      print("cannot take trained if training [EXITING]")
+      exit
+    last = "-trained"
+    continue
+  #MIN
+  if i == "-min":
+    last = "-min"
+    continue
+  if last == "-min":
+    last = ""
+    Qmin = float(i)
+    method = "min"
+    continue
+  #SPLIT
+  if i == "-finishsplit":
+    Qsplit=-1
+  if i == "-split" or i == "-startsplit" or i == "-finishsplit":
+    last = "-split"
+    continue
+  if last == "-split":
+    last = "-splitt"
+    Qsplit = int(i)
+    continue
+  if last == "-splitt":
+    last = "-splittt"
+    Qsplit_i = int(i)-1
+    continue
+  if last == "-splittt":
+    last = ""
+    Qsplit_j = int(i)-1
+    continue
+  #SAMPLEEACH 
+  if i == "-sampleeach" or i == "-se" or i == "-categorize":
+    last = "-sampleeach"
+    continue
+  if last == "-sampleeach":
+    last = ""
+    if Qtrain == 0:
+      Qtrain = 1
+    if Qeval == 0:
+      Qeval = 1
+    Qsampleeach = int(i)
+    continue
+  #NO FORCES
+  if i == "-noforces":
+    Qifforces = 0
+    continue
+  #SIMILARITY
+  if i == "-similarity" or i == "-sim":
+    last = "-similarity"
+    continue
+  if last == "-similarity":
+    last = ""
+    if Qtrain == 0:
+      Qtrain = 1
+    if Qeval == 0:
+      Qeval = 1
+    Qsampleeach = -int(i)
+    continue
+  #LAPLACIAN
+  if i == "-laplacian":
+    Qkernel = "Laplacian"
+    continue
+  #TRAIN DATABASE(S)
+  if last == "-trained":
+    last = ""
+    VARS_PKL = i
+    continue
+  if last == "-train":
+    TRAIN_HIGH = i
+    if Qtrain == 0:
+      Qtrain = 1
+    else:
+      print("cannot train if taking trained [EXITING]")
+      exit
+    last = "-train2"
+    continue
+  if last == "-train2":
+    if os.path.exists(i):
+      method = "delta"
+      TRAIN_LOW = i
+      last = ""
+      continue
+  #TEST/EVAL/OPT DATABASE(S)
+  if last == "-eval":
+    TEST_HIGH = i
+    Qeval = 1
+    last = "-test2"
+    continue
+  if last == "-test":
+    TEST_HIGH = i
+    Qeval = 2
+    last = "-test2"
+    continue
+  if last == "-opt":
+    TEST_HIGH = i
+    last = "-test2"
+    continue
+  if last == "-test2":
+    if os.path.exists(i):
+      method = "delta"
+      TEST_LOW = i
+      last = ""
+      continue
+  #MONOMER DATABASE(S)
+  if last == "-monomers":
+    if i == "0" or i == "none" or i == "no":
+      Qmonomers=2
+      last = ""
+    else:
+      MONOMERS_HIGH = i
+      Qmonomers = 1
+    last = "-monomers2"
+    continue
+  if last == "-monomers2":
+    if os.path.exists(i):
+      method = "delta"
+      MONOMERS_LOW = i
+      last = ""
+      continue
+  #MODELS AND REPRESENTATIONS:
+  if i == "-painn" or i == "-nn":
+    Qmethod = "nn"
+    Qrepresentation = "painn"
+    continue
+  if i == "-schnet":
+    Qmethod = "nn"
+    Qrepresentation = "schnet"
+    continue
+  if i == "-so3net":
+    Qmethod = "nn"
+    Qrepresentation = "so3net"
+    continue
+  #EPOCHS
+  if i == "-nn_epochs" or i == "-epochs":
+    last = "-nn_epochs"
+    continue
+  if last == "-nn_epochs":
+    last = ""
+    nn_epochs = int(float(i))
+    continue
+  #EPOCHS
+  if i == "-nn_tvv" or i == "-nn_train":
+    last = "-nn_tvv"
+    continue
+  if last == "-nn_tvv":
+    last = ""
+    nn_tvv = float(i)
+    continue
+  #RADIAL BASIS
+  if i == "-nn_rbf" or i == "-nn_rb":
+    last = "-nn_rbf"
+    continue
+  if last == "-nn_rbf":
+    last = ""
+    nn_rbf = int(float(i))
+    continue
+  #NN CUTOFF
+  if i == "-nn_cutoff" or i == "-krr_cutoff" or i == "-cutoff":
+    last = "-cutoff"
+    continue
+  if last == "-cutoff":
+    last = ""
+    nn_cutoff = float(i)
+    krr_cutoff = float(i)
+    continue
+  #OPT MAXSTEP
+  if i == "-opt_maxstep" or i == "-opt_maxs":
+    last = "-opt_maxstep"
+    continue
+  if last == "-opt_maxstep":
+    last = ""
+    opt_maxstep = float(i)
+    continue
+  #OPT DUMP
+  if i == "-opt_dump":
+    last = "-opt_dump"
+    continue
+  if last == "-opt_dump":
+    last = ""
+    opt_dump = int(i)
+    continue
+  #OPT STEPS
+  if i == "-opt_steps":
+    last = "-opt_steps"
+    continue
+  if last == "-opt_steps":
+    last = ""
+    opt_steps = int(i)
+    continue
+  #MD TIME STEP
+  if i == "-md_timestep":
+    last = "-md_timestep"
+    continue
+  if last == "-md_timestep":
+    last = ""
+    md_timestep = float(i)
+    continue
+  #MD THERMOSTATFRICTION
+  if i == "-md_thermostatfriction":
+    last = "-md_thermostatfriction"
+    continue
+  if last == "-md_thermostatfriction":
+    last = ""
+    md_thermostatfriction = float(i)
+    continue
+  #MD STEPS
+  if i == "-md_steps":
+    last = "-md_steps"
+    continue
+  if last == "-md_steps":
+    last = ""
+    md_steps = int(i)
+    continue
+  #MD DUMP
+  if i == "-md_dump":
+    last = "-md_dump"
+    continue
+  if last == "-md_dump":
+    last = ""
+    md_dump = int(i)
+    continue
+  #ATOM BASIS
+  if i == "-nn_ab" or i == "-nn_atom_basis":
+    last = "-nn_ab"
+    continue
+  if last == "-nn_ab":
+    last = ""
+    nn_atom_basis = int(float(i))
+    continue
+  #NN INTERACTIONS
+  if i == "-nn_int" or i == "-nn_interctions":
+    last = "-nn_int"
+    continue
+  if last == "-nn_int":
+    last = ""
+    nn_interactions = int(float(i))
+    continue
+  #NN INTERACTIONS
+  if i == "-nw":
+    last = "-nw"
+    continue
+  if last == "-nw":
+    last = ""
+    nw = int(i)
+    continue
+  #EPOCHS
+  if i == "-nn_epochs" or i == "-epochs":
+    last = "-nn_epochs"
+    continue
+  if last == "-nn_epochs":
+    last = ""
+    nn_epochs = int(i)
+    continue
+  #ENERGY TRADEOFF
+  if i == "-nn_energytradeoff":
+    last = "-nn_energytradeoff"
+    continue
+  if last == "-nn_energytradeoff":
+    last = ""
+    nn_energytradeoff = float(i)
+    continue
+  #CHECKPOINT
+  if i == "-ckpt" or i == "-chkp":
+    last = "-ckpt"
+    continue
+  if last == "-ckpt":
+    last = ""
+    if os.path.isfile(i):
+      Qcheckpoint = i
+    else:
+      print("Path to the checkpoint does not exist")
+      exit()
+    continue
+  #EARLY STOP
+  if i == "-nn_ESpatience" or i == "-nn_espatience":
+    last = "-nn_espatience"
+    continue
+  if last == "-nn_espatience":
+    last = ""
+    Qearlystop = int(float(i))
+    continue
+  #LEARNING RATE
+  if i == "-nn_lr":
+    last = "-nn_lr"
+    continue
+  if last == "-nn_lr":
+    last = ""
+    Qlearningrate = float(i)
+    continue
+  #BATCH SIZE
+  if i == "-batch_size" or i == "-bs":
+    last = "-bs"
+    continue
+  if last == "-bs":
+    last = ""
+    Qbatch_size = int(float(i)) #int float just in case user enters e.g. 16.0
+    continue
+  #MD temperature
+  if i == "-md_temperature" or i == "-temperature":
+    last = "-md_temperature"
+    continue
+  if last == "-md_temperature":
+    last = ""
+    md_temperature = float(i)
+    continue
+  #KRR (by default)
+  if i == "-krr" or i == "-fchl" or i == "-qml":
+    Qmethod = "krr"
+    Qrepresentation = "fchl"
+    continue
+  if i == "-mbdf":
+    Qmethod = "krr"
+    Qrepresentation = "mbdf"
+    continue
+  #UNKNOWN ARGUMENT
+  print("Sorry cannot understand this argument: "+i)
+  exit()
 
 ## TEST IF ALL REQUIRED FILES EXIST
 if Qtrain == 1:
@@ -523,8 +1000,6 @@ for sampleeach_i in sampleeach_all:
     dist = np.array([-m for m in simil])
     sampledist = dist.argsort()[:-Qsampleeach]
 
-  # TODO TRAINING
-########################################################################################################################
   ### TRAININING
   if Qtrain == 1:
     print("JKML is preparing things for training.")
@@ -533,17 +1008,16 @@ for sampleeach_i in sampleeach_all:
       #random.seed(seed)
       os.environ['PYTHONHASHSEED'] = str(seed)
       np.random.seed(seed)
-      if Qmethod == "nn":
-        try:
-          torch.manual_seed(seed)
-          torch.cuda.manual_seed(seed)
-          torch.cuda.manual_seed_all(seed)
-          torch.backends.cudnn.deterministic = True
-          torch.backends.cudnn.benchmark = False
-          pl.seed_everything(seed)
-        except:
-          print("Failed to setup seed")
-          return
+      try:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        pl.seed_everything(seed)
+      except:
+        print("Failed to setup seed")
+        return
       return
     seed_everything(seed=seed)
 
@@ -715,30 +1189,284 @@ for sampleeach_i in sampleeach_all:
     ### TRAINING NN #####################
     #####################################
     elif Qmethod == "nn":
-      # bypass
-      ###################################
-      training_nn(Qforces=Qforces,
-                  Y_train=Y_train,
-                  F_train=F_train,
-                  Qenergytradoff=Qenergytradoff,
-                  strs=strs,
-                  nn_tvv=nn_tvv,
-                  nn_cutoff=nn_cutoff,
-                  nw=nw,
-                  Qrepresentation=Qrepresentation,
-                  nn_rbf=nn_rbf,
-                  nn_atom_basis=nn_atom_basis,
-                  nn_interactions=nn_interactions,
-                  Qbatch_size=Qbatch_size,
-                  Qlearningrate=Qlearningrate,
-                  parentdir=parentdir,
-                  seed=seed,
-                  varsoutfile=varsoutfile,
-                  Qearlystop=Qearlystop,
-                  nn_epochs=nn_epochs,
-                  Qcheckpoint=Qcheckpoint,
-                  Qtime=Qtime)
-      ###################################
+      print("JKML: Setting up NN.")
+      
+      warnings.filterwarnings(
+        "ignore", ".*Trying to infer the `batch_size` from an ambiguous collection.*"
+      )
+      warnings.filterwarnings(
+        "ignore", ".*Attribute 'model' is an instance of `nn.Module` and is already saved during checkpointing. It is recommended to ignore them using*"
+      )
+
+      #PREPARING TRAINING DATABASE
+      temperary_file_name = "training.db"
+      if os.path.exists(temperary_file_name):
+        os.remove(temperary_file_name)
+      if Qforces == 0:
+        new_dataset = ASEAtomsData.create(temperary_file_name,
+          distance_unit='Ang',
+          property_unit_dict={'energy':'eV', 'total_charge': 'e'},
+          atomrefs = {'energy': [0]*100}
+          )
+        properties = [{'energy': np.array([i]), 'total_charge': np.array([0], dtype=np.float32)} for i in Y_train]
+        target_properties = [spk.properties.energy]
+        tradoffs = [1]
+      else:
+        new_dataset = ASEAtomsData.create(temperary_file_name,
+          distance_unit='Ang',
+          property_unit_dict={'energy':'eV', 'forces': 'eV/Ang', 'total_charge': 'e'},
+          atomrefs = {'energy': [0]*100}
+          )
+        properties = [{'energy': 27.2107*np.array([Y_train[i]]), 'forces': 27.2114*np.array(F_train[i]), 'total_charge': np.array([0], dtype=np.float32)} for i in range(len(Y_train))]
+        target_properties = [spk.properties.energy, spk.properties.forces]
+        tradoffs = [Qenergytradoff, 1]
+      new_dataset.add_systems(properties, strs)
+     
+      n_train = int(np.round(nn_tvv*len(strs)))
+      n_val = len(strs) - n_train
+       
+      if torch.cuda.is_available():
+          pin_memory = True
+      else:
+          pin_memory = False
+      dataset = AtomsDataModule(temperary_file_name,
+          batch_size=Qbatch_size,
+          num_train=n_train,
+          num_val=n_val,
+          #num_test=n_test,
+          transforms=[
+              trn.ASENeighborList(cutoff=nn_cutoff),
+              trn.RemoveOffsets(spk.properties.energy, remove_mean=True, remove_atomrefs=False),
+              trn.CastTo32()
+          ],
+          num_workers=nw,#use 2-4
+          #split_file=split_file,
+          pin_memory = pin_memory,
+          data_workdir="./"
+      )
+      print("JKML is preparing database for NN.", flush = True)
+      dataset.prepare_data()
+      dataset.setup()
+      print("JKML is preparing for training.", flush = True)
+      
+      #This just prints out some stuff about the NN
+      #logging.info(f'Number of train-val-test data: {dataset.num_train} - {dataset.num_val}')
+      #properties = dataset.dataset[0]
+      #logger.info('Loaded properties:')
+      #for k, v in properties.items():
+      #  logger.info(f'     {k:20s} : {v.shape}')      
+
+      # PainNN representation
+      pairwise_distance = spk.atomistic.PairwiseDistances()
+      radial_basis = spk.nn.GaussianRBF(n_rbf=nn_rbf, cutoff = nn_cutoff)
+       
+      if Qrepresentation == "painn": 
+        X_train = spk.representation.PaiNN(
+            n_atom_basis=nn_atom_basis,
+            n_interactions=nn_interactions,
+            radial_basis=radial_basis,
+            cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
+        )      
+      elif Qrepresentation == "schnet":
+        X_train = spk.representation.SchNet(
+            n_atom_basis=nn_atom_basis,
+            n_interactions=nn_interactions,
+            radial_basis=radial_basis,
+            cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
+        )
+      elif Qrepresentation == "so3net":
+        X_train = spk.representation.SO3net(
+            n_atom_basis=nn_atom_basis,
+            n_interactions=nn_interactions,
+            radial_basis=radial_basis,
+            cutoff_fn=spk.nn.CosineCutoff(nn_cutoff)
+        )
+      else:
+        print("You have probably enetered some weird molecular representation. [EXIT]")
+        exit()
+
+      output_modules = []
+      output_losses = []
+      for p, w in zip(target_properties, tradoffs):
+          if p == spk.properties.energy:
+              pred = spk.atomistic.Atomwise(n_in=nn_atom_basis, output_key=p)
+          elif p == spk.properties.forces:
+              pred = spk.atomistic.Forces(energy_key=spk.properties.energy, force_key=spk.properties.forces)
+          elif p == spk.properties.dipole_moment:
+              pred = spk.atomistic.DipoleMoment(n_in=nn_atom_basis, return_charges=True)
+          else:
+              raise NotImplementedError(f'{p} property does not exist')
+      
+          loss = spk.task.ModelOutput(
+                  name=p,
+                  loss_fn=torch.nn.MSELoss(),
+                  loss_weight=w,
+                  metrics={
+                      "MAE": torchmetrics.MeanAbsoluteError(),
+                      "RMSE": torchmetrics.MeanSquaredError(squared=False)
+                  }
+              )
+          output_modules.append(pred)
+          output_losses.append(loss)
+
+      #MODEL (this could be for instance also Atomistic Model)
+      nnpot = spk.model.NeuralNetworkPotential(
+          representation=X_train,
+          input_modules=[pairwise_distance],
+          output_modules=output_modules,
+          postprocessors=[
+              trn.CastTo64(),
+              trn.AddOffsets(spk.properties.energy, add_mean=True, add_atomrefs=False)
+          ]
+      )
+
+      #if Qcheckpoint is not None:
+      #  print("JKML reads checkpoint.")
+      #  checkpoint = torch.load(Qcheckpoint)
+      #  #print(checkpoint)
+      #  JKepoch=checkpoint["epoch"]
+      #  nnpot.load_state_dict(checkpoint['nnpot_state_dict'],strict=False)
+      #  #task.load_state_dict(checkpoint['task_state_dict'],strict=False) 
+
+      task = spk.task.AtomisticTask(
+          model=nnpot,
+          outputs=output_losses,
+          optimizer_cls=torch.optim.AdamW,
+          optimizer_args={"lr": Qlearningrate},
+          scheduler_cls=spk.train.ReduceLROnPlateau,
+          scheduler_args={'factor': 0.5, 'patience': 20, 'min_lr': 1e-7},
+          scheduler_monitor = 'val_loss'
+      )
+     
+      os.makedirs("lightning_logs", exist_ok=True) 
+      logger = pl.loggers.TensorBoardLogger(save_dir="./")
+      #logger.propagate = False
+      #logger = pl.loggers.CSVLogger(save_dir=model_dir, flush_logs_every_n_steps=1)
+
+      class MyPrintingCallback(pl.callbacks.LearningRateMonitor):
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+            self.state_train = []
+            self.state_val = []
+            pl.seed_everything(seed)
+            global start_time
+            start_time = time.time()    
+            print("Training is starting", flush = True)
+
+        def on_fit_start(self, trainer, pl_module):
+            super().on_fit_start(trainer, pl_module)
+            #print(trainer.callbacks[3])
+            if trainer.callbacks[3].best_model_score is not None:
+              #trainer.callbacks[3].best_model_score  = None #torch.tensor(float("inf"))
+               trainer.callbacks[3].best_k_models = {}
+               trainer.callbacks[3].best_model_score = None
+            
+        def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, unused=0):
+            super().on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)
+            self.state_train.append(23.060541945329334*outputs["loss"].item())
+            print(".",end="", flush = True)
+            
+        #def on_train_epoch_end(self, trainer, pl_module):
+        #    super().on_train_epoch_end(trainer, pl_module)
+ 
+        def on_train_end(self, trainer, pl_module):
+            super().on_train_end(trainer, pl_module)
+            print("Training is ending", flush = True)
+
+        def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+            super().on_validation_batch_end(trainer, pl_module, outputs, batch, batch_idx)
+            self.state_val.append(23.060541945329334*outputs["val_loss"].item())
+            print("_",end="", flush = True)            
+ 
+        def on_validation_epoch_end(self, trainer, pl_module):
+            super().on_validation_epoch_end(trainer, pl_module)
+            # access output using state
+            all_outputs_train = self.state_train
+            all_outputs_val = self.state_val
+            self.state_train = []		
+            self.state_val = []		
+            #with open("epoch_loss.txt", "a") as f:
+            #  ±print(str(trainer.current_epoch)+" "+str(23.060541945329334*outputs["val_loss"].item()), flush = True, file=f)
+            def mean_std(arr):
+              if len(arr) == 0:
+                return np.nan, np.nan
+              elif len(arr) == 1:
+                return arr[0], np.nan
+              else:
+                return np.mean(arr), np.std(arr)
+            #print(all_outputs_val)
+            #print(all_outputs_train)
+            tr_m, tr_s = mean_std(all_outputs_train)
+            val_m, val_s = mean_std(all_outputs_val)
+            ep = trainer.current_epoch
+            run_time = time.time() - start_time
+            print(f"\nEPOCH: %i TRAIN: %.5f +- %.5f [??] VAL: %.5f +- %.5f [??] LR: %.2e T: %.1f s "%(ep, tr_m, tr_s, val_m, val_s, task.lr, run_time))
+            with open(parentdir+"/epoch_trE_trS_valE_valS_lr_t.txt", "a") as f:
+              print(f"%i %.6f %.6f %.6f %.6f %e %.1f"%(ep, tr_m, tr_s, val_m, val_s, task.lr,run_time), file = f)
+          
+ 
+      #MyPrintingCallback = pl.callbacks.LearningRateMonitor
+      #MyPrintingCallback = pl.callbacks.EarlyStopping
+      #MyPrintingCallback.__init__ = __init__
+      #MyPrintingCallback.on_train_start = on_train_start
+      #MyPrintingCallback.on_train_end = on_train_end
+      ##MyPrintingCallback.on_train_batch_start = on_train_batch_start
+      ##MyPrintingCallback.on_train_batch_end = on_train_batch_end
+      ##MyPrintingCallback.on_validation_batch_end = on_validation_batch_end 
+      #MyPrintingCallback.on_validation_epoch_end = on_validation_epoch_end
+
+      callbacks = [
+          spk.train.ModelCheckpoint(
+              model_path=os.path.join("./", varsoutfile),
+              save_top_k=1,
+              monitor="val_loss",
+              save_last=True,
+          ),
+          #pl.callbacks.EarlyStopping(
+          MyPrintingCallback(
+              monitor="val_loss",
+              patience=Qearlystop,
+          ),
+          #pl.callbacks.LearningRateMonitor(logging_interval='epoch'),#Useless
+          #MyPrintingCallback(logging_interval='epoch')
+      ]
+
+      if torch.cuda.is_available():
+          device = 'gpu'
+          logging.info(torch.cuda.get_device_name(0))
+      else:
+          device = 'cpu'
+      #logging.info(f'Using device {device}')
+      
+      trainer = pl.Trainer(
+          accelerator=device,
+          #devices=1,
+          enable_progress_bar=False, #TODO testing
+          log_every_n_steps=1, #np.round(n_train/Qbatch_size/10),
+          callbacks=callbacks,   #checks for early stopping and checkpoints
+          logger=logger,         #This is the logger for tensorboard 
+          default_root_dir="./lightning_logs",
+          max_epochs=nn_epochs,
+          max_time=Qtime #90% e.g."00:12:00:00"
+          #resume_from_checkpoint=model_checkpoint,
+          #log_every_n_steps=1,
+          #accumulate_grad_batches = 10,
+          #TODO: gpus=2
+          #TODO: precision=16
+      )
+
+      print("JKML has started the training.", flush=True)
+      
+      if Qcheckpoint is None: 
+        trainer.fit(task, datamodule=dataset)
+      else:
+        trainer.fit(task, datamodule=dataset, ckpt_path=Qcheckpoint)
+      #torch.save({
+      #      'epoch': JKepoch,
+      #      'nnpot_state_dict': nnpot.state_dict(),
+      #      'task_state_dict': task.state_dict(),
+      #      }, "./checkpoint.chkp")
+    ######################
     #You should not get below this one to reach the error
     else:
       print("Wrong method or representation chosen.")
@@ -766,9 +1494,7 @@ for sampleeach_i in sampleeach_all:
     else:
       print("Wrong method or representation chosen.")
       exit()
-
-# TODO EVALUATE
-########################################################################################################################
+  
   ######################
   ###### EVALUATE ######
   ######################
@@ -902,20 +1628,56 @@ for sampleeach_i in sampleeach_all:
     ### NN + PaiNN ###
     ##################
     elif Qmethod == "nn":
-      # bypass
-      ####################
-      Y_predicted, F_predicted = evaluating_nn(Qforces=Qforces,
-                    varsoutfile=varsoutfile,
-                    nn_cutoff=nn_cutoff,
-                    clusters_df=clusters_df,
-                    method=method,
-                    Qmin=Qmin)
-      ####################
+      if torch.cuda.is_available():
+        device = 'cuda'
+      else:
+        device = 'cpu'
+      if Qforces == 0:
+        spk_calc = SpkCalculator(
+          model_file=varsoutfile,
+          device=device,
+          neighbor_list=spk.transform.ASENeighborList(cutoff=nn_cutoff),
+          #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+          #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
+          energy_key='energy',
+          energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
+          position_unit="Ang",
+          )
+      else:
+        spk_calc = SpkCalculator(
+          model_file=varsoutfile,
+          device=device,
+          neighbor_list=spk.transform.ASENeighborList(cutoff=nn_cutoff),
+          #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+          #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
+          energy_key='energy',
+          force_key='forces',
+          energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
+          force_unit="eV/Ang",#YEAH I have no idea what the output is :-D
+          position_unit="Ang",
+          )
+      Y_predicted = []
+      F_predicted = []
+      for i in range(len(clusters_df)):
+        atoms = clusters_df["xyz"]["structure"].values[i].copy()
+        atoms.calc = spk_calc
+        Y_predicted.append(atoms.get_potential_energy())
+        if Qforces == 1:
+          F_predicted.append(0.0367493*atoms.get_forces()) #Hartree/Ang
+      if Qforces == 1:
+        Y_predicted = [0.0367493*np.array(Y_predicted)] #Hartree
+        F_predicted = [F_predicted]
+        #F_predicted = np.array([0.0367493*np.array(F_predicted)]) #Hartree/Ang
+      else:
+        Y_predicted = [np.array(Y_predicted)]
+    
+      if method == "min":
+        Y_predicted[0] += Qmin
 
     else:
       print("Wrong method or representation chosen.")
       exit()
- 
+  
     ### PRINTING THE RESULTS
     if Qwolfram == 0:
       lb = "["
@@ -1022,8 +1784,7 @@ for sampleeach_i in sampleeach_all:
       if Qeval == 2:
         clustersout_df.loc[clustersout_df.iloc[i].name,("extra","error")] = multiplier*np.abs(Y_predicted[0][i] - Y_validation[i])
       if Qforces == 1:
-        #dic.update({("extra","forces"):[out_forces]})
-        clustersout_df = df_add_iter(clustersout_df, "extra", "forces", [clustersout_df.iloc[i].index], [F_predicted[0][i]])
+        clustersout_df = df_add_iter(clustersout_df, "extra", "forces", [clustersout_df.iloc[i].index], [F_predicted[i]])
     clustersout_df.to_pickle(outfile)
     if Qsampleeach > 0:
       if sampleeach_i == 0:
@@ -1031,8 +1792,7 @@ for sampleeach_i in sampleeach_all:
       else:
         os.system("JKQC "+outfile+" predicted_QML_FULL.pkl -out predicted_QML_FULL.pkl -noex")
   ########
-########################################################################################################################
-  # TODO OPTIMIZE
+  
   ######################
   ###### OPTIMIZE ######
   ######################
@@ -1194,24 +1954,146 @@ for sampleeach_i in sampleeach_all:
     ### NN + PaiNN ###
     ##################
     elif Qmethod == "nn":
-      # bypass
-      ##################################
-      optimizing_nn(test_high_database=test_high_database,
-                    varsoutfile=varsoutfile,
-                    nn_cutoff=nn_cutoff,
-                    Qopt=Qopt,
-                    opt_maxstep=opt_maxstep,
-                    opt_dump=opt_dump,
-                    md_temperature=md_temperature,
-                    Qmd_timestep=Qmd_timestep,
-                    md_thermostatfriction=md_thermostatfriction,
-                    md_dump=md_dump,
-                    md_steps=md_steps,
-                    )
-      ################################
+      if torch.cuda.is_available():
+        device = 'cuda'
+      else:
+        device = 'cpu'
+      spk_calc = SpkCalculator(
+        model_file=varsoutfile,
+        device=device,
+        neighbor_list=spk.transform.ASENeighborList(cutoff=nn_cutoff),
+        #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+        #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
+        energy_key='energy',
+        force_key='forces',
+        energy_unit="eV",#YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
+        force_unit="eV/Ang",#YEAH I have no idea what the output is :-D
+        position_unit="Ang",
+        )
+      #TODO following added for testing
+      #from schnetpack.md.calculators import SchNetPackCalculator
+      #from schnetpack import properties
+      #md_calculator = SchNetPackCalculator(
+      #  model_path,  # path to stored model
+      #  "forces",  # force key
+      #  "eV/Ang",  # energy units
+      #  "Angstrom",  # length units
+      #  md_neighborlist,  # neighbor list
+      #  energy_key="energy",  # name of potential energies
+      #  required_properties=[],  # additional properties extracted from the model
+      #)
+      #######
+      Y_predicted = []
+      F_predicted = []
+      from ase.optimize import BFGS
+      from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+      from ase.md.verlet import VelocityVerlet
+      from ase.md.langevin import Langevin
+      from ase import units
+      from ase.io import read,write
+      for i in range(len(clusters_df)):
+        atoms = clusters_df["xyz"]["structure"].values[i].copy()
+        print(atoms)
+        atoms.calc = spk_calc
+        if Qopt == 1:
+          dyn = BFGS(atoms,maxstep=opt_maxstep)
+          def printenergy(a=atoms):
+            write("opt.xyz", a, append = True)
+          dyn.attach(printenergy, interval=opt_dump)
+          dyn.run(fmax=1e-6, steps=100)
+        else:
+          #TODO recently added
+          #from schnetpack.md import Simulator
+          #md_system = System()
+          #md_system.load_molecules(
+          #  atoms,
+          #  1,
+          #  position_unit_input="Angstrom"
+          #)
+          #md_system = atoms
+          #from schnetpack.md.simulation_hooks import LangevinThermostat
+          ## Set temperature and thermostat constant
+          #bath_temperature = 300  # K
+          #time_constant = 100  # fs
+          ## Initialize the thermostat
+          #langevin = LangevinThermostat(bath_temperature, time_constant)
+          #simulation_hooks = [
+          #  langevin
+          #]
+          #md_simulator = Simulator(
+          #  md_system,
+          #  md_integrator,
+          #  md_calculator
+          #)
+
+          ## use and set single precision
+          #md_simulator = md_simulator.to(torch.float32)
+          ## move everything to target device
+          ##md_simulator = md_simulator.to(md_device)
+          #n_steps = 100
+          #md_simulator.simulate(n_steps)
+          #from schnetpack.md.simulation_hooks import callback_hooks
+
+          ## Path to database
+          #log_file = os.path.join(md_workdir, "simulation.hdf5")
+          #
+          ## Size of the buffer
+          #buffer_size = 100
+          #
+          ## Set up data streams to store positions, momenta and the energy
+          #data_streams = [
+          #    callback_hooks.MoleculeStream(store_velocities=True),
+          #    callback_hooks.PropertyStream(target_properties=[properties.energy]),
+          #]
+          #
+          ## Create the file logger
+          #file_logger = callback_hooks.FileLogger(
+          #    log_file,
+          #    buffer_size,
+          #    data_streams=data_streams,
+          #    every_n_steps=1,  # logging frequency
+          #    precision=32,  # floating point precision used in hdf5 database
+          #)
+          #
+          ## Update the simulation hooks
+          #simulation_hooks.append(file_logger)
+          ##Set the path to the checkpoint file
+          #chk_file = os.path.join(md_workdir, 'simulation.chk')
+          #
+          ## Create the checkpoint logger
+          #checkpoint = callback_hooks.Checkpoint(chk_file, every_n_steps=100)
+          #
+          ## Update the simulation hooks
+          #simulation_hooks.append(checkpoint)
+          
+      
+          # Set the momenta corresponding to T
+          MaxwellBoltzmannDistribution(atoms, temperature_K=md_temperature)
+          # We want to run MD with constant energy using the VelocityVerlet algorithm.
+          #dyn = VelocityVerlet(atoms, 1 * units.fs)  # 5 fs time step.
+          dyn = Langevin(atoms, Qmd_timestep*units.fs, temperature_K=md_temperature, friction=md_thermostatfriction) #friction coeffitient 0.002
+          def printenergy(a=atoms):  # store a reference to atoms in the definition.
+            """Function to print the potential, kinetic and total energy."""
+            epot = a.get_potential_energy() / len(a)
+            ekin = a.get_kinetic_energy() / len(a)
+            write("traj.xyz", a, append = True)
+            print('Energy per atom: Epot = %.3f kcal/mol  Ekin = %.3f kcal/mol (T=%3.0f K)  '
+                  'Etot = %.3f kcal/mol' % (23.060541945329334*epot, 23.060541945329334*ekin, ekin / (1.5 * units.kB), 23.060541945329334*(epot + ekin)))
+          # Now run the dynamics
+          dyn.attach(printenergy, interval=md_dump)
+          printenergy()
+          dyn.run(md_steps)
+ 
+      #  Y_predicted.append(atoms.get_potential_energy())
+      #  if Qforces == 1:
+      #    F_predicted.append(atoms.get_forces())
+      #Y_predicted = [np.array(Y_predicted)]
+      #if Qforces == 1:
+      #  F_predicted = [np.array(F_predicted)]
 
     else:
-      raise Exception("Wrong method or representation chosen.")
+      print("Wrong method or representation chosen.")
+      exit()  
   
     ### PRINTING THE RESULTS
     #print("Ypredicted = {" + ",".join([str(i) for i in save_energy])+"};", flush = True)

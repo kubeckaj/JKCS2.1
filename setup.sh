@@ -19,6 +19,7 @@ MODULE_G16="module load gaussian/G16RevC.01"
 PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
 MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
 EXTRA_ORCA_LINES=""
+MODULE_GCC="module load gcc"
 SBATCH_PREFIX=""
 WRKDIR="./"
 
@@ -91,6 +92,7 @@ EXAMPLE:
     PATH_ORCA="/comm/groupstacks/chemistry/apps/orca/5.0.4/"
     #MODULE_ORCA="ulimit -c 0;source /com/bin/modules.sh;source /comm/groupstacks/chemistry/bin/modules.sh;ml orca/5.0.4;ml gcc/9.1.0;ml openmpi/3.1.3;"
     MODULE_ORCA="ulimit -c 0;source /comm/groupstacks/chemistry/bin/modules.sh; source /com/bin/modules.sh;ml orca/5.0.4;ml gcc/9.1.0;ml openmpi;export OMPI_MCA_btl_openib_allow_ib=1;export OMPI_MCA_btl=^openib;export OMPI_MCA_mca_base_component_show_load_errors=0"
+    MODULE_GCC="module load gcc/11.1.0"
     SBATCH_PREFIX=""
     WRKDIR="/scratch/\\\$SLURM_JOB_ID/"
     time1="10-00:00:00"
@@ -326,7 +328,8 @@ then
     sed 's,REPLACE_time2,'"$time2"',g' .help15 > .help16
     sed 's/REPLACE_queue1/'"$queue1"'/g' .help16 > .help17
     sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
-    mv .help18 ~/.JKCSusersetup.txt
+    sed 's/REPLACE_gcc/'"$MODULE_GCC"'/g' .help18 > .help19
+    mv .help19 ~/.JKCSusersetup.txt
     rm .help*
     printf "${cfGREEN}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
   else
