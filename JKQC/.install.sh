@@ -131,7 +131,11 @@ $PIP install joblib==1.3.2
 echo "======================"
 $PIP install ase==3.22.1
 #FOR UMBRELLA SAMPLING
-sed -i '792s/.*/            CS = atoms.constraints\n            del atoms.constraints\n            self.atoms = atoms.copy()\n            atoms.set_constraint(CS)/' JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
+test=`grep -c "CS = atoms.constraints" JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py`
+if [ $test -eq 0 ]
+then
+  sed -i '792s/.*/            CS = atoms.constraints\n            del atoms.constraints\n            self.atoms = atoms.copy()\n            atoms.set_constraint(CS)/' JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
+fi
 echo "======================"
 $PIP install pathlib==1.0.1 #Perhaps this one is not necessary
 echo "======================"

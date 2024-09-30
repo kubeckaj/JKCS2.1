@@ -1,7 +1,7 @@
 import sys
 import os.path
 from sys import argv
-from src.JKML_nn import *
+from src.SchNetPack import *
 
 def import_other_libraries1():
   import numpy as np
