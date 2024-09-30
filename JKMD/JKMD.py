@@ -63,7 +63,7 @@ while not Qfollow_activated == 0:
   if Qout == 2:
     print("Setting calculator.")
   from calculator import calculator
-  all_species.set_calculator(calculator(Qcalculator, Qcalculator_input, Qcharge))
+  all_species.set_calculator(calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout))
   if Qout == 2:
     print(all_species)
     #print(all_species.get_positions())

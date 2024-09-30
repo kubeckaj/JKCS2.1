@@ -1,4 +1,4 @@
-def calculator(Qcalculator, Qcalculator_input, Qcharge):
+def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout):
 
 # TODO
 ### 792 /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
@@ -7,6 +7,10 @@ def calculator(Qcalculator, Qcalculator_input, Qcharge):
 #            del atoms.constraints
 #            self.atoms = atoms.copy()
 #            atoms.set_constraint(CS)
+  if Qout > 0:
+    Qprint=Qout-1
+  else:
+    Qprint=Qout
   
   ### XTB-Lite ###
   if Qcalculator == "XTB1":
@@ -14,14 +18,14 @@ def calculator(Qcalculator, Qcalculator_input, Qcharge):
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN1-xTB", charge=float(Qcharge), verbosity = 0)
+    return TBLite(method="GFN1-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations)
 
   elif Qcalculator == "XTB2":
     #if Qcharge != 0:
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN2-xTB", charge=float(Qcharge), verbosity = 0)
+    return TBLite(method="GFN2-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations)
 
   ### XTB ###
   elif Qcalculator == "XTB":

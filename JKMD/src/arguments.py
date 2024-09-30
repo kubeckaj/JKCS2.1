@@ -20,12 +20,13 @@ def print_help():
     -box <float>          set cell of size LxLxL Angstrom with PBC 
 
   CALCULATOR
-    -xtb1            GFN1-xTB {XTBlite} [set as default]
-    -xtb2            GFN2-xTB {XTBlite}
+    -xtb1            GFN1-xTB {TBlite} [set as default]
+    -xtb2            GFN2-xTB {TBlite}
     -xtb "<str>"     xtb method (e.g., GFN1-xTB) {XTB}
     -nn_model <path> Neural Network model defined by path {SchNetPack}
     -orca "<str>"    QC method (e.g., "XTB1" or "B97-3c") {ORCA}
                      -additional setup might be required!!!
+    -max_iter <int>  maximum number of SCF iterations (e.g., 50) [default = 250] {TBlite}
 
   THERMOSTAT:
     -vv                  Velocity Verlet [set as default]
@@ -49,7 +50,7 @@ def print_help():
     -nf <str>         folder where the simulation will be performed
     -distout          save distance between two molecules
     -follow           takes the last structure and performes subsequent simulation
-    -test             see detailed output
+    -test(-test2)     see (very) detailed output
     -noex             minimize print on screen
     -repeat <int>     repeat x times
     --                use for looping (e.g. 0--10, or 0--0.2--5)
@@ -97,6 +98,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     #CALCULATOR
     Qcalculator = "XTB1"
     Qcalculator_input = ""
+    Qcalculator_max_iterations = 250
    
     #THERMOSTAT AND SIMULATION
     Qdt = 1    #timestep
@@ -140,6 +142,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if i == "-test":
       Qout = 2
       continue
+    if i == "-test2":
+      Qout = 3
+      continue
 
     #INDEX
     if i == "-index":
@@ -156,7 +161,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       from random import randint
       last = ""
       range_end = abs(int(i))
-      print("STRUCTURE USED: "+str(range_end))
+      print("STRUCTURE USED: -"+str(range_end)+":-1")
       Qindex = randint(-range_end, -1)
       continue
 
@@ -204,6 +209,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-nn_model":
       last = ""
       Qcalculator_input = i
+      continue
+    if i == "-max_iter":
+      last = "-max_iter"
+      continue
+    if last == "-max_iter":
+      last = ""
+      Qcalculator_max_iterations = int(i)
       continue
 
     #SPECIES

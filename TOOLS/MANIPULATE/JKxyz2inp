@@ -243,10 +243,10 @@ toolspath="$scriptpath/../TOOLS"
 
 for i in $filesin;
 do 
-  echo "$method
-%pal nprocs $prossu
+  echo -e "$method" > $(basename $i .xyz).inp
+  echo "%pal nprocs $prossu
     end
-%Maxcore $muisti1" > $(basename $i .xyz).inp
+%Maxcore $muisti1" >> $(basename $i .xyz).inp
   ######## EXTRA INPUT
   if [ "$Qextrainput" != "0" ]
   then
