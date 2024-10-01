@@ -23,12 +23,14 @@ function help {
    -xtb ......... structure is from XTB output
    -f,-forces ... print forces as well [Hartree/Bohr]
    -units ....... converts Bohrs to Angstroms
+   -topath ...... saves files to the original path
   FILES:
    gaussian (G16) output is expected
   EXAMPLES:
      JKlog2xyz
      JKlog2xyz 2.log 3.log
      JKlog2xyz -abc guanidine.log
+     JKlog2xyz -topath nitro/guanidine.log
   """
   exit
 }
@@ -41,6 +43,7 @@ Qnewname=""
 Qnew=0
 QdipXTB=0
 Qxtb=0
+Qtopath=0
 next=0
 last=""
 for i in $*
@@ -86,6 +89,11 @@ do
     if [ "$i" == "-xtb" ]
     then
       Qxtb=1
+    fi
+    ### -topath
+    if [ "$i" == "-topath" ]   
+    then
+      Qtopath=1
     fi
     ### unit
     if [ "$i" == "-units" ]
@@ -146,6 +154,10 @@ function convertG16 {
       newfile=$(basename $Qnewname .xyz).xyz
     else
       newfile=${prepos}$(basename $file .log).xyz
+    fi
+    if [ $Qtopath -eq 1 ]
+    then	
+      newfile="$( cd "$(dirname "$file")"; pwd -P )"/$newfile
     fi
     if [ -e $newfile ]; then rm $newfile;fi
 

@@ -70,6 +70,8 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
   Q_G16_used = 0
   Q_XTB_used = 0
   Q_ABC_CREST_used = 0
+  Q_TURBOMOLE_used = 0
+  Q_MRCC_used = 0
 
   clusters_dict = {}
   rem_orcaextname = orcaextname
@@ -208,6 +210,20 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
               dic.update(dic_abc_crest)
               continue
   
+          ######################
+          ####### MRCC #########
+          ######################
+          if file_test == file_i_MRCC:
+            testMRCC = mm.find(rb'MRCC program system')+1
+            if testMRCC > 0:
+              if Q_MRCC_used == 0:
+                from read_mrcc import read_mrcc,read_mrcc_init
+                read_mrcc_init()
+                Q_MRCC_used = 1
+              dic_mrcc = read_mrcc(mm)
+              dic.update(dic_mrcc)
+              continue         
+  
     ###############
     ### ENGRAD ####
     ###############
@@ -261,50 +277,3 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
   #        out = float(line.split()[5])
   #    file.close()
   #    clusters_df = df_add_iter(clusters_df, turbomoleextname, "electronic_energy", [str(cluster_id)], [out])
-
-  ################
-  #### MRCC ######
-  ################
-  #if path.exists(file_i_MRCC):
-  #  file = open(file_i_MRCC, "r")
-  #  testMRCC = 0
-  #  for i in range(3):
-  #    line = file.readline()
-  #    if re.search("MRCC program system", line):
-  #      testMRCC = 1
-  #      break
-  #  if testMRCC == 1:
-  #    from datetime import datetime
-  #    out_program = "MRCC"                              #PROGRAM
-  #    out_method = missing                               #METHOD
-  #    out_time = missing                                 #TIME
-  #    out_electronic_energy = missing                    #O3
-  #    ######
-  #    first_time=""
-  #    for line in file:
-  #      #TIME
-  #      if re.search("\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\* ",line):
-  #        if first_time == "":
-  #          first_time = line.split()[1]+" "+line.split()[2]
-  #          print(datetime.strptime(first_time,"%Y-%m-%d %H:%M:%S"))
-  #        else:
-  #          try:
-  #            this_time = line.split()[1]+" "+line.split()[2]
-  #            out_time = datetime.strptime(this_time, "%Y-%m-%d %H:%M:%S")-datetime.strptime(first_time, "%Y-%m-%d %H:%M:%S")
-  #            out_time = out_time.total_seconds() / 60
-  #          except:
-  #            out_time = missing
-  #        continue
-  #      #EL.ENERGY
-  #      if re.search("Total LNO-CCSD\(T\) energy with MP2 corrections", line): #O3
-  #        try:
-  #          out_electronic_energy = float(line.split()[7])
-  #        except:
-  #          out_electronic_energy = missing
-  #        continue
-  #    clusters_df = df_add_iter(clusters_df, mrccextname, "program", [str(cluster_id)], [out_program]) #PROGRAM
-  #    clusters_df = df_add_iter(clusters_df, mrccextname, "method", [str(cluster_id)], [out_method]) #METHOD
-  #    clusters_df = df_add_iter(clusters_df, mrccextname, "time", [str(cluster_id)], [out_time]) #TIME
-  #    clusters_df = df_add_iter(clusters_df, mrccextname, "electronic_energy", [str(cluster_id)], [out_electronic_energy]) #O3
-
-

@@ -105,7 +105,7 @@ energy_marker="FINAL SINGLE POINT"
 
 
 #Find the markers and save it as a temp file
-grep -n -e "$start_marker" -e "$end_marker" -e "$energy_marker"  "$i" > geo_e_of_${molecule}.temp
+grep -n -e "$start_marker" -e "$end_marker" -e "$energy_marker"  "$i" > ${molecule}.geo_e_of.temp
 
 #set convergence detection
 if grep -q "THE OPTIMIZATION HAS CONVERGED" "$i" && grep -q "TOTAL RUN TIME" "$i"; then  #This is the condition to define whether a job has finished or not,you can add other condition like the following comment.
@@ -121,14 +121,14 @@ Lowest_energy_line=$(grep -n "$energy_marker" "$i" |sort -n -k5| head -1| cut -d
 geo_type="FINAL"
 
 #By default it takes the last energy and geometry, unless -l is specified
-energy_line=$(grep -B 2 "$energy_marker" geo_e_of_${molecule}.temp | tail -1 | cut -d ":" -f 1)
+energy_line=$(grep -B 2 "$energy_marker" ${molecule}.geo_e_of.temp | tail -1 | cut -d ":" -f 1)
 if [ $low_flag -eq 1 ]; then
 energy_line=$Lowest_energy_line
 geo_type="LOWEST"
 fi
 
 #Get the energy
-spe_energy=$(grep "$energy_line" geo_e_of_${molecule}.temp | awk '{print $5}')
+spe_energy=$(grep "$energy_line" ${molecule}.geo_e_of.temp | awk '{print $5}')
 
 #Text info to print
 text_info="GEO_TYPE=${geo_type}"
@@ -141,18 +141,16 @@ if [ $e_flag -eq 1 ]; then
 text_info="${text_info}  Energy=${spe_energy}"
 fi
 
-
-
 #Find the start and end line for collecting geometry
-start_line=$(grep -B 2 "$energy_line" geo_e_of_${molecule}.temp | head -1 | cut -d ":" -f 1)
-end_line=$(grep -B 1 "$energy_line" geo_e_of_${molecule}.temp | head -1 | cut -d ":" -f 1)
+start_line=$(grep -B 2 "$energy_line" ${molecule}.geo_e_of.temp | head -1 | cut -d ":" -f 1)
+end_line=$(grep -B 1 "$energy_line" ${molecule}.geo_e_of.temp | head -1 | cut -d ":" -f 1)
 
 #echo "Starts on line${start_line} Ends on line${end_line}"
 sed -n "${start_line},${end_line}p" "$i" > "$xyz_file"
 
 
 #remove temp files
-rm geo_e_of_${molecule}.temp
+rm ${molecule}.geo_e_of.temp
 
 #sed -n '/FINAL ENERGY EVAL/,/CARTESIAN COORDINATES (A.U.)/p' $i > ${xyz_file};
 sed -i "1,2d" ${xyz_file};

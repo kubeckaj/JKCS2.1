@@ -375,7 +375,24 @@ else
   then
     logsouts=`ls $method/calc-LM/*.xyz $method/*/calc-LM/*.xyz $method/*/*/calc-LM/*.xyz 2>/dev/null | wc -w`
   else
-    logsouts=`ls $method/*.log $method/*.out $method/*/*.log $method/*/*.out $method/*/*/*.log $method/*/*/*.out 2>/dev/null | wc -w`
+    logs=`ls $method/*.log $method/*/*.log $method/*/*/*.log 2>/dev/null`
+    if [ ! -z "$logs" ]
+    then 
+      for i in $logs
+      do
+        xyz=`echo $i | rev | cut -c4- | rev`xyz
+        if [ ! -e $xyz ]; then JKlog2xyz $i -topath; fi
+      done
+    else
+      program="ORCA"
+      outs=`ls $method/*.out $method/*/*.out $method/*/*/*.out 2>/dev/null`
+      for i in $outs
+      do
+	xyz=`echo $i | rev | cut -c5- | rev`xyz
+	if [ ! -e $xyz ]; then JKout2xyz $i ; fi
+      done
+    fi
+    logsouts=`echo $logs $outs 2>/dev/null | wc -w`
   fi
   if [ $logsouts -eq 0 ]
   then
