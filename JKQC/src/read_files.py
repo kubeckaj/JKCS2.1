@@ -159,7 +159,6 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
           ###############
           if file_test == file_i_G16:
             testG16 = mm.find(rb'Gaussian(R)')+1
-            print(testG16)
             if testG16 > 0:
               if Q_G16_used == 0:
                 from read_g16 import read_g16,read_g16_init
@@ -174,7 +173,6 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
           ###############
           if file_test == file_i_ORCA:
             testORCA = mm.find(rb'O   R   C   A')+mm.find(rb'ORCA')+mm.find(rb'SHARK')+3
-            print(testORCA)
             if testORCA > 0:
               if Q_ORCA_used == 0:
                 from read_orca import read_orca,read_orca_init

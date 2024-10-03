@@ -389,7 +389,7 @@ else
       outs=`ls $method/*.out $method/*/*.out $method/*/*/*.out 2>/dev/null`
       for i in $outs
       do
-	xyz=`echo $i | rev | cut -c5- | rev`xyz
+	xyz=`echo $i | rev | cut -c5- | rev`.xyz
 	if [ ! -e $xyz ]; then JKout2xyz $i ; fi
       done
     fi
