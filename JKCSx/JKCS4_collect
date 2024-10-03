@@ -179,7 +179,8 @@ do
     # ORCA
     if [ "$iter" == "-orca" ] 
     then
-      program="ORCA" 
+      program="ORCA"
+      echo "No need to use $iter argument anymore. [ORCA recognized automatically (if .out is used).]" 
       continue
     fi
     # JKQC

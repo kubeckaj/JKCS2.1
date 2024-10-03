@@ -27,7 +27,7 @@ def find_line(bytes_string,take_first = 0,idx = 0):
 def read_orca(mmm, orcaextname, Qforces = 0):
   from numpy import array,sqrt
   missing = float("nan")
-  
+
   columns = ["program","method","time","termination","charge","multiplicity","NAtoms","rotational_constants","rotational_constant","sp_electronic_energy","electronic_energy","mulliken_charges","dipole_moment","dipole_moments","polarizability","vibrational_frequencies","temperature","pressure","moments_of_inertia","rotational_symmetry_number","zero_point_correction","energy_thermal_correction","enthalpy_thermal_correction","gibbs_free_energy_thermal_correction","zero_point_energy","internal_energy","enthalpy_energy","gibbs_free_energy","entropy"]
 
   global mm
