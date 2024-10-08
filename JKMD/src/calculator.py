@@ -18,14 +18,14 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN1-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations)
+    return TBLite(method="GFN1-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0)
 
   elif Qcalculator == "XTB2":
     #if Qcharge != 0:
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN2-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations)
+    return TBLite(method="GFN2-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0)
 
   ### XTB ###
   elif Qcalculator == "XTB":

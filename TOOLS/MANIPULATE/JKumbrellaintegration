@@ -2,7 +2,13 @@
 
 FROM=0.0
 TO=10.0
+Qfromto=0
 SKIP=0
+MULTIPLIER=1
+
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+toolspath="$scriptpath/../"
+
 
 arguments=("$@")       # arguments of this script
 arguments_help=()      # 
@@ -18,6 +24,7 @@ function print_help(){
   echo "  JKumbrellaintegration -skip 10000 -range 3.4 10.0"
   echo "  SKIP - default skipping nothing, number of steps"
   echo "  range - only for graphical visulazation"
+  echo "  multiplier - default 1, either 1 or 2 for the same molecules"
   echo "  THIS SHOULD PRODUCE FREE ENERGY PROFILES BUT YET NOT FREE ENERGIES" 
   exit
 }
@@ -46,6 +53,7 @@ do
   if [ "$last" == "-range2" ]
   then
     TO=$iter
+    Qfromto=1
     last=""
     continue
   fi
@@ -58,6 +66,17 @@ do
   then
     last=""
     SKIP=$iter
+    continue
+  fi
+  if [ "$iter" == "-multiplier" ]
+  then
+    last="-multiplier"
+    continue
+  fi
+  if [ "$last" == "-multiplier" ]
+  then
+    last=""
+    MULTIPLIER=$iter
     continue
   fi
   echo "I do not understand this: $iter"
@@ -80,7 +99,14 @@ fi
 
 if [ ! -e umbrella_integration ]; then mkdir umbrella_integration; fi
 cd umbrella_integration
-JKQC ../simcalc-LM_*.pkl -column log md_time -column log COM_distance -column log harm_distance -column log k_bias -noex -filter_gt log,md_time 100000 | awk '{print $1 " " $2 " " $3 " " $4*4.184}' | column -t > input.txt
+JKQC ../simcalc-LM_*.pkl -column log md_time -column log COM_distance -column log harm_distance -column log k_bias -noex -filter_gt log,md_step $SKIP | awk '{print $1 " " $2 " " $3 " " $4*4.184}' | column -t > input.txt
+if [ $Qfromto == 0 ]; then FROM=`cat input.txt | awk '{print $3}' | sort -n | head -n 1`; fi
+if [ $Qfromto == 0 ]; then TO=`cat input.txt | awk '{print $3}' | sort -n | tail -n 1`; fi
+echo "Integrating from $FROM to $TO"
 module load python/2.7.14
 python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -pp pic1 -ph pic2 -o out -m $FROM $TO
+if [ -e out ]; 
+then
+  program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER >> output
+fi
 cd ..

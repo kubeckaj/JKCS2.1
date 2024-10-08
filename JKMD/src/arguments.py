@@ -161,7 +161,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       from random import randint
       last = ""
       range_end = abs(int(i))
-      print("STRUCTURE USED: -"+str(range_end)+":-1")
+      print("STRUCTURE USED: -"+str(range_end)+":-1", flush=True)
       Qindex = randint(-range_end, -1)
       continue
 

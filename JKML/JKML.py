@@ -626,10 +626,10 @@ for sampleeach_i in sampleeach_all:
       elif Qrepresentation == "mbdf":
         X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
         representations = generate_representation(np.array([i.get_atomic_numbers() for i in strs]), np.array([i.get_positions() for i in strs]), cutoff_r = krr_cutoff, normalized = False)
-      
+
       #some info about the full representation
       print(representations.shape, flush = True)
-  
+
       ### DEFINING THE TRAINING X:  Y = QML(X) 
       X_train = representations
       
@@ -710,6 +710,7 @@ for sampleeach_i in sampleeach_all:
         pickle.dump([K,Y_train],f)
         f.close()
         exit()
+      print("Hello", flush = True)
 
     #####################################
     ### TRAINING NN #####################

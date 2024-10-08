@@ -223,6 +223,15 @@ if [ -z "$filesin" ]
 then
   filesin=`ls *.xyz`
 fi
+for i in $filesin
+do
+  if [ ! -e "$i" ]
+  then
+    echo "$i does not exist"
+    exit
+  fi
+done
+
 
 ###############################################################################
 ################################ MAIN PROGRAM #################################
