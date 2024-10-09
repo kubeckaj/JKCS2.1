@@ -244,7 +244,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
             ratios = ratios / max(ratios)
           else:
             ratios = missing
-          radius.append((prod(maxdist*ratios))**(1/3))	
+          radius.append((prod(maxdist*ratios))**(1/3)/2)	
         except:
           radius.append(missing)
       output.append(radius)
