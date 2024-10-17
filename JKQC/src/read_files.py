@@ -176,9 +176,9 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
             if testORCA > 0:
               if Q_ORCA_used == 0:
                 from read_orca import read_orca,read_orca_init
-                read_orca_init(Qforces = Qforces)
+                read_orca_init(Qforces = Qforces, Qanharm = Qanharm)
                 Q_ORCA_used = 1
-              dic_orca = read_orca(mm, orcaextname, Qforces = Qforces)
+              dic_orca = read_orca(mm, orcaextname, Qforces = Qforces, Qanharm = Qanharm)
               dic.update(dic_orca)
               continue
 

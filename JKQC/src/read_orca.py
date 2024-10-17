@@ -1,12 +1,16 @@
 ###############
 ### ORCA ######
 ###############
-def read_orca_init(Qforces = 0):
+def read_orca_init(Qforces = 0, Qanharm = 0):
   from re import compile
   global PATTERN_ORCA_out_method,PATTERN_ORCA_out_vibrational_frequencies,PATTERN_ORCA_out_mulliken_charges
   PATTERN_ORCA_out_method = compile(rb"\n\|.*>.*!.*")
   PATTERN_ORCA_out_vibrational_frequencies = compile(rb'VIBRATIONAL FREQUENCIES.*\n.*-{2,}\n.*\nScaling factor for frequencies.*\n.*\n((?:\s*\d+:\s*[-]?\d+\.\d+\s*cm\*\*-1.*\n)+)\n')
   PATTERN_ORCA_out_mulliken_charges = compile(rb'MULLIKEN ATOMIC CHARGES\s*-{2,}\n((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\n)+)Sum') 
+  if Qanharm == 1:
+    global PATTERN_ORCA_anharm
+    PATTERN_ORCA_out_vibrational_frequencies = compile(rb'Fundamental transitions.*\n.*-{2,}\n.*Mode.*\n.*-{2,}.*\n((?:\s+\d+\s+[+-]?\d+.\d+\s+[+-]?\d+.\d+\s+[+-]?\d+\.\d+\s*.*\n)+)\n')
+    PATTERN_ORCA_anharm = compile(rb'Anharmonic constants.*\n.*-{2,}\n.*r.*\n.*-{2,}\n((?:\s*\d+\s*\d+\s*[-+]?\d+\.\d+\s.*\n)+).*-{2,}\n')
   if Qforces == 1:
     global PATTERN_ORCA_out_forces
     PATTERN_ORCA_out_forces = compile(rb'CARTESIAN GRADIENT.*\w*\n*-{2,}\n*((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\n)+)\s*\n[D,N]') 
@@ -24,7 +28,7 @@ def find_line(bytes_string,take_first = 0,idx = 0):
   else:
     return None, idx
 
-def read_orca(mmm, orcaextname, Qforces = 0):
+def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
   from numpy import array,sqrt
   missing = float("nan")
 
@@ -52,10 +56,34 @@ def read_orca(mmm, orcaextname, Qforces = 0):
 
   #VIBRATIONAL FREQUENCIES
   try:
+    print("Hi")
     lines = PATTERN_ORCA_out_vibrational_frequencies.findall(mm)[-1].decode("utf-8").split("\n")
-    out_vibrational_frequencies = [float(line.split()[1]) for line in lines[6:-1]]
+    if Qanharm == 1:
+      out_vibrational_frequencies = [float(line.split()[1]) for line in lines[0:-2]]
+      try:
+        print("Hi")
+        lines = PATTERN_ORCA_anharm.findall(mm)[-1].decode("utf-8").split("\n")
+        corrections = array([array([float(number) for number in line.split()]) for line in lines[0:-1]])
+        out_anharmonicties = []
+        for i in range(len(out_vibrational_frequencies)):
+          corr = 0
+          for j in range(len(corrections)):
+            if corrections[j,0] == i and corrections[j,1] == i:
+              corr = corr + 2*corrections[j,2]
+            elif corrections[j,0] == i:
+              corr = corr + 0.5*corrections[j,2]
+            elif corrections[j,1] == i:
+              corr = corr + 0.5*corrections[j,2]
+          out_anharmonicties.append(corr+out_vibrational_frequencies[i])  
+        out_anharm = out_anharmonicties
+      except:
+        out_anharm = missing
+    else:
+      out_vibrational_frequencies = [float(line.split()[1]) for line in lines[6:-1]]
   except:
     out_vibrational_frequencies = missing
+    if Qanharm == 1:
+      out_anharm = missing
  
   #METHOD
   try:
@@ -218,6 +246,9 @@ def read_orca(mmm, orcaextname, Qforces = 0):
   dic = {(orcaextname,column):[all_locals.get("out_"+column)] for column in columns}
   if Qforces == 1:
     dic.update({("extra","forces"):[out_forces]})
+  if Qanharm == 1:
+    dic.update({("extra","anharm"):[out_anharm]})
+  #ANHARMONIC FREQS
   return dic
 
 #else:
