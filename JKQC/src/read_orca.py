@@ -58,7 +58,7 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
   try:
     lines = PATTERN_ORCA_out_vibrational_frequencies.findall(mm)[-1].decode("utf-8").split("\n")
     if Qanharm == 1:
-      out_vibrational_frequencies = [float(line.split()[1]) for line in lines[0:-2]]
+      out_vibrational_frequencies = [float(line.split()[1]) for line in lines[0:-1]]
       try:
         lines = PATTERN_ORCA_anharm.findall(mm)[-1].decode("utf-8").split("\n")
         corrections = array([array([float(number) for number in line.split()]) for line in lines[0:-1]])
