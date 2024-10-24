@@ -41,10 +41,12 @@ def print_help():
     -ns,-steps <int>  number of steps [default = 1000]
     -dump <int>       dumping properties every <int> step [0 means no dump, default = 1]
 
-  CONSTRAIN:
+  CONSTRAINTS:
     UMBRELLA SAMPLING:
     -harm <float>     add harmonic potential COM <float> distance constrain [2 species]
     -k_bias <float>   strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
+    EXTERNAL FORCES:
+    -EF_h_M <float>   ext. force on the last molecule in form of harmonic potential k*([0,0,0]-[x,y,z])^2 
  
   OTHER:
     -nf <str>         folder where the simulation will be performed
@@ -84,7 +86,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   if len(species_from_previous_run) == 0:
     Qindex_of_specie = -1
     species = []
-    Qconstraints = 0
+    Qconstraints = 0 #0 = none, 1 = umbrella sampling, 2 = external forces
     Qdistance = 0
 
     Qseed = 42
@@ -417,6 +419,15 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
     if i == "-distout":
       Qdistance = 1
+      continue
+
+    #EXTERNAL FORCES
+    if i == "-EF_h_M":
+      last = "-EF_h_M"
+      continue
+    if last == "-EF_h_M":
+      last = ""
+      QEF_h_M = float(i)
       continue
 
     #UNKNOWN ARGUMENT

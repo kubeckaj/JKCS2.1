@@ -1,23 +1,19 @@
 class ExternalForce(FixConstraint):
 
-    def __init__(self, from, a2, towards_point=[0,0,0], f_ext, measure):
-        self.atom_from = a1
-	self.atom_to = a2
-        self.external_force = f_ext
+    def __init__(self, k_ext, towards_point=[0,0,0]):
+        self.k_ext = k_ext
         self.end = towards_point
-	self.measure = measure
 
     def adjust_positions(self, atoms, new):
         pass
 
     def adjust_forces(self, atoms, forces):
-        dist = np.subtract.reduce(atoms.positions[self.atom_from:self.atom_to])
-        force = self.external_force * dist / np.linalg.norm(dist)
-        forces[self.indices] += (force, -force)
+        external_force = 2*self.k_ext*np.array([np.linalg.norm(i)*(np.array([0,0,0])-i)/(np.linalg.norm(np.array([0,0,0])-i)+1e-8) for i in pos])
+        forces[self.indices] += force
 
     def adjust_potential_energy(self, atoms):
-        dist = np.subtract.reduce(atoms.positions[self.indices])
-        return -np.linalg.norm(dist) * self.external_force
+        external_energy = np.sum(self.k_ext*np.array([np.linalg.norm(np.array([0,0,0])-i)**2 for i in pos]))
+        return external_energy
 
     #def todict(self):
     #    return {'name': 'ExternalForce',

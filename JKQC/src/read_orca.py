@@ -9,7 +9,7 @@ def read_orca_init(Qforces = 0, Qanharm = 0):
   PATTERN_ORCA_out_mulliken_charges = compile(rb'MULLIKEN ATOMIC CHARGES\s*-{2,}\n((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\n)+)Sum') 
   if Qanharm == 1:
     global PATTERN_ORCA_anharm
-    PATTERN_ORCA_out_vibrational_frequencies = compile(rb'Fundamental transitions.*\n.*-{2,}\n.*Mode.*\n.*-{2,}.*\n((?:\s+\d+\s+[+-]?\d+.\d+\s+[+-]?\d+.\d+\s+[+-]?\d+\.\d+\s*.*\n)+)\n')
+    PATTERN_ORCA_out_vibrational_frequencies = compile(rb'Fundamental transitions.*\n.*-{2,}\n.*Mode.*\n.*-{2,}.*\n((?:\s*\d+\s+[-]?\d+.\d+\s+[-]?\d+.\d+\s+[-]?\d+\.\d+\s*\n)+).*-{2,}.*\n.*\n')
     PATTERN_ORCA_anharm = compile(rb'Anharmonic constants.*\n.*-{2,}\n.*r.*\n.*-{2,}\n((?:\s*\d+\s*\d+\s*[-+]?\d+\.\d+\s.*\n)+).*-{2,}\n')
   if Qforces == 1:
     global PATTERN_ORCA_out_forces
@@ -56,12 +56,10 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
 
   #VIBRATIONAL FREQUENCIES
   try:
-    print("Hi")
     lines = PATTERN_ORCA_out_vibrational_frequencies.findall(mm)[-1].decode("utf-8").split("\n")
     if Qanharm == 1:
       out_vibrational_frequencies = [float(line.split()[1]) for line in lines[0:-2]]
       try:
-        print("Hi")
         lines = PATTERN_ORCA_anharm.findall(mm)[-1].decode("utf-8").split("\n")
         corrections = array([array([float(number) for number in line.split()]) for line in lines[0:-1]])
         out_anharmonicties = []
