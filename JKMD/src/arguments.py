@@ -18,7 +18,6 @@ def print_help():
     -setvel <0/1>         0) removes COM velocites, 1) removes all velocities
     -vel <array>          adds velocities as a vector [x,y,z] in Angstrom/fs
     -box <float>          set cell of size LxLxL Angstrom with PBC (must be set for all species)
-    -select <str>         select a range of atoms of active specie (e.g., 1:3, 4:) [default = ":"]
 
   CONSTRAINTS:
     -fix                          fixed position of atoms
