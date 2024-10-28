@@ -23,6 +23,7 @@ current_step = 0
 #READ ARGUMENTS
 from arguments import arguments
 Qfollow_activated = -1
+QEF_applied = 0
 while not Qfollow_activated == 0:
   if Qfollow_activated == -1:
     locals().update(arguments(argv[1:]))
@@ -58,6 +59,22 @@ while not Qfollow_activated == 0:
     if len(species) != 2:
       print("Nice try. The -distout part of JKMD is yet not ready for your jokes.")
       exit()
+  #EXTERNAL FORCE
+  if len(QEF) > 0:
+    for i in range(QEF_applied,len(QEF)):
+      QEF_applied += 1
+      if QEF[i] == "h_A" or QEF[i] == "c_COM":
+        from externalforce import ExternalForce
+        all_species.set_constraint(ExternalForce(QEF[i],QEF_par[i],QEF_systems[i]))
+        if Qout == 2:
+           print("External FF applied")
+           print("External Force: "+QEF[i]+" on "+str(QEF_systems[i][0])+" to "+str(QEF_systems[i][1])+" with parameters "+str(QEF_par[i]))
+      if QEF[i] == "h_COM_COM":
+        if len(species) != 2:
+          print("Nice try. The umbrella sampling part of JKMD is yet not ready for your jokes.")
+          exit()
+        from umbrellaconstraint import UmbrellaConstraint
+        all_species.set_constraint(UmbrellaConstraint(all_species,QEF_par[i][0],len(species[0]),QEF_par[i][1]))
     
   #SET CALCULATOR
   if Qout == 2:

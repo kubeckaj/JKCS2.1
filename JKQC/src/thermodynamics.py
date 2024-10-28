@@ -60,7 +60,7 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
           Sv_OLD = missing
           Ev_OLD = missing
         #
-        if Qanh != "anh" and Qanh != "anh2":
+        if Qanh != "anh" and Qanh != "anh2" and Qanh != "wB97X-3c" and Qanh != "wB97X-D":
           try:
             clusters_df.at[i,("log","vibrational_frequencies")] = [float(Qanh) * j for j in clusters_df.at[i,("log","vibrational_frequencies")]]
           except:
@@ -69,6 +69,20 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
           try:
             if Qanh == "anh":
               clusters_df.at[i,("log","vibrational_frequencies")] = replace_by_nonnegative(clusters_df.at[i,("extra","anharm")],clusters_df.at[i,("log","vibrational_frequencies")],0)
+            elif Qanh == "wB97X-3c":
+              def anh_corr(x):
+                if x < 2446:
+                  return x-1.842*10**(-5)*x**2
+                else:
+                  return 0.955*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(j) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "wB97X-D":
+              def anh_corr(x):
+                if x < 2345:
+                  return x-2.025*10**(-5)*x**2
+                else:
+                  return 0.953*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(j) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
             else:
               clusters_df.at[i,("log","vibrational_frequencies")] = replace_by_nonnegative(clusters_df.at[i,("extra","anharm")],clusters_df.at[i,("log","vibrational_frequencies")],1)
           except:

@@ -41,9 +41,14 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
     T_vib = 3*len(species_copy)/(3*len(species_copy)-5)*T_rotate
   else:
     T_vib = 0
-  if current_step == 0:
-    print('      STEP_[-] TIME_[fs] | Et[kcal/mol] Ep[kcal/mol] Ek[kcal/mol] | T_[K] Tt[K] Tr[K] Tv[K] | COMd_[A] MaxA_[A] MaxB_[A]', flush=True)
-  print('JKMD: %-*i %-*.1f | %-*.3f %-*.3f %-*.3f | %-*.0f %-*.0f %-*.0f %-*.0f | %-8.4f %-8.2f %-8.2f' % (8,current_step, 9,current_time, 12,epot + ekin, 12,epot, 12,ekin, 5,T_temp, 5,T_tr, 5,T_rot, 5,T_vib, dist_n, spread_a, spread_b), flush=True)
+  if Qconstraints > 0 or Qdistance == 1:
+    if current_step == 0:
+      print('      STEP_[-] TIME_[fs] | Et[kcal/mol] Ep[kcal/mol] Ek[kcal/mol] | T_[K] Tt[K] Tr[K] Tv[K] | COMd_[A] MaxA_[A] MaxB_[A]', flush=True)
+    print('JKMD: %-*i %-*.1f | %-*.3f %-*.3f %-*.3f | %-*.0f %-*.0f %-*.0f %-*.0f | %-8.4f %-8.2f %-8.2f' % (8,current_step, 9,current_time, 12,epot + ekin, 12,epot, 12,ekin, 5,T_temp, 5,T_tr, 5,T_rot, 5,T_vib, dist_n, spread_a, spread_b), flush=True)
+  else:
+    if current_step == 0:
+      print('      STEP_[-] TIME_[fs] | Et[kcal/mol] Ep[kcal/mol] Ek[kcal/mol] | T_[K] Tt[K] Tr[K] Tv[K]', flush=True)
+    print('JKMD: %-*i %-*.1f | %-*.3f %-*.3f %-*.3f | %-*.0f %-*.0f %-*.0f %-*.0f' % (8,current_step, 9,current_time, 12,epot + ekin, 12,epot, 12,ekin, 5,T_temp, 5,T_tr, 5,T_rot, 5,T_vib), flush=True)
 
 
   from os import path

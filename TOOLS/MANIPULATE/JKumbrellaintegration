@@ -24,7 +24,7 @@ function print_help(){
   echo "  JKumbrellaintegration -skip 10000 -range 3.4 10.0"
   echo "  SKIP - default skipping nothing, number of steps"
   echo "  range - only for graphical visulazation"
-  echo "  multiplier - default 1, either 1 or 2 for the same molecules"
+  echo "  multiplier - default 1, either 1 or 2 for the same molecules, or just use -symm"
   echo "  THIS SHOULD PRODUCE FREE ENERGY PROFILES BUT YET NOT FREE ENERGIES" 
   exit
 }
@@ -68,6 +68,11 @@ do
     SKIP=$iter
     continue
   fi
+  if [ "$iter" == "-symm" ]
+  then
+    MULTIPLIER=2
+    continue
+  fi 
   if [ "$iter" == "-multiplier" ]
   then
     last="-multiplier"

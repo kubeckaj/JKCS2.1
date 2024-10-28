@@ -17,12 +17,22 @@ def print_help():
     -mb <int>             initiate vel. from Maxwell-Boltzmann distribution ex. at <int> K
     -setvel <0/1>         0) removes COM velocites, 1) removes all velocities
     -vel <array>          adds velocities as a vector [x,y,z] in Angstrom/fs
-    -box <float>          set cell of size LxLxL Angstrom with PBC 
+    -box <float>          set cell of size LxLxL Angstrom with PBC (must be set for all species)
+    -select <str>         select a range of atoms of active specie (e.g., 1:3, 4:) [default = ":"]
 
+  CONSTRAINTS:
+    -fix                          fixed position of atoms
+    -EF_h_COM_COM <float> <float> harmonic potential between COMs of last two molecules [harm k_bias]
+    -EF_h_A <float>               ext. force field in the form of harmonic potential k*([0,0,0]-[x,y,z])^2 
+    -EF_c_COM <array>             constant ext. force on the center of mass (e.g., [1,0,0]) 
+    UMBRELLA SAMPLING:
+    -harm <float>     add harmonic potential COM <float> distance constrain [2 species]
+    -k_bias <float>   strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
+ 
   CALCULATOR
     -xtb1            GFN1-xTB {TBlite} [set as default]
     -xtb2            GFN2-xTB {TBlite}
-    -xtb "<str>"     xtb method (e.g., GFN1-xTB) {XTB}
+    -xtb "<str>"     xtb method (e.g., GFN1-xTB, GFNFF) {XTB}
     -nn_model <path> Neural Network model defined by path {SchNetPack}
     -orca "<str>"    QC method (e.g., "XTB1" or "B97-3c") {ORCA}
                      -additional setup might be required!!!
@@ -41,13 +51,6 @@ def print_help():
     -ns,-steps <int>  number of steps [default = 1000]
     -dump <int>       dumping properties every <int> step [0 means no dump, default = 1]
 
-  CONSTRAINTS:
-    UMBRELLA SAMPLING:
-    -harm <float>     add harmonic potential COM <float> distance constrain [2 species]
-    -k_bias <float>   strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
-    EXTERNAL FORCES:
-    -EF_h_M <float>   ext. force on the last molecule in form of harmonic potential k*([0,0,0]-[x,y,z])^2 
- 
   OTHER:
     -nf <str>         folder where the simulation will be performed
     -distout          save distance between two molecules
@@ -83,6 +86,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   #SPECIES
   Qindex = -1
   Qcharge = charge_from_previous_run
+  Qselect = ":"
   if len(species_from_previous_run) == 0:
     Qindex_of_specie = -1
     species = []
@@ -96,6 +100,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     #CONSTRAINTS
     Qharm = 10
     Qk_bias = 100
+    QEF = []         #h_COM_COM, h_A, c_COM
+    QEF_par = []
+    QEF_systems = []
   
     #CALCULATOR
     Qcalculator = "XTB1"
@@ -270,6 +277,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       themove=literal_eval(i)
       #if themove[0]<=6:
       #  themove[0]=6
+      #ix = species[Qindex_of_specie]
+      #x[1:3].translate(-x[1:3].get_center_of_mass()+themove)
+      #species[Qindex_of_specie] = x
       species[Qindex_of_specie].translate(-species[Qindex_of_specie].get_center_of_mass()+themove)
       continue
     if i == "-moveto2":
@@ -286,6 +296,15 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       if themove[0]<=moveTHR:
         themove[0]=moveTHR
       species[Qindex_of_specie].translate(-species[Qindex_of_specie].get_center_of_mass()+themove)
+      continue
+  
+    #SELECT
+    if i == "-select":
+      last = "-select"
+      continue
+    if last == "-select":
+      last = ""
+      Qselect = str(i)
       continue
 
     #INITIATE VELOCITIES
@@ -422,14 +441,54 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
 
     #EXTERNAL FORCES
-    if i == "-EF_h_M":
-      last = "-EF_h_M"
+    if i == "-EF_h_A":
+      last = "-EF_h_A"
       continue
-    if last == "-EF_h_M":
+    if last == "-EF_h_A":
       last = ""
-      QEF_h_M = float(i)
+      QEF.append("h_A")
+      mfrom = 0
+      for j in range(Qindex_of_specie):
+        mfrom=mfrom+len(species[j])
+      mto=mfrom+len(species[Qindex_of_specie])
+      QEF_systems.append([mfrom,mto])
+      QEF_par.append(float(i))
       continue
-
+    if i == "-EF_c_COM":
+      last = "-EF_c_COM"
+      continue	
+    if last == "-EF_c_COM":
+      last = ""
+      QEF.append("c_COM")
+      mfrom = 0
+      for j in range(Qindex_of_specie):
+        mfrom=mfrom+len(species[j])
+      mto=mfrom+len(species[Qindex_of_specie])
+      QEF_systems.append([mfrom,mto])
+      QEF_par.append(literal_eval(i))
+      #TODO
+      continue
+    if i == "-EF_h_COM_COM":
+      last = "-EF_h_COM_COM"
+      continue
+    if last == "-EF_h_COM_COM":
+      last = "-EF_h_COM_COM_2"
+      QEF.append("h_COM_COM")
+      continue
+    if last == "-EF_h_COM_COM_2":
+      last = "-EF_h_COM_COM_3"
+      x=float(i)
+      continue
+    if last == "-EF_h_COM_COM_3":
+      last = ""
+      QEF_par.append([x,float(i)])
+      QEF_systems.append([Qspecies-1,Qspecies])
+      continue
+    if i == "-fix":
+      from ase.constraints import FixAtoms
+      species[Qindex_of_specie].set_constraint(FixAtoms(indices=range(len(species[Qindex_of_specie]))))
+      continue
+ 
     #UNKNOWN ARGUMENT
     print("I am sorry but I do not understand the argument: "+i+" [EXITING]")
     exit()

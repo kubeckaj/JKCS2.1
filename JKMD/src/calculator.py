@@ -11,7 +11,7 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
     Qprint=Qout-1
   else:
     Qprint=Qout
-  
+   
   ### XTB-Lite ###
   if Qcalculator == "XTB1":
     #if Qcharge != 0:
