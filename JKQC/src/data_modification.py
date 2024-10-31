@@ -256,6 +256,27 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
     from pandas import DataFrame
     mons_df = DataFrame(mons_dic,index=range(len(overall_symbols_new)))
     mons_df.to_pickle("atoms.pkl")
+  elif Qatomize == 2:
+    for cluster_id in clusters_df.index:
+      from read_files import seperate_string_number,is_nameable
+      from re import split
+      file_basename = clusters_df.loc[cluster_id,("info","file_basename")]
+      file_basename_split = file_basename.split("-")[0].split("_")[0] 
+      split_numbers_letters = split('(\d+)',file_basename_split)[1:]
+      cluster_type_array = seperate_string_number(file_basename_split)
+      if is_nameable(cluster_type_array):
+        cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
+        cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
+        cluster_type = zeros(cluster_type_array_sorted)
+        components = split_numbers_letters[1::2]
+        component_ratio = [int(i) for i in split_numbers_letters[0::2]]
+      else:
+        cluster_type = float("nan")
+        components = float("nan")
+        component_ratio = float("nan")
+      clusters_df.at[cluster_id,("info","cluster_type")] = cluster_type
+      clusters_df.at[cluster_id,("info","components")] = components
+      clusters_df.at[cluster_id,("info","component_ratio")] = component_ratio
 
   if Qdrop != "0":
     if Qdrop in clusters_df:

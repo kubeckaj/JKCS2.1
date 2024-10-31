@@ -3,7 +3,7 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 export PATH=$scriptpath:$PATH              #MANIPULATE
 export PATH=$scriptpath/../../JKCSx:$PATH  #JKCSx
 ######
-for i in `ls -d SYS*`
+for i in `ls -d SYS*/`
 do
  cd $i
  echo $i

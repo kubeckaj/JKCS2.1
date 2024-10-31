@@ -81,7 +81,7 @@ def print_help():
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
-  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize")
+  print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -306,6 +306,10 @@ def arguments(argument_list = []):
     if i == "-atomize":
       Qmodify = 1
       Qatomize = 1
+      continue
+    if i == "-clusterize":
+      Qmodify = 1
+      Qatomize = 2
       continue
     #FORCES
     if i == "-forces" or i == "-force":

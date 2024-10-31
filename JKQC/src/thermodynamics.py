@@ -77,12 +77,10 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
                   return 0.955*x
               clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(j) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
             elif Qanh == "wB97X-D":
+              from numpy import piecewise
               def anh_corr(x):
-                if x < 2345:
-                  return x-2.025*10**(-5)*x**2
-                else:
-                  return 0.953*x
-              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(j) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+                return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), (x>=3900)&(x<4000),x>4000],[0.582728, 0.6407, 0.759964, 0.825341, 0.861125, 0.900091, 0.89788, 0.925491, 0.928046, 0.951405, 0.961447, 0.966595, 0.966203, 0.966312, 0.967825, 0.962537, 0.959766, 0.957327, 0.965982, 0.48524, 0.194003, 0.323196, 0.529488, 0.508194, 0.452896, 0.716601, 0.777274, 0.806458, 0.850253, 0.938257, 0.957628, 0.95651, 0.955162, 0.918533, 0.944945, 0.946553, 0.949621, 0.946313, 0.9493, 0.954287,0.954287])
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(j)*j for j in clusters_df.at[i,("log","vibrational_frequencies")]]
             else:
               clusters_df.at[i,("log","vibrational_frequencies")] = replace_by_nonnegative(clusters_df.at[i,("extra","anharm")],clusters_df.at[i,("log","vibrational_frequencies")],1)
           except:
