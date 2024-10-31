@@ -46,6 +46,7 @@ def print_help():
   print(" -movie    save all XYZs to movie.xyz         -radius      approx. radius of cluster size [Angstrom]")
   print(" -charges  save all Mulliken .charges files   -radius0.5   radius with +0.5 Angstrom correction")
   print(" -mass     prints molecular mass [g/mol]      -level       program version and method used")
+  print(" -natoms   number of atoms                    -nel         number of electrons")
   print("\nPOST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies CITE: Grimme")
   print(" -temp [value in K]   recalculate for different temperature")
@@ -80,7 +81,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -natoms, -hydration/-solvation <str>")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
@@ -750,6 +751,9 @@ def arguments(argument_list = []):
       continue
     if i == "-natoms":
       Pout.append("-natoms")
+      continue
+    if i == "-nel" or i == "-nels":
+      Pout.append("-nel")
       continue
     if i == "-h" or i == "-enthalpy" or i == "--h" or i == "--enthalpy":
       Pout.append("-h")

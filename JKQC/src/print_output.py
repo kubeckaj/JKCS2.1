@@ -347,6 +347,16 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
           natoms.append(missing)
       output.append(natoms)
       continue
+    if i == "-nel":
+      nels = []
+      for ind in clusters_df.index:
+        try:
+          from numpy import sum
+          nels.append(str(sum(clusters_df.loc[ind,("xyz","structure")].get_atomic_numbers())))
+        except:
+          nels.append(missing)
+      output.append(nels)
+      continue
     # First = SP el. energy
     if i == "-elsp":
       try:
