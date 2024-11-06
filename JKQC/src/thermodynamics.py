@@ -18,6 +18,46 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
   R = 1.987 #cal/mol/K #=8.31441
   k = 1.380662*10**-23 #m^2 kg s^-2 K^-1
 
+  ####################################################
+  # LOW VIBRATIONAL FREQUNECY TREATMENT (S // G,Gc) ##
+  ####################################################
+  if Qfc < 0:
+    for i in range(len(clusters_df)):
+      try:
+        if isna(clusters_df.at[i,("log","vibrational_frequencies")]):
+          continue
+      except:
+        lf = 0
+      try:
+        lf = float(clusters_df.at[i,("log","vibrational_frequencies")][0])
+      except:
+        lf = 0
+      if lf <= 0:
+        clusters_df.at[i,("log","entropy")] = missing
+        continue
+      if isnan(Qt):
+        Qt = clusters_df.at[i,("log","temperature")]
+      vibs = clusters_df.at[i,("log","vibrational_frequencies")]
+      structure = clusters_df.at[i,("xyz","structure")]
+
+      mu = [float(h/(8*pi**2*2.99793*10**10*vib)) for vib in vibs]
+      try:
+        mi = mean(structure.get_moments_of_inertia())
+        Sr = [R*(0.5+log((8*pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K
+        Sv = [R*h*vib*2.99793*10**10/k/Qt/(exp(h*vib*2.99793*10**10/k/Qt)-1)-R*log(1-exp(-h*vib*2.99793*10**10/k/Qt)) for vib in vibs] #cal/mol/K
+        w = [1/(1+(Qfc/vib)**4) for vib in vibs]
+        Sv_corr = sum([w[j]*Sv[j]+(1-w[j])*Sr[j] for j in range(len(w))])
+        Sv_each = sum(Sv)  #cal/mol/K
+        clusters_df.at[i,("log","entropy")] = clusters_df.at[i,("log","entropy")]-(Sv_corr-Sv_each)
+      except:
+        mi = missing
+        clusters_df.at[i,("log","entropy")] = missing
+    Qfc = -Qfc
+    ###
+ 
+  #########################
+  ## VIBRATIONAL SCALING ##
+  #########################
   if Qanh != "1":
     # VIBRATIONAL FREQ MODIFICATION e.g. anharmonicity (vib.freq.,ZPE,ZPEc,U,Uc,H,Hc,S // G,Gc)
     for i in range(len(clusters_df)):
@@ -102,7 +142,9 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
         clusters_df.at[i,("log","entropy")] += Sv - Sv_OLD      
         ###
   
-  # NEW TEMPERATURE (T,S,H,Hc,U,Uc // G,Gc)
+  #################################################
+  #### NEW TEMPERATURE (T,S,H,Hc,U,Uc // G,Gc) ####
+  #################################################
   if ~isnan(Qt):
     for i in range(len(clusters_df)):
       try:
@@ -141,7 +183,9 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
         clusters_df.at[i,("log","energy_thermal_correction")] += (Ev - Ev_OLD + 3*R*(Qt-QtOLD))/1000/627.503
         ###
   
-  # LOW VIBRATIONAL FREQUNECY TREATMENT (S // G,Gc)
+  ####################################################
+  # LOW VIBRATIONAL FREQUNECY TREATMENT (S // G,Gc) ##
+  ####################################################
   if Qfc > 0:
     for i in range(len(clusters_df)):
       try:

@@ -49,6 +49,7 @@ def print_help():
   print(" -natoms   number of atoms                    -nel         number of electrons")
   print("\nPOST-CALCULATIONS:")
   print(" -fc [value in cm^-1] frequency cut-off for low-vibrational frequencies CITE: Grimme")
+  print(" -antifc [value]      in ORCA6.0 deapply QHA and apply again. Useful for correct vib. scaling")
   print(" -temp [value in K]   recalculate for different temperature")
   print(" -v,-as [value]       anharmonicity scaling factor CITE: Grimme")
   print(" -unit                converts units [Eh] -> [kcal/mol] (for entropy: [Eh/K] -> [cal/mol/K])")
@@ -879,6 +880,14 @@ def arguments(argument_list = []):
     if last == "-fc":
       last = ""
       Qfc = float(i)
+      continue
+    if i == "-antifc" or i == "--antifc":
+      Qqha = 1
+      last = "-antifc"
+      continue
+    if last == "-antifc":
+      last = ""
+      Qfc = -float(i)
       continue
     if i == "-temp" or i == "--temp":
       Qqha = 1
