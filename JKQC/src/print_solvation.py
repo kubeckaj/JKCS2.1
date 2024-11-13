@@ -85,7 +85,8 @@ def print_solvation(output,Qsolvation,Qt,Qrh,QPsolvent,Pout,QUenergy,Qout):
     Temp = Qt
   else:
     Temp = 298.15
-  print(f"Temp = %.2f K; "%(Temp), end = "")
+  if Qout >= 1:
+    print(f"Temp = %.2f K; "%(Temp), end = "")
   if not isna(QPsolvent):
     p_solvent = QPsolvent
   else:
@@ -93,7 +94,8 @@ def print_solvation(output,Qsolvation,Qt,Qrh,QPsolvent,Pout,QUenergy,Qout):
       rh = Qrh
     else:
       rh = 1.0
-    print(f"RH = %.2f %%; "%(rh*100), end = "") 
+    if Qout >= 1:
+      print(f"RH = %.2f %%; "%(rh*100), end = "") 
     #Antoine equation
     #https://www.omnicalculator.com/chemistry/vapour-pressure-of-water
     p_solvent = rh*100*6.1094*exp(17.625*(Temp-273.15)/(Temp-273.15+234.04))

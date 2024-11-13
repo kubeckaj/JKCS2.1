@@ -4,6 +4,7 @@ def load_pickles(input_pkl,Qout):
     clusters_df = DataFrame()
   else:
     from pandas import read_pickle
+    import gc
     for i in range(len(input_pkl)):
       newclusters_df = read_pickle(input_pkl[i])
       if not isinstance(newclusters_df, DataFrame):
@@ -15,6 +16,7 @@ def load_pickles(input_pkl,Qout):
         clusters_df = newclusters_df
       else:
         clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
+      gc.collect()
     clusters_df = clusters_df.reset_index(drop=True)
 
   if not ("xyz","id1") in clusters_df.columns and ("xyz","structure") in clusters_df.columns: 

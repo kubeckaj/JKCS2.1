@@ -1,40 +1,3 @@
-def is_nameable(input_array):
-  from numpy import mod
-
-  nameable_test = True
-  if mod(len(input_array),2) == 0:
-    for input_array_i in input_array[0::2]:
-      if not input_array_i.isnumeric():
-        nameable_test = False
-        break
-    for input_array_i in input_array[1::2]:
-      if input_array_i.isnumeric():
-        nameable_test = False
-        break
-  else:
-    nameable_test = False
-  return nameable_test
-
-def seperate_string_number(string):
-    previous_character = string[0]
-    groups = []
-    newword = string[0]
-    for x, i in enumerate(string[1:]):
-        if i == "_" or previous_character == "_":
-            newword += i
-        elif i.isalpha() and previous_character.isalpha():
-            newword += i
-        elif i.isnumeric() and previous_character.isnumeric():
-            newword += i
-        else:
-            groups.append(newword)
-            newword = i
-        previous_character = i
-        if x == len(string) - 2:
-            groups.append(newword)
-            newword = ''
-    return groups
-
 def zeros(input_array):
   output_string = ""
   skip = 0
@@ -142,6 +105,7 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
 
   if Qrename == 1:
     if Qclustername == 1:
+      from read_files import seperate_string_number,is_nameable
       import re
       from numpy import array
       l1 = []
