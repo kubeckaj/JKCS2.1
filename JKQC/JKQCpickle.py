@@ -16,7 +16,7 @@ if Qout == 2:
 
 # Loading input pickles
 from load_pickles import load_pickles
-clusters_df = load_pickles(input_pkl,Qout)
+clusters_df = load_pickles(input_pkl,Qout,Qid)
 if Qout == 2:
   print("DONE] Pickles loading done: "+str(time() - start));
 

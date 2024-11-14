@@ -1,4 +1,4 @@
-def load_pickles(input_pkl,Qout):
+def load_pickles(input_pkl,Qout,Qid):
   from pandas import DataFrame
   if len(input_pkl) == 0:
     clusters_df = DataFrame()
@@ -17,11 +17,19 @@ def load_pickles(input_pkl,Qout):
       else:
         clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
       gc.collect()
+    if Qout >= 2:
+      print("Pickles collected, resetting index...")
     clusters_df = clusters_df.reset_index(drop=True)
+    if Qout >= 2:
+      print("Checking xyz_id1...")
 
-  if not ("xyz","id1") in clusters_df.columns and ("xyz","structure") in clusters_df.columns: 
+  if Qid == 1 and not ("xyz","id1") in clusters_df.columns and ("xyz","structure") in clusters_df.columns:
+    if Qout >= 2:
+      print("Adding id1...") 
     from functions import df_add_iter
     from read_xyz import identify_1
     variables = [ identify_1(ase_ID) for ase_ID in clusters_df.loc[:,("xyz","structure")] ]
     clusters_df = df_add_iter(clusters_df,"xyz","id1", range(len(clusters_df)),variables) 
+  if Qout >= 2:
+    print("Sending back to the main file.")
   return clusters_df

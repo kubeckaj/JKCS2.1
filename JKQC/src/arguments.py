@@ -82,7 +82,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
@@ -114,6 +114,7 @@ def arguments(argument_list = []):
   Qcomplement = 0 #subtract these from the list base on basename of the new pickle file
   QcolumnDO = 0
   Qcolumn = []
+  Qid = 0 #calculate IDs if missing?
  
   #global Qclustername,Qextract,Pextract,Qreacted,bonddistancethreshold 
   Qclustername = 1 #Analyse file names for cluster definition?
@@ -888,6 +889,9 @@ def arguments(argument_list = []):
     if last == "-antifc":
       last = ""
       Qfc = -float(i)
+      continue
+    if i == "-id":
+      Qid = 1
       continue
     if i == "-temp" or i == "--temp":
       Qqha = 1
