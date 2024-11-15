@@ -81,8 +81,8 @@ def print_help():
   print("                         use -cnt for self-consistent dG")
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
-  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id")
+  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id","-f")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
@@ -138,6 +138,7 @@ def arguments(argument_list = []):
   Qfc = 0 #Run QHA with vib. frequency cutoff
   Qanh = "1"
   Qanharm = 0 #To collect anharmonicities from QC output
+  Qdropimg = 0 #Drop imaginary frequencies
  
   #global Qpresplit,Qsplit,Qindex,Qdrop,Qout2log 
   Qpresplit = 0 #Do I want to take only part of the data?
@@ -613,6 +614,9 @@ def arguments(argument_list = []):
       last = "-threshold"
       attach = [">=","relative"]
       continue
+    if i == "-dropimg":
+      Qdropimg = 1
+      continue
     #
     if last == "-threshold":
       if str(i) == "bonded":
@@ -765,6 +769,9 @@ def arguments(argument_list = []):
       continue
     if i == "-mass":
       Pout.append("-mass")
+      continue
+    if i == "-f":
+      Pout.append("-f")
       continue
     if i == "-u" or i == "--u":
       Pout.append("-u")

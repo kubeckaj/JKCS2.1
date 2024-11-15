@@ -357,6 +357,17 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
           nels.append(missing)
       output.append(nels)
       continue
+    # FORCES
+    if i == "-f":
+      fs = []
+      for ind in clusters_df.index:
+        try:
+          from numpy import max,abs
+          fs.append(str(QUenergy*max(abs(clusters_df.loc[ind,("extra","forces")]))))
+        except:
+          fs.append(missing)
+      output.append(fs)
+      continue
     # First = SP el. energy
     if i == "-elsp":
       try:

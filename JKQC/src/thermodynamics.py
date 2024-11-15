@@ -9,7 +9,7 @@ def replace_by_nonnegative(new, orig, q):
   orig[mask] = new[mask]
   return list(orig)
 
-def thermodynamics(clusters_df, Qanh, Qfc, Qt):
+def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
   from numpy import array, sum, log, exp, isnan, mean, pi
   from pandas import isna
   missing = float("nan")
@@ -18,16 +18,18 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
   R = 1.987 #cal/mol/K #=8.31441
   k = 1.380662*10**-23 #m^2 kg s^-2 K^-1
 
-  ####################################################
-  # LOW VIBRATIONAL FREQUNECY TREATMENT (S // G,Gc) ##
-  ####################################################
+  if Qdropimg != 0:
+    for i in range(len(clusters_df)):
+      vib = clusters_df.at[i,("log","vibrational_frequencies")]
+      if type(vib) == type(missing):
+        continue
+      clusters_df.at[i,("log","vibrational_frequencies")] = [item for item in vib if item >= 0]
+
+  ########################################################
+  # LOW VIBRATIONAL FREQUNECY ANTITREATMENT (S // G,Gc) ##
+  ########################################################
   if Qfc < 0:
     for i in range(len(clusters_df)):
-      try:
-        if isna(clusters_df.at[i,("log","vibrational_frequencies")]):
-          continue
-      except:
-        lf = 0
       try:
         lf = float(clusters_df.at[i,("log","vibrational_frequencies")][0])
       except:
@@ -75,13 +77,13 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
             QtOLD = clusters_df.at[i,("log","temperature")]
           except:
             QtOLD = 298.15
-          try: 
-            if isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
-              continue
-          except:
-            continue
           try:
             lf = float(clusters_df.at[i,("log","vibrational_frequencies")][0])
+          except:
+            lf = 0
+          try: 
+            if isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
+              lf = 0
           except:
             lf = 0
         if lf <= 0:
@@ -165,11 +167,16 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt):
   #################################################
   if ~isnan(Qt):
     for i in range(len(clusters_df)):
-      try:
-        if isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
-          continue
-      except:
-        continue
+      #try:
+      #  if isna(clusters_df.at[i,("log","vibrational_frequencies")]).any():
+      #    lf = 0
+      #  try:
+      #    if isna(clusters_df.at[i,("log","vibrational_frequencies")]):
+      #      lf = 0
+      #  except:
+      #    lf = 0 #
+      #except:
+      #  lf = 0
       try:
         QtOLD = clusters_df.at[i,("log","temperature")]
         clusters_df.at[i,("log","temperature")] = Qt
