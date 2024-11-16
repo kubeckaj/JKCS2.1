@@ -358,7 +358,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       output.append(nels)
       continue
     # FORCES
-    if i == "-f":
+    if i == "-maxf":
       fs = []
       for ind in clusters_df.index:
         try:

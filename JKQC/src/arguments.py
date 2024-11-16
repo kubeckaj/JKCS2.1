@@ -82,7 +82,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id","-f")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id","-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
@@ -770,7 +770,7 @@ def arguments(argument_list = []):
     if i == "-mass":
       Pout.append("-mass")
       continue
-    if i == "-f":
+    if i == "-maxf":
       Pout.append("-f")
       continue
     if i == "-u" or i == "--u":
