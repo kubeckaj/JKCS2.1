@@ -82,7 +82,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
   print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id","-maxf")
+  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
@@ -143,7 +143,7 @@ def arguments(argument_list = []):
   #global Qpresplit,Qsplit,Qindex,Qdrop,Qout2log 
   Qpresplit = 0 #Do I want to take only part of the data?
   Qsplit = 1 #should I split the base on several parts
-  Qindex = "-1"#
+  Qindex = "no"#
   Qdrop = "0" #drop some column
   Qout2log = 0 #change column name
   
@@ -680,6 +680,7 @@ def arguments(argument_list = []):
     # ID
     if i == "-id1":
       Pout.append("-id1")
+      Qid = 1
       continue
     # XYZ
     if i == "-xyz" or i == "--xyz" or i == "-XYZ" or i == "--XYZ":
@@ -771,7 +772,7 @@ def arguments(argument_list = []):
       Pout.append("-mass")
       continue
     if i == "-maxf":
-      Pout.append("-f")
+      Pout.append("-maxf")
       continue
     if i == "-u" or i == "--u":
       Pout.append("-u")

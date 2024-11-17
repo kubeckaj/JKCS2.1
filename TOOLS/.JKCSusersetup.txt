@@ -130,7 +130,7 @@ function program_PYTHON {
     source REPLACE_jkcs_path/JKQC/JKCS/bin/activate
     module_python="loaded"
   fi
-  REPLACE_python ${@}
+  ipython3 ${@}
 }
 ##########################################################################################
 

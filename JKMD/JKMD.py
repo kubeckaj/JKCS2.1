@@ -53,7 +53,7 @@ while not Qfollow_activated == 0:
       print("Nice try. The umbrella sampling part of JKMD is yet not ready for your jokes.")
       exit()
     from umbrellaconstraint import UmbrellaConstraint
-    all_species.set_constraint(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm))
+    all_species.set_constraint(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm,Qslow))
     Qconstraints = 2
   if Qdistance == 1:
     if len(species) != 2:
@@ -74,7 +74,7 @@ while not Qfollow_activated == 0:
           print("Nice try. The umbrella sampling part of JKMD is yet not ready for your jokes.")
           exit()
         from umbrellaconstraint import UmbrellaConstraint
-        all_species.set_constraint(UmbrellaConstraint(all_species,QEF_par[i][0],len(species[0]),QEF_par[i][1]))
+        all_species.set_constraint(UmbrellaConstraint(all_species,QEF_par[i][0],len(species[0]),QEF_par[i][1]),Qslow)
     
   #SET CALCULATOR
   if Qout == 2:
@@ -153,7 +153,7 @@ while not Qfollow_activated == 0:
       toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst)
       toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
       if Qconstraints != 0:
-        toupdate.update({("log","k_bias"):[Qk_bias],("log","harm_distance"):[Qharm]})
+        toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
       cluster_dic = mergeDictionary(cluster_dic, toupdate)
     dyn.attach(save, interval = Qdump)
     #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 

@@ -91,11 +91,13 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
       clusters_df = clusters_df.sample(n=len(clusters_df), random_state=seed)
   
   #SELECT INDEX
-  if Qindex != "-1":
+  if Qindex != "no":
     try:
       clusters_df = eval(f"clusters_df[{Qindex}]")
     except:
       try:
+        if Qindex == "-1":
+          Qindex = str(len(clusters_df)-1)
         Qindex = Qindex+":"+str(int(Qindex)+1)
         clusters_df = eval(f"clusters_df[{Qindex}]")
       except:

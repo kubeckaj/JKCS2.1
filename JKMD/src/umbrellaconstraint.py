@@ -1,10 +1,16 @@
 class UmbrellaConstraint:
     """Constrain an atom to move along a given direction only."""
-    def __init__(self, a, k, splitpoint, r):
+    def __init__(self, a, k, splitpoint, r, adjuststeps = 0):
         self.a = a
         self.k = k*0.043364115308770496
         self.splitpoint = splitpoint
         self.r = r
+        self.step = 0
+        self.adjusthalf = 0
+        self.adjuststeps = adjuststeps
+        if self.adjuststeps > 0:
+          self.k_to_be = self.k
+          self.k = self.k_to_be * self.step / self.adjuststeps
     def adjust_positions(self, atoms, newpositions):
         pass
     def adjust_potential_energy(self, atoms):
@@ -33,5 +39,12 @@ class UmbrellaConstraint:
         atoms.set_constraint(CS)
         #print(forces[0])
         #print("-----")
+        if self.adjuststeps > self.step:
+          if self.adjusthalf == 0:
+            self.adjusthalf = 1 
+          else:
+            self.adjusthalf = 0
+            self.step += 1
+            self.k = self.k_to_be * self.step / self.adjuststeps
     def index_shuffle(self, atoms, ind):
         pass

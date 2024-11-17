@@ -72,6 +72,7 @@ PIP="$PYTHON -m pip --no-cache-dir --disable-pip-version-check " #--cache-dir=$P
 echo "======================"
 #$PIP install --upgrade pip
 $PIP install pip==22.0.4
+#$PIP install ipython
 rm -r JKCS/lib/python3.9/site-packages/~* 2>/dev/null
 if [[ "$*" == *"-mbdf"* ]]
 then
