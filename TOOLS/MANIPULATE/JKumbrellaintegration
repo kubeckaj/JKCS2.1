@@ -106,13 +106,30 @@ if [ ! -e umbrella_integration ]; then mkdir umbrella_integration; fi
 cd umbrella_integration
 if [ -e input.txt ]; then rm input.txt; fi
 JKQC ../simcalc-LM_*.pkl  -column log md_time -column log COM_distance -column log harm_distance -column log k_bias -noex -filter_gt log,md_step $SKIP | awk '{print $1 " " $2 " " $3 " " $4*4.184}' | grep -v nan | column -t >> input.txt
+
 if [ $Qfromto == 0 ]; then FROM=`cat input.txt | awk '{print $3}' | sort -n | head -n 1`; fi
 if [ $Qfromto == 0 ]; then TO=`cat input.txt | awk '{print $3}' | sort -n | tail -n 1`; fi
 echo "Integrating from $FROM to $TO"
+
+#MASSES
+files="`head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .pkl` `head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .xyz`"
+lenfiles=`echo $files | wc -w`
+if [ $lenfiles == 2 ]; 
+then 
+  file=`echo $files | awk '{print $1}'`
+  m1=`JKQC $file -index 0 -mass`
+  file=`echo $files | awk '{print $2}'`
+  m2=`JKQC $file -index 0 -mass`
+else
+  echo "the QC correction will be wrong"
+fi
+
 module load python/2.7.14
-python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -pp pic1 -ph pic2 -o out -m $FROM $TO
+#python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -pp pic1 -ph pic2 -o out -m $FROM $TO
+python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -o out -m $FROM $TO >> output
 if [ -e out ]; 
 then
-  program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER >> output
+  echo program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $m1 $m2 >> output
+  program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $m1 $m2 >> output
 fi
 cd ..

@@ -160,6 +160,9 @@ while not Qfollow_activated == 0:
 
   #SIMULATION
   dyn.run(Qns)
+  if Qdump == 0:
+    current_time = current_time + Qdt*Qns
+    current_step = current_step + Qns
 
 if Qout == 2:
   print("Done and now just saving pickle.")
