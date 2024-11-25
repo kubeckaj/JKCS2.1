@@ -277,6 +277,7 @@ def arguments(argument_list=[]):
                         days = 0
                         time_str = duration
                     time_str_split = time_str.split(":")
+                    days = int(days)
                     if len(time_str_split) == 4:
                         days, hours, minutes, seconds = map(int, time_str_split)
                     elif len(time_str_split) == 3:

@@ -164,7 +164,7 @@ def print_formation(output, Qout=1, Qt = 298.15, Qp = 101325.0, Qconc = 0, conc 
                 if Qconc > 0:
                   for conc_j in range(len(conc)):
                     if conc[conc_j][0] == selected_monomer:         
-                      conc_mon=float(eval(conc[conc_j][1].replace("ppt","*10**-9*"+str(Qp)).replace("ppb","*10**-6*"+str(Qp)).replace("^","**").replace("cmmc","*10**6*1.380662*10**-23*"+str(Qt)) ))
+                      conc_mon=float(eval(conc[conc_j][1].replace("ppt","*10**-12*"+str(Qp)).replace("ppb","*10**-9*"+str(Qp)).replace("^","**").replace("cmmc","*10**6*1.380662*10**-23*"+str(Qt)) ))
                       line[line_i] = float(line[line_i]) - QUenergy*(float(cluster_molecule_number) - CNTfactor*float(cluster_molecule_number)/cluster_total_number) * R/1000/627.503 * Qt * log( conc_mon / Qp)
               except:
                 line[line_i] = missing

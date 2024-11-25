@@ -5,6 +5,7 @@ TO=10.0
 Qfromto=0
 SKIP=0
 MULTIPLIER=1
+BINS=0.01 #Width of bins in Angstrom
 
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 toolspath="$scriptpath/../"
@@ -24,6 +25,7 @@ function print_help(){
   echo "  JKumbrellaintegration -skip 10000 -range 3.4 10.0"
   echo "  SKIP - default skipping nothing, number of steps"
   echo "  range - only for graphical visulazation"
+  echo "  -bins 0.01 - default 0.01"
   echo "  multiplier - default 1, either 1 or 2 for the same molecules, or just use -symm"
   echo "  THIS SHOULD PRODUCE FREE ENERGY PROFILES BUT YET NOT FREE ENERGIES" 
   exit
@@ -55,6 +57,17 @@ do
     TO=$iter
     Qfromto=1
     last=""
+    continue
+  fi
+  if [ "$iter" == "-bins" ]
+  then
+    last="-bins"
+    continue
+  fi
+  if [ "$last" == "-bins" ]
+  then
+    last=""
+    BINS=$iter
     continue
   fi
   if [ "$iter" == "-skip" ]
@@ -112,7 +125,7 @@ if [ $Qfromto == 0 ]; then TO=`cat input.txt | awk '{print $3}' | sort -n | tail
 echo "Integrating from $FROM to $TO"
 
 #MASSES
-files="`head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .pkl` `head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .xyz`"
+files="`head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .pkl | grep -v "model.pkl"` `head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .xyz`"
 lenfiles=`echo $files | wc -w`
 if [ $lenfiles == 2 ]; 
 then 
@@ -126,7 +139,7 @@ fi
 
 module load python/2.7.14
 #python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -pp pic1 -ph pic2 -o out -m $FROM $TO
-python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -o out -m $FROM $TO >> output
+python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b $BINS -o out -m $FROM $TO >> output
 if [ -e out ]; 
 then
   echo program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $m1 $m2 >> output
