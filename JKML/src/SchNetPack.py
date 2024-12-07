@@ -59,6 +59,7 @@ def training_nn(Qforces,
     if Qforces == 0:
         new_dataset = ASEAtomsData.create(temperary_file_name,
                                           distance_unit='Ang',
+                                          #NOTE that units of energy are not important in this part
                                           property_unit_dict={'energy': 'eV', 'total_charge': 'e'},
                                           atomrefs={'energy': [0] * 100}
                                           )

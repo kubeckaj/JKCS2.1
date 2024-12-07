@@ -1,7 +1,6 @@
 import sys
 import os.path
 from sys import argv
-from src.SchNetPack import *
 
 def import_other_libraries1():
   import numpy as np
@@ -40,6 +39,7 @@ def import_other_libraries2():
   elif Qmethod == "nn" and Qrepresentation == "painn":
     global ASEAtomsData, AtomsDataModule, trn, pl, Ha, Bohr, SpkCalculator, spk
     if Qtrain > 0:
+      from src.SchNetPack import training_nn
       from schnetpack.data import ASEAtomsData
       from schnetpack.data import AtomsDataModule
       import logging
@@ -48,12 +48,30 @@ def import_other_libraries2():
       import torchmetrics
       import pytorch_lightning as pl
     if Qeval > 0 or Qopt > 0 or Qopt > 0:
+      from src.SchNetPack import evaluating_nn,optimizing_nn
       from ase.units import Ha, Bohr
-      #print("Test", flush = True)
       from schnetpack.interfaces import SpkCalculator
-      #print("Test", flush = True)
     import torch
     import schnetpack as spk
+  elif Qmethod == "physnet":
+    from src.PhysNetInterface import training_nn
+    try:
+      import tensorflow as tf
+    except:
+      import intel_tensorflow as tf
+    import argparse
+    import logging
+    import string
+    import random
+    from shutil import copyfile
+    from datetime import datetime
+    #TODO resolve this
+    #from neural_network.NeuralNetwork import *
+    #from neural_network.activation_fn import *
+    #from training.Trainer        import *
+    #from training.DataContainer import *
+    #from training.DataProvider  import *
+    #from training.DataQueue     import *
   else:
     print("Wrong method or representation chosen.")
     exit()
@@ -589,6 +607,26 @@ for sampleeach_i in sampleeach_all:
       Qforces = 1
     else:
       Qforces = 0
+  
+    ### CHARGE
+    if ("log","charge") in clusters_df.columns and Qifcharges == 1:
+      Q_charge = clusters_df["log"]["charge"].values
+      Qcharge = 1
+    elif Qifcharges == 1:
+      Q_charge = np.array([0]*len(clusters_df))
+      Qcharge = 1
+    else:
+      Qcharge = 0
+   
+    ### DIPOLE MOMENT
+    if ("log","dipole_moments") in clusters_df.columns and Qifdipole == 1:
+      D_dipole = clusters_df["log"]["dipole_moments"].values
+      Qdipole = 1
+    elif Qifdipole == 1:
+      print("Dipoles are fucked up.")
+      exit()
+    else:
+      Qdipole = 0
     
     print("JKML: data length = "+str(ens.shape[0]), flush = True)
     if method == "delta":
@@ -740,6 +778,13 @@ for sampleeach_i in sampleeach_all:
                   Qcheckpoint=Qcheckpoint,
                   Qtime=Qtime)
       ###################################
+    elif Qmethod == "physnet":
+      training_nn(Qforces,
+                  Y_train,
+                  F_train,
+                  D_dipole,
+                  Q_charge,
+                  strs)
     #You should not get below this one to reach the error
     else:
       print("Wrong method or representation chosen.")

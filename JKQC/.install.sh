@@ -234,6 +234,15 @@ then
   $PIP install tensorboardX
 fi
 
+if [[ "$*" == *"-nn"* ]]
+then
+  cd ../../JKML/src/
+  git clone https://github.com/MMunibas/PhysNet.git
+  cd -
+  $PIP install tensorflow==2.16.2
+  #pip install intel-tensorflow
+fi
+
 echo "======================"
 #ArbAlign stuff:
 cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$PYTHON/site-packages/ArbAlign.py

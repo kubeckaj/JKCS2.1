@@ -86,13 +86,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   #SPECIES
   Qindex = -1
   Qcharge = charge_from_previous_run
-  Qselect = ":"
   if len(species_from_previous_run) == 0:
     Qindex_of_specie = -1
     species = []
     Qconstraints = 0 #0 = none, 1 = umbrella sampling, 2 = external forces
     Qdistance = 0
-
+    
+    Qtry = 0
     Qseed = 42
     Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
     Qfolder = ""
@@ -131,6 +131,10 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
 
   last = ""
   for i in argument_list:
+    if "--" in i[1:]:
+      print("WARNING: Range replaced!")    
+      i = "123456789"
+    
     #HELP
     if i == "-help" or i == "--help":
       print_help()
@@ -162,6 +166,11 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-slow":
       Qslow = int(i)
       last = ""
+      continue
+
+    #TRY
+    if i == "-try":
+      Qtry = 1
       continue
 
     #INDEX
@@ -242,7 +251,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       species.append(read(i,"-2"))
       if Qindex_of_specie == -1:
         Qlenfirst = len(species[0])
-      Qindex_of_specie = Qindex_of_specie + 1
+      Qindex_of_specie = len(species) - 1
       Qindex = -1
       continue
     if i[-4:] == ".pkl":
@@ -250,7 +259,25 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       species.append(read_pickle(i).iloc[Qindex][("xyz","structure")])
       if Qindex_of_specie == -1:
         Qlenfirst = len(species[0])
-      Qindex_of_specie = Qindex_of_specie + 1
+      Qindex_of_specie = len(species) - 1
+      Qindex = -1
+      continue
+
+    # SPLIT
+    if i == "-split":
+      last = "-split"
+      continue
+    if last == "-split":
+      last = ""
+      split = int(i)
+      if split > len(species[Qindex_of_specie]):
+        print("You are trying to split somehing that has only length "+len(species[Qindex_of_specie])+".")
+        exit()
+      species.append(species[Qindex_of_specie][split:])
+      species[Qindex_of_specie] = species[Qindex_of_specie][0:split]
+      if Qindex_of_specie == 0:
+        Qlenfirst = len(species[0])
+      Qindex_of_specie = len(species) - 1
       Qindex = -1
       continue
  
@@ -313,7 +340,10 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
     if last == "-select":
       last = ""
-      Qselect = str(i)
+      if int(i) >= len(species[Qindex_of_specie]) or int(i) < 0:
+        print("Very weird try of selecting a specie that does not exist. Check your -select!")
+        exit()
+      Qindex_of_specie = int(i)
       continue
 
     #INITIATE VELOCITIES
@@ -505,6 +535,26 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   if last != "":
     print(last)
     print("Hey looser, the last argument is incomplete")
+    exit()
+
+  print("==============")
+  print("Total charge: " + str(Qcharge))
+  print("Total multiplicity: " + str(1))
+  print("Number of species: " + str(len(species)))
+  print("==============")
+  for i in range(len(species)):
+    print("SPECIE "+str(i)+": "+str(species[i]))
+    print("COM: "+str(species[i].get_center_of_mass()))
+    print("COORDINATES:")
+    print(species[i].get_positions())
+    print("VELOCITIES:")
+    print(species[i].get_velocities())
+    print("==============")
+  print("FOLLOW: ")
+  print(Qfollow)
+  print("==============")
+ 
+  if Qtry == 1: 
     exit()
 
   return locals()

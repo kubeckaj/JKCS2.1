@@ -32,6 +32,7 @@ def print_help():
     print("    -mbdf                            use KRR with MBDF", flush=True)
     print("    -nn,-painn                       switch to NN = neural network with PaiNN", flush=True)
     print("    -schnet                          switch to NN = neural network with SchNet", flush=True)
+    print("    -physnet                         switch to NN = neural network with PhysNet", flush=True)
     print("", flush=True)
     print("  INPUT FILES:", flush=True)
     print("    -train <HIGH.pkl> [<LOW.pkl>]    train on given pikled files", flush=True)
@@ -558,6 +559,12 @@ def arguments(argument_list=[]):
         if arg == "-schnet":
             Qmethod = "nn"
             Qrepresentation = "schnet"
+            continue
+        if arg == "-physnet":
+            Qmethod = "physnet"
+            Qrepresentation = "physnet"
+            Qifcharges = 1
+            Qifdipole = 1
             continue
         if arg == "-so3net":
             Qmethod = "nn"

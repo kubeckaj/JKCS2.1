@@ -59,6 +59,13 @@ then
 fi
 
 # -loc or load supercomputer parameters
+for i in "${!arguments[@]}"
+do
+  if [ "-try" == "${arguments[$i]}" ]
+  then
+    arguments+=( "-loc" )
+  fi
+done
 JKloadsupercomputer
 
 Qjpt=1 #jobs per task
@@ -67,6 +74,7 @@ Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 Qnewfolderasked=0
 
+Qtry=0
 Qorca=0
 
 last=""
@@ -119,6 +127,11 @@ do
     Qjpt=$iter
     continue
   fi
+  # TRY
+  if [ "$iter" == "-try" ]
+  then
+    Qtry=1
+  fi
   # REPEAT
   if [ "$iter" == "-repeat" ]
   then
@@ -158,7 +171,7 @@ JKecho 3 "therest = $therest"
 # print inserted command
 JKecho 2 "Writting your command to the output file."
 echoCOMMAND COMMAND: JKMD "$@" >> output
-if [ "$METHODsupercomputer" == "loc" ]
+if [ "$METHODsupercomputer" == "loc" ] || [ $Qtry -eq 1 ]
 then
   loc=" -loc"
   Qarray=0
@@ -180,27 +193,34 @@ fi
 mkdir $Qnewfolder
 cd $Qnewfolder
 
-JKecho 2 "Calculations will be performed in directory ${cfBLUE}$Qfolder/${name}-LM${cfDEF}"
-LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
-if [ ! -z "$LOOPresult" ]
-then 
-  JKecho 3 "LOOPresult = $LOOPresult"
-  LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
-  LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $3}'`
-  LOOPby=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
-else
-  LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
+JKecho 2 "Calculations will be performed in directory ${cfBLUE}$Qnewfolder/${name}-LM${cfDEF}"
+if [ 1 -eq 1 ] #MAC cannot handle this part, so just 1 -eq 0
+then
+  LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
   if [ ! -z "$LOOPresult" ]
-  then
+  then 
     JKecho 3 "LOOPresult = $LOOPresult"
     LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
-    LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
-    LOOPby=1
+    LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $3}'`
+    LOOPby=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
   else
-    LOOPfrom=1
-    LOOPto=1
-    LOOPby=1
+    LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
+    if [ ! -z "$LOOPresult" ]
+    then
+      JKecho 3 "LOOPresult = $LOOPresult"
+      LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
+      LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
+      LOOPby=1
+    else
+      LOOPfrom=1
+      LOOPto=1
+      LOOPby=1
+    fi
   fi
+else
+  LOOPfrom=1
+  LOOPto=1
+  LOOPby=1
 fi
 const_iter=0
 Qjpt_iter=0
@@ -242,7 +262,7 @@ do
     else
       newtherest=$therest
     fi
-    commandTODO+="cd $PWD/$subfolder; cd \$WRKDIR; mkdir TMP; cd TMP; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $PWD/$subfolder >> $PWD/$subfolder/output 2>&1;"
+    commandTODO+="cd $PWD/$subfolder; cd \$WRKDIR; mkdir TMP; cd TMP; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $PWD/$subfolder | tee -a $PWD/$subfolder/output 2>&1;"
 
     if [ $Qjpt_iter -eq $Qjpt ]
     then
@@ -296,9 +316,9 @@ do
     #echo "$SC_command \"source ~/.JKCSusersetup.txt$loc; export PYTHONPATH=$scriptpath/src; time program_PYTHON $scriptpath/JKMD.py $therest \"" > .run
   
     JKecho 2 "Submission ready. Submitting"
-    if [ "$METHODsupercomputer" == "loc" ]
+    if [ "$METHODsupercomputer" == "loc" ] || [ $Qtry -eq 1 ]
     then
-      /bin/bash .run | tee -a output
+      /bin/bash .run #| tee -a output
     else
       job=$(/bin/bash .run)
       if [ ! -z "$job" ] ;then echo $job;fi

@@ -11,11 +11,27 @@ import psutil
 #os.system("if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load intel; module load openmpi;")
 #os.system("if ! command -v module &> /dev/null; then source /com/bin/modules.sh; fi; module load gcc openmpi mkl")
 #os.environ['OMP_STACKSIZE'] = '4G'
-os.environ['OMP_NUM_THREADS'] = f'{len(psutil.Process().cpu_affinity())}'
+try:
+  os.environ['OMP_NUM_THREADS'] = f'{len(psutil.Process().cpu_affinity())}'
+except:
+  os.environ['OMP_NUM_THREADS'] = str(1)
                                #f'{len(psutil.Process().cpu_affinity())},1'
 #os.environ['OMP_MAX_ACTIVE_LEVELS'] = '1'
 #import resource
 #resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+
+
+print("""
+   JJJJJJ KK   KK MMM    MMM DDDDD
+   JJ  JJ KK  KK  MMMM  MMMM DDDDDD
+       JJ KK KK   MM MMMM MM DD   DD
+   JJ  JJ KKKK    MM  MM  MM DD   DD 
+   JJ  JJ KKKKK   MM      MM DD   DD 
+   JJJJJJ KK KKK  MM      MM DDDDDD
+    JJJJ  KK  KKK MM      MM DDDDD
+""")
+
+
 
 current_time = 0
 current_step = 0
@@ -159,7 +175,15 @@ while not Qfollow_activated == 0:
     #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
 
   #SIMULATION
-  dyn.run(Qns)
+  try:
+    dyn.run(Qns)
+  except Exception as e:
+    print(e)
+    print("Something got screwed up within the dyn.run(Qns).")
+    print("I have saved the error structure in the appropriate folder.")
+    import pandas as pd
+    pd.write_pickle(all_species, Qfolder+"/error.pkl")
+    exit()
   if Qdump == 0:
     current_time = current_time + Qdt*Qns
     current_step = current_step + Qns
