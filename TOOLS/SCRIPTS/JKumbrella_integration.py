@@ -46,8 +46,6 @@ plt.savefig('plot4PiR.png')
 
 V0 = 8.314*298.15/101325*10**30/6.022/10**23
 mult=int(sys.argv[1])
-M1=float(sys.argv[2])
-M2=float(sys.argv[3])
 
 oo = np.column_stack((data[:, 0], np.exp(-data[:, 1]/0.0433641153087705/0.509)*4*3.14*data[:, 0]**2*(data[1, 0]-data[0, 0])))
 tab = np.array([np.array([oo[i,0], -0.509*np.log(0.0000001+np.sum(np.exp(depth_opt/0.509)/V0*oo[1:i,1]/mult))]) for i in range(1, len(oo))])
@@ -61,6 +59,13 @@ plt.savefig('plotdG.png')
 print("")
 print("dG =")
 print(tab[-1, 1])
+
+###########################################
+#####  SOLVIND SCHRODINGER 1D #############
+###########################################
+
+M1=float(sys.argv[2])
+M2=float(sys.argv[3])
 
 x_angstrom = data[:,0]
 V_kjmol = data[:,1]/0.0433641153087705/0.238846

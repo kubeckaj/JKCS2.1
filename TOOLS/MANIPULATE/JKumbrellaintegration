@@ -115,10 +115,13 @@ then
   cd $currentdir
 fi
 
-if [ ! -e umbrella_integration ]; then mkdir umbrella_integration; fi
-cd umbrella_integration
-if [ -e input.txt ]; then rm input.txt; fi
-JKQC ../simcalc-LM_*.pkl  -column log md_time -column log COM_distance -column log harm_distance -column log k_bias -noex -filter_gt log,md_step $SKIP | awk '{print $1 " " $2 " " $3 " " $4*4.184}' | grep -v nan | column -t >> input.txt
+if [ ! -e input.txt ];
+then
+  if [ ! -e umbrella_integration ]; then mkdir umbrella_integration; fi
+  cd umbrella_integration
+  if [ -e input.txt ]; then rm input.txt; fi
+  JKQC ../simcalc-LM_*.pkl  -column log md_time -column log COM_distance -column log harm_distance -column log k_bias -noex -filter_gt log,md_step $SKIP | awk '{print $1 " " $2 " " $3 " " $4*4.184}' | grep -v nan | column -t >> input.txt
+fi
 
 if [ $Qfromto == 0 ]; then FROM=`cat input.txt | awk '{print $3}' | sort -n | head -n 1`; fi
 if [ $Qfromto == 0 ]; then TO=`cat input.txt | awk '{print $3}' | sort -n | tail -n 1`; fi
