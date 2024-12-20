@@ -252,7 +252,11 @@ then
   cd JKQC
   if  [ "$Qr" != "3" ]
   then
-    rm -rf JKCS 
+    rm -rf JKCS
+    if [ -e ../JKML/src/PhysNet_DER ]
+    then
+      rm -r ../JKML/src/PhysNet_DER
+    fi 
   fi
   sh .install.sh "$PYTHON" "$MODULE_PYTHON" "$ADD"
   if [ ! -e JKCS ]
