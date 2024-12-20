@@ -248,8 +248,9 @@ then
     sed -i "s/np.Inf/np.inf/g" PhysNet_DER/run_train.py
     sed -i "s/np.float/float/g" PhysNet_DER/DataContainer.py
     sed -i "s/filename='train.log', //g" PhysNet_DER/run_train.py
-    sed -i "s/return tensor/segment_ids = segment_ids.to(torch.int64)\n    tensor = torch.zeros(*shape,device=device).scatter_add(0, segment_ids, data)\n    return tensor/" PhysNet_DER/layers/utils.py  
-    cp ../../TOOLS/LOADING/PhysNet.py PhysNet_DER/
+    sed -i "s/return tensor/segment_ids = segment_ids.to(torch.int64)\n    tensor = torch.zeros(*shape,device=device).scatter_add(0, segment_ids, data)\n    return tensor/" PhysNet_DER/layers/utils.py 
+    sed -i "s/tensor = torch.zeros(/data = data.to(torch.float32)\n    segment_ids = segment_ids.to(torch.int64)\n    tensor = torch.zeros(/g" PhysNet_DER/layers/utils.py 
+    cp ../../TOOLS/LOADING/PNcalculator.py PhysNet_DER/
     rm PhysNet_DER/calculator.py	
     cd -
   fi

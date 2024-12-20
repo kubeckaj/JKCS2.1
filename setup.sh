@@ -338,7 +338,7 @@ then
     sed 's,REPLACE_time2,'"$time2"',g' .help15 > .help16
     sed 's/REPLACE_queue1/'"$queue1"'/g' .help16 > .help17
     sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
-    sed 's/REPLACE_gcc/'"$MODULE_GCC"'/g' .help18 > .help19
+    sed 's,REPLACE_gcc,'"$MODULE_GCC"',g' .help18 > .help19
     mv .help19 ~/.JKCSusersetup.txt
     rm .help*
     printf "${cfGREEN}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"
