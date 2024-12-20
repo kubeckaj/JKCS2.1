@@ -130,7 +130,7 @@ function program_PYTHON {
     source REPLACE_jkcs_path/JKQC/JKCS/bin/activate
     module_python="loaded"
   fi
-  ipython3 ${@}
+  python3 ${@}
 }
 ##########################################################################################
 
@@ -193,10 +193,15 @@ function program_JKML {
         fi
       fi
     done
+    if [ -e input.inp ]
+    then
+      files+=" input.inp"
+    fi
     for i in $files
     do
       cp $i $WRKDIR/TMP/JKML$SLURM_JOBID/
     done
+    if [ -e config.txt ]; then cp config.txt $WRKDIR/TMP/JKML$SLURM_JOBID/; fi
     cd $WRKDIR
     cd TMP
     cd JKML$SLURM_JOBID

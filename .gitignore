@@ -1,6 +1,7 @@
 TOOLS/LOADING/JK_ACDC/ACDC_input/acdc_2020_07_20.pl
 JKQC/JKCS
-JKML/src/PhysNet
+JKQC/PhysNetEnv
+JKML/src/PhysNet_DER
 **/__pycache__
 output
 .list.txt

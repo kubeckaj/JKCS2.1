@@ -58,9 +58,10 @@ OPTIONS (arguments):
 OPTIONS (extra packages):
   -qml ............ quantum machine learning program
   -nn ............. schnetpack [!needs: module load gcc]
+  -physnet ........ physnet
   -descriptors .... dscribe library
   -calculators .... python TBlite, XTB, ORCA
-  -all ............ all above = qml,nn,descriptors,xtb
+  -all ............ all above = qml,nn,descriptors,xtb,physnet
   -mbdf ........... MBDF for categorization trick
   experimental: -qml-lightning
 
@@ -167,9 +168,14 @@ EXAMPLE:
   fi
   if [ "$i" == "-all" ]
   then
-    ADD+=" -qml -xtb -descriptors -nn "
+    ADD+=" -qml -xtb -descriptors -nn -physnet "
     continue
   fi
+  if [ "$i" == "-physnet" ]
+  then
+    ADD+=" -physnet "
+    continue
+  fi  
   if [ "$i" == "-xtb" ] || [ "$i" == "-calculators" ]
   then
     ADD+=" -xtb "
@@ -205,7 +211,7 @@ EXAMPLE:
     Qr=2
     continue
   fi 
-  if [ "$i" == "-up" ]
+  if [ "$i" == "-up" ] || [ "$i" == "-update" ] || [ "$i" == "update" ] || [ "$i" == "up" ]
   then
     Qr=3
     continue

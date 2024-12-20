@@ -216,7 +216,7 @@ then
   echo "======================"
   $PIP install scikit-learn
   echo "======================"
-  $PIP install torch
+  $PIP install torch==2.4.0
   echo "======================"
   $PIP install lightning
   echo "======================"
@@ -234,13 +234,25 @@ then
   $PIP install tensorboardX
 fi
 
-if [[ "$*" == *"-nn"* ]]
+if [[ "$*" == *"-physnet"* ]]
 then
-  cd ../../JKML/src/
-  git clone https://github.com/MMunibas/PhysNet.git
-  cd -
-  $PIP install tensorflow==2.16.2
-  #pip install intel-tensorflow
+  $PIP install torch==2.4.0
+  $PIP install tensorboardX
+  $PIP install numpy
+  $PIP install torch_ema
+
+  if [ ! -e ../JKML/src/PhysNet_DER ];
+  then
+    cd ../JKML/src
+    git clone https://github.com/LIVazquezS/PhysNet_DER.git
+    sed -i "s/np.Inf/np.inf/g" PhysNet_DER/run_train.py
+    sed -i "s/np.float/float/g" PhysNet_DER/DataContainer.py
+    sed -i "s/filename='train.log', //g" PhysNet_DER/run_train.py
+    sed -i "s/return tensor/segment_ids = segment_ids.to(torch.int64)\n    tensor = torch.zeros(*shape,device=device).scatter_add(0, segment_ids, data)\n    return tensor/" PhysNet_DER/layers/utils.py  
+    cp ../../TOOLS/LOADING/PhysNet.py PhysNet_DER/
+    rm PhysNet_DER/calculator.py	
+    cd -
+  fi
 fi
 
 echo "======================"

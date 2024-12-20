@@ -34,6 +34,7 @@ def print_help():
     -xtb2            GFN2-xTB {TBlite}
     -xtb "<str>"     xtb method (e.g., GFN1-xTB, GFNFF) {XTB}
     -nn_model <path> Neural Network model defined by path {SchNetPack}
+    -pn_model <path> Neural Network model defined by path {PhysNet_DER} [requires input.inp too]
     -orca "<str>"    QC method (e.g., "XTB1" or "B97-3c") {ORCA}
                      -additional setup might be required!!!
     -max_iter <int>  maximum number of SCF iterations (e.g., 50) [default = 250] {TBlite}
@@ -236,6 +237,10 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-nn_model":
       last = ""
       Qcalculator_input = i
+      continue
+    if i == "-pn_model":
+      Qcalculator = "PhysNet"
+      last = "-nn_model"
       continue
     if i == "-max_iter":
       last = "-max_iter"
