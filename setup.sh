@@ -58,9 +58,10 @@ OPTIONS (arguments):
 OPTIONS (extra packages):
   -qml ............ quantum machine learning program
   -nn ............. schnetpack [!needs: module load gcc]
+  -physnet ........ physnet
   -descriptors .... dscribe library
   -calculators .... python TBlite, XTB, ORCA
-  -all ............ all above = qml,nn,descriptors,xtb
+  -all ............ all above = qml,nn,descriptors,xtb,physnet
   -mbdf ........... MBDF for categorization trick
   experimental: -qml-lightning
 
@@ -167,9 +168,14 @@ EXAMPLE:
   fi
   if [ "$i" == "-all" ]
   then
-    ADD+=" -qml -xtb -descriptors -nn "
+    ADD+=" -qml -xtb -descriptors -nn -physnet "
     continue
   fi
+  if [ "$i" == "-physnet" ]
+  then
+    ADD+=" -physnet "
+    continue
+  fi  
   if [ "$i" == "-xtb" ] || [ "$i" == "-calculators" ]
   then
     ADD+=" -xtb "
@@ -205,7 +211,7 @@ EXAMPLE:
     Qr=2
     continue
   fi 
-  if [ "$i" == "-up" ]
+  if [ "$i" == "-up" ] || [ "$i" == "-update" ] || [ "$i" == "update" ] || [ "$i" == "up" ]
   then
     Qr=3
     continue
@@ -246,7 +252,11 @@ then
   cd JKQC
   if  [ "$Qr" != "3" ]
   then
-    rm -rf JKCS 
+    rm -rf JKCS
+    if [ -e ../JKML/src/PhysNet_DER ]
+    then
+      rm -r ../JKML/src/PhysNet_DER
+    fi 
   fi
   sh .install.sh "$PYTHON" "$MODULE_PYTHON" "$ADD"
   if [ ! -e JKCS ]
@@ -328,7 +338,7 @@ then
     sed 's,REPLACE_time2,'"$time2"',g' .help15 > .help16
     sed 's/REPLACE_queue1/'"$queue1"'/g' .help16 > .help17
     sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
-    sed 's/REPLACE_gcc/'"$MODULE_GCC"'/g' .help18 > .help19
+    sed 's,REPLACE_gcc,'"$MODULE_GCC"',g' .help18 > .help19
     mv .help19 ~/.JKCSusersetup.txt
     rm .help*
     printf "${cfGREEN}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"

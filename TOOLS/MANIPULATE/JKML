@@ -252,6 +252,13 @@ do
     last=""
     continue
   fi
+  if [ "$iter" == "-physnet" ]
+  then
+    if [ -e input.inp ]
+    then
+      echo "JKML: THE OLD input.inp FILE IS USED INSTEAD OF ANY NEW COMMANDS!!!"
+    fi
+  fi
   arguments_help+=( "${arguments[i]}" )
 done
 arguments=("${arguments_help[@]}")

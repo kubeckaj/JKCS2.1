@@ -47,31 +47,19 @@ def import_other_libraries2():
       import schnetpack.transform as trn
       import torchmetrics
       import pytorch_lightning as pl
-    if Qeval > 0 or Qopt > 0 or Qopt > 0:
+    if Qeval > 0 or Qopt > 0:
       from src.SchNetPack import evaluating_nn,optimizing_nn
       from ase.units import Ha, Bohr
       from schnetpack.interfaces import SpkCalculator
     import torch
     import schnetpack as spk
-  elif Qmethod == "physnet":
-    from src.PhysNetInterface import training_nn
-    try:
-      import tensorflow as tf
-    except:
-      import intel_tensorflow as tf
-    import argparse
+  elif Qmethod == "physnet" and Qrepresentation == "physnet":
+    if Qtrain > 0:
+      from src.PhysNetInterface import training_nn
+    if Qeval > 0 or Qopt > 0:
+      from src.PhysNetInterface import evaluating_nn
+    import torch
     import logging
-    import string
-    import random
-    from shutil import copyfile
-    from datetime import datetime
-    #TODO resolve this
-    #from neural_network.NeuralNetwork import *
-    #from neural_network.activation_fn import *
-    #from training.Trainer        import *
-    #from training.DataContainer import *
-    #from training.DataProvider  import *
-    #from training.DataQueue     import *
   else:
     print("Wrong method or representation chosen.")
     exit()
@@ -785,10 +773,10 @@ for sampleeach_i in sampleeach_all:
                   F_train,
                   D_dipole,
                   Q_charge,
-                  strs)
+                  strs, nn_atom_basis, nn_rbf, nn_interactions, nn_cutoff, nn_tvv, Qbatch_size, seed, nn_epochs, Qlearningrate, varsoutfile)
     #You should not get below this one to reach the error
     else:
-      print("Wrong method or representation chosen.")
+      print("Wrong method ("+Qmethod+") or representation ("+Qrepresentation+") chosen.")
       exit()
   
   #LOAD TRAINING
@@ -807,7 +795,7 @@ for sampleeach_i in sampleeach_all:
         alpha = [alpha]
       f.close()
       print("Trained model loaded.", flush = True)
-    elif Qmethod == "nn":
+    elif Qmethod == "nn" or Qmethod == "physnet":
       varsoutfile = VARS_PKL
       print("Trained model found.")
     else:
@@ -958,7 +946,11 @@ for sampleeach_i in sampleeach_all:
                     method=method,
                     Qmin=Qmin)
       ####################
-
+    elif Qmethod == "physnet":
+      Y_predicted, F_predicted = evaluating_nn(varsoutfile,
+                                 clusters_df,
+                                 method,
+                                 Qmin)
     else:
       print("Wrong method or representation chosen.")
       exit()
@@ -989,6 +981,8 @@ for sampleeach_i in sampleeach_all:
       #print(ens_correction,flush=True)
       #print("TEST",flush=True)
       print("Ypredicted = "+ lb + ",".join([str(i) for i in Y_predicted[0]+form_ens2+ens_correction])+rb+";", flush = True)
+    #print(Y_predicted[0],flush=True)
+    #print(ens_correction,flush=True)
     #print("formensval = {" + ",".join([str(i) for i in form_ens[idx]])+"};")
     #print("ens_correction = {" + ",".join([str(i) for i in ens_correction])+"};")
     if Qforces == 1:
@@ -1256,7 +1250,9 @@ for sampleeach_i in sampleeach_all:
                     md_steps=md_steps,
                     )
       ################################
-
+    elif Qmethod == "physnet":
+      print("Sorry this part was not implemented yet.") 
+      exit()
     else:
       raise Exception("Wrong method or representation chosen.")
   

@@ -76,6 +76,7 @@ Qnewfolderasked=0
 
 Qtry=0
 Qorca=0
+Qphysnet=0
 
 last=""
 # loop over all arguments
@@ -148,6 +149,16 @@ do
   if [ "$iter" == "-orca" ]
   then
     Qorca=1
+  fi
+  # PhysNet
+  if [ "$iter" == "-pn_model" ]
+  then
+    Qphysnet=1
+    if [ ! -e input.inp ]
+    then
+      echo "JKMD: ERROR input.inp does not exist. [EXITING]"
+      exit
+    fi
   fi
   # FILES
   end=`echo $iter | rev | cut -c-4 | rev`
@@ -222,6 +233,10 @@ else
   LOOPto=1
   LOOPby=1
 fi
+if [ -e ../input.inp ] && [ $Qphysnet -eq 1 ]
+then
+  cp ../input.inp .
+fi
 const_iter=0
 Qjpt_iter=0
 jobscount=0
@@ -262,7 +277,12 @@ do
     else
       newtherest=$therest
     fi
-    commandTODO+="cd $PWD/$subfolder; cd \$WRKDIR; mkdir TMP; cd TMP; time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $PWD/$subfolder | tee -a $PWD/$subfolder/output 2>&1;"
+    commandTODO+="cd $PWD/$subfolder; cd \$WRKDIR; mkdir TMP; cd TMP;"
+    if [ $Qphysnet -eq 1 ]
+    then
+      commandTODO+=" cp $PWD/input.inp .;"
+    fi
+    commandTODO+=" time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $PWD/$subfolder | tee -a $PWD/$subfolder/output 2>&1;"
 
     if [ $Qjpt_iter -eq $Qjpt ]
     then

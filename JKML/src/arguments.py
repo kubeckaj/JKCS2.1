@@ -22,7 +22,7 @@ def print_help():
     print("", flush=True)
     print("  HELP OPTIONS:", flush=True)
     print("    -help                            prints basic help", flush=True)
-    print("    -help_nn                         prints help for neural network methods (e.g. PaiNN,SchNet)", flush=True)
+    print("    -help_nn                         prints help for neural network methods (e.g. PaiNN,SchNet,PhysNet)", flush=True)
     print("    -help_krr                        prints help for kernel ridge regression methods (e.g. FCHL)",
           flush=True)
     print("    -help_adv                        print some advanced features (e.g., OPT, MD, seed, splits)")
@@ -61,6 +61,9 @@ def print_help():
     print(f"    ", end="")
     pJKML()
     print(" -loc -trained model_for_atomization_en.pkl -eval diff_molecules.pkl -monomers atoms.pkl ", flush=True)
+    print("    ", end="")
+    pJKML()
+    print(" -loc -train train.pkl -physnet -nn_features 128 -nn_basis 64 -nn_blocks 5 -epochs 1000", flush=True)
     print("", flush=True)
 
 
@@ -121,19 +124,19 @@ def help_krr():
 def help_nn():
     print("  OPTIONS FOR NEURAL NETWORKS:", flush=True)
     print("    -epochs <int>              number of epochs [def = 1000]", flush=True)
-    print("    -batch_size,-bs <int>      batch size [def = 16]", flush=True)
+    print("    -batch_size,-bs <int>      batch size [def = 16], the same size is used for validation", flush=True)
     print("    -nn_train <float>          portion of training data (exlc. validation) [def = 0.9]", flush=True)
     print("    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]", flush=True)
-    print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]")
+    print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]", flush=True)
     print("    -nn_lr                     learning rate [def = 1e-4]", flush=True)
-    print("    -nw                        number of workers for database manipulation [def = 1]")
-    print("    -ckpt,-chkp <file>         resume from last check point [def = None]")
+    print("    -nw                        number of workers for database manipulation [def = 1] {SchNetPack}", flush=True)
+    print("    -ckpt,-chkp <file>         resume from last check point [def = None] {SchNetPack}", flush=True)
     print("", flush=True)
     print("  OPTIONS FOR REPRESENTATION:", flush=True)
-    print("    -nn_ab <int>       number of atom basis/features/size of embeding vector [def = 256]", flush=True)
-    print("    -nn_int <int>      number of interaction blocks [def = 5]", flush=True)
-    print("    -nn_rb <int>       number of radial basis for exp. int. dist. [def = 20]", flush=True)
-    print("    -nn_cutoff <float> cutoff function (Angstrom) [def = 5.0]", flush=True)
+    print("    -nn_ab, -nn_features <int>    number of atom basis/features/size of embeding vector [def = 256]", flush=True)
+    print("    -nn_int, -nn_blocks <int>     number of (interaction) blocks [def = 5]", flush=True)
+    print("    -nn_rb, -nn_basis <int>       number of (radial) basis [def = 20]", flush=True)
+    print("    -nn_cutoff <float>            cutoff function (Angstrom) [def = 5.0]", flush=True)
     print("", flush=True)
 
 
@@ -596,7 +599,7 @@ def arguments(argument_list=[]):
             continue
 
         # Radial basis
-        if arg == "-nn_rbf" or arg == "-nn_rb":
+        if arg == "-nn_rbf" or arg == "-nn_rb" or arg == "-nn_basis":
             last = "-nn_rbf"
             continue
         if last == "-nn_rbf":
@@ -707,7 +710,7 @@ def arguments(argument_list=[]):
             continue
 
         # Atom basis
-        atom_basis_arg_list = ["-nn_ab", "-nn_atom_basis"]
+        atom_basis_arg_list = ["-nn_ab", "-nn_atom_basis", "-nn_features"]
         if arg in atom_basis_arg_list:
             last = "-nn_ab"
             continue
@@ -720,7 +723,7 @@ def arguments(argument_list=[]):
             continue
 
         # NN interactions
-        nn_int_arg_list = ["-nn_int", "-nn_interctions"]
+        nn_int_arg_list = ["-nn_int", "-nn_interctions", "-nn_blocks"]
         if arg in nn_int_arg_list:
             last = "-nn_int"
             continue

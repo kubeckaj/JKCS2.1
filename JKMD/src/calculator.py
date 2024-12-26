@@ -1,4 +1,4 @@
-def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout):
+def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms):
 
 # TODO
 ### 792 /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
@@ -52,6 +52,7 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
                 orcasimpleinput=Qcalculator_input,
                 orcablocks='%pal nprocs '+cpus+' end')
 
+  ### SchNetPack ###
   elif Qcalculator == "NN":
     from schnetpack.interfaces import SpkCalculator
     import schnetpack as spk
@@ -75,6 +76,25 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
         force_unit="eV/Ang",#not sure about units
         position_unit="Ang",
         )
+
+  ### PhysNet ###
+  elif Qcalculator == "PhysNet":
+    import os,sys
+    pathname = os.path.dirname(sys.argv[0])
+    sys.path.append(pathname + "/../JKML/src/PhysNet_DER/")
+    from PNcalculator import PhysNetCalculator  
+   
+    from torch import cuda
+    if cuda.is_available():
+      os.system("sed -i 's/--device=cpu/--device=cuda/g' input.inp")
+    else:
+      os.system("sed -i 's/--device=cuda/--device=cpu/g' input.inp")
+  
+    return PhysNetCalculator(
+      checkpoint=Qcalculator_input,
+      atoms=atoms,
+      charge=Qcharge,
+      config='input.inp')
 
   else:
     print("Unknown calculator.")
