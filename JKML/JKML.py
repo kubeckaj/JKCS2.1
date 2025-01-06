@@ -205,7 +205,6 @@ Qforcemonomers = 0
 column_name_1 = "log"
 column_name_2 = "electronic_energy" 
 Qifforces = 1 #IF forces exist use them in calculations
-
 #krr : fchl
 #nn : painn
 #nn : 
@@ -247,6 +246,8 @@ Qbatch_size=16
 Qcheckpoint=None
 Qtime=None
 parentdir="./"
+Qifcharges = 0 #NOTE set here to stop error probably not loaeded from arguments
+Qifdipole = 0 #NOTE set here to stop error, probably not loaded from arguments
 
 #OPT/MD
 opt_maxstep = 0.02
