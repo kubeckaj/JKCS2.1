@@ -246,8 +246,6 @@ Qbatch_size=16
 Qcheckpoint=None
 Qtime=None
 parentdir="./"
-Qifcharges = 0 #NOTE set here to stop error probably not loaeded from arguments
-Qifdipole = 0 #NOTE set here to stop error, probably not loaded from arguments
 
 #OPT/MD
 opt_maxstep = 0.02

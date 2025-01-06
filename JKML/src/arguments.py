@@ -164,6 +164,8 @@ def arguments(argument_list=[]):
     column_name_1 = "log"
     column_name_2 = "electronic_energy"
     Qifforces = 1  # IF forces exist use them in calculations
+    Qifcharges = 0 
+    Qifdipole = 0 
 
     Qmethod = "krr"
     Qrepresentation = "fchl"
