@@ -32,7 +32,13 @@ if [[ -z "$version" ]]                                              #
 ### Just checking if appropriate version is used ####################
 parsedVersion=$(echo "${version//./}" | cut -c-3)                   #
 if [[ "$parsedVersion" -gt "400" || "$parsedVersion" -lt "380" ]]   #
-  then echo "Invalid Python version ($version)"; exit;fi            #
+then                                                                #
+  if [[ "$parsedVersion" -lt "310" || "$parsedVersion" -gt "320" ]] #
+  then                                                              #
+    echo "Invalid Python version ($version/$parsedVersion)";        #
+    exit;                                                           #
+  fi                                                                #
+fi                                                                  #
 #####################################################################
 
 echo "- creating environment"
@@ -70,10 +76,10 @@ source JKCS/bin/activate
 PIP="$PYTHON -m pip --no-cache-dir --disable-pip-version-check " #--cache-dir=$PWD/JKCS/"
 
 echo "======================"
-#$PIP install --upgrade pip
-$PIP install pip==22.0.4
+$PIP install --upgrade pip
+#$PIP install pip==22.0.4
 #$PIP install ipython
-rm -r JKCS/lib/python3.9/site-packages/~* 2>/dev/null
+rm -r JKCS/lib/python*/site-packages/~* 2>/dev/null
 if [[ "$*" == *"-mbdf"* ]]
 then
   echo "======================"
@@ -94,10 +100,11 @@ fi
 if [[ "$*" == *"-qml "* ]]
 then
   echo "======================"
+  #TODO might require pip downgrade
   #$PIP install numpy==1.21.4 --force-reinstall
   #$PIP uninstall numpy
   $PIP install numpy==1.25.2 
-  #$PIP install numpy==1.21.4
+  #$PIP install numpy==1.21.1
   echo "======================"
   $PIP install scikit-learn
   echo "======================"
@@ -132,10 +139,10 @@ $PIP install joblib==1.3.2
 echo "======================"
 $PIP install ase==3.22.1
 #FOR UMBRELLA SAMPLING
-test=`grep -c "CS = atoms.constraints" JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py`
+test=`grep -c "CS = atoms.constraints" JKCS/lib/python*/site-packages/ase/calculators/calculator.py`
 if [ $test -eq 0 ]
 then
-  sed -i '792s/.*/            CS = atoms.constraints\n            del atoms.constraints\n            self.atoms = atoms.copy()\n            atoms.set_constraint(CS)/' JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
+  sed -i '792s/.*/            CS = atoms.constraints\n            del atoms.constraints\n            self.atoms = atoms.copy()\n            atoms.set_constraint(CS)/' JKCS/lib/python*/site-packages/ase/calculators/calculator.py
 fi
 echo "======================"
 $PIP install pathlib==1.0.1 #Perhaps this one is not necessary
@@ -204,7 +211,7 @@ then
   $PIP install tblite
   $PIP install XTB
   $PIP install ORCA
-  cp ../TOOLS/LOADING/JKase.py JKCS/lib/python3.9/site-packages/tblite/ase.py
+  cp ../TOOLS/LOADING/JKase.py JKCS/lib/python*/site-packages/tblite/ase.py
   ## Use following in Python script:
   #from tblite.ase import TBLite 
   #atoms.calc = TBLite(method="GFN1-xTB")
@@ -222,7 +229,8 @@ then
   echo "======================"
   $PIP install hydra-core
   echo "======================"
-  $PIP install schnetpack
+  $PIP install distlib  sympy  pygments  platformdirs  pathspec  nodeenv  mypy-extensions  mdurl  identify  fasteners  dirsync  colorlog  click  cfgv  virtualenv  scipy  markdown-it-py  h5py  black  rich  pre-commit  hydra-colorlog  ase  matscipy 
+  $PIP install --no-deps schnetpack
   #AGOX was not able to use schnet calculator, this will resolve it:
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib64/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib/pyth*/site-packages/schnetpack/interfaces/ase_interface.py

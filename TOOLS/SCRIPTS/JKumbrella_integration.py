@@ -64,8 +64,12 @@ print(tab[-1, 1])
 #####  SOLVIND SCHRODINGER 1D #############
 ###########################################
 
-M1=float(sys.argv[2])
-M2=float(sys.argv[3])
+try:
+  M1=float(sys.argv[2])
+  M2=float(sys.argv[3])
+except:
+  print("QC not possible to solve. I need commands_TODO.txt file for it")
+  exit()
 
 x_angstrom = data[:,0]
 V_kjmol = data[:,1]/0.0433641153087705/0.238846

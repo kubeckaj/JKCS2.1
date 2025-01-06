@@ -74,8 +74,8 @@ EXAMPLE:
   fi
   if [ "$i" == "grendel" ]
   then
-    PYTHON="python3.9"
-    MODULE_PYTHON="source /com/bin/modules.sh;module load python/3.9.4"
+    PYTHON="python3.11"
+    MODULE_PYTHON="source /com/bin/modules.sh;module load python/3.11.1"
     #PATH_ABC="/home/kubeckaj/Applications/ABCluster-2.0-Linux/"
     #PATH_ABC3="/home/kubeckaj/Applications/ABCluster-3.1-Linux/"
     PATH_ABC="/home/kubeckaj/Applications/ABCluster-3.3pre-Linux/"
@@ -255,7 +255,7 @@ then
     rm -rf JKCS
     if [ -e ../JKML/src/PhysNet_DER ]
     then
-      rm -r ../JKML/src/PhysNet_DER
+      rm -rf ../JKML/src/PhysNet_DER
     fi 
   fi
   sh .install.sh "$PYTHON" "$MODULE_PYTHON" "$ADD"
