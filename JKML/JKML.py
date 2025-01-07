@@ -593,6 +593,7 @@ for sampleeach_i in sampleeach_all:
       F_train = clusters_df["extra"]["forces"].values
       Qforces = 1
     else:
+      F_train = float("nan")
       Qforces = 0
   
     ### CHARGE

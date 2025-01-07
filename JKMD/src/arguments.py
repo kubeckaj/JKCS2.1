@@ -141,6 +141,15 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       print_help()
       exit()
   
+    #FOLDER
+    if i == "-nf":
+      last = "-nf"
+      continue
+    if last == "-nf":
+      last = ""
+      Qfolder = i
+      continue 
+   
     if Qfollow_activated == 1:
       Qfollow.append(i)
       continue
@@ -193,15 +202,6 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qindex = randint(-range_end, -1)
       continue
 
-    #FOLDER
-    if i == "-nf":
-      last = "-nf"
-      continue
-    if last == "-nf":
-      last = ""
-      Qfolder = i
-      continue 
-   
     #FIX COM
     if i == "-fix_COM":
       Qfixcm = 1

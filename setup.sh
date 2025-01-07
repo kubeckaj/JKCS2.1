@@ -61,7 +61,7 @@ OPTIONS (extra packages):
   -physnet ........ physnet
   -descriptors .... dscribe library
   -calculators .... python TBlite, XTB, ORCA
-  -all ............ all above = qml,nn,descriptors,xtb,physnet
+  -all ............ all above = qml,nn,physnet,descriptors,calculators
   -mbdf ........... MBDF for categorization trick
   experimental: -qml-lightning
 
