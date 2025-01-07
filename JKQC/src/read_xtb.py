@@ -3,11 +3,12 @@
 ##############
 def read_xtb_init():
   from re import compile
-  global PATTERN_XTB_out_dipole_moment,PATTERN_XTB_out_dipole_moment2,PATTERN_XTB_out_vibrational_frequencies,PATTERN_XTB_out_mulliken_charges
+  global PATTERN_XTB_out_dipole_moment,PATTERN_XTB_out_dipole_moment2,PATTERN_XTB_out_vibrational_frequencies,PATTERN_XTB_out_mulliken_charges,PATTERN_XTB_out_mulliken_charges2
   PATTERN_XTB_out_dipole_moment = compile(rb"dipole moment from electron density .*\n.*\n.*total .*Debye.*\n")
   PATTERN_XTB_out_dipole_moment2 = compile(rb"molecular dipole:.*\n.*tot .*Debye.*\n.*q only:.*\n.*full.*\n")
   PATTERN_XTB_out_vibrational_frequencies = compile(rb'projected vibrational frequencies.*\n((?:.*eigval\s*:.*\n)+).*reduced masses.*\n')
   PATTERN_XTB_out_mulliken_charges = compile(rb'Mulliken.*\n((?:\s+\d+\w+\s+.*\n)+)\n') 
+  PATTERN_XTB_out_mulliken_charges2 = compile(rb'Z\s+covCN\s+q\s+C6AA.*\n((?:\s*\d*\s+\d+\s+\w\s+.*\n)+)\n')
 
 def find_line(bytes_string,take_first = 0,idx = 0):
   mm.seek(idx)
@@ -30,7 +31,7 @@ def read_xtb(mmm):
   from io import open
   missing = float("nan")
   
-  columns = ["program","method","time","NAtoms","electronic_energy","mulliken_charges","dipole_moment","vibrational_frequencies","enthalpy_energy","gibbs_free_energy","entropy","zero_point_correction","zero_point_energy","rotational_symmetry_number"]
+  columns = ["program","method","time","NAtoms","electronic_energy","mulliken_charges","dipole_moment","dipole_moments","vibrational_frequencies","enthalpy_energy","gibbs_free_energy","entropy","zero_point_correction","zero_point_energy","rotational_symmetry_number"]
 
   #PROGRAM VERSION
   try:
@@ -57,18 +58,24 @@ def read_xtb(mmm):
   try:
     out_mulliken_charges = [float(line.split()[1]) for line in PATTERN_XTB_out_mulliken_charges.findall(mm)[-1].decode("utf-8").split("\n")[:-1]]     
   except:
-    out_mulliken_charges = missing
+    try:
+      out_mulliken_charges = [float(line.split()[4]) for line in PATTERN_XTB_out_mulliken_charges2.findall(mm)[-1].decode("utf-8").split("\n")[:-1]]     
+    except:
+      out_mulliken_charges = missing
      
   #DIPOLE MOMENT
   try:
     lines = PATTERN_XTB_out_dipole_moment.findall(mm)[-1].decode("utf-8").split("\n")
     out_dipole_moment = float(lines[-2].split()[-1])
+    out_dipole_moments = [float(i)/0.393456 for i in lines[-2].split()[1:4]]
   except:
     try:
       lines = PATTERN_XTB_out_dipole_moment2.findall(mm)[-1].decode("utf-8").split("\n")
       out_dipole_moment = float(lines[-2].split()[-1])
+      out_dipole_moments = [float(i)/0.393456 for i in lines[-2].split()[1:4]]
     except:
       out_dipole_moment = missing
+      out_dipole_moments = [missing]
 
   #rotational number
   try:
