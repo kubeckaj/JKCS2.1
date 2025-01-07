@@ -34,6 +34,8 @@ MODULE_G16="REPLACE_module_g16" #"module load Gaussian"
 # ORCA
 PATH_ORCA="REPLACE_orca"
 MODULE_ORCA="REPLACE_module_orca" #"module load OpenMPI/3.1.3-GCC-8.2.0-2.31.1" || "module load openmpi/1.10.2"
+#PATH_ORCA="/home/kubeckaj/Applications/ORCA6.0/orca_6_0_0/"
+#MODULE_ORCA="ulimit -c 0;ml gcc/9.1.0;ml openmpi;export OMPI_MCA_btl_openib_allow_ib=1;export OMPI_MCA_btl=^openib;export OMPI_MCA_mca_base_component_show_load_errors=0"
 
 # SBATCH 
 SBATCH_PREFIX="REPLACE_sbatch_prefix " #group sbatch requirment
