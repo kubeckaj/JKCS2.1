@@ -996,6 +996,19 @@ for sampleeach_i in sampleeach_all:
         Y_validation = form_ens
       else:
         Y_validation = form_ens - form_ens2
+      ### Kick-out nans
+      err = len(Y_predicted[0][np.isnan(Y_predicted[0])])
+      if err > 0:
+        print("\nERROR: "+str(err)+" NaNs in the predicted set.\nThose have been removed from statistics.\n", flush = True)
+        valid_indices = ~np.isnan(Y_predicted[0])
+        Y_validation_rem = Y_validation
+        Y_validation = Y_validation[valid_indices]
+        Y_predicted_rem = Y_predicted
+        Y_predicted = [Y_predicted[0][valid_indices]]
+        if Qforces == 1: 
+          F_predicted_rem = F_predicted
+          F_predicted = [list(np.array(F_predicted[0])[valid_indices])]
+          F_test = list(np.array(F_test)[valid_indices])
       ### Calculate mean-absolute-error (MAE):
       if column_name_1 == "log" and column_name_2 == "electronic_energy":
         multiplier = 627.503
@@ -1043,6 +1056,12 @@ for sampleeach_i in sampleeach_all:
         print("MAE = " + ",".join([str(i) for i in mae])+units+"(+- "+str(std[0])+" )", flush = True)
         rmse = [multiplier*np.sqrt(np.mean(np.abs(flatten(F_predicted[i]) - flatten(F_test))**2))  for i in range(len(sigmas))]
         print("RMSE = " + ",".join([str(i) for i in rmse])+units, flush = True)
+   
+      if err > 0:
+        Y_predicted = Y_predicted_rem
+        Y_validation = Y_validation_rem
+        if Qforces == 1:
+          F_predicted = F_predicted_rem
   
     ### PRINTING THE QML PICKLES
     #print(type(clustersout_df["xyz"]["structure"].values[0]))
@@ -1242,6 +1261,7 @@ for sampleeach_i in sampleeach_all:
                     Qopt=Qopt,
                     opt_maxstep=opt_maxstep,
                     opt_dump=opt_dump,
+                    opt_steps=opt_steps,
                     md_temperature=md_temperature,
                     Qmd_timestep=md_timestep,
                     md_thermostatfriction=md_thermostatfriction,

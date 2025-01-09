@@ -167,10 +167,11 @@ while not Qfollow_activated == 0:
     def save():
       global cluster_dic,current_time,current_step
       toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst)
-      toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
-      if Qconstraints != 0:
-        toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
-      cluster_dic = mergeDictionary(cluster_dic, toupdate)
+      if Qsavepickle == 1:
+        toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
+        if Qconstraints != 0:
+          toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
+        cluster_dic = mergeDictionary(cluster_dic, toupdate)
     dyn.attach(save, interval = Qdump)
     if Qcalculator == "PhysNet": 
       from calculator import calculator
@@ -194,15 +195,18 @@ while not Qfollow_activated == 0:
     current_time = current_time + Qdt*Qns
     current_step = current_step + Qns
 
-if Qout == 2:
-  print("Done and now just saving pickle.")
-from pandas import DataFrame
-for key in cluster_dic:
-  cluster_dic[key] = cluster_dic[key][::-1]
-clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
-try:
-  clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
-  print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
-except:
-  print("Something got fucked up.")
-  
+if Qsavepickle == 1:
+  if Qout == 2:
+    print("Done and now just saving pickle.")
+  from pandas import DataFrame
+  for key in cluster_dic:
+    cluster_dic[key] = cluster_dic[key][::-1]
+  clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
+  try:
+    clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
+    print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
+  except:
+    print("Something got fucked up.")
+else:
+  if Qout == 2:
+    print("Done.")

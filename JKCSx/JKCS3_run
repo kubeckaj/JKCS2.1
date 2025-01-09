@@ -689,6 +689,7 @@ else
   then
     JKecho 0 "Max number of jobs to be sent is greater than allowed."
     JKecho 0 "Use [${cfCYAN}-maxtasks${cfDEF} ${cfBLUE}$jobscount${cfDEF}] option!"
+    cd $currentdirpath; rm -r $folderNEW
     exit
   fi
   SCtasks=$jobscount
@@ -793,6 +794,13 @@ do
         #echo  "$SC_command 'sh .run\${SLURM_ARRAY_TASK_ID}'" > .run
         #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
         job=$(/bin/bash .run)
+        testerror=`echo $job | grep "error" | wc -l`
+        if [ $testerror -gt 0 ]
+        then
+          JKecho 0 "ERROR: $job"
+          cd $currentdirpath; rm -r $folderNEW
+          exit
+	fi
         if [ ! -z "$job" ] ;then echo $job;fi
         echo $job | awk '{print $4}'  >> .jobs.txt
       fi
@@ -805,6 +813,13 @@ do
       #echo  "$SC_command sh .run$i" > .run
       #job=$(eval $SC_command "`tail -n $i commands_TODO.txt | head -n 1`")
       job=$(/bin/bash .run)
+      testerror=`echo $job | grep "error" | wc -l`
+      if [ $testerror -gt 0 ]
+      then
+        JKecho 0 "ERROR: $job"
+        cd $currentdirpath; rm -r $folderNEW
+        exit
+      fi
       #job=$(eval `cat .run`)
       if [ ! -z "$job" ] ;then echo $job;fi
       echo $job | awk '{print $4}'  >> .jobs.txt

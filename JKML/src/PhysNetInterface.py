@@ -135,7 +135,8 @@ def evaluating_nn(varsoutfile,
       charge=charge,
       config='input.inp')
 
-    atoms.set_calculator(calc)
+    #atoms.set_calculator(calc)
+    atoms.calc = calc
     Y_predicted.append(0.0367493 * atoms.get_potential_energy())
     F_predicted.append(0.0367493 *atoms.get_forces())  # Hartree/Ang
 

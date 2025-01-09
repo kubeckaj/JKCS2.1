@@ -58,6 +58,7 @@ def print_help():
     -follow           takes the last structure and performes subsequent simulation
     -test(-test2)     see (very) detailed output
     -noex             minimize print on screen
+    -nopickle         do not store and save structures
     -repeat <int>     repeat x times
     --                use for looping (e.g. 0--10, or 0--0.2--5)
     
@@ -94,6 +95,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qdistance = 0
     
     Qtry = 0
+    Qsavepickle = 1
     Qseed = 42
     Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
     Qfolder = ""
@@ -149,7 +151,12 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       Qfolder = i
       continue 
-   
+
+    #NOPICKLE
+    if i == "-nopickle":
+      Qsavepickle = 0
+      continue   
+
     if Qfollow_activated == 1:
       Qfollow.append(i)
       continue

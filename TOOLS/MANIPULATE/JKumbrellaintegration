@@ -147,6 +147,7 @@ fi
 
 module load python/2.7.14
 #python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b 0.01 -pp pic1 -ph pic2 -o out -m $FROM $TO
+#TODO -nb 1
 python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b $BINS -o out -m $FROM $TO >> output
 if [ -e out ]; 
 then

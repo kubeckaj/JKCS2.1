@@ -156,10 +156,10 @@ function JKloadsupercomputer {
       fi
       NoC=`grep "## Number of Combinations" ${inputfile} | awk '{print $6}'`
     else
-      supercomputerline="$METHODsupercomputer 1 1 1 24:00:00 small 4000mb"
+      supercomputerline="$METHODsupercomputer 200 1 1 24:00:00 small 4000mb"
     fi
   else
-    supercomputerline="$METHODsupercomputer 1 1 1 24:00:00 small 4000mb"
+    supercomputerline="$METHODsupercomputer 200 1 1 24:00:00 small 4000mb"
   fi
   ###
   SCtasks=`echo $supercomputerline | awk '{print $2}'`

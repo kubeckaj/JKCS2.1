@@ -369,6 +369,7 @@ def optimizing_nn(test_high_database,
                   Qopt,
                   opt_maxstep,
                   opt_dump,
+                  opt_steps,
                   md_temperature,
                   Qmd_timestep,
                   md_thermostatfriction,
@@ -421,7 +422,7 @@ def optimizing_nn(test_high_database,
                 write("opt.xyz", a, append=True)
 
             dyn.attach(printenergy, interval=opt_dump)
-            dyn.run(fmax=1e-6, steps=100)
+            dyn.run(fmax=1e-6, steps=opt_steps)
         else:
 
             # Set the momenta corresponding to T
