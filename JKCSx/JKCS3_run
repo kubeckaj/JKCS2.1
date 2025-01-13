@@ -47,7 +47,8 @@ function help {
    -m,-method \"X\" ....... method used by 3rd party quantum program
    -p,-program \"X\" ...... 3rd party quantum program 
                           (it has to be described in ~/.JKCSusersetup.txt)
-     OTHERS: -bs,-add,-addbase \"ATOM\", (-greasy,-con X = cores on node) 
+     OTHERS: -bs,-add,-addbase \"ATOM\", (-greasy,-con X = cores on node)
+             -addfile \"X\" = add files from \"X\" 
              -array = does submit array instead of single jobs
              -arraymax X = max jobs per array
              -add maxiter <inter> = max number of iteration in ORCA
@@ -205,6 +206,20 @@ do
   then
     last='-add'
     next=1
+    continue
+  fi
+  ### -addfile X
+  if [ "$last" == "-af" ]
+  then
+    addbase+=" -addfile $iter"
+    last=""
+    next=0
+    continue
+  fi
+  if [ "$iter" == "-addfile" ] || [ "$iter" == "-af" ]
+  then
+    next=1
+    last="-af"
     continue
   fi
   ### -newfolder "X"

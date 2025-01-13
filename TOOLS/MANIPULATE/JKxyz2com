@@ -23,6 +23,7 @@ function help {
    -mult \"x\" ........... specify system multiplicity m=x
    -nr ................. if f.com exist, create fN.com
    -addbase \"atomname\" . add basis set to the end of file [not tested]
+   -addfile \"filename\" . add file to the end of file
   FILES:
    xyz file(s) is(are) expected
   EXAMPLES:
@@ -34,6 +35,8 @@ function help {
 }
 
 ### INITIATE SOME VARIABLES
+Qaddfile=0
+addfile=""
 Qnotrewrite=0
 Qcpu=1
 Qmem=0
@@ -63,6 +66,21 @@ do
     then
       next=1
       last="-method"
+      continue
+    fi
+    ### -addfile "X X X"
+    if [ "$last" == "-addfile" ]
+    then
+      Qaddfile=1
+      addfile=$i
+      last=""
+      next=0
+      continue
+    fi
+    if [ "$i" == "-addfile" ]
+    then
+      next=1
+      last="-addfile"
       continue
     fi
     ### -cpu X
@@ -202,6 +220,12 @@ do
  echo "$Qcharge $Qmultiplicity" >> $filename
  cat $file | awk 'NR>2{print}' >> $filename
  echo " " >> $filename
+ #### Add file
+ if [ $Qaddfile -eq 1 ]
+ then 
+   cat $addfile >> $filename
+   echo "" >> $filename
+ fi
  #### Addition of basis for I,Br etc.
  if [ $Qadd -eq 1 ] 
  then
