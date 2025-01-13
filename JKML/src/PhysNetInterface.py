@@ -12,7 +12,7 @@ def training_nn(Qforces,
                 Y_train,
                 F_train,
                 D_dipole,
-                Q_charge,
+                Q_charge,Q_charges,
                 strs,
                 nn_atom_basis, nn_rbf, nn_interactions, nn_cutoff, nn_tvv, Qbatch_size, seed, nn_epochs, Qlearningrate, varsoutfile):
 #                Qenergytradoff,
@@ -33,8 +33,8 @@ def training_nn(Qforces,
   Z = np.zeros([num, Nmax], dtype=int) #Nuclear charges/atomic numbers of nuclei
   R = np.zeros([num, Nmax, 3], dtype=float) #Cartesian coordinates of nuclei
   F = np.zeros([num, Nmax, 3], dtype=float) #Forces
-
-  np.savez("database.npz", R=np.array([i.get_positions() for i in strs]), Q=Q_charge, D=0.2081943*np.array([np.array(i) for i in D_dipole]), E=27.2107*Y_train, F=27.2107*np.array([np.array(i) for i in F_train]), Z=np.array([i.get_atomic_numbers() for i in strs]), N=np.array([len(i) for i in strs]))
+  
+  np.savez("database.npz", R=np.array([i.get_positions() for i in strs]), Q=Q_charge, Qa=np.array([np.array(i) for i in Q_charges]), D=0.2081943*np.array([np.array(i) for i in D_dipole]), E=27.2107*Y_train, F=27.2107*np.array([np.array(i) for i in F_train]), Z=np.array([i.get_atomic_numbers() for i in strs]), N=np.array([len(i) for i in strs]))
  
   import os,sys
  

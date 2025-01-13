@@ -599,9 +599,11 @@ for sampleeach_i in sampleeach_all:
     ### CHARGE
     if ("log","charge") in clusters_df.columns and Qifcharges == 1:
       Q_charge = clusters_df["log"]["charge"].values
+      Q_charges = clusters_df["log"]["mulliken_charges"].values
       Qcharge = 1
     elif Qifcharges == 1:
       Q_charge = np.array([0]*len(clusters_df))
+      Q_charges = None
       Qcharge = 1
     else:
       Qcharge = 0
@@ -771,7 +773,7 @@ for sampleeach_i in sampleeach_all:
                   Y_train,
                   F_train,
                   D_dipole,
-                  Q_charge,
+                  Q_charge,Q_charges,
                   strs, nn_atom_basis, nn_rbf, nn_interactions, nn_cutoff, nn_tvv, Qbatch_size, seed, nn_epochs, Qlearningrate, varsoutfile)
     #You should not get below this one to reach the error
     else:

@@ -88,13 +88,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
   #SPECIES
   Qindex = -1
   Qcharge = charge_from_previous_run
+  Qtry = 0
   if len(species_from_previous_run) == 0:
     Qindex_of_specie = -1
     species = []
     Qconstraints = 0 #0 = none, 1 = umbrella sampling, 2 = external forces
     Qdistance = 0
     
-    Qtry = 0
     Qsavepickle = 1
     Qseed = 42
     Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
@@ -134,6 +134,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
 
   last = ""
   for i in argument_list:
+    ## I have no idea what is this for
     if "--" in i[1:]:
       print("WARNING: Range replaced!")    
       i = "123456789"
@@ -156,6 +157,15 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if i == "-nopickle":
       Qsavepickle = 0
       continue   
+
+    #TRY
+    if i == "-try":
+      Qtry = 1
+      continue
+
+    ##########################
+    ### FOLLOW ###############
+    ##########################
 
     if Qfollow_activated == 1:
       Qfollow.append(i)
@@ -185,10 +195,6 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       continue
 
-    #TRY
-    if i == "-try":
-      Qtry = 1
-      continue
 
     #INDEX
     if i == "-index":

@@ -216,7 +216,6 @@ def extract_clusters(clusters_df,Qextract,Pextract,Qclustername,Qout):
         Pextract_final.append(corrected)
     Pextract_ultimate = unique(Pextract_final)
 
-
   #SEARCHING FOR CLUSTERS IN THE DATABASE
   newclusters_df = DataFrame()
   for extract_i in Pextract_ultimate: 
