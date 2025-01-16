@@ -67,7 +67,7 @@ def read_xtb(mmm):
   try:
     lines = PATTERN_XTB_out_dipole_moment.findall(mm)[-1].decode("utf-8").split("\n")
     out_dipole_moment = float(lines[-2].split()[-1])
-    out_dipole_moments = [float(i)/0.393456 for i in lines[-2].split()[1:4]]
+    out_dipole_moments = [float(i)/0.393456 for i in lines[-2].split()[0:3]]
   except:
     try:
       lines = PATTERN_XTB_out_dipole_moment2.findall(mm)[-1].decode("utf-8").split("\n")

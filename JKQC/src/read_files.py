@@ -89,6 +89,7 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
     #ORCA && MRCC
     file_i_MRCC       = folder_path+file_basename+".out"
     orcaextname = rem_orcaextname
+    file_i_ORCA2 = folder_path+file_basename+"."+"bullshit"
     if not path.exists(folder_path+file_basename+".log"):
       file_i_ORCA = folder_path+file_basename+"."+orcaext
       orcaextname = "log"
@@ -102,7 +103,9 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
           file_i_ORCA = folder_path+file_basename+"."+orcaext
       else:
         file_i_ORCA = folder_path+file_basename+"."+orcaext
+        file_i_ORCA2 = folder_path+file_basename+"."+"out"
         orcaextname = "log"
+        orcaextname2 = "out"
     ##
     file_i_TURBOMOLE = folder_path+file_basename+"."+turbomoleext
     file_i_INFO      = folder_path+"info.txt"
@@ -179,6 +182,19 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
                 read_orca_init(Qforces = Qforces, Qanharm = Qanharm)
                 Q_ORCA_used = 1
               dic_orca = read_orca(mm, orcaextname, Qforces = Qforces, Qanharm = Qanharm)
+              dic.update(dic_orca)
+              continue
+          ###############
+          ### ORCA ######
+          ###############
+          if file_test == file_i_ORCA2:
+            testORCA = mm.find(rb'O   R   C   A')+mm.find(rb'ORCA')+mm.find(rb'SHARK')+3
+            if testORCA > 0:
+              if Q_ORCA_used == 0:
+                from read_orca import read_orca,read_orca_init
+                read_orca_init(Qforces = Qforces, Qanharm = Qanharm)
+                Q_ORCA_used = 1
+              dic_orca = read_orca(mm, orcaextname2, Qforces = Qforces, Qanharm = Qanharm)
               dic.update(dic_orca)
               continue
 
