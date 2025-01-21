@@ -1,4 +1,3 @@
-
 def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None):
   from ase.md.velocitydistribution import Stationary
   from ase.md.velocitydistribution import ZeroRotation
@@ -14,6 +13,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
   CS = species.constraints
   del species.constraints
   species_copy = species.copy()
+  species_copy_for_saving = species.copy()
   species.set_constraint(CS)
 
   ### DISTANCE
@@ -55,7 +55,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
   folder_path = path.abspath("./test")[::-1].split("/",1)[1][::-1]+"/"
   dic = {("info","folder_path"):[folder_path]}
   dic.update({("info","file_basename"):["str-"+str(current_step)]})
-  dic.update({("xyz","structure"):[species_copy]})
+  dic.update({("xyz","structure"):[species_copy_for_saving]})
   dic.update({("log","md_time"):[current_time]})
   dic.update({("log","md_step"):[current_step]})
   dic.update({("log","electronic_energy"):[epot]})
