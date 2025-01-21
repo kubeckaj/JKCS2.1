@@ -708,6 +708,7 @@ rm -rf \$CALC_NAME""" > $base.cmd
     sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh 
   fi 
   sh $base.cmd
+  rm $base.cmd
 }
 ##########################################################################################
 
@@ -749,6 +750,13 @@ function program_ORCA {
     if [ -z "$CPU" ]; then CPU=1; fi
     if [ -z "$CHARGE" ]; then CHARGE=0; fi
     if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
+    if [[ $args == *"-cpall"* ]];
+    then
+      Qcpall=1
+      args=$(echo "$args" | sed "s/-cpall//g")
+    else
+      Qcpall=0
+    fi
     if [ -z "$method" ] # IF NO METHOD SPECIFIED ... THEN SOME TROUBLES MIGHT APPEAR 
     then    
       JKxyz2inp $input -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY $args
@@ -756,6 +764,13 @@ function program_ORCA {
       JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
     fi
     #if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
+  fi
+  if [[ $args == *"-cpall"* ]];
+  then
+    Qcpall=1
+    args=$(echo "$args" | sed "s/-cpall//g")
+  else
+    Qcpall=0
   fi
 
   #CHANGE: ORCA, inputINP, .out
@@ -794,19 +809,24 @@ $PATH_ORCA/orca $inputINP &> $DIR/$output
 #then
 #  mv $DIR/$output $DIR/${base}O.out
 #fi
-#cp $output $DIR/
-cp trajectory.xyz $DIR/${base}_traj.xyz 2>/dev/null #only for MD
+#cp $output $DIR/""" > $base.cmd
+if [ $Qcpall -eq 1 ]
+then
+  echo "cp * $DIR/ 2>/dev/null" >> $base.cmd
+fi
+echo """cp trajectory.xyz $DIR/${base}_traj.xyz 2>/dev/null #only for MD
 cp ${base}.xyz $DIR/${base}.xyz 2>/dev/null
 cp *.err $DIR/ 2>/dev/null
 cd $DIR
 
 #CLEANING
-rm -rf \$CALC_NAME""" > $base.cmd
+rm -rf \$CALC_NAME""" >> $base.cmd
   if [ -e ../submit ]
   then
     sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh
   fi
   sh $base.cmd
+  rm $base.cmd
 }
 ##########################################################################################
 
@@ -905,6 +925,7 @@ rm -rf \$CALC_NAME""" > $base.cmd
     sed "s/INPUTFILE/$base.cmd/" ../submit > ${base}_submit.sh
   fi
   sh $base.cmd
+  rm $base.cmd
 }
 ##########################################################################################
 

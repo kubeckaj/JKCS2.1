@@ -96,44 +96,50 @@ then
   $PYTHON setup.py install
   cd $currdir
 fi
+echo "======================"
+$PIP install scipy==1.9.3   #I need this version for ArbAlign 
 #QML
 if [[ "$*" == *"-qml "* ]]
 then
   echo "======================"
-  #TODO might require pip downgrade
-  #$PIP install numpy==1.21.4 --force-reinstall
-  #$PIP uninstall numpy
-  $PIP install numpy==1.25.2 
-  #$PIP install numpy==1.21.1
-  echo "======================"
-  $PIP install scikit-learn
-  echo "======================"
-  #$PYTHON -m pip install qml          #
-  #$PIP install git+https://github.com/qmlcode/qml@develop $ADD
-  #$PIP install git+https://github.com/qmlcode/qml@develop
-  #$PYTHON -m pip install qml  --global-option="build" --global-option="--compiler=intelem" --global-option="--fcompiler=intelem"
-  cd JKCS
-  if [ ! -e qml ]
-  then
-    git clone https://github.com/qmlcode/qml.git
-  fi
-  cd qml
+  
+  ####TODO might require pip downgrade
+  ####$PIP install numpy==1.21.4 --force-reinstall
+  ####$PIP uninstall numpy
+  ###$PIP install numpy==1.25.2 
+  ####$PIP install numpy==1.21.1
+  ###echo "======================"
+  ###$PIP install scikit-learn
+  ###echo "======================"
+  ####$PYTHON -m pip install qml          #
+  ####$PIP install git+https://github.com/qmlcode/qml@develop $ADD
+  ####$PIP install git+https://github.com/qmlcode/qml@develop
+  ####$PYTHON -m pip install qml  --global-option="build" --global-option="--compiler=intelem" --global-option="--fcompiler=intelem"
+  ###cd JKCS
+  ###if [ ! -e qml ]
+  ###then
+  ###  git clone https://github.com/qmlcode/qml.git
+  ###fi
+  ###cd qml
   if ! command -v gcc 2>&1 >/dev/null
   then
     echo "I cannot see gcc so I am trying to: module load gcc"
-    echo "The newest version of gcc had some issues with QML"
     module load gcc
   fi
-  sed -i 's/ -lpthread/-lpthread/' setup.py   # remove the stray space
-  $PIP install .
-  cd ../..
+  ###sed -i 's/ -lpthread/-lpthread/' setup.py   # remove the stray space
+  ###$PIP install .
+  ###cd ../..
+  if ! command -v lapack 2>&1 >/dev/null
+  then
+    echo "I cannot see lapack so I am trying to: module load lapack"
+    module load lapack
+  fi
+  $PIP install --no-deps qmllib
 fi
 echo "======================"
 $PIP install lapjv
 echo "======================"
 $PIP install numpy==1.25.2
-#echo "======================"
-$PIP install scipy==1.9.3   #I need this version for ArbAlign 
 echo "======================"
 $PIP install joblib==1.3.2  
 echo "======================"
@@ -223,13 +229,15 @@ fi
 if [[ "$*" == *"-nn"* ]]
 then
   echo "======================"
-  $PIP install scikit-learn
-  echo "======================"
-  $PIP install torchmetrics==1.0.1
+  $PIP install sympy==1.13.2
   echo "======================"
   $PIP install torch==2.4.0
   echo "======================"
+  $PIP install torchmetrics==1.0.1
+  echo "======================"
   $PIP install torch_ema==0.3
+  echo "======================"
+  $PIP install pytorch-lightning==2.0.6
   echo "======================"
   $PIP install lightning
   echo "======================"
@@ -239,9 +247,7 @@ then
   echo "======================"
   $PIP install tensorboardX==2.6.2.2
   echo "======================"
-  $PIP install distlib  sympy==1.13.2  pygments  platformdirs  pathspec  nodeenv  mypy-extensions  mdurl  identify  fasteners  dirsync  colorlog  click  cfgv  virtualenv  scipy  markdown-it-py  h5py  black  rich  pre-commit  hydra-colorlog  matscipy 
-  echo "======================"
-  $PIP install pytorch-lightning==2.0.6
+  $PIP install distlib pygments platformdirs pathspec nodeenv mypy-extensions mdurl identify fasteners dirsync colorlog click cfgv virtualenv scipy markdown-it-py h5py black rich pre-commit hydra-colorlog matscipy 
   echo "======================"
   $PIP install --no-deps schnetpack==2.0.4
   #AGOX was not able to use schnet calculator, this will resolve it:
@@ -262,12 +268,14 @@ then
   then
     cd ../JKML/src
     git clone https://github.com/LIVazquezS/PhysNet_DER.git
-    sed -i "s/np.Inf/np.inf/g" PhysNet_DER/run_train.py
     sed -i "s/np.float/float/g" PhysNet_DER/DataContainer.py
-    sed -i "s/filename='train.log', //g" PhysNet_DER/run_train.py
     sed -i "s/return tensor/segment_ids = segment_ids.to(torch.int64)\n    tensor = torch.zeros(*shape,device=device).scatter_add(0, segment_ids, data)\n    return tensor/" PhysNet_DER/layers/utils.py 
     sed -i "s/tensor = torch.zeros(/data = data.to(torch.float32)\n    segment_ids = segment_ids.to(torch.int64)\n    tensor = torch.zeros(/g" PhysNet_DER/layers/utils.py 
-    cp ../../TOOLS/LOADING/PNcalculator.py PhysNet_DER/
+    #sed -i "s/np.Inf/np.inf/g" PhysNet_DER/run_train.py
+    #sed -i "s/filename='train.log', //g" PhysNet_DER/run_train.py
+    cp ../../TOOLS/LOADING/PN/run_train.py PhysNet_DER/
+    cp ../../TOOLS/LOADING/PN/PNcalculator.py PhysNet_DER/
+    cp ../../TOOLS/LOADING/PN/Neural_Net_evid.py PhysNet_DER/
     rm PhysNet_DER/calculator.py	
     cd -
   fi

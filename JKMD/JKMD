@@ -241,11 +241,12 @@ const_iter=0
 Qjpt_iter=0
 jobscount=0
 JKecho 2 "Time to loop if possible. LOOP = $LOOPresult = $LOOPfrom $LOOPby $LOOPto"
+loopcount=`seq $LOOPfrom $LOOPby $LOOPto | wc -w`
 for i in `seq $LOOPfrom $LOOPby $LOOPto`
 do
   for j in `seq 1 $Qrepeat`
   do
-    if [ $LOOPto -gt 1 ]; then ADDsim="_$i"; else ADDsim=""; fi
+    if [ $loopcount -gt 1 ]; then ADDsim="_$i"; else ADDsim=""; fi
     if [ $Qrepeat -gt 1 ]; then ADDrep="_v$j"; else ADDrep=""; fi
     subfolder=${name}-LM${ADDsim}$ADDrep
     mkdir $subfolder
@@ -282,7 +283,14 @@ do
     then
       commandTODO+=" cp $PWD/input.inp .;"
     fi
-    commandTODO+=" time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $PWD/$subfolder | tee -a $PWD/$subfolder/output 2>&1;"
+    commandTODO+=" time program_PYTHON $scriptpath/JKMD.py $newtherest -nf $PWD/$subfolder"
+    if [ "$METHODsupercomputer" == "loc" ]
+    then
+      commandTODO+=" | tee -a $PWD/$subfolder/output"
+    else
+      commandTODO+=" > $PWD/$subfolder/output"
+    fi
+    commandTODO+=" 2>&1;"
 
     if [ $Qjpt_iter -eq $Qjpt ]
     then

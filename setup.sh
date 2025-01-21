@@ -168,10 +168,7 @@ EXAMPLE:
   fi
   if [ "$i" == "-all" ]
   then
-    #TODO
-    ADD+=" -xtb -descriptors -nn -physnet "
-    #ADD+=" -qml -xtb -descriptors -nn -physnet "
-    echo "QML will not be installed"
+    ADD+=" -qml -xtb -descriptors -nn -physnet "
     continue
   fi
   if [ "$i" == "-physnet" ]
@@ -186,8 +183,7 @@ EXAMPLE:
   fi
   if [ "$i" == "-qml" ] || [ "$i" == "qml" ]
   then
-    #ADD+=" -qml "
-    echo "QML will not be installed"
+    ADD+=" -qml "
     continue
   fi
   if [ "$i" == "-mbdf" ] || [ "$i" == "mbdf" ]

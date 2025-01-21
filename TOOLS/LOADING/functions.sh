@@ -308,8 +308,11 @@ function JKloaddirs {
       folders=`echo $folders | xargs`
       if [ -z "$folders" ]
       then
-        JKecho 1 "Neither ${cfYELLOW}$inputfile${cfDEF} nor ${cfBLUE}${folderbasename}${cfDEF} exist! ${cfYELLOW}[CONTINUIN ANYWAY]${cfDEF}"
-        JKecho 2 "Continuing anyway."
+        if [ "${0##*/}" != "JKMD" ] && [ "${0##*/}" != "JKML" ]
+	then 
+          JKecho 1 "Neither ${cfYELLOW}$inputfile${cfDEF} nor ${cfBLUE}${folderbasename}${cfDEF} exist! ${cfYELLOW}[CONTINUING ANYWAY]${cfDEF}"
+          JKecho 2 "Continuing anyway."
+        fi
         #exit
       else
         JKecho 0 "  All subfolders = ${cfBLUE}$folders${cfDEF}"

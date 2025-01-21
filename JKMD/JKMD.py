@@ -96,7 +96,7 @@ while not Qfollow_activated == 0:
   if Qout == 2:
     print("Setting calculator.")
   from calculator import calculator
-  all_species.set_calculator(calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species))
+  all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
   if Qout == 2:
     print(all_species)
     #print(all_species.get_positions())
@@ -176,7 +176,7 @@ while not Qfollow_activated == 0:
     if Qcalculator == "PhysNet": 
       from calculator import calculator
       def updatephysnet():
-        all_species.set_calculator(calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species))
+        all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
       dyn.attach(updatephysnet, interval = 1)
     #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
 
