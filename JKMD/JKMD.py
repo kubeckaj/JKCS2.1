@@ -189,7 +189,7 @@ while not Qfollow_activated == 0:
     print("I have saved the error structure in the appropriate folder.")
     import pandas as pd
     print(Qfolder)
-    pd.to_pickle(all_species, Qfolder+"/error.pkl")
+    pd.to_pickle(cluster_dic, Qfolder+"/error.pkl")
     exit()
   if Qdump == 0:
     current_time = current_time + Qdt*Qns

@@ -23,7 +23,7 @@ class ExternalForce:
         if self.qef == 'h_A':
           import numpy as np
           pos = atoms[self.mfrom:self.mto].get_positions()
-          external_force = 2*self.k_ext*np.array([np.linalg.norm(i)*(np.array([0,0,0])-i)/(np.linalg.norm(np.array([0,0,0])-i)+1e-8) for i in pos])
+          external_force = self.k_ext*np.array([np.linalg.norm(i)*(np.array([0,0,0])-i)/(np.linalg.norm(np.array([0,0,0])-i)+1e-8) for i in pos])
         elif self.qef == 'c_COM':
           import numpy as np
           masses = atoms[self.mfrom:self.mto].get_masses()
@@ -34,7 +34,7 @@ class ExternalForce:
         if self.qef == 'h_A':
           import numpy as np
           pos = atoms[self.mfrom:self.mto].get_positions()
-          external_energy = np.sum(self.k_ext*np.array([np.linalg.norm(np.array([0,0,0])-i)**2 for i in pos]))
+          external_energy = 0.5 * np.sum(self.k_ext*np.array([np.linalg.norm(np.array([0,0,0])-i)**2 for i in pos]))
           return external_energy
         elif self.qef == 'c_COM':
           return 0

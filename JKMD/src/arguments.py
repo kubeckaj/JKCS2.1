@@ -22,7 +22,7 @@ def print_help():
   CONSTRAINTS:
     -fix                          fixed position of atoms
     -EF_h_COM_COM <float> <float> harmonic potential between COMs of last two molecules [harm k_bias]
-    -EF_h_A <float>               ext. force field in the form of harmonic potential k*([0,0,0]-[x,y,z])^2 
+    -EF_h_A <float>               ext. force field in the form of harmonic potential 0.5*k*([0,0,0]-[x,y,z])^2 
     -EF_c_COM <array>             constant ext. force on the center of mass (e.g., [1,0,0]) 
     UMBRELLA SAMPLING:
     -harm <float>     add harmonic potential COM <float> distance constrain [2 species]

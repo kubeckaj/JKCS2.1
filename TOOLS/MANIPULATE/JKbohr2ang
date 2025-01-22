@@ -1,0 +1,4 @@
+#!/bin/bash
+source ~/.JKCSusersetup.txt
+program_PYTHON "$( cd "$(dirname "$0")" ; pwd -P )"/../SCRIPTS/JKbohr2ang.py $@
+
