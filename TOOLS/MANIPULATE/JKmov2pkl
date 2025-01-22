@@ -1,0 +1,17 @@
+if [[ "$*" == *"-help"* ]]; then
+  echo """   Help for JKmov2pkl:
+Converts movie.xyz file (list of xyz files) to a pickle database readable by JKQC.
+  
+  COMMAND: JKmov2pkl <file>
+
+  EXAMPLES:
+  
+     JKmov2pkl movie.xyz #movie.pkl will be created
+  """
+  exit
+fi
+
+source ~/.JKCSusersetup.txt
+export PYTHONPATH="$( cd "$(dirname "$0")" ; pwd -P )"/../../JKQC/src/
+program_PYTHON "$( cd "$(dirname "$0")" ; pwd -P )"/../SCRIPTS/JKmov2pkl.py $@
+
