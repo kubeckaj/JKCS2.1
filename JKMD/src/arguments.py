@@ -570,7 +570,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     print("==============")
   print("FOLLOW: ")
   print(Qfollow)
-  print("==============")
+  print("==============", flush=True)
  
   if Qtry == 1: 
     exit()

@@ -64,12 +64,13 @@ while not Qfollow_activated == 0:
     print(all_species)
   
   #CONSTRAINTS
+  constraints = []
   if Qconstraints == 1:
     if len(species) != 2:
       print("Nice try. The umbrella sampling part of JKMD is yet not ready for your jokes.")
       exit()
     from umbrellaconstraint import UmbrellaConstraint
-    all_species.set_constraint(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm,Qslow))
+    constraints.append(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm,Qslow))
     Qconstraints = 2
   if Qdistance == 1:
     if len(species) != 2:
@@ -81,7 +82,7 @@ while not Qfollow_activated == 0:
       QEF_applied += 1
       if QEF[i] == "h_A" or QEF[i] == "c_COM":
         from externalforce import ExternalForce
-        all_species.set_constraint(ExternalForce(QEF[i],QEF_par[i],QEF_systems[i]))
+        constraints.append(ExternalForce(QEF[i],QEF_par[i],QEF_systems[i]))
         if Qout == 2:
            print("External FF applied")
            print("External Force: "+QEF[i]+" on "+str(QEF_systems[i][0])+" to "+str(QEF_systems[i][1])+" with parameters "+str(QEF_par[i]))
@@ -90,8 +91,11 @@ while not Qfollow_activated == 0:
           print("Nice try. The umbrella sampling part of JKMD is yet not ready for your jokes.")
           exit()
         from umbrellaconstraint import UmbrellaConstraint
-        all_species.set_constraint(UmbrellaConstraint(all_species,QEF_par[i][0],len(species[0]),QEF_par[i][1]),Qslow)
-    
+        constraints.append(UmbrellaConstraint(all_species,QEF_par[i][0],len(species[0]),QEF_par[i][1],Qslow))
+  #SET CONSTRAINTS
+  if len(constraints) > 0:
+    all_species.set_constraint(constraints)
+  
   #SET CALCULATOR
   if Qout == 2:
     print("Setting calculator.")
@@ -186,10 +190,16 @@ while not Qfollow_activated == 0:
   except Exception as e:
     print(e)
     print("Something got screwed up within the dyn.run(Qns).")
-    print("I have saved the error structure in the appropriate folder.")
-    import pandas as pd
-    print(Qfolder)
-    pd.to_pickle(cluster_dic, Qfolder+"/error.pkl")
+    if len(cluster_dic) == 0:
+      print("I have nothing to save as the run failed immediately.")
+    else:
+      print("I have saved the error structure in the appropriate folder.")
+      import pandas as pd
+      print(Qfolder)
+      from pandas import DataFrame
+      for key in cluster_dic:
+        cluster_dic[key] = cluster_dic[key][::-1]
+      pd.to_pickle(DataFrame(cluster_dic), Qfolder+"/error.pkl")
     exit()
   if Qdump == 0:
     current_time = current_time + Qdt*Qns

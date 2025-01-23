@@ -20,6 +20,8 @@ class ExternalForce:
         pass
 
     def adjust_forces(self, atoms, forces):
+        CS = atoms.constraints
+        del atoms.constraints
         if self.qef == 'h_A':
           import numpy as np
           pos = atoms[self.mfrom:self.mto].get_positions()
@@ -29,12 +31,16 @@ class ExternalForce:
           masses = atoms[self.mfrom:self.mto].get_masses()
           external_force = np.array(masses)[:,np.newaxis]/np.sum(masses) * self.force
         forces[self.mfrom:self.mto] += external_force
+        atoms.set_constraint(CS)
 
     def adjust_potential_energy(self, atoms):
         if self.qef == 'h_A':
+          CS = atoms.constraints
+          del atoms.constraints
           import numpy as np
           pos = atoms[self.mfrom:self.mto].get_positions()
           external_energy = 0.5 * np.sum(self.k_ext*np.array([np.linalg.norm(np.array([0,0,0])-i)**2 for i in pos]))
+          atoms.set_constraint(CS)
           return external_energy
         elif self.qef == 'c_COM':
           return 0
