@@ -75,7 +75,8 @@ def training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigm
     print("JKML(QML): Training completed.", flush = True) 
   elif Qsplit == 1:
     if Qrepresentation == "fchl":
-      K = JKML_sym_kernel(X_train, sigmas, **kernel_args)       #calculates kernel
+      #K = JKML_sym_kernel(X_train, kernel_args = {"kernel_args": {"sigma": sigmas}})#, **kernel_args)       #calculates kernel
+      K = JKML_sym_kernel(X_train, kernel_args = {"sigma": sigmas})#, **kernel_args)       #calculates kernel
     elif Qrepresentation == "mbdf":
       K = [JKML_sym_kernel(X_train, X_atoms, sigmas[0], **kernel_args)]  #calculates kernel
     K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
@@ -161,7 +162,7 @@ def evaluate(Qrepresentation,krr_cutoff,X_train,sigmas,alpha,strs,kernel_args,Qk
 
   ### THE EVALUATION
   if Qrepresentation == "fchl":
-    Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
+    Ks = JKML_kernel(X_test, X_train, kernel_args = {"sigma": sigmas}) # sigmas, **kernel_args)
   elif Qrepresentation == "mbdf":
     Ks = [JKML_kernel(X_train, X_test, X_atoms, X_test_atoms, sigmas[0], **kernel_args)]
   Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
