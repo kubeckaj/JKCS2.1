@@ -94,6 +94,7 @@ md_steps=2000
 md_timestep=0.1
 md_model="model.pkl"
 md_what=""
+Qqml=0
 
 last=""
 # loop over all arguments
@@ -134,6 +135,12 @@ do
     last=""
     continue
   fi
+  #QML
+  if [ "$iter" == "-qml" ] || [ "$iter" == "-krr" ]
+  then
+    Qqml=1
+    continue
+  fi
   #SPKMD 
   if [ "$iter" == "-spkmd" ]
   then
@@ -153,16 +160,14 @@ do
     continue
   fi
   #MD CUTOFF
-  if [ "$iter" == "-md_cutoff" ] || [ "$iter" == "-cutoff" ] || [ "$iter" == "-nn_cutoff" ] 
-  then
-    last="-md_cutoff"
-    continue
-  fi
   if [ "$last" == "-md_cutoff" ]
   then
     md_cutoff="$iter"
     last=""
-    continue
+  fi
+  if [ "$iter" == "-md_cutoff" ] || [ "$iter" == "-cutoff" ] || [ "$iter" == "-nn_cutoff" ] 
+  then
+    last="-md_cutoff"
   fi
   #MD STEPS
   if [ "$iter" == "-md_steps" ] 
@@ -252,6 +257,17 @@ do
     last=""
     continue
   fi
+  if [ "$iter" == "-nw" ]
+  then
+    echo "JKML: -nw is not used anymore. 1 worker or <-cpu> workers is used by default."
+    last="-nw"
+    continue
+  fi
+  if [ "$last" == "-nw" ]
+  then
+    last=""
+    continue
+  fi
   if [ "$iter" == "-physnet" ]
   then
     if [ -e input.inp ]
@@ -272,6 +288,11 @@ then
   Qarray=0
 else
   loc=""
+fi
+if [ $Qqml -eq 1 ] && [ "$SCpar" == "qtest" ]
+then
+  echo "JKML WARNING: QML does work on qtest partition for some reason!"
+  exit
 fi
 if [ $Qsplit -gt 1 ]
 then
@@ -312,7 +333,7 @@ do
       then
         echo "source ~/.JKCSusersetup.txt$loc;program_PYTHON -V >/dev/null; spkmd simulation_dir=SIM system.molecule_file=0sa10w-05_05.xyz calculator.model_file=model.pkl calculator.neighbor_list.cutoff=5.0 device=cpu dynamics.n_steps=200 dynamics/integrator=rpmd system.n_replicas=4 $therest" > .run$calc
       else
-        echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit" > .run$calc
+        echo "source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit -nw $SCcpu" > .run$calc
       fi
       if [ $calc -eq $SCtasks ] 
       then
@@ -355,8 +376,8 @@ do
         echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what \"" >> output
         echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; time spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what \"" > .run
       else 
-        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit -dir $PWD -time $SCtime\"" >> output
-        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit -dir $PWD -time $SCtime\"" > .run
+        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit -nw $SCcpu -dir $PWD -time $SCtime\"" >> output
+        echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit -nw $SCcpu -dir $PWD -time $SCtime\"" > .run
       fi
 
       if [ $METHODsupercomputer == "loc" ]

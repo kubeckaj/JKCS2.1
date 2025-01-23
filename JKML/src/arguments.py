@@ -142,7 +142,8 @@ def help_nn():
 
 def arguments(argument_list=[]):
     # Predefined arguments
-    method = "direct"
+    method = "direct" #direct/delta/min
+    Qmin = 0
     size = "full"
     seed = 42
     TRAIN_HIGH = ""
@@ -150,6 +151,9 @@ def arguments(argument_list=[]):
     TEST_DATABASE = ""
     TEST_LOW = ""
     TEST_HIGH = ""
+    MONOMERS_LOW = ""
+    MONOMERS_HIGH = ""
+    VARS_PKL = ""
     Qtrain = 0  # 0=nothing (fails), 1=train, 2=trained
     Qsplit = 1  # 1=no split, how many splits to do; ONLY FOR TRAINING
     Qsplit_i = 1

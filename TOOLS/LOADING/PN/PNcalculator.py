@@ -195,11 +195,15 @@ class PhysNetCalculator(Calculator):
         #    #                                                              dim=1)
         #    self._sigma2 = beta.detach().cpu().numpy()/(alpha.detach().cpu().numpy()-1)
         #    self._var = (1/lambdas.detach().cpu().numpy())*self.sigma2
-        
-        #with torch.no_grad():
         self.model.eval()
         self.R.requires_grad = True
-        self._last_energy, lambdas, alpha, beta = self.model.energy_evidential(self.Z, self.R, idx_i, idx_j, Q_tot=self.Q_tot, batch_seg=None,offsets=offsets, sr_idx_i=sr_idx_i, sr_idx_j=sr_idx_j, sr_offsets=sr_offsets)
+        self._last_energy,forces = self.model.energy_and_forces(self.Z, self.R, idx_i, idx_j, Q_tot=self.Q_tot, batch_seg=None)
+        #print(forces)
+        #self.R.requires_grad = True
+        #self._last_energy, lambdas, alpha, beta = self.model.energy_evidential(self.Z, self.R, idx_i, idx_j, Q_tot=self.Q_tot, batch_seg=None,offsets=offsets, sr_idx_i=sr_idx_i, sr_idx_j=sr_idx_j, sr_offsets=sr_offsets)
+        #reduced_energy = torch.sum(self._last_energy.clone())
+        #forces = -torch.autograd.grad([reduced_energy], [self.R], create_graph=True)[0]
+
         #print("HERE")
         #print(self._last_energy)
         #self._last_energy = energy_now
@@ -215,8 +219,6 @@ class PhysNetCalculator(Calculator):
         #print("self._last_energy:", self._last_energy)
         #print("self.R.requires_grad:", self.R.requires_grad)
 
-        reduced_energy = torch.sum(self._last_energy.clone())
-        forces = -torch.autograd.grad([reduced_energy], [self.R], create_graph=True)[0]
 
         #if idx_i.numel() > 0:  # autograd will fail if there are no distances
         #    grad = torch.autograd.grad([self._last_energy], [self.R], create_graph=True)[0]
