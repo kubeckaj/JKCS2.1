@@ -1,0 +1,17 @@
+#!/bin/bash
+if [[ "$*" == *"-help"* ]]; then
+  echo """   Help for JKreplaceXYZwithinPKLs:
+Replace xyz structures from 2nd pkl to the 1st pkl and stores it as 3pkl
+
+  COMMAND: JKreplaceXYZwithinPKLs <pkl1> <pkl2> <pkl3>
+
+  EXAMPLES:
+
+     JKreplaceXYZwithinPKLs DFT.pkl XTB.pkl DFTwXTBstrs.pkl
+  """
+  exit
+fi
+
+source ~/.JKCSusersetup.txt
+program_PYTHON "$( cd "$(dirname "$0")" ; pwd -P )"/../SCRIPTS/JKreplaceXYZwithinPKLs.py $@
+

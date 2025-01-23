@@ -121,6 +121,8 @@ then
   ###  git clone https://github.com/qmlcode/qml.git
   ###fi
   ###cd qml
+  echo "======================"
+  $PIP install scikit-learn
   if ! command -v gcc 2>&1 >/dev/null
   then
     echo "I cannot see gcc so I am trying to: module load gcc"

@@ -213,7 +213,7 @@ def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_
   if Qeval == 2:
     print("JKML(data): data length = "+str(ens.shape), flush = True)
   if method == "delta":
-    print("JKML(data): low data length = "+ens2.shape, flush = True)
+    print("JKML(data): low data length = "+str(ens2.shape), flush = True)
     if Qeval == 2:
       if ens.shape != ens2.shape:
         print("JKML(data): The LOW and HIGH method test sizes do not match. [EXITING]", flush = True)
