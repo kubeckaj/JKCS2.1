@@ -8,6 +8,7 @@ def training(Qforces,Y_train,F_train,D_dipole,Q_charge,Q_charges,strs,nn_atom_ba
   import numpy as np
   import os
   from torch import cuda
+  import sys
    
   # PREPARING TRAINING DATABASE 
   Nmax = np.max([len(i) for i in strs])
