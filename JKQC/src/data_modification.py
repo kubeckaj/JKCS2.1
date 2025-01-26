@@ -188,7 +188,8 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
       overall_formulas.append(output_formula)
       overall_counts.append(output_counts)
       overall_symbols.append(output_symbols)
-      overall_properties.append(clusters_df.loc[cluster_id,('log','electronic_energy')])
+      if ('log','electronic_energy') in clusters_df:
+        overall_properties.append(clusters_df.loc[cluster_id,('log','electronic_energy')])
       clusters_df.at[cluster_id,("info", "component_ratio")] = [int(i) for i in output_counts]
       clusters_df.at[cluster_id,("info", "components")] = output_symbols
       clusters_df.at[cluster_id,("info", "cluster_type")] = output_formula
@@ -203,7 +204,8 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
         else:
           toappend.append(int(0))
       overall_counts_new.append(toappend)
-    fitted = fitPlaneSVD(overall_counts_new,overall_properties)
+    if ('log','electronic_energy') in clusters_df:
+      fitted = fitPlaneSVD(overall_counts_new,overall_properties)
     mons_dic = {}
     from numpy import array
     from ase import Atoms
@@ -216,7 +218,8 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
       component_ratio = [int(1)]
       all_locals = locals()
       dic = {("info",column):[all_locals.get(column)] for column in columns}
-      dic.update({("log","electronic_energy"):[fitted[i]]})
+      if ('log','electronic_energy') in clusters_df:
+        dic.update({("log","electronic_energy"):[fitted[i]]})
       dic.update({("xyz","structure"):[Atoms(overall_symbols_new[i], positions = [[0,0,0]])]})
       mons_dic = mergeDictionary(mons_dic,dic)
     from pandas import DataFrame

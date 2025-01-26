@@ -179,7 +179,6 @@ def arguments(argument_list=[]):
     sigmas = [1.0]
     lambdas = [1e-4] * len(sigmas)
     krr_cutoff = 10.0
-    kernel_args = {}
 
     # Predefined NN - PaiNN
     nn_rbf = 20

@@ -2,7 +2,7 @@
 ###############################################################################
 ###############################################################################
 
-def training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigmas,varsoutfile,Qsplit_i,Qsplit_j,kernel_args):
+def training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigmas,varsoutfile,Qsplit_i,Qsplit_j):
 
   ### IMPORTS ###
   #TODO: Do I really need pandas?
@@ -75,10 +75,9 @@ def training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigm
     print("JKML(QML): Training completed.", flush = True) 
   elif Qsplit == 1:
     if Qrepresentation == "fchl":
-      #K = JKML_sym_kernel(X_train, kernel_args = {"kernel_args": {"sigma": sigmas}})#, **kernel_args)       #calculates kernel
-      K = JKML_sym_kernel(X_train, kernel_args = {"sigma": sigmas})#, **kernel_args)       #calculates kernel
+      K = JKML_sym_kernel(X_train, kernel_args = {"sigma": sigmas})   #calculates kernel
     elif Qrepresentation == "mbdf":
-      K = [JKML_sym_kernel(X_train, X_atoms, sigmas[0], **kernel_args)]  #calculates kernel
+      K = [JKML_sym_kernel(X_train, X_atoms, sigmas[0])]  #calculates kernel
     K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
     alpha = [cho_solve(Ki, Y_train) for Ki in K]                          #calculates regression coeffitients
 
@@ -94,10 +93,10 @@ def training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigm
     X_train_i = np.array_split(X_train,Qsplit)[Qsplit_i]
     X_train_j = np.array_split(X_train,Qsplit)[Qsplit_j]
     if Qsplit_i == Qsplit_j:
-      K = JKML_sym_kernel(X_train_i, sigmas, **kernel_args)       #calculates kernel
+      K = JKML_sym_kernel(X_train_i, kernel_args = {"sigma": sigmas})       #calculates kernel
       K = [K[i] + lambdas[i]*np.eye(len(K[i])) for i in range(len(sigmas))] #corrects kernel
     else:
-      K = JKML_kernel(X_train_i, X_train_j, sigmas, **kernel_args)
+      K = JKML_kernel(X_train_i, X_train_j, kernel_args = {"sigma": sigmas})
     f = open(varsoutfile.split(".pkl")[0]+"_"+str(Qsplit)+"_"+str(Qsplit_i)+"_"+str(Qsplit_j)+".pkl","wb")
     pickle.dump([K,Y_train],f)
     f.close()
@@ -110,7 +109,7 @@ def training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigm
 ###############################################################################
 ###############################################################################
 
-def evaluate(Qrepresentation,krr_cutoff,X_train,sigmas,alpha,strs,kernel_args,Qkernel):
+def evaluate(Qrepresentation,krr_cutoff,X_train,sigmas,alpha,strs,Qkernel):
 
   from pandas import DataFrame
   if Qrepresentation == "fchl":
@@ -162,9 +161,9 @@ def evaluate(Qrepresentation,krr_cutoff,X_train,sigmas,alpha,strs,kernel_args,Qk
 
   ### THE EVALUATION
   if Qrepresentation == "fchl":
-    Ks = JKML_kernel(X_test, X_train, kernel_args = {"sigma": sigmas}) # sigmas, **kernel_args)
+    Ks = JKML_kernel(X_test, X_train, kernel_args = {"sigma": sigmas}) 
   elif Qrepresentation == "mbdf":
-    Ks = [JKML_kernel(X_train, X_test, X_atoms, X_test_atoms, sigmas[0], **kernel_args)]
+    Ks = [JKML_kernel(X_train, X_test, X_atoms, X_test_atoms, sigmas[0])]
   Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
 
   return Y_predicted
@@ -283,7 +282,7 @@ def optimize(strs,Qrepresentation,krr_cutoff,varsoutfile,Qsplit,nn_cutoff,Qkerne
         X_train = newmatrix
 
     ### THE EVALUATION
-    Ks = JKML_kernel(X_test, X_train, sigmas, **kernel_args)
+    Ks = JKML_kernel(X_test, X_train, kernel_args = {"sigma": sigmas})
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
 
     if method == "delta":

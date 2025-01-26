@@ -64,7 +64,7 @@ for sampleeach_i in sampleeach_all:
     sampledist = sampledist_mbtr(sample_train, sample_test, sampleeach_i, Qsampleeach)
   elif Qsampleeach < 0:
     from src.sampleeach import sampledist_fchl
-    sampledist = sampledist_fchl(sample_train, sample_test, sampleeach_i, Qsampleeach, Qkernel, kernel_args, train_high_database)
+    sampledist = sampledist_fchl(sample_train, sample_test, sampleeach_i, Qsampleeach, Qkernel, train_high_database)
   else:
     sampledist = None
 
@@ -87,7 +87,7 @@ for sampleeach_i in sampleeach_all:
     print("JKML is starting the training.")
     if Qmethod == "krr":
       from src.QML import training
-      locals().update(training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigmas,varsoutfile,Qsplit_i,Qsplit_j,kernel_args))
+      locals().update(training(Qrepresentation,Qkernel,Qsplit,strs,Y_train,krr_cutoff,lambdas,sigmas,varsoutfile,Qsplit_i,Qsplit_j))
     #####################################
     elif Qmethod == "nn":
       from src.SchNetPack import training
@@ -111,6 +111,7 @@ for sampleeach_i in sampleeach_all:
 
   #TODO collect splitting: /home/kubeckaj/ML_SA_B/ML/TRAIN/TEST/SEPARATE/cho_solve.pkl
   if Qtrain == 2:
+    import os
     if not os.path.exists(VARS_PKL):
       print("JKML: Error reading trained model. VARS_PKL = "+VARS_PKL)
       exit()
@@ -151,7 +152,7 @@ for sampleeach_i in sampleeach_all:
     print("JKML is starting the testing/evaluation.")
     if Qmethod == "krr": 
       from src.QML import evaluate
-      Y_predicted = evaluate(Qrepresentation,krr_cutoff,X_train,sigmas,alpha,strs,kernel_args,Qkernel)
+      Y_predicted = evaluate(Qrepresentation,krr_cutoff,X_train,sigmas,alpha,strs,Qkernel)
       Qforces = 0
       F_predicted = None
     #####################################
