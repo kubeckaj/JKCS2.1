@@ -1,4 +1,4 @@
-def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None):
+def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None, fail = False):
   from ase.md.velocitydistribution import Stationary
   from ase.md.velocitydistribution import ZeroRotation
   from ase import units
@@ -6,8 +6,12 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
   global current_time, current_step
  
   ### """Function to print the potential, kinetic and total energy"""
-  epot = species.get_potential_energy()/0.043364115308770496 #kcal/mol
-  ekin = species.get_kinetic_energy()/0.043364115308770496    #kca/lmol
+  if not fail:
+    epot = species.get_potential_energy()/0.043364115308770496 #kcal/mol
+    ekin = species.get_kinetic_energy()/0.043364115308770496    #kca/lmol
+  else:
+    epot = float("nan")
+    ekin = float("nan")
 
   ### CONSTRAINTS
   CS = species.constraints

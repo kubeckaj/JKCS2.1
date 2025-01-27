@@ -97,7 +97,7 @@ def training(Qforces,Y_train,F_train,D_dipole,Q_charge,Q_charges,strs,nn_atom_ba
 def evaluate(varsoutfile,clusters_df,method,Qmin):
 
   import os,sys
-  from PhysNet import PhysNetCalculator
+  from PNcalculator import PhysNetCalculator
   from torch import cuda 
 
   pathname = os.path.dirname(sys.argv[0])

@@ -22,7 +22,8 @@ def print_help():
   CONSTRAINTS:
     -fix                          fixed position of atoms
     -EF_h_COM_COM <float> <float> harmonic potential between COMs of last two molecules [harm k_bias]
-    -EF_h_A <float>               ext. force field in the form of harmonic potential 0.5*k*([0,0,0]-[x,y,z])^2 
+    -EF_h_A <float>               ext. force field in the form of harmonic potential 0.5*k*|[0,0,0]-[x,y,z]|^2 
+    -EF_fbh_A <float> <float>     ext. force field in the form of flat bott harmonic potential 0.5*k*(|[0,0,0]-[x,y,z]|-r0)^2*Heaviside(|[0,0,0]-[x,y,z]|,r0) (e.g., <10> [Ang] <1> kcal/mol/A^2)
     -EF_c_COM <array>             constant ext. force on the center of mass (e.g., [1,0,0]) 
     UMBRELLA SAMPLING:
     -harm <float>     add harmonic potential COM <float> distance constrain [2 species]
@@ -59,6 +60,7 @@ def print_help():
     -test(-test2)     see (very) detailed output
     -noex             minimize print on screen
     -nopickle         do not store and save structures
+    -seed             set random seed (use at the begginning before specie setup) [TESTING]
     -repeat <int>     repeat x times
     --                use for looping (e.g. 0--10, or 0--0.2--5)
     
@@ -97,6 +99,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     
     Qsavepickle = 1
     Qseed = 42
+    Qrng = None
     Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
     Qfolder = ""
   
@@ -144,6 +147,22 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       print_help()
       exit()
   
+    #PRINT 
+    if i == "-print":
+      last = "-print"
+      continue
+    if last == "-print":
+      last = ""
+      Qout = i
+      continue
+    #TEST
+    if i == "-test":
+      Qout = 2
+      continue
+    if i == "-test2":
+      Qout = 3
+      continue
+
     #FOLDER
     if i == "-nf":
       last = "-nf"
@@ -178,13 +197,6 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     #NOEXAMPLE
     if i == "-noexample" or i == "-noex":
       Qout = 0
-      continue
-    #TEST
-    if i == "-test":
-      Qout = 2
-      continue
-    if i == "-test2":
-      Qout = 3
       continue
     #SLOW for umbrella sampling
     if i == "-slow":
@@ -307,6 +319,19 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qcharge = Qcharge + int(i)
       last = ""
       continue
+ 
+    # SEED
+    if i == "-seed":
+      last = "-seed"
+      continue
+    if last == "-seed":
+      Qseed = int(i)
+      from numpy import random
+      from random import seed
+      seed(Qseed)
+      Qrng = random.default_rng(Qseed)
+      last = ""
+      continue
 
     #RECENTER
     if i == "-recenter":
@@ -371,7 +396,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-mb":
       last = ""
       from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-      MaxwellBoltzmannDistribution(species[Qindex_of_specie], temperature_K = int(i), force_temp = True)
+      MaxwellBoltzmannDistribution(species[Qindex_of_specie], temperature_K = int(i), force_temp = True, rng=Qrng)
       continue
     #SETVEL 0/1
     if i == "-setvel":
@@ -510,6 +535,23 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       mto=mfrom+len(species[Qindex_of_specie])
       QEF_systems.append([mfrom,mto])
       QEF_par.append(float(i))
+      continue
+    if i == "-EF_fbh_A":
+      last = "-EF_fbh_A"
+      continue
+    if last == "-EF_fbh_A":
+      last = "-EF_fbh_A_2"
+      QEF.append("fbh_A")
+      mfrom = 0
+      for j in range(Qindex_of_specie):
+        mfrom=mfrom+len(species[j])
+      mto=mfrom+len(species[Qindex_of_specie])
+      QEF_systems.append([mfrom,mto])
+      rem = float(i)
+      continue
+    if last == "-EF_fbh_A_2":
+      last = ""
+      QEF_par.append([rem,float(i)])
       continue
     if i == "-EF_c_COM":
       last = "-EF_c_COM"

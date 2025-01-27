@@ -199,9 +199,9 @@ then
   if [ $lenfiles == 2 ]; 
   then 
     file=`echo $files | awk '{print $1}'`
-    m1=`JKQC $file -index 0 -mass`
+    m1=`JKQC $file -index 0 -mass -noex`
     file=`echo $files | awk '{print $2}'`
-    m2=`JKQC $file -index 0 -mass`
+    m2=`JKQC $file -index 0 -mass -noex`
   else
     echo "the QC correction will be wrong"
   fi

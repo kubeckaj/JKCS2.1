@@ -80,7 +80,7 @@ while not Qfollow_activated == 0:
   if len(QEF) > 0:
     for i in range(QEF_applied,len(QEF)):
       QEF_applied += 1
-      if QEF[i] == "h_A" or QEF[i] == "c_COM":
+      if QEF[i] == "h_A" or QEF[i] == "fbh_A" or QEF[i] == "c_COM":
         from externalforce import ExternalForce
         constraints.append(ExternalForce(QEF[i],QEF_par[i],QEF_systems[i]))
         if Qout == 2:
@@ -99,8 +99,10 @@ while not Qfollow_activated == 0:
   #SET CALCULATOR
   if Qout == 2:
     print("Setting calculator.")
-  from calculator import calculator
-  all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
+  def call_calculator():
+    from calculator import calculator
+    all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
+  call_calculator()
   if Qout == 2:
     print(all_species)
     #print(all_species.get_positions())
@@ -120,7 +122,7 @@ while not Qfollow_activated == 0:
   elif Qthermostat == "L":
     from ase import units
     from ase.md.langevin import Langevin
-    dyn = Langevin(all_species, Qdt * units.fs, temperature_K = Qtemp, friction = Qthermostat_L / units.fs, fixcm = Qfixcm)
+    dyn = Langevin(all_species, Qdt * units.fs, temperature_K = Qtemp, friction = Qthermostat_L / units.fs, fixcm = Qfixcm, rng = Qrng)
   elif Qthermostat == "NH":
     from ase import units
     from ase.md.npt import NPT
@@ -141,7 +143,7 @@ while not Qfollow_activated == 0:
     from ase import units
     #from ase.md.bussi import Bussi
     from ase_bussi import Bussi
-    dyn = Bussi(all_species, Qdt * units.fs, temperature_K = Qtemp, taut = Qthermostat_NH * units.fs)
+    dyn = Bussi(all_species, Qdt * units.fs, temperature_K = Qtemp, taut = Qthermostat_NH * units.fs, rng = Qrng)
   else:
     print("Some weird thermostat.")
     exit()
@@ -168,9 +170,9 @@ while not Qfollow_activated == 0:
     #global cluster_dic
     if current_step == 0:
       cluster_dic = {}
-    def save():
+    def save(fail = False):
       global cluster_dic,current_time,current_step
-      toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst)
+      toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
       if Qsavepickle == 1:
         toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
         if Qconstraints != 0:
@@ -185,25 +187,48 @@ while not Qfollow_activated == 0:
     #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
 
   #SIMULATION
-  try:
-    dyn.run(Qns)
-  except Exception as e:
-    print(e)
-    print("Something got screwed up within the dyn.run(Qns).")
-    if len(cluster_dic) == 0:
-      print("I have nothing to save as the run failed immediately.")
-    else:
-      print("I have saved the error structure in the appropriate folder.")
-      import pandas as pd
-      print(Qfolder)
-      from pandas import DataFrame
-      for key in cluster_dic:
-        cluster_dic[key] = cluster_dic[key][::-1]
-      pd.to_pickle(DataFrame(cluster_dic), Qfolder+"/error.pkl")
-    exit()
+  if 'current_step' in globals():
+    steps_before_sim = current_step
+  else:
+    steps_before_sim = 0
+  sim_errors = 0
+  sim_last_error = -1
+  while current_step - steps_before_sim <= Qns:
+    try:
+      dyn.run(Qns - (current_step - steps_before_sim))
+    except Exception as e:
+      #from numpy import random
+      positions = all_species.get_positions()
+      noise = random.normal(scale=0.01, size=positions.shape)
+      all_species.set_positions(positions + noise)
+      call_calculator()
+      print(str(e))
+      print("Something got screwed up within the dyn.run(Qns). Small adjustment to the structure!!!")
+      if current_step == sim_last_error:
+        sim_errors += 1
+      else:
+        sim_errors = 1
+        sim_last_error = current_step
+      if sim_errors == 4:
+        if "cluster_dic" not in globals():
+          print("I have nothing to save as the run failed immediately.")
+        else:
+          print("I have saved the error structure in the appropriate folder.")
+          Qsavepickle = 1
+          save(fail = True)
+          print(Qfolder)
+          from pandas import DataFrame
+          for key in cluster_dic:
+            cluster_dic[key] = cluster_dic[key][::-1]
+          clusters_df = DataFrame(cluster_dic)
+          clusters_df.to_pickle(Qfolder+"/error.pkl")
+        exit()
+
   if Qdump == 0:
     current_time = current_time + Qdt*Qns
     current_step = current_step + Qns
+  if Qout == 2:
+    print("Simulation round done.")
 
 if Qsavepickle == 1:
   if Qout == 2:
@@ -217,6 +242,5 @@ if Qsavepickle == 1:
     print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
   except:
     print("Something got fucked up.")
-else:
-  if Qout == 2:
-    print("Done.")
+
+print("Done.")
