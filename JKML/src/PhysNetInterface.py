@@ -105,6 +105,13 @@ def evaluate(varsoutfile,clusters_df,method,Qmin):
   from PNcalculator import PhysNetCalculator
   from numpy import array
 
+  if 1==1:
+      import warnings
+      warnings.filterwarnings(
+          "ignore",
+          ".*which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling.*"
+      )
+
   if cuda.is_available():
     os.system("sed -i 's/--device=cpu/--device=cuda/g' input.inp")
   else:
