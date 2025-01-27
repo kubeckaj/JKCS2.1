@@ -361,6 +361,13 @@ def optimize(test_high_database,varsoutfile,nn_cutoff,Qopt,opt_maxstep,opt_dump,
     import torch
     import schnetpack as spk
 
+    if 1==1:
+      import warnings
+      warnings.filterwarnings(
+          "ignore",
+          ".*which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling.*"
+      )
+
     ### DATABASE LOADING ###
     ## The high level of theory
     clusters_df = test_high_database

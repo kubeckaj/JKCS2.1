@@ -56,6 +56,12 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
   elif Qcalculator == "NN":
     from schnetpack.interfaces import SpkCalculator
     import schnetpack as spk
+    if 1==1:
+      import warnings
+      warnings.filterwarnings(
+          "ignore",
+          ".*which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling.*"
+      )
     return SpkCalculator(
         #model_file="/home/kubeckaj/ML_TEST/NN2/T5_MD/T3_RPMDaLAN/model.pkl",
         #model_file="model.pkl",
@@ -83,7 +89,12 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
     pathname = os.path.dirname(sys.argv[0])
     sys.path.append(pathname + "/../JKML/src/PhysNet_DER/")
     from PNcalculator import PhysNetCalculator  
-   
+    if 1==1:
+      import warnings
+      warnings.filterwarnings(
+          "ignore",
+          ".*which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling.*"
+      ) 
     from torch import cuda
     if cuda.is_available():
       os.system("sed -i 's/--device=cpu/--device=cuda/g' input.inp")

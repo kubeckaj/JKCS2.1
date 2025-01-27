@@ -74,7 +74,7 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
             mask2 = symb_ind == Qcut[i][3][2]
             dm = [dist(p1, p2) for p2 in positions[mask1] for p1 in positions[mask2]]
             bonds = sum(test_i <= float(Qcut[i][3][0]) for test_i in dm)
-            if Qcut[i][3][1] == Qcut[i][2][2]:
+            if str(Qcut[i][3][1]) == str(Qcut[i][3][2]):
               bonds = (bonds-sum(mask1))/2
             bonded.append(int(bonds))
           except:
