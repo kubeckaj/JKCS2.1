@@ -197,7 +197,7 @@ while not Qfollow_activated == 0:
     try:
       dyn.run(Qns - (current_step - steps_before_sim))
     except Exception as e:
-      #from numpy import random
+      from numpy import random
       positions = all_species.get_positions()
       noise = random.normal(scale=0.01, size=positions.shape)
       all_species.set_positions(positions + noise)
@@ -223,10 +223,10 @@ while not Qfollow_activated == 0:
           clusters_df = DataFrame(cluster_dic)
           clusters_df.to_pickle(Qfolder+"/error.pkl")
         exit()
+    if Qdump == 0:
+      current_time = current_time + Qdt*Qns
+      current_step = current_step + Qns
 
-  if Qdump == 0:
-    current_time = current_time + Qdt*Qns
-    current_step = current_step + Qns
   if Qout == 2:
     print("Simulation round done.")
 
