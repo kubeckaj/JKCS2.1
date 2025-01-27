@@ -97,11 +97,13 @@ def training(Qforces,Y_train,F_train,D_dipole,Q_charge,Q_charges,strs,nn_atom_ba
 def evaluate(varsoutfile,clusters_df,method,Qmin):
 
   import os,sys
-  from PNcalculator import PhysNetCalculator
   from torch import cuda 
-
+  
   pathname = os.path.dirname(sys.argv[0])
   sys.path.append(pathname + "/src/PhysNet_DER/")
+  
+  from PNcalculator import PhysNetCalculator
+  from numpy import array
 
   if cuda.is_available():
     os.system("sed -i 's/--device=cpu/--device=cuda/g' input.inp")
@@ -128,7 +130,7 @@ def evaluate(varsoutfile,clusters_df,method,Qmin):
     Y_predicted.append(0.0367493 * atoms.get_potential_energy()) #Hartree
     F_predicted.append(0.0367493 * atoms.get_forces())  # Hartree/Ang
 
-  Y_predicted = [np.array(Y_predicted)]  
+  Y_predicted = [array(Y_predicted)]  
   F_predicted = [F_predicted]
 
   if method == "min":
