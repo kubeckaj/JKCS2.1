@@ -180,7 +180,7 @@ while not Qfollow_activated == 0:
         cluster_dic = mergeDictionary(cluster_dic, toupdate)
     dyn.attach(save, interval = Qdump)
     if Qcalculator == "PhysNet": 
-      from calculator import calculator
+      #from calculator import calculator
       def updatephysnet():
         call_calculator()
         #all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
@@ -200,7 +200,9 @@ while not Qfollow_activated == 0:
     except Exception as e:
       from numpy import random
       positions = all_species.get_positions()
+      print("Here", flush = True)
       noise = random.normal(scale=0.01, size=positions.shape)
+      print("Here 2", flush = True)
       all_species.set_positions(positions + noise)
       call_calculator()
       print(str(e))

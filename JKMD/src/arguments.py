@@ -99,7 +99,8 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     
     Qsavepickle = 1
     Qseed = 42
-    Qrng = None
+    from numpy import random
+    Qrng = random
     Qout = 1 #output level. 0=only neccessary,1=yes,2=rich print
     Qfolder = ""
   
