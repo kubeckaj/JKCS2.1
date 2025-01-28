@@ -178,14 +178,22 @@ while not Qfollow_activated == 0:
         if Qconstraints != 0:
           toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
         cluster_dic = mergeDictionary(cluster_dic, toupdate)
-    dyn.attach(save, interval = Qdump)
+    if Qdump == 0:
+      save()
+    else:
+      dyn.attach(save, interval = Qdump)
     if Qcalculator == "PhysNet": 
       #from calculator import calculator
       def updatephysnet():
         call_calculator()
         #all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
       dyn.attach(updatephysnet, interval = 1)
-    #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
+  stepsmade = 0
+  def stepsmadeadd():
+    global stepsmade
+    stepsmade += 1
+  dyn.attach(stepsmadeadd, interval = 1)
+  #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
 
   #SIMULATION
   if 'current_step' in globals():
@@ -194,15 +202,13 @@ while not Qfollow_activated == 0:
     steps_before_sim = 0
   sim_errors = 0
   sim_last_error = -1
-  while current_step - steps_before_sim <= Qns:
+  while stepsmade < Qns:
     try:
-      dyn.run(Qns - (current_step - steps_before_sim))
+      dyn.run(Qns - stepsmade)
     except Exception as e:
       from numpy import random
       positions = all_species.get_positions()
-      print("Here", flush = True)
       noise = random.normal(scale=0.01, size=positions.shape)
-      print("Here 2", flush = True)
       all_species.set_positions(positions + noise)
       call_calculator()
       print(str(e))
@@ -229,6 +235,9 @@ while not Qfollow_activated == 0:
     if Qdump == 0:
       current_time = current_time + Qdt*Qns
       current_step = current_step + Qns
+    else:
+      current_time = current_time - Qdt*Qdump
+      current_step = current_step - Qdump
 
   if Qout == 2:
     print("Simulation round done.")

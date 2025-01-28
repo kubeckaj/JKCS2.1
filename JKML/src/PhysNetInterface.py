@@ -16,7 +16,7 @@ def training(Qforces,Y_train,F_train,D_dipole,Q_charge,Q_charges,strs,nn_atom_ba
   N = np.zeros([num], dtype=int) #Number of atoms
   E = np.zeros([num], dtype=float) #Potential energy with respect to atoms
   Q = np.zeros([num], dtype=float) #Total charge
-  Qa= np.zeros([num, Nmax], dtype=float) #TPartial charges
+  Qa= np.zeros([num, Nmax], dtype=float) #Partial charges
   D = np.zeros([num, 3], dtype=float) #Dipole 
   Z = np.zeros([num, Nmax], dtype=int) #Nuclear charges/atomic numbers of nuclei
   R = np.zeros([num, Nmax, 3], dtype=float) #Cartesian coordinates of nuclei
@@ -53,8 +53,8 @@ def training(Qforces,Y_train,F_train,D_dipole,Q_charge,Q_charges,strs,nn_atom_ba
       print("--num_residual_interaction=3", file=file)
       print("--num_residual_output=1", file=file)
       print("--cutoff="+str(nn_cutoff), file=file)
-      print("--use_electrostatic=1", file=file)
-      print("--use_dispersion=1", file=file)
+      print("--use_electrostatic=1", file=file) 
+      print("--use_dispersion=1", file=file) 
       print("--grimme_s6=0.5", file=file)
       print("--grimme_s8=0.2130", file=file)
       print("--grimme_a1=0.0", file=file)
@@ -63,7 +63,8 @@ def training(Qforces,Y_train,F_train,D_dipole,Q_charge,Q_charges,strs,nn_atom_ba
       print("--num_train="+str(round(nn_tvv*len(Y_train))), file=file)
       print("--num_valid="+str(round((1-nn_tvv)*len(Y_train))), file=file)
       print("--batch_size="+str(Qbatch_size), file=file)
-      print("--valid_batch_size="+str(Qbatch_size), file=file)
+      #print("--valid_batch_size="+str(Qbatch_size), file=file)
+      print("--valid_batch_size=202", file=file)#TODO: +str(Qbatch_size), file=file)
       print("--seed="+str(seed), file=file)
       print("--max_steps="+str(nn_epochs), file=file)
       print("--learning_rate="+str(Qlearningrate), file=file)
