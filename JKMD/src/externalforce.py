@@ -32,15 +32,14 @@ class ExternalForce:
         del atoms.constraints
         if self.qef == 'h_A':
           import numpy as np
-          pos = atoms[self.mfrom:self.mto].get_positions()
-          external_force = -self.k_ext*(pos - np.array([0,0,0]))
+          vec = atoms[self.mfrom:self.mto].get_positions() - np.array([0,0,0])
+          external_force = -self.k_ext*vec
         elif self.qef == 'fbh_A':
           import numpy as np
           def heaviside(x, x0=self.r0):
-            return 1 if np.linalg.norm(x-np.array([0,0,0])) >= x0 else 0
-          pos = atoms[self.mfrom:self.mto].get_positions()
-          external_force = - self.k_ext * heaviside(pos) * (1 - self.r0) * (pos - np.array([0,0,0]) 
-          #external_force = self.k_ext*np.array([heaviside(np.linalg.norm(np.array([0,0,0])-i)-self.r0)*(np.linalg.norm(np.array([0,0,0])-i)-self.r0)*(np.array([0,0,0])-i)/(np.linalg.norm(np.array([0,0,0])-i)+1e-8) for i in pos])
+            return 1 if np.linalg.norm(x, axis = 1) >= x0 else 0
+          vec = atoms[self.mfrom:self.mto].get_positions() - np.array([0,0,0])
+          external_force = - self.k_ext * heaviside(vec) * (vec - self.r0 * vec/np.linalg.norm(vec),axis=1) 
         elif self.qef == 'c_COM':
           import numpy as np
           masses = atoms[self.mfrom:self.mto].get_masses()
