@@ -180,7 +180,7 @@ then
     command="grep JKMD ../calc-LM_${distance}_v${version}/output"
     if [ $SKIP -gt 0 ]; then command+=" | awk '\$2 >= $SKIP'"; fi
     if [ $UPTO -gt 0 ]; then command+=" | awk '\$2 <= $UPTO'"; fi
-    command+=" | awk -v d=$distance -v kbias=$k_bias '{printf(\"%f %f %f %f\n\",\$3,\$14,d,kbias*4.184)}' | grep -v nan | column -t >> input.txt"
+    command+=" | awk -v d=$distance -v kbias=$k_bias '{printf(\"%s %s %s %.2f\n\",\$3,\$14,d,kbias*4.184)}' | grep -v nan | column -t >> input.txt"
     eval $command
   done
   done
