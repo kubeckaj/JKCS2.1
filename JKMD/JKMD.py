@@ -95,6 +95,8 @@ while not Qfollow_activated == 0:
   #SET CONSTRAINTS
   if len(constraints) > 0:
     all_species.set_constraint(constraints)
+    if Qout == 2:
+      print("CONSTRAINTS: "+str(constraints))
   
   #SET CALCULATOR
   if Qout == 2:
