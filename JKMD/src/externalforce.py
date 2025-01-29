@@ -39,7 +39,7 @@ class ExternalForce:
           def heaviside(x, x0=self.r0):
             return 1 if np.linalg.norm(x, axis = 1) >= x0 else 0
           vec = atoms[self.mfrom:self.mto].get_positions() - np.array([0,0,0])
-          external_force = - self.k_ext * heaviside(vec) * (vec - self.r0 * vec/np.linalg.norm(vec),axis=1) 
+          external_force = - self.k_ext * heaviside(vec).reshape(-1,1) * (vec - self.r0 * vec/np.linalg.norm(vec,axis=1).reshape(-1,1)) 
         elif self.qef == 'c_COM':
           import numpy as np
           masses = atoms[self.mfrom:self.mto].get_masses()
