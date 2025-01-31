@@ -167,6 +167,13 @@ then
   if [ -z "$versions" ]
   then
     versions=`ls -d ../calc-LM_* | xargs -n 1 | sed 's/_/ /' | sed 's/_v/ /' | awk '{print $3}' | sort -un | xargs`
+    if [ -z "$versions" ]
+    then
+      versions="just_one_version"
+      ver=""
+    else 
+      ver="_v"
+    fi
   fi
   k_bias=`tail -n 1 ../commands_TODO.txt | grep -oP '(?<="-k_bias" )\w+'`
   if [ -z "$k_bias" ]; then k_bias=100; fi
@@ -174,10 +181,11 @@ then
   do
   for version in $versions
   do
-    if [ ! -e ../calc-LM_${distance}_v${version} ]; then continue; fi
-    if [   -e ../calc-LM_${distance}_v${version}/error.pkl ]; then continue; fi
-    if [ ! -e ../calc-LM_${distance}_v${version}/output ]; then continue; fi
-    command="grep JKMD ../calc-LM_${distance}_v${version}/output"
+    if [ -z "$ver" ]; then veradd=""; else veradd="$ver${version}"; fi
+    if [ ! -e ../calc-LM_${distance}${veradd} ]; then continue; fi
+    if [   -e ../calc-LM_${distance}${veradd}/error.pkl ]; then continue; fi
+    if [ ! -e ../calc-LM_${distance}${veradd}/output ]; then continue; fi
+    command="grep JKMD ../calc-LM_${distance}${veradd}/output"
     if [ $SKIP -gt 0 ]; then command+=" | awk '\$2 >= $SKIP'"; fi
     if [ $UPTO -gt 0 ]; then command+=" | awk '\$2 <= $UPTO'"; fi
     command+=" | awk -v d=$distance -v kbias=$k_bias '{printf(\"%s %s %s %.2f\n\",\$3,\$14,d,kbias*4.184)}' | grep -v nan | column -t >> input.txt"

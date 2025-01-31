@@ -455,12 +455,12 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       for pop in range(len(clusters_df)):
         try:
           if Qclustername != 0:
-            allsameclusters = clusters_df.loc[clusters_df.loc[:,("info","cluster_type")]==clusters_df.loc[pop,("info","cluster_type")]]
+            allsameclusters = clusters_df.loc[clusters_df.loc[:,("info","cluster_type")]==clusters_df.iloc[pop].loc[("info","cluster_type")]]
           else: 
             allsameclusters = clusters_df
           if isnan(Qt):
             try:
-              Qt = float(clusters_df.loc[pop,("log","temperature")])
+              Qt = float(clusters_df.iloc[pop].loc[("log","temperature")])
             except:
               Qt = 298.15
           iii = clusters_df.iloc[pop]
