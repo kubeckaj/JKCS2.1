@@ -89,11 +89,25 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       from ase.data.vdw import vdw_radii
       import xlsxwriter
       from pandas import isna
+      from numpy import sum
       workbook = xlsxwriter.Workbook('imos.xlsx')
       bold = workbook.add_format({'bold': True,'fg_color': '#FFFF00', 'border':1})
       for ind in clusters_df.index:
-        if isna(clusters_df.loc[ind,("log","esp_charges")]):
-          print("Missing esp charges for "+clusters_df.loc[ind,("info","file_basename")])
+        if ("extra","esp_charges") in clusters_df.columns:
+          Qcol1 = "extra"
+          Qcol2 = "esp_charges"
+        elif ("extra","chelpg") in clusters_df.columns:
+          Qcol1 = "extra"
+          Qcol2 = "chelpg"
+        elif ("log","esp_charges") in clusters_df.columns: 
+          if not isna(clusters_df.loc[ind,("log","esp_charges")]):
+            Qcol1 = "log"
+            Qcol2 = "esp_charges"
+          else:
+            print("Missing esp charges for "+clusters_df.loc[ind,("info","file_basename")])
+            continue
+        else:
+          print("Missing eps_charges")
           continue
         clustername = clusters_df["info"]["file_basename"][ind]
         if len(clustername) > 30:
@@ -103,7 +117,10 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
         pos=clusters_df["xyz"]["structure"][ind].get_positions()
         mass=clusters_df["xyz"]["structure"][ind].get_masses()
         at=clusters_df["xyz"]["structure"][ind].get_atomic_numbers()
-        ch=clusters_df["log"]["esp_charges"][ind]
+        ch=clusters_df[Qcol1][Qcol2][ind]
+        if type(ch) == str:
+          import ast
+          ch = list(map(float, ast.literal_eval(ch)))
         row = 0
         for j in range(len(pos)):
           worksheet.write(row, 0, pos[j][0])
