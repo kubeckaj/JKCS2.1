@@ -3,76 +3,112 @@ import matplotlib.pyplot as plt
 import sys
 from scipy.linalg import eigh
 
-# Load the 2nd and 3rd columns (0-based index: column 1 and column 2)
-data = np.loadtxt('out', usecols=(0,1))
+# 0.238846 kJ/mol -> kcal/mol
+# 0.0433641153087705 kcal/mol -> eV
+
+print(" ----- Post-Processing ----- ")
+
+data = np.loadtxt('out', usecols=(0,1)) #Ang kJ/mol
 data = data[~np.isnan(data).any(axis=1)]
 
 plt.figure()
 plt.plot(data[:, 0], data[:, 1], marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
 plt.xlabel('coordinate')
 plt.ylabel('PMF (kJ/mol)')
-plt.savefig('plot.png')
+plt.savefig('PMF_3D_kJmol-1.png')
 
-data = np.column_stack((data[:, 0],+2*0.509/0.238848*np.log(data[:, 0]+0.00000001)+0.509/0.238848*np.log(4*3.14)+data[:, 1]))
-data = np.column_stack((data[:, 0],0.238846*0.0433641153087705*data[:, 1]))
-data = np.column_stack((data[:, 0],data[:, 1]-np.min(data[:, 1])))
+#from umbrellaintegration
+print("PIC: Histograms.png created.")
 
-min_index = np.argmin(data[:, 1])
-print(min_index)
+### 3D PMF ###
+data = np.loadtxt('out', usecols=(0,1)) #Ang kJ/mol
+data = data[~np.isnan(data).any(axis=1)]
+PMF_3D = np.column_stack((data[:, 0], 0.238846*0.0433641153087705*data[:, 1])) #Ang eV
 
-def model(w, a, b, depth):
-    return (1 - np.exp(-a * (w - b)))**2 * depth
-initial_guess = [1.0, 3, 3.0]
-
-from scipy.optimize import curve_fit
-
-popt, pcov = curve_fit(model, data[min_index:, 0], data[min_index:, 1]/0.0433641153087705, p0=initial_guess, bounds=(0, np.inf))
-a_opt, b_opt, depth_opt = popt
-
-print("")
-print("Fitted paramteres of function: (1 - np.exp(-a * (w - b)))**2 * depth")
-print("# a b depth")
-print(a_opt, b_opt, depth_opt)
-
-w_fit = np.linspace(min(data[min_index:, 0]), max(data[:, 0]), 100)
-y_fit = model(w_fit, *popt)
 plt.figure()
+plt.plot(PMF_3D[:, 0], PMF_3D[:, 1], marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
+plt.xlabel('coordinate')
+plt.ylabel('PMF (kcal/mol)')
+plt.savefig('PMF_3D_kcalmol-1.png')
+print("PIC: PMF_3D_kcalmol-1.png created.")
 
-plt.plot(data[:, 0], data[:, 1]/0.0433641153087705, marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
+### 1D PMF ###
+PMF_1D = np.column_stack((PMF_3D[:, 0], +2*0.592*0.0433641153087705*np.log(PMF_3D[:, 0])+PMF_3D[:, 1]))
+PMF_1D = np.column_stack((PMF_1D[:, 0], PMF_1D[:, 1]-np.min(PMF_1D[:, 1])))
+
+plt.figure()
+plt.plot(PMF_1D[:, 0], PMF_1D[:, 1]/0.0433641153087705, marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
+plt.xlabel('coordinate')
+plt.ylabel('PMF (kcal/mol)')
+plt.savefig('PMF_1D_kcalmol-1.png')
+print("PIC: PMF_1D_kcalmol-1.png created.")
+
+min_index = np.argmin(PMF_1D[:, 1]) #index
+print("MIN: Position of minimun has index: "+str(min_index))
+
+if 0==int(sys.argv[2]):
+  def model(w, a, b, depth):
+      return (1 - np.exp(-a * (w - b)))**2 * depth
+  initial_guess = [1.0, PMF_1D[min_index, 0], 3.0]
+  
+  from scipy.optimize import curve_fit
+  popt, pcov = curve_fit(model, PMF_1D[min_index:, 0], PMF_1D[min_index:, 1]/0.0433641153087705, p0=initial_guess, bounds=(0, np.inf))
+  a_opt, b_opt, depth_opt = popt #depth is in kcal/mol
+  print("FIT:Fitting parameters of function: (1 - np.exp(-a * (w - b)))**2 * depth")
+  print("FIT: a b depth = "+str(a_opt)+" "+str(b_opt)+" "+str(depth_opt))
+
+  w_fit = np.linspace(min(PMF_1D[min_index:, 0]), max(PMF_1D[:, 0]), 100)
+  y_fit = model(w_fit, *popt)
+else:
+  max_index = np.argmax(PMF_3D[min_index:, 1]) #index
+  def model(w,a):
+      return a
+  initial_guess = PMF_1D[(min_index+max_index), 1]/0.0433641153087705
+  from scipy.optimize import curve_fit
+  popt, pcov = curve_fit(model, PMF_1D[min_index+max_index:, 0], PMF_1D[min_index+max_index:, 1]/0.0433641153087705, p0=initial_guess, bounds=(0, np.inf))
+  depth_opt = popt[0] #depth is in kcal/mol
+  print("FIT:Fitting parameters of function: depth")
+  print("FIT: depth = "+str(depth_opt))
+  w_fit = np.linspace(min(PMF_1D[(min_index+max_index):, 0]), max(PMF_1D[:, 0]), 100)
+  y_fit = model(w_fit, np.array([depth_opt]*100))
+
+plt.figure()
+plt.plot(PMF_1D[:, 0], PMF_1D[:, 1]/0.0433641153087705, marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
 plt.plot(w_fit, y_fit, color='red', label='Fitted curve')
 plt.xlabel('coordinate')
 plt.ylabel('PMF (kcal/mol)')
-plt.savefig('plot4PiR.png')
+plt.savefig('FITTED.png')
+print("PIC: FITTED.png created.")
 
-V0 = 8.314*298.15/101325*10**30/6.022/10**23
-mult=int(sys.argv[1])
+V0 = 8.314*298.15/101325*10**30/6.022/10**23 #Ang^3
+mult=int(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwise 1
 
-oo = np.column_stack((data[:, 0], np.exp(-data[:, 1]/0.0433641153087705/0.509)*4*3.14*data[:, 0]**2*(data[1, 0]-data[0, 0])))
-tab = np.array([np.array([oo[i,0], -0.509*np.log(0.0000001+np.sum(np.exp(depth_opt/0.509)/V0*oo[1:i,1]/mult))]) for i in range(1, len(oo))])
+ddx = PMF_1D[1, 0] - PMF_1D[0, 0]
+oo = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/0.0433641153087705/0.592)*4*3.14*PMF_1D[:, 0]**2*ddx))
+tab = np.array([np.array([oo[i,0], -0.592*np.log(0.0000001+np.sum(np.exp(depth_opt/0.592)/V0*oo[1:i,1]/mult))]) for i in range(1, len(oo))])
 
 plt.figure()
 plt.plot(tab[:, 0], tab[:, 1], marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
 plt.xlabel('coordinate')
 plt.ylabel('dG (kcal/mol)')
-plt.savefig('plotdG.png')
+plt.savefig('dG_convergence.png')
+print("PIC: dG_convergence.png created.")
 
-print("")
-print("dG =")
-print(tab[-1, 1])
+print("\ndG = "+str(tab[-1, 1])+" kcal/mol\n")
 
 ###########################################
 #####  SOLVIND SCHRODINGER 1D #############
 ###########################################
 
 try:
-  M1=float(sys.argv[2])
-  M2=float(sys.argv[3])
+  M1=float(sys.argv[3])
+  M2=float(sys.argv[4])
 except:
   print("QC not possible to solve. I need commands_TODO.txt file for it")
   exit()
 
-x_angstrom = data[:,0]
-V_kjmol = data[:,1]/0.0433641153087705/0.238846
+x_angstrom = PMF_1D[:,0]
+V_kjmol = PMF_1D[:,1]/0.0433641153087705/0.238846
 
 # Constants for unit conversion
 angstrom_to_bohr = 1.88973           # 1 Å = 1.88973 Bohr radii

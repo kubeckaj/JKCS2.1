@@ -170,7 +170,7 @@ while not Qfollow_activated == 0:
 
     init(current_time,current_step)
     #global cluster_dic
-    if current_step == 0:
+    if "cluster_dic" not in globals(): #current_step == 0:
       cluster_dic = {}
     def save(fail = False):
       global cluster_dic,current_time,current_step
@@ -203,10 +203,17 @@ while not Qfollow_activated == 0:
   else:
     steps_before_sim = 0
   sim_errors = 0
+  sim_tot_errors = 0
   sim_last_error = -1
   while stepsmade < Qns:
     try:
       dyn.run(Qns - stepsmade)
+      if Qdump == 0:
+        current_time = current_time + Qdt*Qns
+        current_step = current_step + Qns
+      else:
+        current_time = current_time - Qdt*Qdump
+        current_step = current_step - Qdump
     except Exception as e:
       from numpy import random
       positions = all_species.get_positions()
@@ -215,11 +222,15 @@ while not Qfollow_activated == 0:
       call_calculator()
       print(str(e))
       print("Something got screwed up within the dyn.run(Qns). Small adjustment to the structure!!!")
+      sim_tot_errors += 1
       if current_step == sim_last_error:
         sim_errors += 1
       else:
         sim_errors = 1
         sim_last_error = current_step
+      if sim_tot_errors > 20:
+        print("Too many errors in the simulation. Exiting.")
+        exit()
       if sim_errors == 4:
         if "cluster_dic" not in globals():
           print("I have nothing to save as the run failed immediately.")
@@ -234,12 +245,6 @@ while not Qfollow_activated == 0:
           clusters_df = DataFrame(cluster_dic)
           clusters_df.to_pickle(Qfolder+"/error.pkl")
         exit()
-    if Qdump == 0:
-      current_time = current_time + Qdt*Qns
-      current_step = current_step + Qns
-    else:
-      current_time = current_time - Qdt*Qdump
-      current_step = current_step - Qdump
 
   if Qout == 2:
     print("Simulation round done.")
