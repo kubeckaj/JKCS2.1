@@ -7,32 +7,21 @@ def compare_pair(arg):
 def numerical_derivative(func, atoms, epsilon=1e-2):
     """
     Compute numerical derivatives using finite differences.
-    :param func: Function that takes positions and returns a scalar (e.g., RMSD)
+    :param func: Function that takes atoms and returns a scalar (e.g., RMSD)
     :param positions: np.ndarray of shape (N, 3), atomic positions
     :param epsilon: Small step for finite differences
     :return: np.ndarray of shape (N, 3), numerical gradient
     """
     import numpy as np
-    print(atoms.get_positions())
     gradient = np.zeros_like(atoms.get_positions())
-    print("GRADIENT") 
-    print(gradient)
-    print("LOOP") 
-    print(len(gradient))
+    here = func(atoms)
     for i in range(len(gradient)):  # Loop over atoms
         for j in range(3):  # Loop over x, y, z coordinates
             atoms_forward = atoms.copy()
-            atoms_backward = atoms.copy()
             positions_forward = atoms.get_positions()
-            positions_backward = atoms.get_positions()
             positions_forward[i, j] += epsilon
-            positions_backward[i, j] -= epsilon
             atoms_forward.set_positions(positions_forward)
-            atoms_backward.set_positions(positions_backward)
-            print(func(atoms_forward)) 
-            gradient[i, j] = (func(atoms_forward) - func(atoms_backward)) / (2 * epsilon)
-    print("GRADIENT") 
-    print(gradient) 
+            gradient[i, j] = (func(atoms_forward) - here) / epsilon
     return gradient
 
 class RMSDConstraint:

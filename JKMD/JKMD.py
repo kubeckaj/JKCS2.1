@@ -111,7 +111,7 @@ while not Qfollow_activated == 0:
     print("Setting calculator.")
   def call_calculator():
     from calculator import calculator
-    all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
+    all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species,Qmixer_damping)
   call_calculator()
   if Qout == 2:
     print(all_species)

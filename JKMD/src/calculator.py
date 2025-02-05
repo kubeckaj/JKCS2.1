@@ -1,4 +1,4 @@
-def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms):
+def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms, Qmixer_damping):
 
 # TODO
 ### 792 /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
@@ -18,14 +18,14 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN1-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0) #, initial_guess = "eeq")
+    return TBLite(method="GFN1-xTB", cache_api=True, charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0, mixer_damping = Qmixer_damping) #, initial_guess = "eeq")
 
   elif Qcalculator == "XTB2":
     #if Qcharge != 0:
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN2-xTB", charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0)
+    return TBLite(method="GFN2-xTB", cache_api=True, charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0, mixer_damping = Qmixer_damping)
 
   ### XTB ###
   elif Qcalculator == "XTB":

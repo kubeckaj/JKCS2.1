@@ -31,14 +31,15 @@ def print_help():
     -slow <int>       linearly increases the US potential in <int> steps [default = 0]
  
   CALCULATOR
-    -xtb1            GFN1-xTB {TBlite} [set as default]
-    -xtb2            GFN2-xTB {TBlite}
-    -xtb "<str>"     xtb method (e.g., GFN1-xTB, GFNFF) {XTB}
-    -nn_model <path> Neural Network model defined by path {SchNetPack}
-    -pn_model <path> Neural Network model defined by path {PhysNet_DER} [requires input.inp too]
-    -orca "<str>"    QC method (e.g., "XTB1" or "B97-3c") {ORCA}
-                     -additional setup might be required!!!
-    -max_iter <int>  maximum number of SCF iterations (e.g., 50) [default = 250] {TBlite}
+    -xtb1             GFN1-xTB {TBlite} [set as default]
+    -xtb2             GFN2-xTB {TBlite}
+    -xtb "<str>"      xtb method (e.g., GFN1-xTB, GFNFF) {XTB}
+    -nn_model <path>  Neural Network model defined by path {SchNetPack}
+    -pn_model <path>  Neural Network model defined by path {PhysNet_DER} [requires input.inp too]
+    -orca "<str>"     QC method (e.g., "XTB1" or "B97-3c") {ORCA}
+                      -additional setup might be required!!!
+    -max_iter <int>   maximum number of SCF iterations (e.g., 50) [default = 250] {TBlite}
+    -mix_damp <float> mixer damping (e.g., 0.1) [default = 0.4] {TBlite}
 
   THERMOSTAT:
     -vv                  Velocity Verlet [set as default]
@@ -116,6 +117,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qcalculator = "XTB1"
     Qcalculator_input = ""
     Qcalculator_max_iterations = 250
+    Qmixer_damping = 0.4
    
     #THERMOSTAT AND SIMULATION
     Qdt = 1    #timestep
@@ -274,6 +276,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-max_iter":
       last = ""
       Qcalculator_max_iterations = int(i)
+      continue
+    if i == "-mix_damp":
+      last = "-mix_damp"
+      continue
+    if last == "-mix_damp":
+      last = ""
+      Qmixer_damping = float(i)
       continue
 
     #SPECIES
