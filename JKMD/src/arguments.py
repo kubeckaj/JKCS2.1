@@ -505,18 +505,21 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     #CONSTRAINTS
     if i == "-harm":
       last = "-harm" 
+      Qconstraints = 1
       continue
     if last == "-harm":
       last = ""
-      Qconstraints = 1
       Qharm = float(i)
+      continue
+    if i == "-rmsd":
+      last = "-harm"
+      Qconstraints = 2
       continue
     if i == "-k_bias":
       last = "-k_bias"
       continue
     if last == "-k_bias":
       last = ""
-      Qconstraints = 1
       Qk_bias = float(i)
       continue
     if i == "-distout":

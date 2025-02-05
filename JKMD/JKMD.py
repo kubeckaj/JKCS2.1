@@ -36,6 +36,7 @@ print("""
 current_time = 0
 current_step = 0
 
+
 #READ ARGUMENTS
 from arguments import arguments
 Qfollow_activated = -1
@@ -71,7 +72,14 @@ while not Qfollow_activated == 0:
       exit()
     from umbrellaconstraint import UmbrellaConstraint
     constraints.append(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm,Qslow))
-    Qconstraints = 2
+    Qconstraints = 3
+  if Qconstraints == 2:
+    if len(species) != 1:
+      print("Nice try. The RMSD part of JKMD is yet not ready for your jokes.")
+      exit()
+    from rmsdconstraint import RMSDConstraint
+    constraints.append(RMSDConstraint(all_species,Qk_bias,Qharm,Qslow))
+    Qconstraints = 4
   if Qdistance == 1:
     if len(species) != 2:
       print("Nice try. The -distout part of JKMD is yet not ready for your jokes.")
