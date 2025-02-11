@@ -5,6 +5,8 @@ from scipy.linalg import eigh
 
 # 0.238846 kJ/mol -> kcal/mol
 # 0.0433641153087705 kcal/mol -> eV
+kB = 0.00008617333262 #eV/K
+kBT = 300*kB #eV
 
 print(" ----- Post-Processing ----- ")
 
@@ -33,7 +35,7 @@ plt.savefig('PMF_3D_kcalmol-1.png')
 print("PIC: PMF_3D_kcalmol-1.png created.")
 
 ### 1D PMF ###
-PMF_1D = np.column_stack((PMF_3D[:, 0], +2*0.592*0.0433641153087705*np.log(PMF_3D[:, 0])+PMF_3D[:, 1]))
+PMF_1D = np.column_stack((PMF_3D[:, 0], +2*kBT*np.log(PMF_3D[:, 0])+PMF_3D[:, 1]))
 PMF_1D = np.column_stack((PMF_1D[:, 0], PMF_1D[:, 1]-np.min(PMF_1D[:, 1])))
 
 plt.figure()
@@ -84,8 +86,8 @@ V0 = 8.314*298.15/101325*10**30/6.022/10**23 #Ang^3
 mult=int(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwise 1
 
 ddx = PMF_1D[1, 0] - PMF_1D[0, 0]
-oo = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/0.0433641153087705/0.592)*4*3.14*PMF_1D[:, 0]**2*ddx))
-tab = np.array([np.array([oo[i,0], -0.592*np.log(0.000000001+np.sum(np.exp(depth_opt/0.592)/V0*oo[1:i,1]/mult))]) for i in range(1, len(oo))])
+oo = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/kBT)*4*3.14*PMF_1D[:, 0]**2*ddx))
+tab = np.array([np.array([oo[i,0], -kBT/0.0433641153087705*np.log(0.000000001+np.sum(np.exp(depth_opt/kBT/0.0433641153087705)/V0*oo[1:i,1]/mult))]) for i in range(1, len(oo))])
 
 plt.figure()
 plt.plot(tab[:, 0], tab[:, 1], marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
