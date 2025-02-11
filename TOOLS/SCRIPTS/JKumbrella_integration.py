@@ -87,7 +87,7 @@ mult=int(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwis
 
 ddx = PMF_1D[1, 0] - PMF_1D[0, 0]
 oo = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/kBT)*4*3.14*PMF_1D[:, 0]**2*ddx))
-tab = np.array([np.array([oo[i,0], -kBT/0.0433641153087705*np.log(0.000000001+np.sum(np.exp(depth_opt/kBT/0.0433641153087705)/V0*oo[1:i,1]/mult))]) for i in range(1, len(oo))])
+tab = np.array([np.array([oo[i,0], -kBT/0.0433641153087705*np.log(0.000000001+np.sum(np.exp(depth_opt/kBT*0.0433641153087705)/V0*oo[1:i,1]/mult))]) for i in range(1, len(oo))])
 
 plt.figure()
 plt.plot(tab[:, 0], tab[:, 1], marker='.', linestyle='-', color='b', label='Column 2 vs Column 3')
