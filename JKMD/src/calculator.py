@@ -63,18 +63,10 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
           ".*which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling.*"
       )
     return SpkCalculator(
-        #model_file="/home/kubeckaj/ML_TEST/NN2/T5_MD/T3_RPMDaLAN/model.pkl",
-        #model_file="model.pkl",
-        #model_file="/home/kubeckaj/PROJECT_NN/MORTEN_SA_AM_CORRECT/TRAIN_FULL_42_i400/model.pkl",
-        #model_file="/home/kubeckaj/ML_TEST/NN2/T6_understandin_1k/T06_FINAL_TRAINING/TRAIN_FULL_42_i400/model.pkl",
-        #model_file="/home/kubeckaj/ML_TEST/NN2/T7_CCSDT/TRAIN_ML_0-5w/RUN7/model.pkl",
-        #model_file="/home/kubeckaj/ML_TEST/NN2/XTB/ML-TRAIN/model.pkl",
-        #model_file="/home/kubeckaj/ML_TEST/NN2/T7_CCSDT/TRAIN_ML_0-1sa0-6w/model.pkl",
-        #model_file="/home/kubeckaj/ML_TEST/NN2/T6_understandin_1k/T06_FINAL_TRAINING/TRAIN_FULL_42_B97-3c_i400/model.pkl",
         model_file = Qcalculator_input,
         device="cpu",
-        #neighbor_list=spk.transform.ASENeighborList(cutoff=10.0),
-        neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0), #,cutoff_shell=2.0),
+        neighbor_list=spk.transform.ASENeighborList(cutoff=10.0),
+        #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0), #,cutoff_shell=2.0),
         #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
         energy_key='energy',
         force_key='forces',

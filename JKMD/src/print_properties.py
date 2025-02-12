@@ -35,6 +35,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
   T_temp = species_copy.get_temperature()
   Stationary(species_copy, False)
   T_com = species_copy.get_temperature()
+  #TODO
   ZeroRotation(species_copy, False)
   T_rotate = species_copy.get_temperature()
   T_tr =  len(species_copy)*(T_temp-T_com)

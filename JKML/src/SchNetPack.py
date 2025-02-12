@@ -1,7 +1,7 @@
 #####################################################################################################
 #####################################################################################################
 
-def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_rbf,Qrepresentation,nn_atom_basis,nn_interactions,Qbatch_size,Qlearningrate,parentdir,seed,varsoutfile,Qearlystop,nn_epochs,Qcheckpoint,Qtime):
+def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_rbf,Qrepresentation,nn_atom_basis,nn_interactions,Qbatch_size,Qlearningrate,parentdir,seed,varsoutfile,Qearlystop,nn_epochs,Qcheckpoint,Qtime,Qifcharges,Q_charges,Qifdipole,D_dipole):
 
   print("JKML(SchNetPack): Load quite heavy SchNetPack libraries.")
   from schnetpack.data import ASEAtomsData
@@ -27,7 +27,7 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
   pl.seed_everything(seed)
 
 
-  print("JKML: Setting up NN.")
+  print("JKML(SchNetPack): Setting up SchNetPack.", flush=True)
 
   if 1==1:
     import warnings
@@ -52,7 +52,34 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
     )
 
   # PREPARING TRAINING DATABASE
-  print("JKML(SchNetPack): Adjusting training database for SchNetPack.")
+  print("JKML(SchNetPack): Adjusting training database for SchNetPack.", flush=True)
+  #D_dipole = np.array([np.array(i)[0] for i in D_dipole])
+  
+  if Qifdipole == 1:
+    from src.JKelectrostatics import compute_energies_forces
+    from src.JKdispersions import compute_d4_energy_forces
+    #print(D_dipole)
+    D_dipole = []
+    for i in range(0,len(Q_charges)):
+      Dx = 0
+      Dy = 0
+      Dz = 0
+      #dipole moment
+      Q_charges_tmp = Q_charges[i] 
+      R_tmp = strs.values[i].get_positions()
+      Ntmp = len(Q_charges_tmp)
+      for k in range(0,Ntmp):
+          Dx += Q_charges_tmp[k]*(R_tmp[k][0])
+          Dy += Q_charges_tmp[k]*(R_tmp[k][1])
+          Dz += Q_charges_tmp[k]*(R_tmp[k][2])
+      D_dipole.append(list([Dx, Dy, Dz]))
+      
+      electrostatics_E, electrostatics_F = compute_energies_forces(strs.values[i].get_positions(), Q_charges[i])
+      dispersions_E, dispersions_F = compute_d4_energy_forces(strs.values[i].get_positions(), symbols = np.array(strs.values[i].get_chemical_symbols()), totalcharge = 0)
+      Y_train[i] -= electrostatics_E + dispersions_E
+      print(f"JKML(SchNetPack): {Y_train[i]} {electrostatics_E} {dispersions_E}")
+      F_train[i] -= electrostatics_F + dispersions_F
+
   temperary_file_name = "training.db"
   if os.path.exists(temperary_file_name):
       os.remove(temperary_file_name)
@@ -67,7 +94,36 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
                     Y_train]
       target_properties = [spk.properties.energy]
       tradoffs = [1]
-
+  elif Qifdipole == 1: #DOES NOT WORK
+      new_dataset = ASEAtomsData.create(temperary_file_name,
+                                        distance_unit='Ang',
+                                        property_unit_dict={'energy': 'eV', 'forces': 'eV/Ang',
+                                                            'total_charge': 'e', 'dipole_moment': 'e*Ang'},
+                                        atomrefs={'energy': [0] * 100}
+                                        )
+      properties = [{'energy': 27.2107 * np.array([Y_train[i]]), 'forces': 27.2114 * np.array(F_train[i]),
+                     'total_charge': np.array([0], dtype=np.float32), 'dipole_moment': np.array([D_dipole[i]], dtype=np.float32)} for i in range(len(Y_train))]
+      target_properties = [spk.properties.energy, spk.properties.forces, spk.properties.dipole_moment]
+      tradoffs = [Qenergytradoff, 1, Qenergytradoff]
+  elif Qifdipole == 1: #DOES NOT WORK
+      new_dataset = ASEAtomsData.create(temperary_file_name,
+                                        distance_unit='Ang',
+                                        property_unit_dict={'total_charge': 'e', 'dipole_moment': 'e*Ang'}
+                                        )
+      properties = [{'total_charge': np.array([0], dtype=np.float32), 'dipole_moment': np.array(D_dipole[i], dtype=np.float32)} for i in range(len(Y_train))]
+      target_properties = [spk.properties.dipole_moment]
+      tradoffs = [1]
+  elif Qifcharges == 1: #DOES NOT WORK
+      new_dataset = ASEAtomsData.create(temperary_file_name,
+                                        distance_unit='Ang',
+                                        property_unit_dict={'energy': 'eV', 'forces': 'eV/Ang',
+                                                            'total_charge': 'e', 'partial_charges': 'e'},
+                                        atomrefs={'energy': [0] * 100}
+                                        )
+      properties = [{'energy': 27.2107 * np.array([Y_train[i]]), 'forces': 27.2114 * np.array(F_train[i]),
+                     'total_charge': np.array([0], dtype=np.float32), 'partial_charges': np.array(Q_charges[i], dtype=np.float32)} for i in range(len(Y_train))]
+      target_properties = [spk.properties.energy, spk.properties.forces, spk.properties.partial_charges]
+      tradoffs = [Qenergytradoff, 1, 1]
   else:
       new_dataset = ASEAtomsData.create(temperary_file_name,
                                         distance_unit='Ang',
@@ -150,7 +206,10 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       elif p == spk.properties.forces:
           pred = spk.atomistic.Forces(energy_key=spk.properties.energy, force_key=spk.properties.forces)
       elif p == spk.properties.dipole_moment:
-          pred = spk.atomistic.DipoleMoment(n_in=nn_atom_basis, return_charges=True)
+          print(p)
+          pred = spk.atomistic.DipoleMoment(n_in=nn_atom_basis, return_charges=True) #, use_vector_representation = True)
+      elif p == spk.properties.partial_charges:
+          pred = spk.atomistic.Atomwise(n_in=nn_atom_basis, output_key=p)
       else:
           raise NotImplementedError(f'{p} property does not exist')
 
@@ -167,6 +226,8 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       output_losses.append(loss)
 
       # MODEL (this could be for instance also Atomistic Model)
+  #print(output_modules)
+  #print(output_losses)
   nnpot = spk.model.NeuralNetworkPotential(
       representation=X_train,
       input_modules=[pairwise_distance],
@@ -293,12 +354,19 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
 #####################################################################################################
 #####################################################################################################
 
-def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin):
+def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin,Qifcharges):
 
   from schnetpack.interfaces import SpkCalculator
   from torch import cuda
   import schnetpack.transform as trn
   from numpy import array
+
+  if 1==1:
+    import warnings
+    warnings.filterwarnings(
+        "ignore",
+        ".*which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling.*"
+    )
 
   if cuda.is_available():
       device = 'cuda'
@@ -317,7 +385,19 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin):
           energy_unit="eV",  # YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
           position_unit="Ang",
       )
-
+  elif Qifcharges == 1:
+      spk_calc = SpkCalculator(
+          model_file=varsoutfile,
+          device=device,
+          neighbor_list=trn.ASENeighborList(cutoff=nn_cutoff),
+          # neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0),
+          # transforms=spk.transform.atomistic.SubtractCenterOfMass(),
+          energy_key='energy',
+          energy_unit="eV",  # YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
+          position_unit="Ang",
+          #dipole_key="dipole_moment",
+	  #dipole_unit="e*Ang",
+      )
   else:
       spk_calc = SpkCalculator(
           model_file=varsoutfile,
@@ -334,15 +414,29 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin):
 
   Y_predicted = []
   F_predicted = []
+  Q_predicted = []
   for i in range(len(clusters_df)):
       atoms = clusters_df["xyz"]["structure"].values[i].copy()
       atoms.calc = spk_calc
-      Y_predicted.append(atoms.get_potential_energy())
-      if Qforces == 1:
+      if Qifcharges == 1:
+        from src.JKelectrostatics import compute_energies_forces
+        from src.JKdispersions import compute_d4_energy_forces
+        internal_E = atoms.get_potential_energy()
+        internal_F = atoms.get_forces()
+        Q_charges_i = spk_calc.model_results['partial_charges'].detach().numpy()
+        Q_predicted.append(Q_charges_i)
+        electrostatics_E, electrostatics_F = compute_energies_forces(atoms.get_positions(), Q_charges_i)
+        dispersions_E, dispersions_F = compute_d4_energy_forces(atoms.get_positions(), symbols = array(atoms.get_chemical_symbols()), totalcharge = 0)
+        print(f"JKML(SchNetPack): {0.0367493 * internal_E} {electrostatics_E} {dispersions_E}")
+        Y_predicted.append(0.0367493 * internal_E + electrostatics_E + dispersions_E)
+        F_predicted.append(0.0367493 * internal_F + electrostatics_F + dispersions_F)
+      else:
+        Y_predicted.append(0.0367493 * atoms.get_potential_energy())
+        if Qforces == 1:
           F_predicted.append(0.0367493 * atoms.get_forces())  # Hartree/Ang
 
   if Qforces == 1:
-      Y_predicted = [0.0367493 * array(Y_predicted)]  # Hartree
+      Y_predicted = [array(Y_predicted)]  # Hartree
       F_predicted = [F_predicted]
   else:
       Y_predicted = [array(Y_predicted)]
@@ -350,7 +444,7 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin):
   if method == "min":
       Y_predicted[0] += Qmin
 
-  return Y_predicted, F_predicted
+  return Y_predicted, F_predicted, Q_predicted
 
 #####################################################################################################
 #####################################################################################################

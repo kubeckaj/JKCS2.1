@@ -46,7 +46,8 @@ class RMSDConstraint:
         #print(CS)
         del atoms.constraints
         rmsd = compare_pair(atoms)
-        bias_en = 0.5*self.k*(rmsd-self.r)**2
+        #TODO: testing some stupid adjustment
+        bias_en = 0.5*self.k*(rmsd-self.r-rmsd/(self.step+1)**0.5)**2
         print("RMSD: " + str(compare_pair(atoms)) + " Bias energy: " + str(bias_en * 23.0609) + " kcal/mol")
         #print(bias_en)
         atoms.set_constraint(CS)

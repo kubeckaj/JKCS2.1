@@ -2,7 +2,7 @@ def flatten(matrix):
   from numpy import array
   return array([item for row in matrix for item in row])
 
-def print_results(clusters_df, Y_predicted, Y_validation, F_predicted, F_test, ens, ens_correction, form_ens, ens2, ens2_correction, form_ens2, method, Qeval, Qforces, Qwolfram, Qprintforces, outfile, sampleeach_i, Qsampleeach, column_name_1, column_name_2, clustersout_df, sigmas):
+def print_results(clusters_df, Y_predicted, Y_validation, F_predicted, F_test, ens, ens_correction, form_ens, ens2, ens2_correction, form_ens2, method, Qeval, Qforces, Qwolfram, Qprintforces, outfile, sampleeach_i, Qsampleeach, column_name_1, column_name_2, clustersout_df, sigmas, Qcharge, Q_charges, Qa_predicted):
 
   from numpy import array, isnan, mean, std, abs, sqrt, median    
   
@@ -93,6 +93,16 @@ def print_results(clusters_df, Y_predicted, Y_validation, F_predicted, F_test, e
       print("MAE = " + ",".join([str(i) for i in mae])+units+"(+- "+str(std[0])+" )", flush = True)
       rmse = [multiplier*sqrt(mean(abs(flatten(F_predicted[i]) - flatten(F_test))**2))  for i in range(len(sigmas))]
       print("RMSE = " + ",".join([str(i) for i in rmse])+units, flush = True)
+
+    if Qcharge == 1:
+      print("", flush = True)
+      print("Results for charges:", flush = True)
+      Qa_predicted = flatten(array([flatten(array(i)) for i in Qa_predicted]))
+      Q_charges = flatten(array([array(i) for i in Q_charges]))
+      mae = [mean(abs(Qa_predicted - Q_charges))]
+      print("MAE = " + ",".join([str(i) for i in mae])+" e", flush = True)
+      rmse = [sqrt(mean(abs(Qa_predicted - Q_charges)**2))]
+      print("RMSE = " + ",".join([str(i) for i in rmse])+" e", flush = True)
 
     if err > 0:
       Y_predicted = Y_predicted_rem

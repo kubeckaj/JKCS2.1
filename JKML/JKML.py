@@ -91,7 +91,7 @@ for sampleeach_i in sampleeach_all:
     #####################################
     elif Qmethod == "nn":
       from src.SchNetPack import training
-      training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_rbf,Qrepresentation,nn_atom_basis,nn_interactions,Qbatch_size,Qlearningrate,parentdir,seed,varsoutfile,Qearlystop,nn_epochs,Qcheckpoint,Qtime)
+      training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_rbf,Qrepresentation,nn_atom_basis,nn_interactions,Qbatch_size,Qlearningrate,parentdir,seed,varsoutfile,Qearlystop,nn_epochs,Qcheckpoint,Qtime,Qifcharges,Q_charges,Qifdipole,D_dipole)
     ###################################
     elif Qmethod == "physnet":
       from src.PhysNetInterface import training
@@ -145,8 +145,8 @@ for sampleeach_i in sampleeach_all:
     ### DATABASE LOADING ###
     print("JKML is preparing things for testing/evaluation.")
     from src.data import prepare_data_for_testing as prepare_data
-    #returns: Qforces
-    locals().update(prepare_data(test_high_database,test_low_database,monomers_high_database,monomers_low_database,Qsampleeach,sampleeach_i,method,size,seed,column_name_1,column_name_2,Qeval,Qifforces,Qmonomers,Qmin,Qprintforces))
+    #returns: Qforces, Q_charges, Qcharge
+    locals().update(prepare_data(test_high_database,test_low_database,monomers_high_database,monomers_low_database,Qsampleeach,sampleeach_i,method,size,seed,column_name_1,column_name_2,Qeval,Qifforces,Qmonomers,Qmin,Qprintforces,Qifcharges))
 
     #####################################
     print("JKML is starting the testing/evaluation.")
@@ -155,14 +155,16 @@ for sampleeach_i in sampleeach_all:
       Y_predicted = evaluate(Qrepresentation,krr_cutoff,X_train,sigmas,alpha,strs,Qkernel)
       Qforces = 0
       F_predicted = None
+      Qa_predicted = None
     #####################################
     elif Qmethod == "nn":
       from src.SchNetPack import evaluate
-      Y_predicted, F_predicted = evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin)
+      Y_predicted, F_predicted, Qa_predicted = evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin,Qifcharges)
     #####################################
     elif Qmethod == "physnet":
       from src.PhysNetInterface import evaluate
       Y_predicted, F_predicted = evaluate(varsoutfile,clusters_df,method,Qmin)
+      Qa_predicted = None
     #####################################
     else:
       print("JKML: Wrong method or representation chosen.")
@@ -171,7 +173,7 @@ for sampleeach_i in sampleeach_all:
 
     ### PRINTING THE RESULTS
     from src.print_output import print_results
-    print_results(clusters_df, Y_predicted, Y_validation, F_predicted, F_test, ens, ens_correction, form_ens, ens2, ens2_correction, form_ens2, method, Qeval, Qforces, Qwolfram, Qprintforces, outfile, sampleeach_i, Qsampleeach, column_name_1, column_name_2, clustersout_df, sigmas)
+    print_results(clusters_df, Y_predicted, Y_validation, F_predicted, F_test, ens, ens_correction, form_ens, ens2, ens2_correction, form_ens2, method, Qeval, Qforces, Qwolfram, Qprintforces, outfile, sampleeach_i, Qsampleeach, column_name_1, column_name_2, clustersout_df, sigmas, Qcharge, Q_charges, Qa_predicted)
 
 ####################################################################################################
 ####################################################################################################

@@ -564,6 +564,17 @@ def arguments(argument_list=[]):
             Qmethod = "nn"
             Qrepresentation = "painn"
             continue
+        if arg == "-painn_EFQ":
+            Qmethod = "nn"
+            Qrepresentation = "painn"
+            Qifcharges = 1
+            continue
+        if arg == "-painn_EFD":
+            Qmethod = "nn"
+            Qrepresentation = "painn"
+            Qifdipole = 1
+            Qifcharges = 1
+            continue
         if arg == "-schnet":
             Qmethod = "nn"
             Qrepresentation = "schnet"

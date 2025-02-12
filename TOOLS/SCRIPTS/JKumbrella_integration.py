@@ -6,7 +6,8 @@ from scipy.linalg import eigh
 # 0.238846 kJ/mol -> kcal/mol
 # 0.0433641153087705 kcal/mol -> eV
 kB = 0.00008617333262 #eV/K
-kBT = 300*kB #eV
+temp = 300 #K
+kBT = temp*kB #eV
 
 print(" ----- Post-Processing ----- ")
 
@@ -82,7 +83,9 @@ plt.ylabel('PMF (kcal/mol)')
 plt.savefig('FITTED.png')
 print("PIC: FITTED.png created.")
 
-V0 = 8.314*298.15/101325*10**30/6.022/10**23 #Ang^3
+V0 = 8.314*temp/(6.022*10**23)/101325*10**30 #Ang^3
+print("V0 = "+str(V0)+" Ang^3")
+print("L0 = "+str((3/4/3.14*V0)**(1/3))+" Ang")
 mult=int(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwise 1
 
 ddx = PMF_1D[1, 0] - PMF_1D[0, 0]

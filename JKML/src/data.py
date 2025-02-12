@@ -157,7 +157,7 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
 ###########################################################################################
 ###########################################################################################
 
-def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_database,monomers_low_database,Qsampleeach,sampleeach_i,method,size,seed,column_name_1,column_name_2,Qeval,Qifforces,Qmonomers,Qmin,Qprintforces):
+def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_database,monomers_low_database,Qsampleeach,sampleeach_i,method,size,seed,column_name_1,column_name_2,Qeval,Qifforces,Qmonomers,Qmin,Qprintforces,Qifcharges):
 
   from sklearn.model_selection import train_test_split
 
@@ -209,6 +209,30 @@ def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_
   else:
     F_test = None
     Qforces = 0
+
+  ### CHARGE
+  if ("log","charge") in clusters_df.columns and ("log","mulliken_charges") in clusters_df.columns and Qifcharges == 1:
+    Q_charge = clusters_df["log"]["charge"].values
+    Q_charges = clusters_df["log"]["mulliken_charges"].values
+    Qcharge = 1
+  elif ("log","charge") in clusters_df.columns and Qifcharges == 1:
+    Q_charge = clusters_df["log"]["charge"].values
+    Q_charges = None
+    Qcharge = 0
+  elif ("log","mulliken_charges") in clusters_df.columns and Qifcharges == 1:
+    from numpy import array
+    Q_charge = array([0]*len(clusters_df))
+    Q_charges = clusters_df["log"]["mulliken_charges"].values
+    Qcharge = 1
+  elif Qifcharges == 1:
+    from numpy import array
+    Q_charge = array([0]*len(clusters_df))
+    Q_charges = None
+    Qcharge = 0
+  else:
+    Q_charges = None
+    Q_charge = None
+    Qcharge = 0
 
   if Qeval == 2:
     print("JKML(data): data length = "+str(ens.shape), flush = True)
