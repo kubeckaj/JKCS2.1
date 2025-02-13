@@ -38,7 +38,8 @@ class ExternalForce:
           import numpy as np
           def heaviside(x, x0=self.r0):
             return np.linalg.norm(x, axis = 1) >= x0
-          vec = atoms[self.mfrom:self.mto].get_positions() - np.array([0,0,0])
+          com = atoms[self.mfrom:self.mto].get_center_of_mass()
+          vec = atoms[self.mfrom:self.mto].get_positions() - com
           external_force = - self.k_ext * heaviside(vec).reshape(-1,1) * (vec - self.r0 * vec/np.linalg.norm(vec,axis=1).reshape(-1,1))
         elif self.qef == 'c_COM':
           import numpy as np
