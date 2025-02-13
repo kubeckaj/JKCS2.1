@@ -258,7 +258,7 @@ then
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib64/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
   sed -i "s/elif type(atoms) == ase.Atoms:/elif type(atoms) == ase.Atoms or issubclass(type(atoms), ase.Atoms):/" JKCS/lib/pyth*/site-packages/schnetpack/interfaces/ase_interface.py
   #THIS IS NEEDED FOR SCHNETPACK + PHYSNET TRICK
-  $PIP install tad-dftd4 tad-mctc tad-multicharge 
+  $PIP install tad-dftd4 tad-mctc tad-multicharge tad-dftd3
 fi
 
 if [[ "$*" == *"-physnet"* ]]

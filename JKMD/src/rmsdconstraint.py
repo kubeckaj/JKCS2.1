@@ -59,6 +59,9 @@ class RMSDConstraint:
           del atoms.constraints
           adjustment = self.k*numerical_derivative(compare_pair, atoms)
           #print(adjustment)
+          maximum = 2*np.max(np.abs(forces))
+          adjustment[adjustment > maximum] = maximum
+          adjustment[adjustment < -maximum] = -maximum
           forces -= adjustment
           atoms.set_constraint(CS)
           #print(forces[0])
@@ -73,7 +76,7 @@ class RMSDConstraint:
           self.remembered_forces = adjustment
         else:
           forces -= self.remembered_forces
-        if np.mod(self.delay_step, 2*5) == 0 and self.delay_step > 0:
+        if np.mod(self.delay_step, 2*1) == 0 and self.delay_step > 0:
           self.delay_step = 0
         else:
           self.delay_step += 1
