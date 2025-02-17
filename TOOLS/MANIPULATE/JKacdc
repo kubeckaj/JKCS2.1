@@ -454,7 +454,7 @@ do
   echo ""
   if [ "$moni" == "$Qmonomerinclusters" ]
   then
-    REMOVE="-`cat ../../$inputfile | awk '{print $1}' | grep "1$moni" | xargs | sed "s/ /-/g"`"
+    REMOVE="-`cat ../../$inputfile | awk '{print $1}' | grep "1$moni" | grep -v "^1$moni$" | xargs | sed "s/ /-/g"`"
   else
     REMOVE=""
   fi
