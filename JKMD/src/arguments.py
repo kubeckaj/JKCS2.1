@@ -35,6 +35,7 @@ def print_help():
     -xtb2             GFN2-xTB {TBlite}
     -xtb "<str>"      xtb method (e.g., GFN1-xTB, GFNFF) {XTB}
     -nn_model <path>  Neural Network model defined by path {SchNetPack}
+     -cutoff <float>  cutoff radius [Angstrom] {SchNetPack} [default = 10.0]
     -pn_model <path>  Neural Network model defined by path {PhysNet_DER} [requires input.inp too]
     -orca "<str>"     QC method (e.g., "XTB1" or "B97-3c") {ORCA}
                       -additional setup might be required!!!
@@ -118,6 +119,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qcalculator_input = ""
     Qcalculator_max_iterations = 250
     Qmixer_damping = 0.4
+    Qcutoff = 10.0
    
     #THERMOSTAT AND SIMULATION
     Qdt = 1    #timestep
@@ -283,6 +285,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-mix_damp":
       last = ""
       Qmixer_damping = float(i)
+      continue
+    if i == "-cutoff":
+      last = "-cutoff"
+      continue
+    if last == "-cutoff":
+      last = ""
+      Qcutoff = float(i)
       continue
 
     #SPECIES

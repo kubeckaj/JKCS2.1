@@ -1,4 +1,4 @@
-def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms, Qmixer_damping):
+def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms, Qmixer_damping, Qcutoff):
 
 # TODO
 ### 792 /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
@@ -65,7 +65,7 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
     return SpkCalculator(
         model_file = Qcalculator_input,
         device="cpu",
-        neighbor_list=spk.transform.ASENeighborList(cutoff=10.0),
+        neighbor_list=spk.transform.ASENeighborList(cutoff=Qcutoff),
         #neighbor_list=spk.transform.TorchNeighborList(cutoff=5.0), #,cutoff_shell=2.0),
         #transforms=spk.transform.atomistic.SubtractCenterOfMass(),
         energy_key='energy',
