@@ -76,12 +76,12 @@ else:
   De = popt[0] #Eh
   print("FIT:Fitting parameters of function: 1*De")
   print("FIT: De[kcal/mol] = "+str(De*Eh2kcalmol))
-  w_fit = np.linspace(PMF_1D[(min_index+max_index):, 0], PMF_1D[:, 0], 100)
+  w_fit = np.linspace(PMF_1D[min_index+max_index, 0], PMF_1D[-1, 0], 100)
   y_fit = model(w_fit, np.array([De]*100))
 
 plt.figure()
 plt.plot(PMF_1D[:, 0], PMF_1D[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
-plt.plot(w_fit, y_fit, color='red')
+plt.plot(w_fit, y_fit*Eh2kcalmol, color='red')
 plt.xlabel('coordinate')
 plt.ylabel('PMF (kcal/mol)')
 plt.savefig('FITTED.png')
