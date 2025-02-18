@@ -1,4 +1,4 @@
-if [ ! -e RUN/get_evap.sh ]
+if [ ! -e RUN/get_evap.m ]
 then
   echo "The RUN/get_evap.m file must exist. Run a short ACDC simulation first."
 else

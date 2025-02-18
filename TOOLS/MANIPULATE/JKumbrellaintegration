@@ -188,6 +188,8 @@ then
     else 
       ver="_v"
     fi
+  else
+    ver="_v"
   fi
   k_bias=`tail -n 1 ../commands_TODO.txt | grep -oP '(?<="-k_bias" )\w+'`
   if [ -z "$k_bias" ]; then k_bias=100; fi
@@ -206,6 +208,7 @@ then
     eval $command
   done
   done
+  
   #JKQC ../simcalc-LM_*.pkl  -column log md_time -column log COM_distance -column log harm_distance -column log k_bias -noex -filter_gt log,md_step $SKIP | awk '{print $1 " " $2 " " $3 " " $4*4.184}' | grep -v nan | column -t >> input.txt
 fi
 
