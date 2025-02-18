@@ -18,6 +18,8 @@ def load_txt(output,formation_input_file,QUentropy,QUenergy,Pout):
   f = open(formation_input_file, "r")
   output = list(output.transpose())
   for line in f.readlines():
+    if not line.strip(): #allows for blank lines
+      continue
     if str(line[0]) != "#":
       line_elements = line.split()
       output.append([mytofloat(line_elements[i],i,QUentropy,QUenergy,Pout) for i in range(len(line_elements))])
