@@ -35,7 +35,8 @@ def print_help():
     -xtb2             GFN2-xTB {TBlite}
     -xtb "<str>"      xtb method (e.g., GFN1-xTB, GFNFF) {XTB}
     -nn_model <path>  Neural Network model defined by path {SchNetPack}
-     -cutoff <float>  cutoff radius [Angstrom] {SchNetPack} [default = 10.0]
+     -EFD              use EFD module {SchNetPack}
+     -cutoff <float>   cutoff radius [Angstrom] {SchNetPack} [default = 10.0]
     -pn_model <path>  Neural Network model defined by path {PhysNet_DER} [requires input.inp too]
     -orca "<str>"     QC method (e.g., "XTB1" or "B97-3c") {ORCA}
                       -additional setup might be required!!!
@@ -120,6 +121,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qcalculator_max_iterations = 250
     Qmixer_damping = 0.4
     Qcutoff = 10.0
+    Qnn_EFD = 0
    
     #THERMOSTAT AND SIMULATION
     Qdt = 1    #timestep
@@ -267,6 +269,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-nn_model":
       last = ""
       Qcalculator_input = i
+      continue
+    if i == "-EFD":
+      Qnn_EFD = 1
       continue
     if i == "-pn_model":
       Qcalculator = "PhysNet"

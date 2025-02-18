@@ -198,6 +198,19 @@ while not Qfollow_activated == 0:
         call_calculator()
         #all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
       dyn.attach(updatephysnet, interval = 1)
+    if Qnn_EFD == 1:
+      from src.JKelectrostatics import compute_energies_forces
+      from src.JKdispersions import compute_d4_energy_forces as compute_disperions
+      #from src.JKdispersions import compute_d3bj_energy_forces as compute_dispersions
+      def updateElDisp():
+        internal_E = species.get_potential_energy()
+        internal_F = species.get_forces()
+        Q_charges = spk_calc.model_results['partial_charges'].detach().numpy()
+        electrostatics_E, electrostatics_F = compute_energies_forces(species.get_positions(), Q_charges)
+        dispersions_E, dispersions_F = compute_disperions(species.get_positions(), symbols = array(species.get_chemical_symbols()), totalcharge = 0)
+        print(f"JKML(SchNetPack): {0.0367493 * internal_E} {electrostatics_E} {dispersions_E}")
+        species.set_potential_energy(0.0367493 * internal_E + electrostatics_E + dispersions_E)
+        species.set_forces(0.0367493 * internal_F + electrostatics_F + dispersions_F)
   stepsmade = 0
   def stepsmadeadd():
     global stepsmade
@@ -260,14 +273,15 @@ while not Qfollow_activated == 0:
 if Qsavepickle == 1:
   if Qout == 2:
     print("Done and now just saving pickle.")
-  from pandas import DataFrame
-  for key in cluster_dic:
-    cluster_dic[key] = cluster_dic[key][::-1]
-  clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
-  try:
-    clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
-    print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
-  except:
-    print("Something got fucked up.")
+  if "cluster_dic" in globals():
+    from pandas import DataFrame
+    for key in cluster_dic:
+      cluster_dic[key] = cluster_dic[key][::-1]
+    clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
+    try:
+      clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
+      print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
+    except:
+      print("Something got fucked up.")
 
 print("Done.")
