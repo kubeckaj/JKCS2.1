@@ -57,7 +57,7 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
   
   if Qifdipole == 1:
     from src.JKelectrostatics import compute_energies_forces
-    from src.JKdispersions import compute_d4_energy_forces as compute_disperions
+    from src.JKdispersions import compute_d4_energy_forces as compute_dispersions
     #from src.JKdispersions import compute_d3bj_energy_forces as compute_dispersions
 
     #print(D_dipole)
@@ -77,7 +77,7 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       D_dipole.append(list([Dx, Dy, Dz]))
       
       electrostatics_E, electrostatics_F = compute_energies_forces(strs.values[i].get_positions(), Q_charges[i])
-      dispersions_E, dispersions_F = compute_disperions(strs.values[i].get_positions(), symbols = np.array(strs.values[i].get_chemical_symbols()), totalcharge = 0)
+      dispersions_E, dispersions_F = compute_dispersions(strs.values[i].get_positions(), symbols = np.array(strs.values[i].get_chemical_symbols()), totalcharge = 0)
       Y_train[i] -= electrostatics_E + dispersions_E
       print(f"JKML(SchNetPack): {Y_train[i]} {electrostatics_E} {dispersions_E}")
       F_train[i] -= electrostatics_F + dispersions_F
@@ -422,7 +422,7 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin,Qifcharges):
       atoms.calc = spk_calc
       if Qifcharges == 1:
         from src.JKelectrostatics import compute_energies_forces
-        from src.JKdispersions import compute_d4_energy_forces as compute_disperions
+        from src.JKdispersions import compute_d4_energy_forces as compute_dispersions
         #from src.JKdispersions import compute_d3bj_energy_forces as compute_dispersions
 
         internal_E = atoms.get_potential_energy()
@@ -430,7 +430,7 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin,Qifcharges):
         Q_charges_i = spk_calc.model_results['partial_charges'].detach().numpy()
         Q_predicted.append(Q_charges_i)
         electrostatics_E, electrostatics_F = compute_energies_forces(atoms.get_positions(), Q_charges_i)
-        dispersions_E, dispersions_F = compute_disperions(atoms.get_positions(), symbols = array(atoms.get_chemical_symbols()), totalcharge = 0)
+        dispersions_E, dispersions_F = compute_dispersions(atoms.get_positions(), symbols = array(atoms.get_chemical_symbols()), totalcharge = 0)
         print(f"JKML(SchNetPack): {0.0367493 * internal_E} {electrostatics_E} {dispersions_E}")
         Y_predicted.append(0.0367493 * internal_E + electrostatics_E + dispersions_E)
         F_predicted.append(0.0367493 * internal_F + electrostatics_F + dispersions_F)
