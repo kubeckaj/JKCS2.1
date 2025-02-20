@@ -200,14 +200,14 @@ while not Qfollow_activated == 0:
       dyn.attach(updatephysnet, interval = 1)
     if Qnn_EFD == 1:
       from src.JKelectrostatics import compute_energies_forces
-      from src.JKdispersions import compute_d4_energy_forces as compute_disperions
+      from src.JKdispersions import compute_d4_energy_forces as compute_dispersions
       #from src.JKdispersions import compute_d3bj_energy_forces as compute_dispersions
       def updateElDisp():
         internal_E = species.get_potential_energy()
         internal_F = species.get_forces()
         Q_charges = spk_calc.model_results['partial_charges'].detach().numpy()
         electrostatics_E, electrostatics_F = compute_energies_forces(species.get_positions(), Q_charges)
-        dispersions_E, dispersions_F = compute_disperions(species.get_positions(), symbols = array(species.get_chemical_symbols()), totalcharge = 0)
+        dispersions_E, dispersions_F = compute_dispersions(species.get_positions(), symbols = array(species.get_chemical_symbols()), totalcharge = 0)
         print(f"JKML(SchNetPack): {0.0367493 * internal_E} {electrostatics_E} {dispersions_E}")
         species.set_potential_energy(0.0367493 * internal_E + electrostatics_E + dispersions_E)
         species.set_forces(0.0367493 * internal_F + electrostatics_F + dispersions_F)
