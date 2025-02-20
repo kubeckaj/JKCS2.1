@@ -32,9 +32,9 @@ def compute_energies_forces(positions, charges, epsilon=1e-12):
 
     # Compute pairwise distances
     r_sq = np.sum(pos_diff ** 2, axis=-1)  # (N, N), squared distances
+    r_sq[r_sq < 5**2] = np.inf
     np.fill_diagonal(r_sq, np.inf)  # Remove self-interactions
     r = np.sqrt(r_sq)  # (N, N)
-    r[r<5] = np.inf
 
     # Compute pairwise charge products
     qiqj = np.outer(charges, charges)  # (N, N)
