@@ -414,6 +414,20 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       except:
         output.append([missing]*len(clusters_df))
       continue
+    # el SCF 
+    if i == "-elscf":
+      try:
+        output.append(QUenergy*(clusters_df.loc[:,("log","scf_energy")]))
+      except:
+        output.append([missing]*len(clusters_df))
+      continue
+    # actual el corr??
+    if i == "-elcorr":
+      try:
+        output.append(QUenergy*(clusters_df.loc[:,("log","correlation_energy")]))
+      except:
+        output.append([missing]*len(clusters_df))
+      continue
     # energy th corr.
     if i == "-uc":
       try:
