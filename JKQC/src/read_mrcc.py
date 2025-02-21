@@ -35,7 +35,7 @@ def read_mrcc(mmm):
   from io import open
   missing = float("nan")
 
-  columns = ["program","method","time","electronic_energy"]
+  columns = ["program","method","time","electronic_energy","scf_energy","correlation_energy"]
 
   #PROGRAM VERSION
   #try:
@@ -60,14 +60,25 @@ def read_mrcc(mmm):
     out_time =out_time.total_seconds() / 60
   except:
     out_time = missing
-
+  #NOTE: MRCC for some reason has unique text for each type of calculations, these will only work for LNO-CCSD(T) methods...
   #ELECTRONIC ENERGY
   try:
     line,idx = find_line(rb'Total LNO-CCSD(T) energy with MP2 corrections', 0, 0)
     out_electronic_energy = float(line.split()[7])
   except:
     out_electronic_energy = missing
-
+  #SCF ENERGY
+  try:
+    line,idx = find_line(rb'Reference energy', 0, 0)
+    out_scf_energy = float(line.split()[3])
+  except:
+    out_scf_energy = missing
+  #CORRELATION ENERGY
+  try:
+    line,idx = find_line(rb'CCSD(T) correlation energy + MP2 corrections', 0, 0)
+    out_correlation_energy = float(line.split()[7])
+  except:
+    out_correlation_energy = missing
   #SAVE
   mm.close()
   all_locals = locals()
