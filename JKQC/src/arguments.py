@@ -747,6 +747,12 @@ def arguments(argument_list = []):
     if i == "-elc" or i == "--elc":
       Pout.append("-elc")
       continue
+    if i == "-elscf" or i == "--elscf":
+      Pout.append("-elscf")
+      continue
+    if i == "-elcorr" or i == "--elcorr":
+      Pout.append("-elcorr")
+      continue
     if i == "-g" or i == "-gibbs" or i == "--g" or i == "--gibbs":
       Pout.append("-g")
       continue
