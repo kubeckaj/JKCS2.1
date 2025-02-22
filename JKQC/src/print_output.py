@@ -177,6 +177,37 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       f.close()
       remove(".movie.xyz")
       continue
+    if i == "-gif":
+      import mogli
+      import imageio
+      #from PIL import Image
+      #molecules = mogli.read('movie.xyz')
+      #images = []
+      #for i in range(len(molecules)):
+      #  mogli.export(molecules[i], 'movie.png', width=1920, height=1080,
+      #               bonds_param=1.4, camera=((20, 0, 0), (0, 0, 0),(0, 1, 0)))
+      #  img = Image.open("movie.png").convert("RGBA")
+      #  images.append(img)
+      #imageio.mimsave("movie.gif", images, duration=100, loop=0)
+      #continue
+      from ase.visualize.plot import plot_atoms
+      import matplotlib.pyplot as plt
+      from numpy import array
+      images = []
+      i=0;
+      for ind in clusters_df.index:
+        i=i+1
+        print(str(i)+"/"+str(len(clusters_df)))
+        fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
+        ax.set_facecolor("white")
+        ax.set_axis_off()
+        plot_atoms(clusters_df.loc[ind,("xyz","structure")], ax=ax, radii=0.5, show_unit_cell=False)
+        fig.canvas.draw()
+        image = array(fig.canvas.renderer.buffer_rgba())
+        images.append(image)
+        plt.close(fig)
+        imageio.mimsave("movie.gif", images, duration=0.1) 
+      continue
     #Atoms
     if i == "-atoms":
       atoms = []
