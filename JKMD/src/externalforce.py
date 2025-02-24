@@ -39,7 +39,12 @@ class ExternalForce:
           def heaviside(x, x0=self.r0):
             return np.linalg.norm(x, axis = 1) >= x0
           com = atoms[self.mfrom:self.mto].get_center_of_mass()
+          #print(com)
           vec = atoms[self.mfrom:self.mto].get_positions() - com
+          #print(atoms[self.mfrom:self.mto].get_positions())
+          #print(vec)
+          #print(heaviside(vec).reshape(-1,1))
+          #print(self.r0*vec/np.linalg.norm(vec,axis=1).reshape(-1,1))
           external_force = - self.k_ext * heaviside(vec).reshape(-1,1) * (vec - self.r0 * vec/np.linalg.norm(vec,axis=1).reshape(-1,1))
         elif self.qef == 'c_COM':
           import numpy as np
@@ -61,8 +66,12 @@ class ExternalForce:
           CS = atoms.constraints
           del atoms.constraints
           import numpy as np
-          pos = atoms[self.mfrom:self.mto].get_positions()
-          external_energy = 0.5 * np.sum(self.k_ext*np.array([np.linalg.norm(np.array([0,0,0])-i)**2 for i in pos]))
+          com = atoms[self.mfrom:self.mto].get_center_of_mass()
+          vec = atoms[self.mfrom:self.mto].get_positions() - com
+          def heaviside(x, x0=self.r0):
+            return np.linalg.norm(x, axis = 1) >= x0
+          external_energy = 0.5 * self.k_ext * np.sum(heaviside(vec).reshape(-1,1) * (vec - self.r0 * vec/np.linalg.norm(vec,axis=1).reshape(-1,1))**2)
+          #external_energy = 0.5 * np.sum(self.k_ext*np.array([np.linalg.norm(np.array([0,0,0])-i)**2 for i in pos]))
           atoms.set_constraint(CS)
           return external_energy
         elif self.qef == 'c_COM':

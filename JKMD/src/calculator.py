@@ -1,24 +1,3 @@
-from contextlib import contextmanager
-import os
-
-@contextmanager
-def set_env_variable(var_name, value):
-    """Context manager to set an environment variable temporarily.
-
-    Args:
-        var_name: The name of the environment variable.
-        value: The value to set the environment variable to.
-    """
-    original_value = os.environ.get(var_name)
-    try:
-        os.environ[var_name] = str(value)
-        yield
-    finally:
-        if original_value:
-            os.environ[var_name] = original_value
-        else:
-            del os.environ[var_name]
-
 def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms, Qmixer_damping, Qcutoff):
 
 # TODO
@@ -53,8 +32,7 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
     if Qcharge != 0:
       print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
       exit()
-    with set_env_variable("OMP_NUM_THREADS", "1"): 
-      from xtb.ase.calculator import XTB
+    from xtb.ase.calculator import XTB
     return XTB(method=Qcalculator_input);#+" --chrg "+str(Qcharge))#, charge=Qcharge)
 
   ### ORCA ###
@@ -69,12 +47,15 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
                                #f'{len(psutil.Process().cpu_affinity())},1'
     #os.environ['OMP_MAX_ACTIVE_LEVELS'] = '1'
     #https://wiki.fysik.dtu.dk/ase/ase/calculators/calculators.html#calculator-configuration
-    os.environ['ASE_CONFIG_PATH'] =  "/home/kubeckaj/Applications/ORCA6.0/orca_6_0_1_linux_x86-64_shared_openmpi416/"
+    #os.environ['ASE_CONFIG_PATH'] =  "/home/kubeckaj/Applications/ORCA6.0/orca_6_0_1_linux_x86-64_shared_openmpi416/"
+    #profile="/home/kubeckaj/Applications/ORCA6.0/orca_6_0_1_linux_x86-64_shared_openmpi416/orca",
+    from ase.calculators.orca import OrcaProfile
+    profile = OrcaProfile(command = "/home/kubeckaj/Applications/ORCA6.0/orca_6_0_1_linux_x86-64_shared_openmpi416/orca")
     cpus = f'{len(psutil.Process().cpu_affinity())}'
-    return ORCA(profile="/home/kubeckaj/Applications/ORCA6.0/orca_6_0_1_linux_x86-64_shared_openmpi416/orca",
+    return ORCA(profile = profile, 
                 charge=Qcharge,
                 mult=1,
-                orcasimpleinput=Qcalculator_input,
+                orcasimpleinput=Qcalculator_input+" engrad",
                 orcablocks='%pal nprocs '+cpus+' end')
 
   ### SchNetPack ###

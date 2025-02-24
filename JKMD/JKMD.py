@@ -231,6 +231,9 @@ while not Qfollow_activated == 0:
   sim_tot_errors = 0
   sim_last_error = -1
   while stepsmade < Qns:
+    #if Qout > 1:
+    #  dyn.run(1)
+    #  print("1 done")
     try:
       dyn.run(Qns - stepsmade)
       if Qdump == 0:
