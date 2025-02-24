@@ -1,0 +1,21 @@
+if [[ "$*" == *"-help"* ]]; then
+  echo """   Help for JKextrapolate:
+  NOTES:   Currently only supports two-point extrapolation for basis set with and without LAF/CPS extrapolation. 
+  
+  COMMAND: JKextrapolate <method> <files> <settings> 
+           #Will do two-point extrapolation to CBS
+           JKextrapolate 2p low_basis.pkl high_basis.pkl lowestCardinalNumber alpha beta 
+
+           #Will do two-point extrapolation to CBS and then to LAF/CPS, note the "," between pickles files:
+           JKextrapolate 2p low_basis_low_settings.pkl,low_basis_high_settings.pkl high_basis_low_settings.pkl,high_basis_high_settings.pkl lowestCardinalNumber Alpha Beta F 
+           
+           #Will do two-point extrapolation to LAF/CPS
+           JKextrapolate 2p low_settings.pkl high_settings.pkl F 
+  """
+  exit
+fi
+
+source ~/.JKCSusersetup.txt
+export PYTHONPATH="$( cd "$(dirname "$0")" ; pwd -P )"/../../JKQC/src/
+program_PYTHON "$( cd "$(dirname "$0")" ; pwd -P )"/../SCRIPTS/JKextrapolate.py $@
+
