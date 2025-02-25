@@ -750,6 +750,7 @@ def arguments(argument_list=[]):
             continue
         if arg == "-knn":
             Qmethod = "knn"
+            continue
 
         # Epochs
         if arg == "-nn_epochs" or arg == "-epochs":
