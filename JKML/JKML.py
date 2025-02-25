@@ -330,7 +330,7 @@ for sampleeach_i in sampleeach_all:
             Qa_predicted = None
         #####################################
         elif Qmethod == "knn":
-            from JKML.src.QKNN import evaluate
+            from src.QKNN import evaluate
 
             Y_predicted = evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn)
         elif Qmethod == "nn":
