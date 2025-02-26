@@ -8,7 +8,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from metric_learn import MLKR
 
 
-def calculate_representation(Qrepresentation, strs, krr_cutoff):
+def calculate_representation(Qrepresentation, strs, krr_cutoff, max_value=1e6):
     if Qrepresentation == "fchl":
         from qmllib.representations import generate_fchl18 as generate_representation
     elif Qrepresentation == "mbdf":
@@ -45,7 +45,7 @@ def calculate_representation(Qrepresentation, strs, krr_cutoff):
             normalized=False,
         )
     # remove infinities TODO: is this good?
-    X = np.minimum(X, 1e3)
+    X = np.minimum(X, max_value)
     return X_atoms, X
 
 
