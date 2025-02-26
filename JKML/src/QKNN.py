@@ -31,7 +31,11 @@ def calculate_representation(Qrepresentation, strs, krr_cutoff):
                 cut_distance=krr_cutoff,
             )
         X_atoms = None
-        X = np.array([mol for mol in repres["xyz"]])
+        X = np.array(repres)
+        # flatten to 2D
+        X = X.reshape(X.shape[0], -1)
+        if np.isnan(X).any():
+            raise ValueError("NaNs in FCHL representation!")
     elif Qrepresentation == "mbdf":
         X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
         X = generate_representation(
@@ -60,6 +64,10 @@ def training(
         flush=True,
     )
     print("JKML(Q-kNN): Training MLKR metric.", flush=True)
+    # save train input files for off-site debugging
+    with open(varsoutfile, "wb") as f:
+        pickle.dump([X_train, Y_train], f)
+        print(f"Saved pretrain vars to {str(f)}.", flush=True)
     mlkr = MLKR()
     mlkr.fit(X_train, Y_train)
     A = mlkr.get_mahalabonis_matrix()
@@ -68,7 +76,7 @@ def training(
     knn.fit(X_train, Y_train)
     print("JKML(Q-kNN): Training completed.", flush=True)
     with open(varsoutfile, "wb") as f:
-        pickle.dump([X_train, X_atoms, A, knn])
+        pickle.dump([X_train, X_atoms, A, knn], f)
     return {
         key: value
         for key, value in locals().items()

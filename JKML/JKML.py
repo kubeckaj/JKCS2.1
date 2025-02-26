@@ -166,7 +166,7 @@ for sampleeach_i in sampleeach_all:
                 )
             )
         elif Qmethod == "knn":
-            from JKML.src.QKNN import training
+            from src.QKNN import training
 
             locals().update(
                 training(
