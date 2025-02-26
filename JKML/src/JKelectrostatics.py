@@ -43,17 +43,17 @@ def compute_energies_forces(positions, charges, sr_cut=5.0):
 
     #Avoid self-interactions
     np.fill_diagonal(r2, np.inf) 
-    r = np.sqrt(r2)
+    np.fill_diagonal(r, np.inf) 
     
     # Compute electrostatic energy
     E_ordinary = 1.0 / r
-    E_shielded = 1.0 / np.sqrt(r + 1.0)
+    E_shielded = 0 #1.0 / np.sqrt(r2 + 1.0)
 
     energy = np.sum(np.triu(qiqj * (cswitch * E_shielded + switch_value * E_ordinary), k=1)) * conv_hartree
 
     # Compute forces
-    F_ordinary = qiqj / r2
-    F_shielded = qiqj / (r2 + 2*r + 1.0) 
+    F_ordinary = qiqj / r2 
+    F_shielded = 0 #qiqj * np.where(r2 > 100000, 0.0, np.sqrt(r2 / (r2 + 1.0)**3)) 
     force_magnitude = (cswitch * F_shielded + switch_value * F_ordinary)
     forces = - np.sum(force_magnitude[:, :, np.newaxis] * pos_diff / r[:, :, np.newaxis], axis=1) * conv_hartree**2
 

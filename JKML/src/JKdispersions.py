@@ -54,7 +54,7 @@ def compute_d4_energy_forces(positions: np.ndarray, symbols: np.ndarray, totalch
     
     # Compute forces via autograd
     (grad,) = torch.autograd.grad(energy.sum(), pos)
-    forces = -grad.detach().numpy() / ang_to_bohr  # Convert from Hartree/Bohr to Hartree/Å
+    forces = -grad.detach().numpy() * ang_to_bohr  # Convert from Hartree/Bohr to Hartree/Å
     
     return total_energy, forces
 
@@ -98,7 +98,7 @@ def compute_d3bj_energy_forces(positions: np.ndarray, symbols: np.ndarray, total
 
     # Compute forces via autograd
     (grad,) = torch.autograd.grad(energy.sum(), pos)
-    forces = -grad.detach().numpy() / ang_to_bohr  # Convert from Hartree/Bohr to Hartree/Å
+    forces = -grad.detach().numpy() * ang_to_bohr  # Convert from Hartree/Bohr to Hartree/Å
 
     return total_energy, forces
 
