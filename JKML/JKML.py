@@ -271,9 +271,15 @@ for sampleeach_i in sampleeach_all:
             print("JKML: Trained model loaded.", flush=True)
         elif Qmethod == "knn":
             import pickle
+            from sklearn.neighbors import KNeighborsRegressor
 
             with open(VARS_PKL, "wb") as f:
-                X_train, X_atoms, A, knn = pickle.load(f)
+                X_train, Y_train, X_atoms, A, mlkr, knn_params = pickle.load(f)
+        
+            # need to recreate the model due to not being able to pickle the custom metric
+            knn_params['metric'] = mlkr.get_metric()
+            knn = KNeighborRegressor(**knn_params)
+            knn.fit(X_train, Y_train)
         elif Qmethod == "nn" or Qmethod == "physnet":
             varsoutfile = VARS_PKL
             print("JKML: Trained model found.")
@@ -333,6 +339,9 @@ for sampleeach_i in sampleeach_all:
             from src.QKNN import evaluate
 
             Y_predicted = evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn)
+            Qforces = 0
+            F_predicted = None
+            Qa_predicted = None
         elif Qmethod == "nn":
             from src.SchNetPack import evaluate
 

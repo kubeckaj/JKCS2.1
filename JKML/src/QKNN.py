@@ -72,13 +72,15 @@ def training(
         print(f"Saved pretrain vars to {str(f)}.", flush=True)
     mlkr = MLKR()
     mlkr.fit(X_train, Y_train)
-    A = mlkr.get_mahalabonis_matrix()
+    A = mlkr.get_mahalanobis_matrix()
     print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
     knn = KNeighborsRegressor(metric=mlkr.get_metric())
     knn.fit(X_train, Y_train)
     print("JKML(Q-kNN): Training completed.", flush=True)
+    knn_params = knn.get_params()
+    knn_params['metric'] = 'MLKR_placeholder'
     with open(varsoutfile, "wb") as f:
-        pickle.dump([X_train, X_atoms, A, knn], f)
+        pickle.dump([X_train, Y_train, X_atoms, A, mlkr, knn_params], f)
     return {
         key: value
         for key, value in locals().items()
@@ -126,4 +128,5 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
 
     ### THE EVALUATION
     Y_predicted = knn_model.predict(X_test)
+    Y_predicted = Y_predicted[None, :]
     return Y_predicted
