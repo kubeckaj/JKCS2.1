@@ -1,7 +1,6 @@
 import numpy as np
 
-
-def compute_energies_forces(positions, charges, epsilon=1e-12):
+def compute_energies_forces(positions, charges, sr_cut=5.0):
     """
     Compute Coulomb energies and forces between atoms using vectorized operations.
 
@@ -10,42 +9,52 @@ def compute_energies_forces(positions, charges, epsilon=1e-12):
         Cartesian coordinates of N atoms in Angstrom.
     charges : (N) numpy array
         Atomic charges of N atoms in elementary charge.
-    epsilon : float, optional
-        Small number to avoid division by zero.
+    sr_cut : float, optional
+        Cut-off distance for switching function in Angstrom.
 
     Returns:
     energy : float
         Total electrostatic energy in Hartree.
     forces : (N, 3) numpy array
         Forces on each atom due to Coulomb interactions in Hartree per Angstrom.
-
-    Conversion:
-    q1q2/r where the unit of q is 1.602177e-19 Coulomb and r is 1e-10 m: 2.566971e-28 C^2/m.
-    Divide by 4pi*eps_0 (eps_0=vacuum permittivity with unit C^2*s^2/kg/m^3): 2.307078e-18 J.
-    Hartree is 4.359745e-18 J. The conversion factor is then 0.529177.
     """
+    conv_hartree = 0.529177  # Conversion factor to Hartree
 
-    conv_hartree = 0.529177
-
-    # Create pairwise distance vectors
-    pos_diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]  # (N, N, 3)
-
-    # Compute pairwise distances
-    r_sq = np.sum(pos_diff ** 2, axis=-1)  # (N, N), squared distances
-    r_sq[r_sq < 5**2] = np.inf
-    np.fill_diagonal(r_sq, np.inf)  # Remove self-interactions
-    r = np.sqrt(r_sq)  # (N, N)
+    # Compute pairwise distance vectors and distances
+    pos_diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
+    r2 = np.sum(pos_diff**2, axis=-1)
+    r = np.sqrt(r2)
 
     # Compute pairwise charge products
-    qiqj = np.outer(charges, charges)  # (N, N)
+    qiqj = np.outer(charges, charges)
 
-    # Compute energy (only upper triangle to avoid double counting)
-    energy = np.sum(np.triu(qiqj / r, k=1)) * conv_hartree
+    # Define switch function
+    def switch(d):
+        cut = sr_cut / 2
+        x = d / cut
+        x3 = x**3
+        x4 = x3 * x
+        x5 = x4 * x
+        return np.where(d < cut, 6 * x5 - 15 * x4 + 10 * x3, 1.0)
 
-    # Compute force magnitudes
-    force_magnitude = qiqj / (r_sq + epsilon)  # Adding epsilon to avoid dividing by zero
+    # Compute switching function
+    switch_value = switch(r)
+    cswitch = 1.0 - switch_value
 
-    # Compute force vectors
-    forces = np.sum(force_magnitude[:, :, np.newaxis] * pos_diff / r[:, :, np.newaxis], axis=1) * conv_hartree
+    #Avoid self-interactions
+    np.fill_diagonal(r2, np.inf) 
+    r = np.sqrt(r2)
+    
+    # Compute electrostatic energy
+    E_ordinary = 1.0 / r
+    E_shielded = 1.0 / np.sqrt(r + 1.0)
+
+    energy = np.sum(np.triu(qiqj * (cswitch * E_shielded + switch_value * E_ordinary), k=1)) * conv_hartree
+
+    # Compute forces
+    F_ordinary = qiqj / r2
+    F_shielded = qiqj / (r2 + 2*r + 1.0) 
+    force_magnitude = (cswitch * F_shielded + switch_value * F_ordinary)
+    forces = - np.sum(force_magnitude[:, :, np.newaxis] * pos_diff / r[:, :, np.newaxis], axis=1) * conv_hartree**2
 
     return energy, forces

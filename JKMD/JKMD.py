@@ -84,6 +84,10 @@ while not Qfollow_activated == 0:
     from rmsdconstraint import RMSDConstraint
     constraints.append(RMSDConstraint(all_species,Qk_bias,Qharm,Qslow))
     Qconstraints = 4
+  if len(QMMM) > 0:
+    from src.QMMM import QMMM as QMMMcalc  
+    for i in range(len(QMMM)):
+      constraints.append(QMMMcalc(QMMM[i]))
   if Qdistance == 1:
     if len(species) != 2:
       print("Nice try. The -distout part of JKMD is yet not ready for your jokes.")
@@ -209,7 +213,14 @@ while not Qfollow_activated == 0:
       def updateElDisp():
         internal_E = species.get_potential_energy()
         internal_F = species.get_forces()
-        Q_charges = spk_calc.model_results['partial_charges'].detach().numpy()
+        from tblite.ase import TBLite
+        CS = species.constraints
+        del species.constraints
+        tmpatoms = species.copy()
+        species.set_constraint(CS)
+        tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
+        Q_charges = array([tmpatoms.get_charges()]) #.transpose()
+        #Q_charges = spk_calc.model_results['partial_charges'].detach().numpy()
         electrostatics_E, electrostatics_F = compute_energies_forces(species.get_positions(), Q_charges)
         dispersions_E, dispersions_F = compute_dispersions(species.get_positions(), symbols = array(species.get_chemical_symbols()), totalcharge = 0)
         print(f"JKML(SchNetPack): {0.0367493 * internal_E} {electrostatics_E} {dispersions_E}")

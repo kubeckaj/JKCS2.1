@@ -291,7 +291,7 @@ else
 fi
 if [ $Qqml -eq 1 ] && [ "$SCpar" == "qtest" ]
 then
-  echo "JKML WARNING: QML does work on qtest partition for some reason!"
+  echo "JKML WARNING: QML does not work on qtest partition for some reason!"
   exit
 fi
 if [ $Qsplit -gt 1 ]

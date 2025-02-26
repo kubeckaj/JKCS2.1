@@ -32,7 +32,7 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
   from numpy import array,sqrt
   missing = float("nan")
 
-  columns = ["program","method","time","termination","charge","multiplicity","NAtoms","rotational_constants","rotational_constant","sp_electronic_energy","electronic_energy","mulliken_charges","dipole_moment","dipole_moments","polarizability","vibrational_frequencies","temperature","pressure","moments_of_inertia","rotational_symmetry_number","zero_point_correction","energy_thermal_correction","enthalpy_thermal_correction","gibbs_free_energy_thermal_correction","zero_point_energy","internal_energy","enthalpy_energy","gibbs_free_energy","entropy"]
+  columns = ["program","method","time","termination","charge","multiplicity","NAtoms","rotational_constants","rotational_constant","sp_electronic_energy","electronic_energy","mulliken_charges","dipole_moment","dipole_moments","polarizability","vibrational_frequencies","temperature","pressure","moments_of_inertia","rotational_symmetry_number","zero_point_correction","energy_thermal_correction","enthalpy_thermal_correction","gibbs_free_energy_thermal_correction","zero_point_energy","internal_energy","enthalpy_energy","gibbs_free_energy","entropy","scf_energy"]
 
   global mm
   mm = mmm
@@ -210,6 +210,13 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
     out_enthalpy_energy = float(line.split()[3])
   except:
     out_enthalpy_energy = missing
+
+  #SCF ENERGY
+  try:
+    line, idx = find_line(rb'Total Energy', 1, 0)
+    out_scf_energy = float(line.split()[3])
+  except:
+    out_scf_energy = missing
 
   #FORCES
   if Qforces == 1:

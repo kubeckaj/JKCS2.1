@@ -29,6 +29,7 @@ def print_help():
     -harm <float>     add harmonic potential COM <float> distance constrain [2 species]
     -k_bias <float>   strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
     -slow <int>       linearly increases the US potential in <int> steps [default = 0]
+    -QMMM             the last structure is treated as QM(GFN1-xTB) assuming you use MM(GFNFF)
  
   CALCULATOR
     -xtb1             GFN1-xTB {TBlite} [set as default]
@@ -114,6 +115,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     QEF = []         #h_COM_COM, h_A, c_COM
     QEF_par = []
     QEF_systems = []
+    QMMM = []
   
     #CALCULATOR
     Qcalculator = "XTB1"
@@ -547,6 +549,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
     if i == "-distout":
       Qdistance = 1
+      continue
+    if i == "-qmmm":
+      mfrom = 0
+      for j in range(Qindex_of_specie):
+        mfrom=mfrom+len(species[j])
+      mto=mfrom+len(species[Qindex_of_specie])
+      QMMM.append([mfrom,mto])
       continue
 
     #EXTERNAL FORCES

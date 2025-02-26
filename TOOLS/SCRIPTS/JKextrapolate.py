@@ -8,8 +8,12 @@ import numpy as np
 def two_point_extrapolation(LOWEST_CARDINALNUMBER,lowPKL,highPKL,alpha,beta):
     E_SCF_X=lowPKL.loc[:,("log","scf_energy")].values
     E_SCF_Y=highPKL.loc[:,("log","scf_energy")].values
-    E_CORR_X=lowPKL.loc[:,("log","correlation_energy")].values
-    E_CORR_Y=highPKL.loc[:,("log","correlation_energy")].values
+    if ("log","correlation_energy") in lowPKL.columns:
+      E_CORR_X=lowPKL.loc[:,("log","correlation_energy")].values
+      E_CORR_Y=highPKL.loc[:,("log","correlation_energy")].values
+    else:
+      E_CORR_X=lowPKL.loc[:,("log","electronic_energy")].values-E_SCF_X
+      E_CORR_Y=highPKL.loc[:,("log","electronic_energy")].values-E_SCF_Y
     ep2_eX = np.exp(-alpha*np.sqrt(LOWEST_CARDINALNUMBER))
     ep2_eY = np.exp(-alpha*np.sqrt(LOWEST_CARDINALNUMBER+1))
     ep2_CBS_SCF = (E_SCF_X*ep2_eY - E_SCF_Y*ep2_eX)/(ep2_eY-ep2_eX)
@@ -72,8 +76,8 @@ elif method == '2s':
   F_val = float(argv[4])
   pickles = readAndSortPickles(files) 
   OUTPUT.append(pickles[0].loc[:,('info','file_basename')].values)
-  E_X=pickles[0].loc[:,("log","electronic_energy")]
-  E_Y=pickles[1].loc[:,("log","electronic_energy")]
+  E_X=pickles[0].loc[:,("log","electronic_energy")].values
+  E_Y=pickles[1].loc[:,("log","electronic_energy")].values
   OUTPUT.append(cps_laf_extrapolation(E_X,E_Y,F_val))
   HEADER.append('E_CPS/LAF')
   

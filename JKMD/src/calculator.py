@@ -1,4 +1,5 @@
-def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms, Qmixer_damping, Qcutoff):
+def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, 
+               atoms=None, Qmixer_damping=0.4, Qcutoff=10.0):
 
 # TODO
 ### 792 /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py

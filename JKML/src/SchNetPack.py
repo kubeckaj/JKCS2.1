@@ -67,7 +67,13 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       Dy = 0
       Dz = 0
       #dipole moment
-      Q_charges_tmp = Q_charges[i] 
+      from tblite.ase import TBLite
+      tmpatoms = strs.values[i].copy()
+      tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
+      Q_charges_tmp = tmpatoms.get_charges()
+      #print(Q_charges_tmp)
+      #print(Q_charges[i])
+      #Q_charges_tmp = Q_charges[i] 
       R_tmp = strs.values[i].get_positions()
       Ntmp = len(Q_charges_tmp)
       for k in range(0,Ntmp):
@@ -76,11 +82,20 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
           Dz += Q_charges_tmp[k]*(R_tmp[k][2])
       D_dipole.append(list([Dx, Dy, Dz]))
       
-      electrostatics_E, electrostatics_F = compute_energies_forces(strs.values[i].get_positions(), Q_charges[i])
+      electrostatics_E, electrostatics_F = compute_energies_forces(strs.values[i].get_positions(), Q_charges_tmp)
       dispersions_E, dispersions_F = compute_dispersions(strs.values[i].get_positions(), symbols = np.array(strs.values[i].get_chemical_symbols()), totalcharge = 0)
       Y_train[i] -= electrostatics_E + dispersions_E
-      print(f"JKML(SchNetPack): {Y_train[i]} {electrostatics_E} {dispersions_E}")
+      print(f"JKML(SchNetPack): {Y_train[i]+electrostatics_E+dispersions_E} {Y_train[i]} {electrostatics_E} {dispersions_E}")
       F_train[i] -= electrostatics_F + dispersions_F
+      import numpy as np
+      #print(F_train[i])
+      #print(electrostatics_F)
+      #print(np.sum((F_train[i])**2,axis=1))
+      #print(np.sum((electrostatics_F)**2,axis=1))
+      #print(np.sum((F_train[i]+electrostatics_F)**2,axis=1))
+      #print(f"JKML(SchNetPack): {np.max(np.sum((F_train[i]+electrostatics_F)**2,axis=1))**0.05} {np.max(np.sum((F_train[i])**2,axis=1))**0.05} {np.max(np.sum((electrostatics_F)**2,axis=1))**0.05}")
+    Qifdipole = 0
+    Qifcharges = 0  
 
   temperary_file_name = "training.db"
   if os.path.exists(temperary_file_name):
@@ -427,7 +442,16 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin,Qifcharges):
 
         internal_E = atoms.get_potential_energy()
         internal_F = atoms.get_forces()
-        Q_charges_i = spk_calc.model_results['partial_charges'].detach().numpy()
+        #TODO
+        #Q_charges_i = spk_calc.model_results['partial_charges'].detach().numpy()
+        #print(f"JKML(SchNetPack): {Q_charges_i}")
+        from tblite.ase import TBLite
+        tmpatoms = atoms.copy()
+        tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
+        Q_charges_i = array([tmpatoms.get_charges()]) #.transpose()
+	#print(f"JKML(SchNetPack): {Q_charges_i}")
+        #TODO add charge PERHAPS NOT NECESSARY STEP
+        #Q_charges_i = Q_charges_i - (Q_charges_i - 0).mean()
         Q_predicted.append(Q_charges_i)
         electrostatics_E, electrostatics_F = compute_energies_forces(atoms.get_positions(), Q_charges_i)
         dispersions_E, dispersions_F = compute_dispersions(atoms.get_positions(), symbols = array(atoms.get_chemical_symbols()), totalcharge = 0)
