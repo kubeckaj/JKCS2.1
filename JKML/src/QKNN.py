@@ -40,6 +40,8 @@ def calculate_representation(Qrepresentation, strs, krr_cutoff):
             cutoff_r=krr_cutoff,
             normalized=False,
         )
+    # remove infinities TODO: is this good?
+    X = np.minimum(X, 1e3)
     return X_atoms, X
 
 
