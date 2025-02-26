@@ -272,6 +272,9 @@ for sampleeach_i in sampleeach_all:
         elif Qmethod == "knn":
             import pickle
             from sklearn.neighbors import KNeighborsRegressor
+            from warnings import warn
+
+            warn("Loading KNN models is untested, and may not work properly!")
 
             with open(VARS_PKL, "wb") as f:
                 X_train, Y_train, X_atoms, A, mlkr, knn_params = pickle.load(f)
