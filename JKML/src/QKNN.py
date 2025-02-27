@@ -33,7 +33,7 @@ def calculate_representation(Qrepresentation, strs, krr_cutoff, max_value=1e6):
         X_atoms = None
         X = np.array(repres)
         # flatten to 2D
-        X = np.sum(X, axis=1)
+        X = X.reshape(X.shape[0], -1)
         if np.isnan(X).any():
             raise ValueError("NaNs in FCHL representation!")
         # remove infinities TODO: is this good?
