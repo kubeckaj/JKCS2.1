@@ -278,9 +278,9 @@ for sampleeach_i in sampleeach_all:
 
             with open(VARS_PKL, "wb") as f:
                 X_train, Y_train, X_atoms, A, mlkr, knn_params = pickle.load(f)
-        
+
             # need to recreate the model due to not being able to pickle the custom metric
-            knn_params['metric'] = mlkr.get_metric()
+            knn_params["metric"] = mlkr.get_metric()
             knn = KNeighborRegressor(**knn_params)
             knn.fit(X_train, Y_train)
         elif Qmethod == "nn" or Qmethod == "physnet":
