@@ -36,6 +36,8 @@ def calculate_representation(Qrepresentation, strs, krr_cutoff, max_value=1e6):
         X = X.reshape(X.shape[0], -1)
         if np.isnan(X).any():
             raise ValueError("NaNs in FCHL representation!")
+        # remove infinities TODO: is this good?
+        X = np.minimum(X, max_value)
     elif Qrepresentation == "mbdf":
         X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
         X = generate_representation(
@@ -43,9 +45,8 @@ def calculate_representation(Qrepresentation, strs, krr_cutoff, max_value=1e6):
             np.array([i.get_positions() for i in strs]),
             cutoff_r=krr_cutoff,
             normalized=False,
+            local=False,
         )
-    # remove infinities TODO: is this good?
-    X = np.minimum(X, max_value)
     return X_atoms, X
 
 
@@ -78,7 +79,7 @@ def training(
     knn.fit(X_train, Y_train)
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()
-    knn_params['metric'] = 'MLKR_placeholder'
+    knn_params["metric"] = "MLKR_placeholder"
     with open(varsoutfile, "wb") as f:
         pickle.dump([X_train, Y_train, X_atoms, A, mlkr, knn_params], f)
     return {
