@@ -7,7 +7,8 @@ import pickle
 from sklearn.neighbors import KNeighborsRegressor
 from metric_learn import MLKR
 from ase.atoms import Atoms
-from typing import List, Tuple
+from typing import List, Tuple, Union
+import os
 
 
 def _generate_fchl(
@@ -52,23 +53,22 @@ def _generate_mbdf(strs: List[Atoms], cutoff_r: float) -> List[List[int], np.nda
 
 
 def calculate_representation(Qrepresentation, strs, krr_cutoff, max_value=1e6):
-    match Qrepresentation:
-        case "fchl":
-            return _generate_fchl(strs, krr_cutoff, max_value)
-        case "mbdf":
-            return _generate_mbdf(strs, krr_cutoff)
-        case _:
-            raise NotImplementedError(
-                f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
-            )
+    if Qrepresentation == "fchl":
+        return _generate_fchl(strs, krr_cutoff, max_value)
+    elif Qrepresentation == "mbdf":
+        return _generate_mbdf(strs, krr_cutoff)
+    else:
+        raise NotImplementedError(
+            f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
+        )
 
 
 def training(
-    Qrepresentation,
-    strs,
-    Y_train,
-    krr_cutoff,
-    varsoutfile,
+    Qrepresentation: str,
+    strs: List[Atoms],
+    Y_train: np.ndarray,
+    krr_cutoff: float,
+    varsoutfile: Union[str, os.PathLike],
 ):
 
     ### REPRESENTATION CALCULATION ###
