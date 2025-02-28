@@ -27,10 +27,11 @@ def print_help():
     -EF_fbh_A <float> <float>     ext. force field in the form of flat bott harmonic potential 0.5*k*(|[0,0,0]-[x,y,z]|-r0)^2*Heaviside(|[0,0,0]-[x,y,z]|,r0) (e.g., <10> [Ang] <1> kcal/mol/A^2)
     -EF_c_COM <array>             constant ext. force on the center of mass (e.g., [1,0,0]) 
     UMBRELLA SAMPLING:
-    -harm <float>     add harmonic potential COM <float> distance constrain [2 species]
-    -k_bias <float>   strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
-    -slow <int>       linearly increases the US potential in <int> steps [default = 0]
-    -QMMM             the last structure is treated as QM(GFN1-xTB) assuming you use MM(GFNFF)
+    -harm <float>      add harmonic potential COM <float> distance constrain [2 species]
+    -k_bias <float>    strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
+    -slow <int>        linearly increases the US potential in <int> steps [default = 0]
+    -QMMM              the last structure is treated as QM(GFN1-xTB) assuming you use MM(GFNFF)
+    -rmsd <int> <file> RMSD to be reached between simulaiton and file structure
  
   CALCULATOR
     -xtb1             GFN1-xTB {TBlite} [set as default]
@@ -304,7 +305,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
 
     #SPECIES
-    if i[-4:] == ".xyz":
+    if i[-4:] == ".xyz" and last == "":
       from ase.io import read
       species.append(read(i,"-2"))
       if Qindex_of_specie == -1:
@@ -312,7 +313,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qindex_of_specie = len(species) - 1
       Qindex = -1
       continue
-    if i[-4:] == ".pkl":
+    if i[-4:] == ".pkl" and last == "":
       from pandas import read_pickle
       species.append(read_pickle(i).iloc[Qindex][("xyz","structure")])
       if Qindex_of_specie == -1:
@@ -538,6 +539,18 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
  
     #CONSTRAINTS
+    if i == "-rmsd":
+      last = "-rmsd"
+      continue
+    if last == "-rmsd":
+      last = "-rmsd2"
+      Qconstraints = 2
+      Qrmsddiff = float(i)
+      continue
+    if last == "-rmsd2":
+      last = ""
+      Qrmsdreffile = str(i)
+      continue
     if i == "-harm":
       last = "-harm" 
       Qconstraints = 1
@@ -545,10 +558,6 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-harm":
       last = ""
       Qharm = float(i)
-      continue
-    if i == "-rmsd":
-      last = "-harm"
-      Qconstraints = 2
       continue
     if i == "-k_bias":
       last = "-k_bias"

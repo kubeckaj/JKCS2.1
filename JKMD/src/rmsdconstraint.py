@@ -1,8 +1,7 @@
 def compare_pair(arg, ArbAlign = 0, Qreturn_geometry = 0, REF = None):
     from ArbAlign import compare, kabsch, sorted_xyz
-    from ase.io import read
     if REF is None:
-      REF = read('/home/kubeckaj/TEST/REACTIVE_MD/ref.xyz')
+      exit()
     if ArbAlign:
       return compare(arg, REF, Qreturn_geometry = Qreturn_geometry)
     else:
@@ -11,7 +10,7 @@ def compare_pair(arg, ArbAlign = 0, Qreturn_geometry = 0, REF = None):
       REF_pos = REF.get_positions()
       return kabsch(arg_pos, REF_pos)
 
-def numerical_derivative(func, atoms, epsilon=1e-2):
+def numerical_derivative(func, atoms, REF, epsilon=1e-2):
     """
     Compute numerical derivatives using finite differences.
     :param func: Function that takes atoms and returns a scalar (e.g., RMSD)
@@ -21,7 +20,7 @@ def numerical_derivative(func, atoms, epsilon=1e-2):
     """
     import numpy as np
     gradient = np.zeros_like(atoms.get_positions())
-    newref, here = func(atoms, 1, 1)
+    newref, here = func(atoms, 1, 1, REF = REF)
     
     bias_en = 0.5*100*(here-0)**2
     print("RMSD: " + str(here) + " Bias energy: " + str(bias_en * 23.0609) + " kcal/mol")
@@ -41,7 +40,10 @@ def numerical_derivative(func, atoms, epsilon=1e-2):
 
 class RMSDConstraint:
     """Constrain an atom to move along a given direction only."""
-    def __init__(self, a, k, r, adjuststeps = 0):
+    def __init__(self, a, k, r, rmsdfile, adjuststeps = 0):
+        from ase.io import read
+        print("RMSD: " + rmsdfile)
+        self.REF = read(rmsdfile)
         self.delay_step = 0
         self.a = a
         self.k = k*0.043364115308770496
@@ -71,7 +73,7 @@ class RMSDConstraint:
         if self.delay_step == 0:
           CS = atoms.constraints
           del atoms.constraints
-          adjustment = numerical_derivative(compare_pair, atoms)
+          adjustment = numerical_derivative(compare_pair, atoms, self.REF)
           adjustment *= self.k
           #print(adjustment)
           maximumF = np.max(np.abs(forces))
@@ -98,7 +100,7 @@ class RMSDConstraint:
           self.remembered_forces = adjustment
         else:
           forces -= self.remembered_forces
-        if np.mod(self.delay_step, 2*1) == 0 and self.delay_step > 0:
+        if np.mod(self.delay_step, 1) == 0 and self.delay_step > 0:
           self.delay_step = 0
         else:
           self.delay_step += 1

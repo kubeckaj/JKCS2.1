@@ -82,7 +82,7 @@ while not Qfollow_activated == 0:
       print("Nice try. The RMSD part of JKMD is yet not ready for your jokes.")
       exit()
     from rmsdconstraint import RMSDConstraint
-    constraints.append(RMSDConstraint(all_species,Qk_bias,Qharm,Qslow))
+    constraints.append(RMSDConstraint(all_species,Qk_bias,Qrmsddiff,Qrmsdreffile,Qslow))
     Qconstraints = 4
   if len(QMMM) > 0:
     from src.QMMM import QMMM as QMMMcalc  
