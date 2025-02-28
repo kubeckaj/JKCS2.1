@@ -6,48 +6,61 @@ import numpy as np
 import pickle
 from sklearn.neighbors import KNeighborsRegressor
 from metric_learn import MLKR
+from ase.atoms import Atoms
+from typing import List, Tuple
+
+
+def _generate_fchl(
+    strs: List[Atoms], krr_cutoff: float, max_value: float = None
+) -> Tuple[List[int], np.ndarray]:
+    from qmllib.representations import generate_fchl18 as generate_representation
+
+    repres = [None] * len(strs)
+    max_atoms = max([len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))])
+    for i in range(len(repres)):
+        repres[i] = generate_representation(
+            strs.iloc[i].get_atomic_numbers(),
+            strs.iloc[i].get_positions(),
+            max_size=max_atoms,
+            neighbors=max_atoms,
+            cut_distance=krr_cutoff,
+        )
+    X_atoms = None
+    X = np.array(repres)
+    # flatten to 2D
+    X = X.reshape(X.shape[0], -1)
+    if np.isnan(X).any():
+        raise ValueError("NaNs in FCHL representation!")
+    # remove infinities TODO: is this good?
+    if max_value is not None:
+        X = np.minimum(X, max_value)
+    return X_atoms, X
+
+
+def _generate_mbdf(strs: List[Atoms], cutoff_r: float) -> List[List[int], np.ndarray]:
+    from MBDF import generate_mbdf as generate_representation
+
+    X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    X = generate_representation(
+        np.array([i.get_atomic_numbers() for i in strs]),
+        np.array([i.get_positions() for i in strs]),
+        cutoff_r=cutoff_r,
+        normalized=False,
+        local=False,
+    )
+    return X_atoms, X
 
 
 def calculate_representation(Qrepresentation, strs, krr_cutoff, max_value=1e6):
-    if Qrepresentation == "fchl":
-        from qmllib.representations import generate_fchl18 as generate_representation
-    elif Qrepresentation == "mbdf":
-        from MBDF import generate_mbdf as generate_representation
-    else:
-        raise NotImplementedError(
-            "JKML(QML): Unknown representation: " + Qrepresentation
-        )
-    if Qrepresentation == "fchl":
-        repres = [None] * len(strs)
-        max_atoms = max(
-            [len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))]
-        )
-        for i in range(len(repres)):
-            repres[i] = generate_representation(
-                strs.iloc[i].get_atomic_numbers(),
-                strs.iloc[i].get_positions(),
-                max_size=max_atoms,
-                neighbors=max_atoms,
-                cut_distance=krr_cutoff,
+    match Qrepresentation:
+        case "fchl":
+            return _generate_fchl(strs, krr_cutoff, max_value)
+        case "mbdf":
+            return _generate_mbdf(strs, krr_cutoff)
+        case _:
+            raise NotImplementedError(
+                f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
             )
-        X_atoms = None
-        X = np.array(repres)
-        # flatten to 2D
-        X = X.reshape(X.shape[0], -1)
-        if np.isnan(X).any():
-            raise ValueError("NaNs in FCHL representation!")
-        # remove infinities TODO: is this good?
-        X = np.minimum(X, max_value)
-    elif Qrepresentation == "mbdf":
-        X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
-        X = generate_representation(
-            np.array([i.get_atomic_numbers() for i in strs]),
-            np.array([i.get_positions() for i in strs]),
-            cutoff_r=krr_cutoff,
-            normalized=False,
-            local=False,
-        )
-    return X_atoms, X
 
 
 def training(
