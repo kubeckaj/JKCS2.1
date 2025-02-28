@@ -1,8 +1,15 @@
-def compare_pair(arg):
-    from ArbAlign import compare
+def compare_pair(arg, ArbAlign = 0, Qreturn_geometry = 0, REF = None):
+    from ArbAlign import compare, kabsch, sorted_xyz
     from ase.io import read
-    REF = read('/home/kubeckaj/TEST/REACTIVE_MD/ref.xyz')
-    return compare(REF,arg)
+    if REF is None:
+      REF = read('/home/kubeckaj/TEST/REACTIVE_MD/ref.xyz')
+    if ArbAlign:
+      return compare(arg, REF, Qreturn_geometry = Qreturn_geometry)
+    else:
+      _, arg_pos, _, _ = sorted_xyz(arg, 0)
+      #_, REF_pos, _, _ = sorted_xyz(REF, 0)
+      REF_pos = REF.get_positions()
+      return kabsch(arg_pos, REF_pos)
 
 def numerical_derivative(func, atoms, epsilon=1e-2):
     """
@@ -14,14 +21,22 @@ def numerical_derivative(func, atoms, epsilon=1e-2):
     """
     import numpy as np
     gradient = np.zeros_like(atoms.get_positions())
-    here = func(atoms)
+    newref, here = func(atoms, 1, 1)
+    
+    bias_en = 0.5*100*(here-0)**2
+    print("RMSD: " + str(here) + " Bias energy: " + str(bias_en * 23.0609) + " kcal/mol")
+    #print(here)
+    #print(func(atoms,1,REF = newref))
+    #print(func(atoms,REF = newref))
     for i in range(len(gradient)):  # Loop over atoms
         for j in range(3):  # Loop over x, y, z coordinates
             atoms_forward = atoms.copy()
             positions_forward = atoms.get_positions()
             positions_forward[i, j] += epsilon
             atoms_forward.set_positions(positions_forward)
-            gradient[i, j] = (func(atoms_forward) - here) / epsilon
+            #print(func(atoms_forward,REF = newref))
+            gradient[i, j] = (func(atoms_forward, REF = newref) - here) / epsilon
+    #print(gradient)
     return gradient
 
 class RMSDConstraint:
@@ -41,28 +56,35 @@ class RMSDConstraint:
     def adjust_positions(self, atoms, newpositions):
         pass
     def adjust_potential_energy(self, atoms):
-        import numpy as np
-        CS = atoms.constraints
+        #import numpy as np
+        #CS = atoms.constraints
         #print(CS)
-        del atoms.constraints
-        rmsd = compare_pair(atoms)
+        #del atoms.constraints
+        #rmsd = compare_pair(atoms, ArbAlign = 1)
+        #rmsd = 0
         #TODO: testing some stupid adjustment
-        bias_en = 0.5*self.k*(rmsd-self.r-rmsd/(self.step+1)**0.5)**2
-        print("RMSD: " + str(compare_pair(atoms)) + " Bias energy: " + str(bias_en * 23.0609) + " kcal/mol")
         #print(bias_en)
-        atoms.set_constraint(CS)
-        return 0*bias_en
+        #atoms.set_constraint(CS)
+        return 0
     def adjust_forces(self, atoms, forces):
         import numpy as np
         if self.delay_step == 0:
           CS = atoms.constraints
           del atoms.constraints
-          adjustment = self.k*numerical_derivative(compare_pair, atoms)
+          adjustment = numerical_derivative(compare_pair, atoms)
+          adjustment *= self.k
           #print(adjustment)
-          maximum = 2*np.max(np.abs(forces))
-          adjustment[adjustment > maximum] = maximum
-          adjustment[adjustment < -maximum] = -maximum
+          maximumF = np.max(np.abs(forces))
+          maximumA = np.max(np.abs(adjustment))
+          factor = 1.1
+          if maximumA < maximumF:
+            adjustment *= factor*maximumF/maximumA
+          else:
+            adjustment[adjustment > maximumF] = factor*maximumF
+            adjustment[adjustment < -maximumF] = -factor*maximumF
           forces -= adjustment
+          forces[forces > maximumF] = maximumF
+          forces[forces < -maximumF] = -maximumF
           atoms.set_constraint(CS)
           #print(forces[0])
           #print("-----")

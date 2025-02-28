@@ -10,6 +10,7 @@ def print_help():
     -indexrange <int>     random index from the range from <int> to -1 (e.g., -10)
     <file>                xyz or pickle file (last structure taken)
     -char <int>           charge [default = 0]
+    -mult <int>           multiplicity [default = 1]
     -recenter             move to [0,0,0]
     -move,-moveby <array> move center of mass by [x,y,z] vector (e.g., [5,0,0])
     -moveto <array>       move center of mass to [x,y,z] coordinates (e.g., [5,0,0])
@@ -87,13 +88,14 @@ def print_help():
 """)
 
 
-def arguments(argument_list = [], species_from_previous_run = [], charge_from_previous_run = 0):
+def arguments(argument_list = [], species_from_previous_run = [], charge_from_previous_run = 0, multiplicity_from_previous_run = 1):
   from os import path
   missing = float("nan")
 
   #SPECIES
   Qindex = -1
   Qcharge = charge_from_previous_run
+  Qmultiplicity = multiplicity_from_previous_run
   Qtry = 0
   if len(species_from_previous_run) == 0:
     Qindex_of_specie = -1
@@ -343,6 +345,14 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
     if last == "-char":
       Qcharge = Qcharge + int(i)
+      last = ""
+      continue
+    # MULITPLICITY
+    if i == "-mult":
+      last = "-mult"
+      continue
+    if last == "-mult":
+      Qmultiplicity = int(i)
       last = ""
       continue
  

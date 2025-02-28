@@ -2,8 +2,8 @@ class QMMM:
     """QM/MM"""
     def __init__(self, QMMMspecies):
         from src.calculator import calculator
-        self.calc_low = calculator(Qcalculator = "XTB", Qcalculator_input = "GFNFF", Qcalculator_max_iterations = 300, Qcharge = 0, Qout = 0)
-        self.calc_high = calculator(Qcalculator = "XTB", Qcalculator_input = "GFN1-xTB", Qcalculator_max_iterations = 300, Qcharge = 0, Qout = 0)
+        self.calc_low = calculator(Qcalculator = "XTB", Qcalculator_input = "GFNFF", Qcharge = 0, Qout = 0)
+        self.calc_high = calculator(Qcalculator = "XTB", Qcalculator_input = "GFN1-xTB", Qcharge = 0, Qout = 0)
         self.FROM=QMMMspecies[0]
         self.TO=QMMMspecies[1]
     def adjust_positions(self, atoms, newpositions):

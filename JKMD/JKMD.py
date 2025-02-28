@@ -48,24 +48,24 @@ QEF_applied = 0
 while not Qfollow_activated == 0:
   if Qfollow_activated == -1:
     locals().update(arguments(argv[1:]))
-    if Qfollow_activated == 1 and Qout == 2:
+    if Qfollow_activated == 1 and Qout > 1:
       print([Qfollow,Qfollow_activated])
   else:
-    if Qout == 2:
+    if Qout > 1:
       print("Next -follow")
-    locals().update(arguments(Qfollow,all_species,charge_from_previous_run=Qcharge))
-  if Qout == 2:
+    locals().update(arguments(Qfollow,all_species,charge_from_previous_run=Qcharge,multiplicity_from_previous_run=Qmultiplicity))
+  if Qout > 1:
     from time import time
     start = time()
     print("DONE] Time started: "+str(time() - start));
   
   #CREATE THE SYSTEM
-  if Qout == 2:
+  if Qout > 1:
     print("Combining species.")
   all_species = species[0]
   for i in range(1,len(species)):
     all_species = all_species + species[i]
-  if Qout == 2:
+  if Qout > 1:
     print(all_species)
   
   #CONSTRAINTS
@@ -99,7 +99,7 @@ while not Qfollow_activated == 0:
       if QEF[i] == "h_A" or QEF[i] == "fbh_A" or QEF[i] == "c_COM":
         from externalforce import ExternalForce
         constraints.append(ExternalForce(QEF[i],QEF_par[i],QEF_systems[i]))
-        if Qout == 2:
+        if Qout > 1:
            print("External FF applied")
            print("External Force: "+QEF[i]+" on "+str(QEF_systems[i][0])+" to "+str(QEF_systems[i][1])+" with parameters "+str(QEF_par[i]))
       if QEF[i] == "h_COM_COM":
@@ -111,17 +111,17 @@ while not Qfollow_activated == 0:
   #SET CONSTRAINTS
   if len(constraints) > 0:
     all_species.set_constraint(constraints)
-    if Qout == 2:
-      print("CONSTRAINTS: "+str(constraints))
+    if Qout > 1:
+      print("CONSTRAINTS: "+str(constraints), flush = True)
   
   #SET CALCULATOR
-  if Qout == 2:
-    print("Setting calculator.")
+  if Qout > 1:
+    print("Setting calculator.", flush = True)
   def call_calculator():
     from calculator import calculator
-    all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species,Qmixer_damping,Qcutoff)
+    all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qmultiplicity, Qout, all_species,Qmixer_damping,Qcutoff)
   call_calculator()
-  if Qout == 2:
+  if Qout > 1:
     print(all_species)
     #print(all_species.get_positions())
     #print(all_species.get_potential_energy())
@@ -267,10 +267,9 @@ while not Qfollow_activated == 0:
       else:
         sim_errors = 1
         sim_last_error = current_step
-      if sim_tot_errors > 20:
-        print("Too many errors in the simulation. Exiting.")
-        exit()
-      if sim_errors == 4:
+      if sim_errors == 4 or sim_tot_errors > 20:
+        if sim_tot_errors > 20:
+          print("Too many errors in the simulation. Exiting.")
         if "cluster_dic" not in globals():
           print("I have nothing to save as the run failed immediately.")
         else:
@@ -285,11 +284,11 @@ while not Qfollow_activated == 0:
           clusters_df.to_pickle(Qfolder+"/error.pkl")
         exit()
 
-  if Qout == 2:
+  if Qout > 1:
     print("Simulation round done.")
 
 if Qsavepickle == 1:
-  if Qout == 2:
+  if Qout > 1:
     print("Done and now just saving pickle.")
   if "cluster_dic" in globals():
     from pandas import DataFrame

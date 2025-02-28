@@ -33,6 +33,7 @@ def kabsch(A, B):
 
    Returns an RMSD
    """
+   #print([A,B])
    A_new = np.array(A)
    A_new = A_new - sum(A_new) / len(A_new)
    A = A_new
@@ -400,7 +401,7 @@ def sorted_xyz_from_molecule(molecule, noHydrogens=False):
     NA = len(sortedlabels)
     return sortedlabels, sortedcoords, NA, sortedorder
 
-def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
+def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0,Qreturn_geometry=0):
    try:
       a_labels = in_a.get_chemical_symbols()
       b_labels = in_b.get_chemical_symbols()
@@ -439,7 +440,13 @@ def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
    we don't need to do any reordering, swapping, or reflections
    """
    if InitRMSD_unsorted < 0.001:
-      return(float(InitRMSD_unsorted))
+     if Qreturn_geometry:
+       from ase import Atoms
+       #ref = Atoms(a_labels, positions=a_coords)
+       geom = Atoms(b_labels, positions=b_coords)
+       return geom,float(InitRMSD_unsorted)
+     else:
+       return(float(InitRMSD_unsorted))
    
    """
    Read in the original coordinates and labels of xyz1 and xyz2, 
@@ -591,7 +598,24 @@ def compare(in_a,in_b,simpleit=0,noHydrogens=0,mass_weighted=0):
               rmsds.append([kabsch(a_coords, b_final), B_t[i][1], B_t[i][2], b_final])
             rmsds = sorted(rmsds, key = lambda x: x[0])
    FinalRMSD = float(rmsds[0][0])
-   if FinalRMSD < float(InitRMSD_unsorted): 
-      return(float(rmsds[0][0]))
+   #print("###############")
+   #print(rmsds[0])
+
+   if Qreturn_geometry:
+     from ase import Atoms
+     #ref = Atoms(a_labels, positions=a_coords)
+     if FinalRMSD < float(InitRMSD_unsorted):
+      #print("HERE 1")
+      #print(float(kabsch(a_coords, rmsds[0][3])))
+      #print("HERE")
+      geom = Atoms(a_labels, positions=rmsds[0][3])
+      return geom, FinalRMSD 
+     else:
+      geom = Atoms(a_labels, positions=b_coords)
+      return geom, float(InitRMSD_unsorted) 
    else:
+     #print("HERE 2")
+     if FinalRMSD < float(InitRMSD_unsorted): 
+      return(float(rmsds[0][0]))
+     else:
       return(float(InitRMSD_unsorted))
