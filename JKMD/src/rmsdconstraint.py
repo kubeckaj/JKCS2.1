@@ -79,11 +79,11 @@ class RMSDConstraint:
           maximumF = np.max(np.abs(forces))
           maximumA = np.max(np.abs(adjustment))
           factor = 1.1
-          if maximumA < maximumF:
-            adjustment *= factor*maximumF/maximumA
-          else:
-            adjustment[adjustment > maximumF] = factor*maximumF
-            adjustment[adjustment < -maximumF] = -factor*maximumF
+          #if maximumA < maximumF:
+          adjustment *= factor*maximumF/maximumA
+          #else:
+          #  adjustment[adjustment > maximumF] = factor*maximumF
+          #  adjustment[adjustment < -maximumF] = -factor*maximumF
           forces -= adjustment
           forces[forces > maximumF] = maximumF
           forces[forces < -maximumF] = -maximumF

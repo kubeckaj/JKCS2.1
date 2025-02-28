@@ -169,7 +169,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
           write(".movie.xyz",atoms, format='xyz')
           with open(".movie.xyz", 'r') as f2:
             lines = f2.readlines()
-            lines[1] = clusters_df.loc[ind,("info","file_basename")]+"\n"
+            lines[1] = clusters_df.loc[ind,("info","file_basename")]+f" Total Energy: {clusters_df.loc[ind,('log','electronic_energy')]}\n"
           f.writelines(lines)
           f2.close()
         except:
