@@ -6,60 +6,120 @@ import numpy as np
 import pickle
 from sklearn.neighbors import KNeighborsRegressor
 from metric_learn import MLKR
+from ase.atoms import Atoms
+from typing import List, Tuple, Union, Dict
+import os
+from collections import defaultdict
 
 
-def calculate_representation(Qrepresentation, strs, krr_cutoff, max_value=1e6):
+def _generate_fchl(
+    strs: List[Atoms], krr_cutoff: float, max_value: float = None
+) -> np.ndarray:
+    from qmllib.representations import generate_fchl18 as generate_representation
+
+    repres = [None] * len(strs)
+    max_atoms = max([len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))])
+    for i in range(len(repres)):
+        repres[i] = generate_representation(
+            strs.iloc[i].get_atomic_numbers(),
+            strs.iloc[i].get_positions(),
+            max_size=max_atoms,
+            neighbors=max_atoms,
+            cut_distance=krr_cutoff,
+        )
+    X = np.array(repres)
+    # flatten to 2D
+    X = X.reshape(X.shape[0], -1)
+    if np.isnan(X).any():
+        raise ValueError("NaNs in FCHL representation!")
+    # remove infinities TODO: is this good?
+    if max_value is not None:
+        X = np.minimum(X, max_value)
+    return X
+
+
+def _generate_mbdf(strs: List[Atoms], cutoff_r: float) -> np.ndarray:
+    from MBDF import generate_mbdf as generate_representation
+
+    X = generate_representation(
+        np.array([i.get_atomic_numbers() for i in strs]),
+        np.array([i.get_positions() for i in strs]),
+        cutoff_r=cutoff_r,
+        normalized=False,
+        local=False,
+    )
+    return X
+
+
+def _generate_bob(
+    strs: List[Atoms], max_atoms: int, asize: Dict[str, Union[np.int64, int]]
+):
+    from qmllib.representations import generate_bob as generate_representation
+
+    n = len(strs)
+    if max_atoms is None:
+        max_atoms = max([len(x) for x in strs])
+
+    if asize is None:
+        asize = defaultdict(int)
+        for struct in strs:
+            elements, counts = np.unique(
+                struct.get_chemical_symbols(), return_counts=True
+            )
+            for e, c in zip(elements, counts):
+                if c > asize[e]:
+                    asize[e] = c
+
+    # get the first representation to find out the length
+    repres = generate_representation(
+        strs[0].get_atomic_numbers(),
+        strs[0].get_positions(),
+        atomtypes=None,
+        size=max_atoms,
+        asize=asize,
+    )
+    X = np.zeros((n, repres.shape[0]))
+    X[0, :] = repres
+    for i in range(1, n):
+        X[i, :] = generate_representation(
+            strs[i].get_atomic_numbers(),
+            strs[i].get_positions(),
+            # this argument is not used for anything, but it's mandatory :) thanks QML!
+            atomtypes=None,
+            size=max_atoms,
+            asize=asize,
+        )
+    return X
+
+
+def calculate_representation(
+    Qrepresentation, strs, krr_cutoff, max_value=1e6, max_atoms=None, asize=None
+):
     if Qrepresentation == "fchl":
-        from qmllib.representations import generate_fchl18 as generate_representation
+        return _generate_fchl(strs, krr_cutoff, max_value)
     elif Qrepresentation == "mbdf":
-        from MBDF import generate_mbdf as generate_representation
+        return _generate_mbdf(strs, krr_cutoff)
+    elif Qrepresentation == "bob":
+        return _generate_bob(strs, max_atoms, asize)
     else:
         raise NotImplementedError(
-            "JKML(QML): Unknown representation: " + Qrepresentation
+            f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
         )
-    if Qrepresentation == "fchl":
-        repres = [None] * len(strs)
-        max_atoms = max(
-            [len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))]
-        )
-        for i in range(len(repres)):
-            repres[i] = generate_representation(
-                strs.iloc[i].get_atomic_numbers(),
-                strs.iloc[i].get_positions(),
-                max_size=max_atoms,
-                neighbors=max_atoms,
-                cut_distance=krr_cutoff,
-            )
-        X_atoms = None
-        X = np.array(repres)
-        # flatten to 2D
-        X = X.reshape(X.shape[0], -1)
-        if np.isnan(X).any():
-            raise ValueError("NaNs in FCHL representation!")
-        # remove infinities TODO: is this good?
-        X = np.minimum(X, max_value)
-    elif Qrepresentation == "mbdf":
-        X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
-        X = generate_representation(
-            np.array([i.get_atomic_numbers() for i in strs]),
-            np.array([i.get_positions() for i in strs]),
-            cutoff_r=krr_cutoff,
-            normalized=False,
-            local=False,
-        )
-    return X_atoms, X
 
 
 def training(
-    Qrepresentation,
-    strs,
-    Y_train,
-    krr_cutoff,
-    varsoutfile,
+    Qrepresentation: str,
+    strs: List[Atoms],
+    Y_train: np.ndarray,
+    krr_cutoff: float,
+    varsoutfile: Union[str, os.PathLike],
+    max_atoms: int = None,
+    asize: Dict[str, Union[np.int64, int]] = None,
 ):
 
     ### REPRESENTATION CALCULATION ###
-    X_atoms, X_train = calculate_representation(Qrepresentation, strs, krr_cutoff)
+    X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    X_train = calculate_representation(Qrepresentation, strs, krr_cutoff, max_atoms)
 
     # some info about the full representation
     print(
@@ -75,7 +135,7 @@ def training(
     mlkr.fit(X_train, Y_train)
     A = mlkr.get_mahalanobis_matrix()
     print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
-    knn = KNeighborsRegressor(metric=mlkr.get_metric())
+    knn = KNeighborsRegressor(metric=mlkr.get_metric(), n_jobs=-1)
     knn.fit(X_train, Y_train)
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()

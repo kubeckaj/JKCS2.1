@@ -753,6 +753,9 @@ def arguments(argument_list=[]):
             Qrepresentation = "mbdf"
             continue
 
+        if last == "-repr":
+            Qrepresentation = arg
+
         # Epochs
         if arg == "-nn_epochs" or arg == "-epochs":
             last = "-nn_epochs"
