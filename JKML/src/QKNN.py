@@ -92,6 +92,26 @@ def _generate_bob(
     return X
 
 
+def _generate_coulomb(strs: List[Atoms], max_atoms: int):
+    from qmllib.representations import (
+        generate_coulomb_matrix as generate_representation,
+    )
+
+    n = len(strs)
+    if max_atoms is None:
+        max_atoms = max([len(x) for x in strs])
+
+    # get the first representation to find out the length
+    X = np.zeros((n, max_atoms * (max_atoms + 1) / 2))
+    for i, struct in enumerate(strs):
+        X[i, :] = generate_representation(
+            struct.get_atomic_numbers(),
+            struct.get_positions(),
+            size=max_atoms,
+        )
+    return X
+
+
 def calculate_representation(
     Qrepresentation, strs, krr_cutoff, max_value=1e6, max_atoms=None, asize=None
 ):
@@ -101,6 +121,8 @@ def calculate_representation(
         return _generate_mbdf(strs, krr_cutoff)
     elif Qrepresentation == "bob":
         return _generate_bob(strs, max_atoms, asize)
+    elif Qrepresentation == "coulomb":
+        return _generate_coulomb(strs, max_atoms)
     else:
         raise NotImplementedError(
             f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
