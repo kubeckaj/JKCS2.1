@@ -118,6 +118,7 @@ def training(
 ):
 
     ### REPRESENTATION CALCULATION ###
+    print(f"JKML(Q-kNN): Calculating {Qrepresentation.upper()} representation.", flush=True)
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     X_train = calculate_representation(Qrepresentation, strs, krr_cutoff, max_atoms)
 
@@ -159,7 +160,8 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
     import numpy as np
 
     ### REPRESENTATION CALCULATION ###
-    _, X_test = calculate_representation(Qrepresentation, strs, krr_cutoff)
+    X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    X_test = calculate_representation(Qrepresentation, strs, krr_cutoff)
 
     # some info about the full representation
     print(
