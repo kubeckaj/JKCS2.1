@@ -750,11 +750,14 @@ def arguments(argument_list=[]):
             continue
         if arg == "-knn":
             Qmethod = "knn"
-            Qrepresentation = "mbdf"
             continue
 
+        if arg == "-repr":
+            last = "-repr"
+            continue
         if last == "-repr":
             Qrepresentation = arg
+            continue
 
         # Epochs
         if arg == "-nn_epochs" or arg == "-epochs":
