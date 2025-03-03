@@ -51,6 +51,7 @@ def print_help():
     -langevin <float>    Langevin thermostat with friction <float> 1/fs (e.g., 0.01)
     -nose_hoover <float> Nose-Hoover NVT thermostat with <float> time constant (e.g., 25)
     -csvr,bussi <float>  CSVR, stochastic velocity rescaling alg., def. by time const (e.g., 25)
+    -andersen <float>    Andersen thermostat with  random collision probability [typically, 0.0001-0.1]
     -fix_COM             the center of mass is not fixed by default
     -temp <float>        temperature (for langevin and nose_hoover) [default = 300]
 
@@ -536,6 +537,14 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       Qthermostat = "B"
       Qthermostat_B = float(i)
+      continue
+    if i == "-andersen":
+      last = "-andersen"
+      continue
+    if last == "-andersen":
+      last = ""
+      Qthermostat = "A"
+      Qthermostat_A = float(i)
       continue
  
     #CONSTRAINTS

@@ -199,6 +199,10 @@ while not Qfollow_activated == 0:
     #from ase.md.bussi import Bussi
     from ase_bussi import Bussi
     dyn = Bussi(all_species, Qdt * units.fs, temperature_K = Qtemp, taut = Qthermostat_NH * units.fs, rng = Qrng)
+  elif Qthermostat == "A":
+    from ase import units
+    from ase.md.andersen import Andersen 
+    dyn = Andersen(all_species, Qdt * units.fs, temperature_K = Qtemp, andersen_prob = Qthermostat_A * units.fs, rng = Qrng)
   else:
     print("Some weird thermostat.")
     exit()
