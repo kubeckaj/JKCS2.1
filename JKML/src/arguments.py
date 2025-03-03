@@ -752,6 +752,9 @@ def arguments(argument_list=[]):
             Qmethod = "knn"
             continue
 
+        if last == "-repr":
+            Qrepresentation = arg
+
         # Epochs
         if arg == "-nn_epochs" or arg == "-epochs":
             last = "-nn_epochs"
