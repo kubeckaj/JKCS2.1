@@ -10,7 +10,7 @@ def compare_pair(arg, ArbAlign = 0, Qreturn_geometry = 0, REF = None):
       REF_pos = REF.get_positions()
       return kabsch(arg_pos, REF_pos)
 
-def numerical_derivative(func, atoms, REF, epsilon=1e-2):
+def numerical_derivative(func, atoms, REF, epsilon=1e-4):
     """
     Compute numerical derivatives using finite differences.
     :param func: Function that takes atoms and returns a scalar (e.g., RMSD)
@@ -34,16 +34,25 @@ def numerical_derivative(func, atoms, REF, epsilon=1e-2):
             positions_forward[i, j] += epsilon
             atoms_forward.set_positions(positions_forward)
             #print(func(atoms_forward,REF = newref))
-            gradient[i, j] = (func(atoms_forward, REF = newref) - here) / epsilon
+            gradient[i, j] = atoms.get_atomic_numbers()[i] * (func(atoms_forward, REF = newref) - here) / epsilon
+            if np.abs(gradient[i, j]) > 10:
+              print("One more trial")
+              print(gradient[i, j])
+              gradient[i, j] = atoms.get_atomic_numbers()[i] * (func(atoms_forward, 1, 0, REF = newref) - here) / epsilon
+              print(gradient[i, j])
     #print(gradient)
-    return gradient
+    return gradient,here
 
 class RMSDConstraint:
     """Constrain an atom to move along a given direction only."""
     def __init__(self, a, k, r, rmsdfile, adjuststeps = 0):
-        from ase.io import read
-        print("RMSD: " + rmsdfile)
-        self.REF = read(rmsdfile)
+        from ase import Atoms
+        if type(rmsdfile) is Atoms:
+          self.REF = rmsdfile
+        else:
+          from ase.io import read
+          print("RMSD: " + rmsdfile)
+          self.REF = read(rmsdfile)
         self.delay_step = 0
         self.a = a
         self.k = k*0.043364115308770496
@@ -73,14 +82,20 @@ class RMSDConstraint:
         if self.delay_step == 0:
           CS = atoms.constraints
           del atoms.constraints
-          adjustment = numerical_derivative(compare_pair, atoms, self.REF)
+          adjustment,rmsd = numerical_derivative(compare_pair, atoms, self.REF)
           adjustment *= self.k
           #print(adjustment)
           maximumF = np.max(np.abs(forces))
           maximumA = np.max(np.abs(adjustment))
+          #factor = rmsd / 10 + 1 
+          #if rmsd < 0.5:
+          if maximumF < 2*6*rmsd:
+            maximumF = 2*6*rmsd
+          print(maximumF, maximumA)
           factor = 1.1
           #if maximumA < maximumF:
           adjustment *= factor*maximumF/maximumA
+          #adjustment *= factor*adjustment/forces
           #else:
           #  adjustment[adjustment > maximumF] = factor*maximumF
           #  adjustment[adjustment < -maximumF] = -factor*maximumF
@@ -100,7 +115,8 @@ class RMSDConstraint:
           self.remembered_forces = adjustment
         else:
           forces -= self.remembered_forces
-        if np.mod(self.delay_step, 1) == 0 and self.delay_step > 0:
+        #delayed_steps = round(self.rmsd-0.5)+1
+        if np.mod(self.delay_step, 2) == 0 and self.delay_step > 0:
           self.delay_step = 0
         else:
           self.delay_step += 1

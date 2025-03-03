@@ -78,11 +78,38 @@ while not Qfollow_activated == 0:
     constraints.append(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm,Qslow))
     Qconstraints = 3
   if Qconstraints == 2:
-    if len(species) != 1:
+    if not ( len(species) == 1 or len(species) == 2):
       print("Nice try. The RMSD part of JKMD is yet not ready for your jokes.")
       exit()
     from rmsdconstraint import RMSDConstraint
-    constraints.append(RMSDConstraint(all_species,Qk_bias,Qrmsddiff,Qrmsdreffile,Qslow))
+    from energyconstrain import EnergyConstraint
+    if len(species) == 2:
+      #constraints.append(RMSDConstraint(species[0],Qk_bias,Qrmsddiff,species[0],Qslow))
+      #constraints.append(RMSDConstraint(species[0],Qk_bias,Qrmsddiff,species[1],Qslow))
+      #constrain1 = RMSDConstraint(species[0],Qk_bias,Qrmsddiff,species[1],Qslow)
+      #constrain2 = RMSDConstraint(species[1],Qk_bias,Qrmsddiff,species[0],Qslow)
+      #species[0].set_constraint(constrain1)
+      from ArbAlign import compare
+      #print(species[0].get_chemical_symbols())
+      #print(species[1].get_chemical_symbols())
+      species[0], _ = compare(species[1], species[0], Qreturn_geometry = 1)
+      species[1], _ = compare(species[0], species[1], Qreturn_geometry = 1)
+      #print(species[0].get_chemical_symbols())
+      #print(species[1].get_chemical_symbols())
+      
+      def call_rmsd_constrain1():
+        species[0].set_constraint([EnergyConstraint(species[0].get_potential_energy(),species[1].get_potential_energy()),RMSDConstraint(species[0],Qk_bias,Qrmsddiff,species[1],Qslow)])
+        #species[0].set_constraint(RMSDConstraint(species[0],Qk_bias,Qrmsddiff,species[1],Qslow))
+        #constrain1.ref = species[1]
+      def call_rmsd_constrain2():
+        #constrain2.ref = species[0]
+        species[1].set_constraint([EnergyConstraint(species[1].get_potential_energy(),species[0].get_potential_energy()),RMSDConstraint(species[1],Qk_bias,Qrmsddiff,species[0],Qslow)])  
+        #species[1].set_constraint(RMSDConstraint(species[1],Qk_bias,Qrmsddiff,species[0],Qslow))
+      #call_rmsd_constrain1()
+      #call_rmsd_constrain2()
+      print(species)
+    else:
+      constraints.append(RMSDConstraint(all_species,Qk_bias,Qrmsddiff,Qrmsdreffile,Qslow))
     Qconstraints = 4
   if len(QMMM) > 0:
     from src.QMMM import QMMM as QMMMcalc  
@@ -119,7 +146,11 @@ while not Qfollow_activated == 0:
     print("Setting calculator.", flush = True)
   def call_calculator():
     from calculator import calculator
-    all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qmultiplicity, Qout, all_species,Qmixer_damping,Qcutoff)
+    if Qconstraints == 4 and len(species) == 2:
+      species[0].calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qmultiplicity, Qout, species[0],Qmixer_damping,Qcutoff)
+      species[1].calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qmultiplicity, Qout, species[1],Qmixer_damping,Qcutoff)
+    else:
+      all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qmultiplicity, Qout, all_species,Qmixer_damping,Qcutoff)
   call_calculator()
   if Qout > 1:
     print(all_species)
@@ -140,7 +171,13 @@ while not Qfollow_activated == 0:
   elif Qthermostat == "L":
     from ase import units
     from ase.md.langevin import Langevin
-    dyn = Langevin(all_species, Qdt * units.fs, temperature_K = Qtemp, friction = Qthermostat_L / units.fs, fixcm = Qfixcm, rng = Qrng)
+    if Qconstraints == 4 and len(species) == 2:
+      dyn1 = Langevin(species[0], Qdt * units.fs, temperature_K = Qtemp, friction = Qthermostat_L / units.fs, fixcm = Qfixcm, rng = Qrng)
+      dyn2 = Langevin(species[1], Qdt * units.fs, temperature_K = Qtemp, friction = Qthermostat_L / units.fs, fixcm = Qfixcm, rng = Qrng)
+      dyn1.attach(call_rmsd_constrain1, interval = 1)
+      dyn2.attach(call_rmsd_constrain2, interval = 1)
+    else:
+      dyn = Langevin(all_species, Qdt * units.fs, temperature_K = Qtemp, friction = Qthermostat_L / units.fs, fixcm = Qfixcm, rng = Qrng)
   elif Qthermostat == "NH":
     from ase import units
     from ase.md.npt import NPT
@@ -186,20 +223,42 @@ while not Qfollow_activated == 0:
 
     init(current_time,current_step)
     #global cluster_dic
-    if "cluster_dic" not in globals(): #current_step == 0:
-      cluster_dic = {}
+    if Qconstraints == 4 and len(species) == 2:
+      cluster_dic1 = {}
+      cluster_dic2 = {}
+    else:
+      if "cluster_dic" not in globals(): #current_step == 0:
+        cluster_dic = {}
     def save(fail = False):
-      global cluster_dic,current_time,current_step
-      toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
+      global current_time,current_step
+      if Qconstraints == 4 and len(species) == 2:
+        global cluster_dic1,cluster_dic2
+        toupdate1,current_time,current_step = print_properties(species = species[0], timestep = 0, interval = 0, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
+        toupdate2,current_time,current_step = print_properties(species = species[1], timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
+      else:
+        global cluster_dic
+        toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
       if Qsavepickle == 1:
-        toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
-        if Qconstraints != 0:
-          toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
-        cluster_dic = mergeDictionary(cluster_dic, toupdate)
+        if Qconstraints == 4 and len(species) == 2:
+          toupdate1.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
+          toupdate2.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
+        else:
+          toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
+          if Qconstraints == 3:
+            toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
+        if Qconstraints == 4 and len(species) == 2:
+          cluster_dic1 = mergeDictionary(cluster_dic1, toupdate1)
+          cluster_dic2 = mergeDictionary(cluster_dic2, toupdate2)
+        else:
+          cluster_dic = mergeDictionary(cluster_dic, toupdate)
     if Qdump == 0:
       save()
     else:
-      dyn.attach(save, interval = Qdump)
+      if Qconstraints == 4 and len(species) == 2:
+        #dyn1.attach(save, interval = 1)
+        dyn2.attach(save, interval = 1)
+      else:
+        dyn.attach(save, interval = Qdump)
     if Qcalculator == "PhysNet": 
       #from calculator import calculator
       def updatephysnet():
@@ -230,7 +289,11 @@ while not Qfollow_activated == 0:
   def stepsmadeadd():
     global stepsmade
     stepsmade += 1
-  dyn.attach(stepsmadeadd, interval = 1)
+  if Qconstraints == 4 and len(species) == 2:
+    dyn1.attach(stepsmadeadd, interval = 1)
+    dyn2.attach(stepsmadeadd, interval = 1)
+  else:
+    dyn.attach(stepsmadeadd, interval = 1)
   #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
 
   #SIMULATION
@@ -246,7 +309,11 @@ while not Qfollow_activated == 0:
     #  dyn.run(1)
     #  print("1 done")
     try:
-      dyn.run(Qns - stepsmade)
+      if Qconstraints == 4 and len(species) == 2:
+        dyn1.run(1)
+        dyn2.run(1)
+      else:
+        dyn.run(Qns - stepsmade)
       if Qdump == 0:
         current_time = current_time + Qdt*Qns
         current_step = current_step + Qns
@@ -290,10 +357,15 @@ while not Qfollow_activated == 0:
 if Qsavepickle == 1:
   if Qout > 1:
     print("Done and now just saving pickle.")
-  if "cluster_dic" in globals():
+  if "cluster_dic" in globals() or "cluster_dic1" in globals() or "cluster_dic2" in globals():
     from pandas import DataFrame
-    for key in cluster_dic:
-      cluster_dic[key] = cluster_dic[key][::-1]
+    if Qconstraints == 4 and len(species) == 2:
+      for key in cluster_dic1:
+        cluster_dic2[key] = cluster_dic2[key][::-1]
+      cluster_dic = mergeDictionary(cluster_dic1, cluster_dic2) 
+    else:
+      for key in cluster_dic:
+        cluster_dic[key] = cluster_dic[key][::-1]
     clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
     try:
       clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
