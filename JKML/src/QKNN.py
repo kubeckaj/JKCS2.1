@@ -12,29 +12,27 @@ import os
 from collections import defaultdict
 
 
-def _generate_fchl(
-    strs: List[Atoms], krr_cutoff: float, max_value: float = None
-) -> np.ndarray:
-    from qmllib.representations import generate_fchl18 as generate_representation
+def _generate_fchl19(strs: List[Atoms], krr_cutoff: float = 8) -> np.ndarray:
+    from qmllib.representations import generate_fchl19 as generate_representation
 
-    repres = [None] * len(strs)
-    max_atoms = max([len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))])
-    for i in range(len(repres)):
-        repres[i] = generate_representation(
+    n = len(strs)
+    representation = generate_representation(
+        strs[0].get_atomic_numbers(),
+        strs[1].get_positions(),
+        rcut=krr_cutoff,
+        acut=krr_cutoff,
+    )
+    X = np.zeros((n, representation.shape[1]))
+    X[0, :] = np.sum(representation, axis=0)
+    for i in range(1, n):
+        X[i, :] = generate_representation(
             strs.iloc[i].get_atomic_numbers(),
             strs.iloc[i].get_positions(),
-            max_size=max_atoms,
-            neighbors=max_atoms,
-            cut_distance=krr_cutoff,
-        )
-    X = np.array(repres)
-    # flatten to 2D
-    X = X.reshape(X.shape[0], -1)
+            rcut=krr_cutoff,
+            acut=krr_cutoff,
+        ).sum(axis=0)
     if np.isnan(X).any():
         raise ValueError("NaNs in FCHL representation!")
-    # remove infinities TODO: is this good?
-    if max_value is not None:
-        X = np.minimum(X, max_value)
     return X
 
 
@@ -113,10 +111,10 @@ def _generate_coulomb(strs: List[Atoms], max_atoms: int):
 
 
 def calculate_representation(
-    Qrepresentation, strs, krr_cutoff, max_value=1e6, max_atoms=None, asize=None
+    Qrepresentation, strs, krr_cutoff=8, max_atoms=None, asize=None
 ):
     if Qrepresentation == "fchl":
-        return _generate_fchl(strs, krr_cutoff, max_value)
+        return _generate_fchl19(strs, krr_cutoff)
     elif Qrepresentation == "mbdf":
         return _generate_mbdf(strs, krr_cutoff)
     elif Qrepresentation == "bob":
