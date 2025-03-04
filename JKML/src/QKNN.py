@@ -102,7 +102,7 @@ def _generate_coulomb(strs: List[Atoms], max_atoms: int):
         max_atoms = max([len(x) for x in strs])
 
     # get the first representation to find out the length
-    X = np.zeros((n, max_atoms * (max_atoms + 1) / 2))
+    X = np.zeros((n, max_atoms * (max_atoms + 1) // 2))
     for i, struct in enumerate(strs):
         X[i, :] = generate_representation(
             struct.get_atomic_numbers(),
