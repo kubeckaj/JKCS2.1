@@ -28,6 +28,9 @@ print("JKML has started", flush=True)
 from src.arguments import arguments
 from sys import argv
 
+# timing
+from timeit import default_timer as timer
+
 locals().update(arguments(argv[1:]))
 
 # LOADING DATABASES
@@ -147,6 +150,7 @@ for sampleeach_i in sampleeach_all:
 
         #####################################
         print("JKML is starting the training.")
+        train_start = timer()
         if Qmethod == "krr":
             from src.QML import training
 
@@ -243,6 +247,7 @@ for sampleeach_i in sampleeach_all:
             exit()
         ###################################
 
+        print(f"JKML training done. Took {timer() - train_start:.3f} s.")
     ####################################################################################################
     ####################################################################################################
 
@@ -326,6 +331,7 @@ for sampleeach_i in sampleeach_all:
             )
         )
 
+        eval_start = timer()
         #####################################
         print("JKML is starting the testing/evaluation.")
         if Qmethod == "krr":
@@ -363,6 +369,7 @@ for sampleeach_i in sampleeach_all:
             exit()
         #####################################
 
+        print(f"JKML evaluation done. Took {timer() - eval_start:.3f} s.")
         ### PRINTING THE RESULTS
         from src.print_output import print_results
 
