@@ -752,6 +752,7 @@ def arguments(argument_list=[]):
             Qmethod = "knn"
             continue
 
+        # override representation
         if arg == "-repr":
             last = "-repr"
             continue
