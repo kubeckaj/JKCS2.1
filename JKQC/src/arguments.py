@@ -80,8 +80,8 @@ def print_help():
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (or use ppt,ppb,cmmc. e.g. 100ppt")
   print("                         use -cnt for self-consistent dG")
   print("\nOTHERS:")
-  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
-  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
+  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx, -maxdist")
+  print(" -forces [Eh/Ang], -meanforce, -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize, -gif")
 
@@ -676,6 +676,14 @@ def arguments(argument_list = []):
     # ATOMS
     if i == "-atoms":
       Pout.append("-atoms")
+      continue
+    # MAXDIST
+    if i == "-maxdist":
+      Pout.append("-maxdist")
+      continue
+    # MEANFORCE
+    if i == "-meanforce":
+      Pout.append("-meanforce")
       continue
     # ID
     if i == "-id1":

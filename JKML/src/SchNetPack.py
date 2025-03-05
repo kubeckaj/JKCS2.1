@@ -69,11 +69,11 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       #dipole moment
       from tblite.ase import TBLite
       tmpatoms = strs.values[i].copy()
-      tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
-      Q_charges_tmp = tmpatoms.get_charges()
+      #tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 30000, accuracy = 1.0)
+      #Q_charges_tmp = tmpatoms.get_charges()
+      Q_charges_tmp = Q_charges[i] 
       #print(Q_charges_tmp)
       #print(Q_charges[i])
-      #Q_charges_tmp = Q_charges[i] 
       R_tmp = strs.values[i].get_positions()
       Ntmp = len(Q_charges_tmp)
       for k in range(0,Ntmp):
@@ -85,7 +85,7 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       electrostatics_E, electrostatics_F = compute_energies_forces(strs.values[i].get_positions(), Q_charges_tmp)
       dispersions_E, dispersions_F = compute_dispersions(strs.values[i].get_positions(), symbols = np.array(strs.values[i].get_chemical_symbols()), totalcharge = 0)
       Y_train[i] -= electrostatics_E + dispersions_E
-      print(f"JKML(SchNetPack): {Y_train[i]+electrostatics_E+dispersions_E} {Y_train[i]} {electrostatics_E} {dispersions_E}")
+      print(f"EE:JKML(SchNetPack): {Y_train[i]+electrostatics_E+dispersions_E} {Y_train[i]} {electrostatics_E} {dispersions_E}")
       F_train[i] -= electrostatics_F + dispersions_F
       import numpy as np
       #print(F_train[i])
@@ -93,7 +93,9 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       #print(np.sum((F_train[i])**2,axis=1))
       #print(np.sum((electrostatics_F)**2,axis=1))
       #print(np.sum((F_train[i]+electrostatics_F)**2,axis=1))
-      #print(f"JKML(SchNetPack): {np.max(np.sum((F_train[i]+electrostatics_F)**2,axis=1))**0.05} {np.max(np.sum((F_train[i])**2,axis=1))**0.05} {np.max(np.sum((electrostatics_F)**2,axis=1))**0.05}")
+      #print(f"FF:(SchNetPack): {np.mean(np.sum((F_train[i]+electrostatics_F+dispersions_F)**2,axis=1)**0.5)} {np.mean(np.sum((F_train[i])**2,axis=1)**0.5)} {np.mean(np.sum((electrostatics_F)**2,axis=1)**0.5)} {np.mean(np.sum((dispersions_F)**2,axis=1)**0.5)}")
+      print(f"FF:(SchNetPack): {np.sum(np.sum((F_train[i]+electrostatics_F+dispersions_F)**2,axis=1)**0.5)} {np.sum(np.sum((F_train[i])**2,axis=1)**0.5)} {np.sum(np.sum((electrostatics_F)**2,axis=1)**0.5)} {np.sum(np.sum((dispersions_F)**2,axis=1)**0.5)}")
+      #print(f"FF:(SchNetPack): {np.sum(np.sum((F_train[i]+electrostatics_F+dispersions_F),axis=0)**2)**0.5} {np.sum(np.sum((F_train[i]),axis=0)**2)**0.5} {np.sum(np.sum((electrostatics_F),axis=0)**2)**0.5} {np.sum(np.sum((dispersions_F),axis=0)**2)**0.5}")
     Qifdipole = 0
     Qifcharges = 0  
 

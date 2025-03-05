@@ -14,7 +14,7 @@ def substract_monomers(the_clusters_df,the_monomers_df,Qmonomers,column_name_1,c
     the_ens_correction = [0]*len(the_clusters_df)
     n = 0
     #TODO: it is possible that if the monomers are present multiple times, that I substract each of them. CHECK the code below 
-    print("JKML(data): FOR JAKUB: I should check whether these are unique:"+str(monomers_df["info"]["components"].values)+"\n")
+    #print("JKML(data): FOR JAKUB: I should check whether these are unique:"+str(monomers_df["info"]["components"].values)+"\n")
     for i in transpose([the_clusters_df["info"]["components"].values,the_clusters_df["info"]["component_ratio"].values]):
       nn = 0
       #print(i)
@@ -76,6 +76,7 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
     size = "full" #IT IS BECAUSE I DO NOT WANT TO MAKE MY TEST SET SMALLER
 
   ### ENERGIES = VARIABLES / STRUCTURES
+  print(clusters_df["info"]["file_basename"].values)
   ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
   strs = clusters_df["xyz"]["structure"]
   print("JKML(data): data length = "+str(ens.shape[0]), flush = True)

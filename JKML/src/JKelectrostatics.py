@@ -35,11 +35,20 @@ def compute_energies_forces(positions, charges, sr_cut=5.0):
         x3 = x**3
         x4 = x3 * x
         x5 = x4 * x
-        return np.where(d < cut, 6 * x5 - 15 * x4 + 10 * x3, 1.0)
+        return np.where(d < cut, (6 * x5 - 15 * x4 + 10 * x3), 1.0)
+
+    def Dswitch(d):
+        cut = sr_cut / 2
+        x = d / cut
+        x2 = x**2
+        x3 = x2 * x
+        x4 = x2**2
+        return np.where(d < cut, (30 * x4 - 60 * x3 + 30 * x2), 0.0)
 
     # Compute switching function
     switch_value = switch(r)
     cswitch = 1.0 - switch_value
+    dswitch = Dswitch(r)
 
     #Avoid self-interactions
     np.fill_diagonal(r2, np.inf) 
@@ -54,7 +63,7 @@ def compute_energies_forces(positions, charges, sr_cut=5.0):
     # Compute forces
     F_ordinary = qiqj / r2 
     F_shielded = 0 #qiqj * np.where(r2 > 100000, 0.0, np.sqrt(r2 / (r2 + 1.0)**3)) 
-    force_magnitude = (cswitch * F_shielded + switch_value * F_ordinary)
-    forces = - np.sum(force_magnitude[:, :, np.newaxis] * pos_diff / r[:, :, np.newaxis], axis=1) * conv_hartree**2
+    force_magnitude = (-cswitch * F_shielded - switch_value * F_ordinary + dswitch * E_ordinary - dswitch * E_shielded)
+    forces = np.sum(force_magnitude[:, :, np.newaxis] * pos_diff / r[:, :, np.newaxis], axis=1) * conv_hartree**2
 
     return energy, forces
