@@ -135,34 +135,46 @@ def training(
     varsoutfile: Union[str, os.PathLike],
     max_atoms: int = None,
     asize: Dict[str, Union[np.int64, int]] = None,
+    no_metric=False,
 ):
 
     ### REPRESENTATION CALCULATION ###
-    print(f"JKML(Q-kNN): Calculating {Qrepresentation.upper()} representation.", flush=True)
+    print(
+        f"JKML(Q-kNN): Calculating {Qrepresentation.upper()} representation.",
+        flush=True,
+    )
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
-    X_train = calculate_representation(Qrepresentation, strs, krr_cutoff, max_atoms)
+    X_train = calculate_representation(
+        Qrepresentation, strs, krr_cutoff, max_atoms, asize
+    )
 
     # some info about the full representation
     print(
         "JKML(Q-kNN): Shape of the training representation: " + str(X_train.shape),
         flush=True,
     )
-    print("JKML(Q-kNN): Training MLKR metric.", flush=True)
     # save train input files for off-site debugging
     with open(varsoutfile, "wb") as f:
         pickle.dump([X_train, Y_train], f)
         print(f"Saved pretrain vars to {str(f)}.", flush=True)
-    mlkr = MLKR()
-    mlkr.fit(X_train, Y_train)
-    A = mlkr.get_mahalanobis_matrix()
-    print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
-    knn = KNeighborsRegressor(metric=mlkr.get_metric(), n_jobs=-1)
+    if not no_metric:
+        print("JKML(Q-kNN): Training MLKR metric.", flush=True)
+        mlkr = MLKR()
+        mlkr.fit(X_train, Y_train)
+        A = mlkr.get_mahalanobis_matrix()
+        print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
+        knn = KNeighborsRegressor(metric=mlkr.get_metric(), n_jobs=-1)
+    else:
+        knn = KNeighborsRegressor(n_jobs=-1)
     knn.fit(X_train, Y_train)
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()
     knn_params["metric"] = "MLKR_placeholder"
     with open(varsoutfile, "wb") as f:
-        pickle.dump([X_train, Y_train, X_atoms, A, mlkr, knn_params], f)
+        if not no_metric:
+            pickle.dump([X_train, Y_train, X_atoms, A, mlkr, knn_params], f)
+        else:
+            pickle.dump([X_train, Y_train, X_atoms, knn_params], f)
     return {
         key: value
         for key, value in locals().items()

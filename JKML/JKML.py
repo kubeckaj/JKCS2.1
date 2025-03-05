@@ -179,6 +179,7 @@ for sampleeach_i in sampleeach_all:
                     Y_train,
                     krr_cutoff,
                     varsoutfile,
+                    no_metric=no_metric,
                 )
             )
         #####################################

@@ -760,6 +760,10 @@ def arguments(argument_list=[]):
             Qrepresentation = arg
             continue
 
+        # turn off metric learning for k-NN
+        if arg == "-no-metric":
+            no_metric = True
+
         # Epochs
         if arg == "-nn_epochs" or arg == "-epochs":
             last = "-nn_epochs"
