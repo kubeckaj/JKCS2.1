@@ -163,9 +163,11 @@ def training(
         mlkr.fit(X_train, Y_train)
         A = mlkr.get_mahalanobis_matrix()
         print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
-        knn = KNeighborsRegressor(metric=mlkr.get_metric(), n_jobs=-1)
+        knn = KNeighborsRegressor(
+            metric=mlkr.get_metric(), n_jobs=-1, algorithm="ball_tree"
+        )
     else:
-        knn = KNeighborsRegressor(n_jobs=-1)
+        knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto")
     knn.fit(X_train, Y_train)
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()
