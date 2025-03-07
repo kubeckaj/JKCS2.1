@@ -248,7 +248,10 @@ for sampleeach_i in sampleeach_all:
             exit()
         ###################################
 
-        print(f"JKML training done. Took {timer() - train_start:.3f} s.")
+        train_time = timer() - train_start
+        print(
+            f"JKML training done. Took {train_time:.3f} s ({train_time / X_train.shape[0]:.4f} per sample)."
+        )
     ####################################################################################################
     ####################################################################################################
 
@@ -352,6 +355,7 @@ for sampleeach_i in sampleeach_all:
             Qforces = 0
             F_predicted = None
             Qa_predicted = None
+        #####################################
         elif Qmethod == "nn":
             from src.SchNetPack import evaluate
 
@@ -370,7 +374,11 @@ for sampleeach_i in sampleeach_all:
             exit()
         #####################################
 
-        print(f"JKML evaluation done. Took {timer() - eval_start:.3f} s.")
+        eval_time = timer() - eval_start
+        time_per_sample = eval_time / X_train.shape[0]
+        print(
+            f"JKML evaluation done. Took {eval_time:.3f} s ({time_per_sample:.4f} per sample)."
+        )
         ### PRINTING THE RESULTS
         from src.print_output import print_results
 
