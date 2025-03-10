@@ -330,6 +330,9 @@ def arguments(argument_list=[]):
     Qmethod = "krr"
     Qrepresentation = "fchl"
 
+    # knn default
+    no_metric = False
+
     # Predefined QML
     Qkernel = "Gaussian"
     sigmas = [1.0]

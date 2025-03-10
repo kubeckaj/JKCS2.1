@@ -42,8 +42,11 @@ def training(
         from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
     import numpy as np
     import pickle
+    import time
 
     ### REPRESENTATION CALCULATION ###
+    repr_wall_start = time.perf_counter()
+    repr_cpu_start = time.process_time()
     if Qrepresentation == "fchl":
         repres_dataframe = DataFrame(index=strs.index, columns=["xyz"])
         max_atoms = max(
@@ -69,12 +72,16 @@ def training(
             normalized=False,
         )
 
+    repr_train_wall = time.perf_counter() - repr_wall_start
+    repr_train_cpu = time.perf_counter() - repr_cpu_start
     # some info about the full representation
     print(
         "JKML(QML): Shape of the training representation: " + str(X_train.shape),
         flush=True,
     )
 
+    train_wall_start = time.perf_counter()
+    train_cpu_start = time.process_time()
     # ONLY FOR JOINING ALL THE SPLITS AND CHOLESKY DECOMPOSITION
     if Qsplit == -1:
         splits = Qsplit_i + 1
@@ -114,6 +121,8 @@ def training(
             else:
                 K = np.concatenate((K, Kx), axis=1)
         alpha = [cho_solve(K, Y_train)]
+        train_wall = time.perf_counter() - train_wall_start
+        train_cpu = time.perf_counter() - train_cpu_start
         f = open(varsoutfile, "wb")
         pickle.dump([X_train, sigmas, alpha], f)
         f.close()
@@ -131,6 +140,8 @@ def training(
         alpha = [
             cho_solve(Ki, Y_train) for Ki in K
         ]  # calculates regression coeffitients
+        train_wall = time.perf_counter() - train_wall_start
+        train_cpu = time.perf_counter() - train_cpu_start
 
         # I will for now everytime save the trained QML
         f = open(varsoutfile, "wb")
@@ -152,6 +163,8 @@ def training(
             ]  # corrects kernel
         else:
             K = JKML_kernel(X_train_i, X_train_j, kernel_args={"sigma": sigmas})
+        train_wall = time.perf_counter() - train_wall_start
+        train_cpu = time.perf_counter() - train_cpu_start
         f = open(
             varsoutfile.split(".pkl")[0]
             + "_"
@@ -167,11 +180,23 @@ def training(
         f.close()
         alpha = None
         print("JKML(QML): Training completed.", flush=True)
+    n_train, d_train = X_train.shape
 
     return {
         key: value
         for key, value in locals().items()
-        if key == "X_train" or key == "X_atoms" or key == "alpha"
+        if key
+        in [
+            "X_train",
+            "X_atoms",
+            "alpha",
+            "repr_train_wall",
+            "repr_train_cpu",
+            "train_wall",
+            "train_cpu",
+            "n_train",
+            "d_train",
+        ]
     }
 
 
@@ -183,6 +208,7 @@ def training(
 def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel):
 
     from pandas import DataFrame
+    import time
 
     if Qrepresentation == "fchl":
         from qmllib.representations import generate_fchl18 as generate_representation
@@ -199,6 +225,8 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
         from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
     import numpy as np
 
+    repr_wall_start = time.perf_counter()
+    repr_cpu_start = time.process_time()
     ### REPRESENTATION CALCULATION ###
     if Qrepresentation == "fchl":
         repres_dataframe = DataFrame(index=strs.index, columns=["xyz"])
@@ -224,6 +252,8 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
             normalized=False,
         )
 
+    repr_test_wall = time.perf_counter() - repr_wall_start
+    repr_test_cpu = time.perf_counter() - repr_cpu_start
     # some info about the full representation
     print(
         "JKML(QML): Shape of the testing representation: " + str(X_test.shape),
@@ -250,6 +280,8 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
             else:
                 X_train = newmatrix
 
+    test_wall_start = time.perf_counter()
+    test_cpu_start = time.process_time()
     ### THE EVALUATION
     if Qrepresentation == "fchl":
         Ks = JKML_kernel(X_test, X_train, kernel_args={"sigma": sigmas})
@@ -257,7 +289,10 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
         Ks = [JKML_kernel(X_train, X_test, X_atoms, X_test_atoms, sigmas[0])]
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
 
-    return Y_predicted
+    test_wall = time.perf_counter() - test_wall_start
+    test_cpu = time.perf_counter() - test_cpu_start
+    d_test = X_test.shape[1]
+    return Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test
 
 
 ###############################################################################

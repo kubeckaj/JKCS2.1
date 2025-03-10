@@ -10,6 +10,7 @@ from ase.atoms import Atoms
 from typing import List, Tuple, Union, Dict
 import os
 from collections import defaultdict
+import time
 
 
 def _generate_fchl19(strs: List[Atoms], krr_cutoff: float = 8) -> np.ndarray:
@@ -139,6 +140,8 @@ def training(
 ):
 
     ### REPRESENTATION CALCULATION ###
+    repr_wall_start = time.perf_counter()
+    repr_cpu_start = time.process_time()
     print(
         f"JKML(Q-kNN): Calculating {Qrepresentation.upper()} representation.",
         flush=True,
@@ -147,6 +150,8 @@ def training(
     X_train = calculate_representation(
         Qrepresentation, strs, krr_cutoff, max_atoms, asize
     )
+    repr_train_wall = time.perf_counter() - repr_wall_start
+    repr_train_cpu = time.perf_counter() - repr_cpu_start
 
     # some info about the full representation
     print(
@@ -157,6 +162,8 @@ def training(
     with open(varsoutfile, "wb") as f:
         pickle.dump([X_train, Y_train], f)
         print(f"Saved pretrain vars to {str(f)}.", flush=True)
+    train_wall_start = time.perf_counter()
+    train_cpu_start = time.process_time()
     if not no_metric:
         print("JKML(Q-kNN): Training MLKR metric.", flush=True)
         mlkr = MLKR()
@@ -169,6 +176,9 @@ def training(
     else:
         knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto")
     knn.fit(X_train, Y_train)
+    train_wall = time.perf_counter() - train_wall_start
+    train_cpu = time.perf_counter() - train_cpu_start
+    n_train, d_train = X_train.shape
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()
     knn_params["metric"] = "MLKR_placeholder"
@@ -180,7 +190,19 @@ def training(
     return {
         key: value
         for key, value in locals().items()
-        if key in ["X_train", "X_atoms", "A", "knn"]
+        if key
+        in [
+            "X_train",
+            "X_atoms",
+            "A",
+            "knn",
+            "repr_train_wall",
+            "repr_train_cpu",
+            "train_wall",
+            "train_cpu",
+            "n_train",
+            "d_train",
+        ]
     }
 
 
@@ -195,7 +217,11 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
 
     ### REPRESENTATION CALCULATION ###
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    repr_wall_start = time.perf_counter()
+    repr_cpu_start = time.process_time()
     X_test = calculate_representation(Qrepresentation, strs, krr_cutoff)
+    repr_test_wall = time.perf_counter() - repr_wall_start
+    repr_test_cpu = time.perf_counter() - repr_cpu_start
 
     # some info about the full representation
     print(
@@ -224,6 +250,11 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
                 X_train = newmatrix
 
     ### THE EVALUATION
+    test_wall_start = time.perf_counter()
+    test_cpu_start = time.process_time()
     Y_predicted = knn_model.predict(X_test)
+    test_wall = time.perf_counter() - test_wall_start
+    test_cpu = time.perf_counter() - test_cpu_start
     Y_predicted = Y_predicted[None, :]
-    return Y_predicted
+    d_test = X_test.shape[1]
+    return Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test

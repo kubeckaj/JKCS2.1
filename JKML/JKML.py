@@ -169,6 +169,7 @@ for sampleeach_i in sampleeach_all:
                     Qsplit_j,
                 )
             )
+        #####################################
         elif Qmethod == "knn":
             from src.QKNN import training
 
@@ -341,8 +342,10 @@ for sampleeach_i in sampleeach_all:
         if Qmethod == "krr":
             from src.QML import evaluate
 
-            Y_predicted = evaluate(
-                Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel
+            Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
+                evaluate(
+                    Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel
+                )
             )
             Qforces = 0
             F_predicted = None
@@ -351,7 +354,9 @@ for sampleeach_i in sampleeach_all:
         elif Qmethod == "knn":
             from src.QKNN import evaluate
 
-            Y_predicted = evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn)
+            Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
+                evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn)
+            )
             Qforces = 0
             F_predicted = None
             Qa_predicted = None
@@ -409,6 +414,17 @@ for sampleeach_i in sampleeach_all:
             Qcharge,
             Q_charges,
             Qa_predicted,
+            repr_train_wall,
+            repr_train_cpu,
+            repr_test_wall,
+            repr_test_cpu,
+            train_wall,
+            train_cpu,
+            test_wall,
+            test_cpu,
+            n_train,
+            d_train,
+            X_train.shape[0],
         )
 
     ####################################################################################################
