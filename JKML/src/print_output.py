@@ -292,7 +292,7 @@ def print_results(
     clustersout_df.loc[:, ("extra", "n_train")] = n_train
     clustersout_df.loc[:, ("extra", "d_train")] = d_train
     if isinstance(Y_predicted, list):
-        clustersout_df.loc[:, ("extra", "n_test")] = len(Y_predicted)
+        clustersout_df.loc[:, ("extra", "n_test")] = array(Y_predicted).shape[1]
     elif isinstance(Y_predicted, ndarray):
         clustersout_df.loc[:, ("extra", "n_test")] = Y_predicted.shape[1]
     clustersout_df.loc[:, ("extra", "d_test")] = d_test
