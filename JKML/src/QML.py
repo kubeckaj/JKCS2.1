@@ -180,7 +180,8 @@ def training(
         f.close()
         alpha = None
         print("JKML(QML): Training completed.", flush=True)
-    n_train, d_train = X_train.shape
+    n_train = X_train.shape[0]
+    d_train = np.sum(X_train.shape[1:])
 
     return {
         key: value
@@ -291,7 +292,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
 
     test_wall = time.perf_counter() - test_wall_start
     test_cpu = time.process_time() - test_cpu_start
-    d_test = X_test.shape[1]
+    d_test = np.sum(X_test.shape[1:])
     return Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test
 
 
