@@ -761,6 +761,7 @@ def arguments(argument_list=[]):
             continue
         if last == "-repr":
             Qrepresentation = arg
+            last == ""
             continue
 
         # turn off metric learning for k-NN
