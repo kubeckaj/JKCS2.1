@@ -281,18 +281,18 @@ def print_results(
                 array(force) for force in F_predicted[0][i]
             ]
     ### SAVE TIME AND SHAPE INFORMATION
-    clusters_df.loc[:, ("extra", "repr_train_wall")] = repr_train_wall
-    clusters_df.loc[:, ("extra", "repr_train_cpu")] = repr_train_cpu
-    clusters_df.loc[:, ("extra", "repr_test_wall")] = repr_test_wall
-    clusters_df.loc[:, ("extra", "repr_test_cpu")] = repr_test_cpu
-    clusters_df.loc[:, ("extra", "train_wall")] = train_wall
-    clusters_df.loc[:, ("extra", "train_cpu")] = train_cpu
-    clusters_df.loc[:, ("extra", "test_wall")] = test_wall
-    clusters_df.loc[:, ("extra", "test_cpu")] = test_cpu
-    clusters_df.loc[:, ("extra", "n_train")] = n_train
-    clusters_df.loc[:, ("extra", "d_train")] = d_train
-    clusters_df.loc[:, ("extra", "n_test")] = Y_predicted.shape[0]
-    clusters_df.loc[:, ("extra", "d_test")] = d_test
+    clustersout_df.loc[:, ("extra", "repr_train_wall")] = repr_train_wall
+    clustersout_df.loc[:, ("extra", "repr_train_cpu")] = repr_train_cpu
+    clustersout_df.loc[:, ("extra", "repr_test_wall")] = repr_test_wall
+    clustersout_df.loc[:, ("extra", "repr_test_cpu")] = repr_test_cpu
+    clustersout_df.loc[:, ("extra", "train_wall")] = train_wall
+    clustersout_df.loc[:, ("extra", "train_cpu")] = train_cpu
+    clustersout_df.loc[:, ("extra", "test_wall")] = test_wall
+    clustersout_df.loc[:, ("extra", "test_cpu")] = test_cpu
+    clustersout_df.loc[:, ("extra", "n_train")] = n_train
+    clustersout_df.loc[:, ("extra", "d_train")] = d_train
+    clustersout_df.loc[:, ("extra", "n_test")] = Y_predicted.shape[0]
+    clustersout_df.loc[:, ("extra", "d_test")] = d_test
 
     clustersout_df.to_pickle(outfile)
     if Qsampleeach > 0:
