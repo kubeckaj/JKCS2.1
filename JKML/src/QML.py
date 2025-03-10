@@ -73,7 +73,7 @@ def training(
         )
 
     repr_train_wall = time.perf_counter() - repr_wall_start
-    repr_train_cpu = time.perf_counter() - repr_cpu_start
+    repr_train_cpu = time.process_time() - repr_cpu_start
     # some info about the full representation
     print(
         "JKML(QML): Shape of the training representation: " + str(X_train.shape),
@@ -141,7 +141,7 @@ def training(
             cho_solve(Ki, Y_train) for Ki in K
         ]  # calculates regression coeffitients
         train_wall = time.perf_counter() - train_wall_start
-        train_cpu = time.perf_counter() - train_cpu_start
+        train_cpu = time.process_time() - train_cpu_start
 
         # I will for now everytime save the trained QML
         f = open(varsoutfile, "wb")
@@ -164,7 +164,7 @@ def training(
         else:
             K = JKML_kernel(X_train_i, X_train_j, kernel_args={"sigma": sigmas})
         train_wall = time.perf_counter() - train_wall_start
-        train_cpu = time.perf_counter() - train_cpu_start
+        train_cpu = time.process_time() - train_cpu_start
         f = open(
             varsoutfile.split(".pkl")[0]
             + "_"
@@ -253,7 +253,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
         )
 
     repr_test_wall = time.perf_counter() - repr_wall_start
-    repr_test_cpu = time.perf_counter() - repr_cpu_start
+    repr_test_cpu = time.process_time() - repr_cpu_start
     # some info about the full representation
     print(
         "JKML(QML): Shape of the testing representation: " + str(X_test.shape),
@@ -290,7 +290,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
 
     test_wall = time.perf_counter() - test_wall_start
-    test_cpu = time.perf_counter() - test_cpu_start
+    test_cpu = time.process_time() - test_cpu_start
     d_test = X_test.shape[1]
     return Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test
 

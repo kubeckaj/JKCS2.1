@@ -151,7 +151,7 @@ def training(
         Qrepresentation, strs, krr_cutoff, max_atoms, asize
     )
     repr_train_wall = time.perf_counter() - repr_wall_start
-    repr_train_cpu = time.perf_counter() - repr_cpu_start
+    repr_train_cpu = time.process_time() - repr_cpu_start
 
     # some info about the full representation
     print(
@@ -177,7 +177,7 @@ def training(
         knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto")
     knn.fit(X_train, Y_train)
     train_wall = time.perf_counter() - train_wall_start
-    train_cpu = time.perf_counter() - train_cpu_start
+    train_cpu = time.process_time() - train_cpu_start
     n_train, d_train = X_train.shape
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()
@@ -221,7 +221,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
     repr_cpu_start = time.process_time()
     X_test = calculate_representation(Qrepresentation, strs, krr_cutoff)
     repr_test_wall = time.perf_counter() - repr_wall_start
-    repr_test_cpu = time.perf_counter() - repr_cpu_start
+    repr_test_cpu = time.process_time() - repr_cpu_start
 
     # some info about the full representation
     print(
@@ -254,7 +254,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
     test_cpu_start = time.process_time()
     Y_predicted = knn_model.predict(X_test)
     test_wall = time.perf_counter() - test_wall_start
-    test_cpu = time.perf_counter() - test_cpu_start
+    test_cpu = time.process_time() - test_cpu_start
     Y_predicted = Y_predicted[None, :]
     d_test = X_test.shape[1]
     return Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test
