@@ -291,7 +291,7 @@ def print_results(
     clustersout_df.loc[:, ("extra", "test_cpu")] = test_cpu
     clustersout_df.loc[:, ("extra", "n_train")] = n_train
     clustersout_df.loc[:, ("extra", "d_train")] = d_train
-    clustersout_df.loc[:, ("extra", "n_test")] = Y_predicted.shape[0]
+    clustersout_df.loc[:, ("extra", "n_test")] = Y_predicted.shape[1]
     clustersout_df.loc[:, ("extra", "d_test")] = d_test
 
     clustersout_df.to_pickle(outfile)
