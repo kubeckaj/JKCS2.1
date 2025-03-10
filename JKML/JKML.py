@@ -424,7 +424,7 @@ for sampleeach_i in sampleeach_all:
             test_cpu,
             n_train,
             d_train,
-            X_train.shape[0],
+            d_test,
         )
 
     ####################################################################################################
