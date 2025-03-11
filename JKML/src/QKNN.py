@@ -111,17 +111,44 @@ def _generate_coulomb(strs: List[Atoms], max_atoms: int):
     return X
 
 
-def calculate_representation(
-    Qrepresentation, strs, krr_cutoff=8, max_atoms=None, asize=None
+def _generate_mbtr(
+    strs: List[Atoms],
+    geometry={"function": "inverse_distance"},
+    grid={"min": 0, "max": 1, "n": 100, "sigma": 0.1},
+    weighting={"function": "exp", "scale": 0.5, "threshold": 1e-3},
 ):
+    from dscribe.descriptors import MBTR
+
+    unique_atoms = set()
+    for structure in strs:
+        atom_set = set(structure.get_chemical_symbols())
+        unique_atoms = unique_atoms | atom_set
+    unique_atoms = list(unique_atoms)
+    mbtr = MBTR(
+        species=unique_atoms,
+        geometry=geometry,
+        grid=grid,
+        weighting=weighting,
+        periodic=False,
+        normalization="none",
+    )
+    X = np.zeros((len(strs), mbtr.get_number_of_features()))
+    for i, struct in enumerate(strs):
+        X[i, :] = mbtr.create(struct)
+    return X
+
+
+def calculate_representation(Qrepresentation, strs, **repr_kwargs):
     if Qrepresentation == "fchl":
-        return _generate_fchl19(strs, krr_cutoff)
+        return _generate_fchl19(strs, **repr_kwargs)
     elif Qrepresentation == "mbdf":
-        return _generate_mbdf(strs, krr_cutoff)
+        return _generate_mbdf(strs, **repr_kwargs)
     elif Qrepresentation == "bob":
-        return _generate_bob(strs, max_atoms, asize)
+        return _generate_bob(strs, **repr_kwargs)
     elif Qrepresentation == "coulomb":
-        return _generate_coulomb(strs, max_atoms)
+        return _generate_coulomb(strs, **repr_kwargs)
+    elif Qrepresentation == "mbtr":
+        return _generate_mbtr(strs, **repr_kwargs)
     else:
         raise NotImplementedError(
             f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
@@ -132,8 +159,8 @@ def training(
     Qrepresentation: str,
     strs: List[Atoms],
     Y_train: np.ndarray,
-    krr_cutoff: float,
     varsoutfile: Union[str, os.PathLike],
+    krr_cutoff: float = 8.0,
     max_atoms: int = None,
     asize: Dict[str, Union[np.int64, int]] = None,
     no_metric=False,
@@ -258,3 +285,23 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
     Y_predicted = Y_predicted[None, :]
     d_test = X_test.shape[1]
     return Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test
+
+
+# def hyperopt(
+#     Qrepresentation,
+#     strs,
+#     Y_train,
+#     hyperparamfile,
+#     nometric=False,
+#     cv_folds=5,
+# ):
+#
+#     import skopt
+#
+#     # hard-coded search spaces (for now)
+#     if Qrepresentation == "fchl":
+#         space = {
+#             "rcut": skopt.space.Real(0.1, 20, prior="log-uniform"),
+#             "acut": skopt.space.Real(0.1, 20, prior="log-uniform"),
+#         }
+#

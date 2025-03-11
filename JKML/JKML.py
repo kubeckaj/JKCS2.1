@@ -178,8 +178,8 @@ for sampleeach_i in sampleeach_all:
                     Qrepresentation,
                     strs,
                     Y_train,
-                    krr_cutoff,
                     varsoutfile,
+                    krr_cutoff,
                     no_metric=no_metric,
                 )
             )
