@@ -30,14 +30,14 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations = 300,
 
   ### XTB ###
   elif Qcalculator == "XTB":
-    if Qcharge != 0:
-      print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
-      exit()
+    #if Qcharge != 0:
+    #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
+    #  exit()
     if Qmultiplicity != 1:
       print("Oh sorry, the multiplicity has not been implemented yet, ask Jakub.")
       exit()
     from xtb.ase.calculator import XTB
-    return XTB(method=Qcalculator_input);#+" --chrg "+str(Qcharge))#, charge=Qcharge)
+    return XTB(method=Qcalculator_input, charge = float(Qcharge)) ;#+" --chrg "+str(Qcharge))#, charge=Qcharge)
 
   ### ORCA ###
   elif Qcalculator == "ORCA":
