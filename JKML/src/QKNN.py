@@ -247,7 +247,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
-    X_test = calculate_representation(Qrepresentation, strs, krr_cutoff)
+    X_test = calculate_representation(Qrepresentation, strs, cutoff=krr_cutoff)
     repr_test_wall = time.perf_counter() - repr_wall_start
     repr_test_cpu = time.process_time() - repr_cpu_start
 
