@@ -175,7 +175,7 @@ def training(
     )
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     X_train = calculate_representation(
-        Qrepresentation, strs, krr_cutoff, max_atoms, asize
+        Qrepresentation, strs, krr_cutoff=krr_cutoff, max_atoms=max_atoms, asize=asize
     )
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
