@@ -13,15 +13,15 @@ from collections import defaultdict
 import time
 
 
-def _generate_fchl19(strs: List[Atoms], krr_cutoff: float = 8) -> np.ndarray:
+def _generate_fchl19(strs: List[Atoms], cutoff: float = 8, **kwargs) -> np.ndarray:
     from qmllib.representations import generate_fchl19 as generate_representation
 
     n = len(strs)
     representation = generate_representation(
         strs[0].get_atomic_numbers(),
         strs[1].get_positions(),
-        rcut=krr_cutoff,
-        acut=krr_cutoff,
+        rcut=cutoff,
+        acut=cutoff,
     )
     X = np.zeros((n, representation.shape[1]))
     X[0, :] = np.sum(representation, axis=0)
@@ -29,21 +29,21 @@ def _generate_fchl19(strs: List[Atoms], krr_cutoff: float = 8) -> np.ndarray:
         X[i, :] = generate_representation(
             strs.iloc[i].get_atomic_numbers(),
             strs.iloc[i].get_positions(),
-            rcut=krr_cutoff,
-            acut=krr_cutoff,
+            rcut=cutoff,
+            acut=cutoff,
         ).sum(axis=0)
     if np.isnan(X).any():
         raise ValueError("NaNs in FCHL representation!")
     return X
 
 
-def _generate_mbdf(strs: List[Atoms], cutoff_r: float) -> np.ndarray:
+def _generate_mbdf(strs: List[Atoms], cutoff: float, **kwargs) -> np.ndarray:
     from MBDF import generate_mbdf as generate_representation
 
     X = generate_representation(
         np.array([i.get_atomic_numbers() for i in strs]),
         np.array([i.get_positions() for i in strs]),
-        cutoff_r=cutoff_r,
+        cutoff_r=cutoff,
         normalized=False,
         local=False,
     )
@@ -51,7 +51,7 @@ def _generate_mbdf(strs: List[Atoms], cutoff_r: float) -> np.ndarray:
 
 
 def _generate_bob(
-    strs: List[Atoms], max_atoms: int, asize: Dict[str, Union[np.int64, int]]
+    strs: List[Atoms], max_atoms: int, asize: Dict[str, Union[np.int64, int]], **kwargs
 ):
     from qmllib.representations import generate_bob as generate_representation
 
@@ -91,7 +91,7 @@ def _generate_bob(
     return X
 
 
-def _generate_coulomb(strs: List[Atoms], max_atoms: int):
+def _generate_coulomb(strs: List[Atoms], max_atoms: int, **kwargs):
     from qmllib.representations import (
         generate_coulomb_matrix as generate_representation,
     )
@@ -116,6 +116,7 @@ def _generate_mbtr(
     geometry={"function": "inverse_distance"},
     grid={"min": 0, "max": 1, "n": 100, "sigma": 0.1},
     weighting={"function": "exp", "scale": 0.5, "threshold": 1e-3},
+    **kwargs,
 ):
     from dscribe.descriptors import MBTR
 
@@ -175,7 +176,7 @@ def training(
     )
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     X_train = calculate_representation(
-        Qrepresentation, strs, krr_cutoff=krr_cutoff, max_atoms=max_atoms, asize=asize
+        Qrepresentation, strs, cutoff=krr_cutoff, max_atoms=max_atoms, asize=asize
     )
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
