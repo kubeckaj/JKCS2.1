@@ -761,12 +761,13 @@ def arguments(argument_list=[]):
             continue
         if last == "-repr":
             Qrepresentation = arg
-            last == ""
+            last = ""
             continue
 
         # turn off metric learning for k-NN
-        if arg == "-no-metric":
+        if arg == "-nometric":
             no_metric = True
+            continue
 
         # Epochs
         if arg == "-nn_epochs" or arg == "-epochs":
