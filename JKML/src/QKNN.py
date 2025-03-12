@@ -383,7 +383,7 @@ def hyperopt(
     )
     elapsed = time.perf_counter() - start_time
     print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.", flush=True)
-    params = {}
+    params = {"knn": {}, "representation": {}}
     for s, v in zip(space, res.x):
         if s.name in knn_param_names:
             params["knn"][s.name] = v
