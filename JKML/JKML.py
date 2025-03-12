@@ -502,6 +502,37 @@ for sampleeach_i in sampleeach_all:
         # clustersout_df.to_pickle(outfile)
     ########
 
+    ####################################################################################################
+    ####################################################################################################
+
+    #########################
+    ###### HYPERPARAMS ######
+    #########################
+
+    if Qhyper:
+        print("JKML is starting hyperparameter optimisation.")
+        if Qmethod == "knn":
+            from src.QKNN import hyperopt
+
+            params = hyperopt(Qrepresentation, strs, Y_train, varsoutfile, nometric)
+
+        else:
+            raise ValueError(
+                f"Hyperparameter optimisation not implemented for {Qmethod}!"
+            )
+        print(f"JKML: optimal parameters:")
+        print("{:<10} {:<10}".format("Parameter", "Value"))
+        if "representation" in params:
+            print("-------Representation-------")
+            for k, v in params["representation"].items():
+                print("{:<10} {:<10}".format(k, v))
+        if "knn" in params:
+            print("-------KNN-------")
+            for k, v in params["knn"].items():
+                print("{:<10} {:<10}".format(k, v))
+        print("", flush=True)
+
+
 ####################################################################################################
 ####################################################################################################
 print("\nJKML has finished", flush=True)

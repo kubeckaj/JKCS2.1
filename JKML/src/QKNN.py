@@ -113,9 +113,10 @@ def _generate_coulomb(strs: List[Atoms], max_atoms: int, **kwargs):
 
 def _generate_mbtr(
     strs: List[Atoms],
-    geometry={"function": "inverse_distance"},
-    grid={"min": 0, "max": 1, "n": 100, "sigma": 0.1},
-    weighting={"function": "exp", "scale": 0.5, "threshold": 1e-3},
+    k2_width=0.1,
+    k2_weight=0.5,
+    k3_width=0.1,
+    k3_weight=0.5,
     **kwargs,
 ):
     from dscribe.descriptors import MBTR
@@ -127,9 +128,16 @@ def _generate_mbtr(
     unique_atoms = list(unique_atoms)
     mbtr = MBTR(
         species=unique_atoms,
-        geometry=geometry,
-        grid=grid,
-        weighting=weighting,
+        k2={
+            "geometry": {"function": "inverse_distance"},
+            "grid": {"min": 0, "max": 1, "n": 200, "sigma": k2_width},
+            "weighting": {"function": "exp", "scale": k2_weight, "threshold": 3e-3},
+        },
+        k3={
+            "geometry": {"function": "cosine"},
+            "grid": {"min": -1, "max": 1, "n": 200, "sigma": k3_width},
+            "weighting": {"function": "exp", "scale": k3_weight, "threshold": 3e-3},
+        },
         periodic=False,
         normalization="none",
     )
@@ -288,21 +296,82 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
     return Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test
 
 
-# def hyperopt(
-#     Qrepresentation,
-#     strs,
-#     Y_train,
-#     hyperparamfile,
-#     nometric=False,
-#     cv_folds=5,
-# ):
-#
-#     import skopt
-#
-#     # hard-coded search spaces (for now)
-#     if Qrepresentation == "fchl":
-#         space = {
-#             "rcut": skopt.space.Real(0.1, 20, prior="log-uniform"),
-#             "acut": skopt.space.Real(0.1, 20, prior="log-uniform"),
-#         }
-#
+def hyperopt(
+    Qrepresentation,
+    strs,
+    Y_train,
+    hyperparamfile,
+    nometric=False,
+    cv_folds=5,
+    verbose=True,
+):
+
+    import skopt
+    from functools import lru_cache
+    from sklearn.model_selection import cross_val_score
+
+    # hard-coded search spaces (for now)
+    if Qrepresentation == "fchl":
+        space = {
+            "rcut": skopt.space.Real(0.1, 20, prior="log-uniform"),
+            "acut": skopt.space.Real(0.1, 20, prior="log-uniform"),
+        }
+    elif Qrepresentation == "mbdf":
+        space = {
+            "cutoff": skopt.space.Real(0.1, 20, prior="log-uniform"),
+        }
+    elif Qrepresentation == "mbtr":
+        # these values are based on stuke2021efficient
+        raise NotImplementedError("MBTR is still under construction!")
+    else:
+        raise NotImplementedError(
+            "Hyperparameter tuning not yet implement for representation {Qrepresentation}!"
+        )
+
+    print(
+        f"JKML(Q-kNN): Begin hyperparameter optimisation with {Qrepresentation.upper()} representation.",
+        flush=True,
+    )
+    # TODO: add time print
+
+    # add k-nn specific hyperparameter
+    space["n_neighbors"] = skopt.space.Integer(3, 15)
+    space["weights"] = skopt.space.Categorical(["uniform", "distance"])
+
+    knn_param_names = ["n_neighbors", "weights"]
+
+    @skopt.utils.use_named_args()
+    @lru_cache
+    def objective(**params):
+        repr_params = {k: v for k, v in params.items() if k not in knn_param_names}
+        knn_params = {k: v for k, v in params.items() if k in knn_param_names}
+        X = calculate_representation(Qrepresentation, strs, **repr_params)
+        knn = KNeighborsRegressor(**knn_params)
+        return -np.mean(
+            cross_val_score(
+                knn,
+                X,
+                Y_train,
+                cv=cv_folds,
+                n_jobs=-1,
+                scoring="neg_mean_absolute_error",
+            )
+        )
+
+    start_time = time.perf_counter()
+    res = skopt.gb_minimize(
+        objective, space, n_calls=30, random_state=42, verbose=verbose
+    )
+    elapsed = time.perf_counter() - start_time
+    print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.")
+    params = {}
+    for s, v in zip(space, res.x):
+        if s.name in knn_param_names:
+            params["knn"][s.name] = v
+        else:
+            params["representation"][s.name] = v
+
+    with open(hyperparamfile, "wb") as f:
+        pickle.dump(params, f)
+
+    return params

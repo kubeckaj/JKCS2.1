@@ -365,6 +365,9 @@ def arguments(argument_list=[]):
     md_steps = 2000
     md_dump = 1
 
+    # hyperparams
+    Qhyper = False
+
     # Output files
     outfile = "predicted.pkl"
     varsoutfile = "model.pkl"
@@ -1043,6 +1046,13 @@ def arguments(argument_list=[]):
         if arg == "-mbdf":
             Qmethod = "krr"
             Qrepresentation = "mbdf"
+            continue
+
+        # Hyperparameter optimisation
+        if arg == "-hyper":
+            Qhyper = True
+            Qtrain = 0  # set Qtrain to zero, as the "training" be part of the tuning
+            Qeval = 0  # similarly as above
             continue
 
         # Unknown argument
