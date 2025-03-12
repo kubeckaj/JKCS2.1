@@ -340,7 +340,6 @@ def hyperopt(
 
     knn_param_names = ["n_neighbors", "weights"]
 
-    @skopt.utils.use_named_args()
     @lru_cache
     def objective(**params):
         repr_params = {k: v for k, v in params.items() if k not in knn_param_names}
