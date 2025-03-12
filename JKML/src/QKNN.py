@@ -11,6 +11,13 @@ from typing import List, Tuple, Union, Dict
 import os
 from collections import defaultdict
 import time
+import warnings
+
+# ignore sklearn futurewarning
+warnings.filterwarnings(
+    "ignore",
+    "'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.",
+)
 
 
 def _generate_fchl19(strs: List[Atoms], cutoff: float = 8, **kwargs) -> np.ndarray:
