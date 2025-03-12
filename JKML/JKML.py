@@ -65,7 +65,7 @@ from src.load_databases import load_databases
 ###### SAMPLEEACH/SIMILARITY ######
 ###################################
 
-if Qtrain == 0:
+if Qtrain == 0 and not Qhyper:
     print("JKML: training option is missing [EXITING]", flush=True)
     exit()
 
