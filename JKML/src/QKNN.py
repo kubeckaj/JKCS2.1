@@ -36,8 +36,8 @@ def _generate_fchl19(strs: List[Atoms], rcut=8.0, acut=8.0, **kwargs) -> np.ndar
         X[i, :] = generate_representation(
             strs.iloc[i].get_atomic_numbers(),
             strs.iloc[i].get_positions(),
-            rcut=cutoff,
-            acut=cutoff,
+            rcut=rcut,
+            acut=acut,
         ).sum(axis=0)
     if np.isnan(X).any():
         raise ValueError("NaNs in FCHL representation!")
