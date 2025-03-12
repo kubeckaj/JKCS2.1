@@ -48,6 +48,7 @@ from src.load_databases import load_databases
     Qeval,
     Qopt,
     Qmonomers,
+    Qhyper,
     method,
     VARS_PKL,
     TRAIN_HIGH,
