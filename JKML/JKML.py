@@ -180,8 +180,8 @@ for sampleeach_i in sampleeach_all:
                     strs,
                     Y_train,
                     varsoutfile,
-                    krr_cutoff,
                     no_metric=no_metric,
+                    hyper_cache=hyper_cache,
                 )
             )
         #####################################
@@ -356,7 +356,7 @@ for sampleeach_i in sampleeach_all:
             from src.QKNN import evaluate
 
             Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
-                evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn)
+                evaluate(Qrepresentation, X_train, strs, knn, hyper_cache=hyper_cache)
             )
             Qforces = 0
             F_predicted = None

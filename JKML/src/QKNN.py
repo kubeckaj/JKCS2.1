@@ -20,15 +20,15 @@ warnings.filterwarnings(
 )
 
 
-def _generate_fchl19(strs: List[Atoms], cutoff: float = 8, **kwargs) -> np.ndarray:
+def _generate_fchl19(strs: List[Atoms], rcut=8.0, acut=8.0, **kwargs) -> np.ndarray:
     from qmllib.representations import generate_fchl19 as generate_representation
 
     n = len(strs)
     representation = generate_representation(
         strs[0].get_atomic_numbers(),
         strs[1].get_positions(),
-        rcut=cutoff,
-        acut=cutoff,
+        rcut=rcut,
+        acut=acut,
     )
     X = np.zeros((n, representation.shape[1]))
     X[0, :] = np.sum(representation, axis=0)
@@ -44,7 +44,7 @@ def _generate_fchl19(strs: List[Atoms], cutoff: float = 8, **kwargs) -> np.ndarr
     return X
 
 
-def _generate_mbdf(strs: List[Atoms], cutoff: float, **kwargs) -> np.ndarray:
+def _generate_mbdf(strs: List[Atoms], cutoff: float = 8.0, **kwargs) -> np.ndarray:
     from MBDF import generate_mbdf as generate_representation
 
     X = generate_representation(
@@ -58,7 +58,10 @@ def _generate_mbdf(strs: List[Atoms], cutoff: float, **kwargs) -> np.ndarray:
 
 
 def _generate_bob(
-    strs: List[Atoms], max_atoms: int, asize: Dict[str, Union[np.int64, int]], **kwargs
+    strs: List[Atoms],
+    max_atoms: int = None,
+    asize: Dict[str, Union[np.int64, int]] = None,
+    **kwargs,
 ):
     from qmllib.representations import generate_bob as generate_representation
 
@@ -98,7 +101,7 @@ def _generate_bob(
     return X
 
 
-def _generate_coulomb(strs: List[Atoms], max_atoms: int, **kwargs):
+def _generate_coulomb(strs: List[Atoms], max_atoms: int = None, **kwargs):
     from qmllib.representations import (
         generate_coulomb_matrix as generate_representation,
     )
@@ -171,17 +174,30 @@ def calculate_representation(Qrepresentation, strs, **repr_kwargs):
         )
 
 
+def load_hyperparams(hyper_cache: str):
+    if hyper_cache is not None:
+        with open(hyper_cache, "rb") as f:
+            hyperparams = pickle.load(f)
+        print(f"JKML(Q-kNN): Loaded hyperparameters from {hyper_cache}.")
+    else:
+        # use defaults
+        hyperparams = {
+            "knn": {"n_neighbors": 5, "weights": "uniform"},
+            "representation": {"cutoff": 8.0},
+        }
+    return hyperparams
+
+
 def training(
     Qrepresentation: str,
     strs: List[Atoms],
     Y_train: np.ndarray,
     varsoutfile: Union[str, os.PathLike],
-    krr_cutoff: float = 8.0,
-    max_atoms: int = None,
-    asize: Dict[str, Union[np.int64, int]] = None,
     no_metric=False,
+    hyper_cache=None,
 ):
 
+    hyperparams = load_hyperparams(hyper_cache)
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
@@ -191,7 +207,7 @@ def training(
     )
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     X_train = calculate_representation(
-        Qrepresentation, strs, cutoff=krr_cutoff, max_atoms=max_atoms, asize=asize
+        Qrepresentation, strs, **hyperparams["representation"]
     )
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
@@ -214,10 +230,13 @@ def training(
         A = mlkr.get_mahalanobis_matrix()
         print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
         knn = KNeighborsRegressor(
-            metric=mlkr.get_metric(), n_jobs=-1, algorithm="ball_tree"
+            metric=mlkr.get_metric(),
+            n_jobs=-1,
+            algorithm="ball_tree",
+            **hyperparams["knn"],
         )
     else:
-        knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto")
+        knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto", **hyperparams["knn"])
     knn.fit(X_train, Y_train)
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
@@ -254,15 +273,18 @@ def training(
 ###############################################################################
 
 
-def evaluate(Qrepresentation, krr_cutoff, X_train, strs, knn_model):
+def evaluate(Qrepresentation, X_train, strs, knn_model, hyper_cache=None):
 
     import numpy as np
 
+    hyperparams = load_hyperparams(hyper_cache)
     ### REPRESENTATION CALCULATION ###
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
-    X_test = calculate_representation(Qrepresentation, strs, cutoff=krr_cutoff)
+    X_test = calculate_representation(
+        Qrepresentation, strs, **hyperparams["representation"]
+    )
     repr_test_wall = time.perf_counter() - repr_wall_start
     repr_test_cpu = time.process_time() - repr_cpu_start
 

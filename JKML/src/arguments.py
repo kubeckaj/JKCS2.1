@@ -367,6 +367,7 @@ def arguments(argument_list=[]):
 
     # hyperparams
     Qhyper = False
+    hyper_cache = None
 
     # Output files
     outfile = "predicted.pkl"
@@ -1053,6 +1054,15 @@ def arguments(argument_list=[]):
             Qhyper = True
             Qtrain = 0  # set Qtrain to zero, as the "training" be part of the tuning
             Qeval = 0  # similarly as above
+            continue
+
+        # Load hyperparameter cache
+        if last == "-hyper-cache":
+            hyper_cache = arg
+            last = ""
+            continue
+        if arg == "-hyper-cache":
+            last = arg
             continue
 
         # Unknown argument
