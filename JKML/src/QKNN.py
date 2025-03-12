@@ -307,18 +307,19 @@ def hyperopt(
 ):
 
     import skopt
+    from skopt.space import Real, Integer, Categorical
     from functools import lru_cache
     from sklearn.model_selection import cross_val_score
 
     # hard-coded search spaces (for now)
     if Qrepresentation == "fchl":
         space = {
-            "rcut": skopt.space.Real(0.1, 20, prior="log-uniform"),
-            "acut": skopt.space.Real(0.1, 20, prior="log-uniform"),
+            "rcut": Real(1.0, 20.0, prior="uniform"),
+            "acut": Real(1.0, 20.0, prior="uniform"),
         }
     elif Qrepresentation == "mbdf":
         space = {
-            "cutoff": skopt.space.Real(0.1, 20, prior="log-uniform"),
+            "cutoff": skopt.space.Real(1.0, 20.0, prior="uniform"),
         }
     elif Qrepresentation == "mbtr":
         # these values are based on stuke2021efficient
