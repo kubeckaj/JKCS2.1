@@ -301,7 +301,7 @@ def hyperopt(
     strs,
     Y_train,
     hyperparamfile,
-    nometric=False,
+    no_metric=False,
     cv_folds=5,
     verbose=True,
 ):
@@ -312,15 +312,16 @@ def hyperopt(
     from sklearn.model_selection import cross_val_score
 
     # hard-coded search spaces (for now)
+    space = []
     if Qrepresentation == "fchl":
-        space = {
-            "rcut": Real(1.0, 20.0, prior="uniform"),
-            "acut": Real(1.0, 20.0, prior="uniform"),
-        }
+        space += [
+            Real(name="rcut", low=1.0, high=20.0, prior="uniform"),
+            Real(name="acut", low=1.0, high=20.0, prior="uniform"),
+        ]
     elif Qrepresentation == "mbdf":
-        space = {
-            "cutoff": skopt.space.Real(1.0, 20.0, prior="uniform"),
-        }
+        space += [
+            Real(name="cutoff", low=1.0, high=20.0, prior="uniform"),
+        ]
     elif Qrepresentation == "mbtr":
         # these values are based on stuke2021efficient
         raise NotImplementedError("MBTR is still under construction!")
@@ -336,17 +337,28 @@ def hyperopt(
     # TODO: add time print
 
     # add k-nn specific hyperparameter
-    space["n_neighbors"] = skopt.space.Integer(3, 15)
-    space["weights"] = skopt.space.Categorical(["uniform", "distance"])
+    space.append(skopt.space.Integer(3, 15, name="n_neighbors"))
+    space.append(skopt.space.Categorical(["uniform", "distance"], name="weights"))
 
     knn_param_names = ["n_neighbors", "weights"]
 
+    @skopt.utils.use_named_args(space)
     @lru_cache
-    def objective(**params):
-        repr_params = {k: v for k, v in params.items() if k not in knn_param_names}
-        knn_params = {k: v for k, v in params.items() if k in knn_param_names}
+    def objective(n_neighbors, weights, **repr_params):
         X = calculate_representation(Qrepresentation, strs, **repr_params)
-        knn = KNeighborsRegressor(**knn_params)
+        if not no_metric:
+            mlkr = MLKR()
+            mlkr.fit(X, Y_train)
+            knn = KNeighborsRegressor(
+                metric=mlkr.get_metric(),
+                n_neighbors=n_neighbors,
+                weights=weights,
+                algorithm="ball_tree",
+            )
+        else:
+            knn = KNeighborsRegressor(
+                n_jobs=-1, n_neighbors=n_neighbors, weights=weights, algorithm="auto"
+            )
         return -np.mean(
             cross_val_score(
                 knn,
