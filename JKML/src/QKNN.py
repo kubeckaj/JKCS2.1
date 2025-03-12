@@ -178,13 +178,15 @@ def load_hyperparams(hyper_cache: str):
     if hyper_cache is not None:
         with open(hyper_cache, "rb") as f:
             hyperparams = pickle.load(f)
-        print(f"JKML(Q-kNN): Loaded hyperparameters from {hyper_cache}.")
+        print(f"JKML(Q-kNN): Loaded hyperparameters from {hyper_cache}:", flush=True)
+        print(hyperparams, flush=True)
     else:
         # use defaults
         hyperparams = {
             "knn": {"n_neighbors": 5, "weights": "uniform"},
             "representation": {"cutoff": 8.0},
         }
+        print(f"JKML(Q-kNN): Using default hyperparams {hyperparams}", flush=True)
     return hyperparams
 
 
