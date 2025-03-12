@@ -510,7 +510,33 @@ for sampleeach_i in sampleeach_all:
     #########################
 
     if Qhyper:
-        print("JKML is starting hyperparameter optimisation.")
+        ### DATABASE LOADING ###
+        print("JKML is preparing things for training.", flush=True)
+        from src.data import prepare_data_for_training as prepare_data
+
+        # returns: strs, Y_train, F_train, Qforces, Q_charge, Q_charges, Qcharge, D_dipole, Qdipole, size
+        locals().update(
+            prepare_data(
+                train_high_database,
+                monomers_high_database,
+                train_low_database,
+                monomers_low_database,
+                seed,
+                size,
+                method,
+                column_name_1,
+                column_name_2,
+                Qmin,
+                Qifforces,
+                Qifcharges,
+                Qifdipole,
+                Qsampleeach,
+                Qforcemonomers,
+                sampledist,
+                Qmonomers,
+            )
+        )
+        print("JKML is starting hyperparameter optimisation.", flush=True)
         if Qmethod == "knn":
             from src.QKNN import hyperopt
 

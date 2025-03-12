@@ -363,7 +363,7 @@ def hyperopt(
         objective, space, n_calls=30, random_state=42, verbose=verbose
     )
     elapsed = time.perf_counter() - start_time
-    print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.")
+    print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.", flush=True)
     params = {}
     for s, v in zip(space, res.x):
         if s.name in knn_param_names:
