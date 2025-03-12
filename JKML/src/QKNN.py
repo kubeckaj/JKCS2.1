@@ -358,7 +358,7 @@ def hyperopt(
         )
 
     start_time = time.perf_counter()
-    res = skopt.gb_minimize(
+    res = skopt.gp_minimize(
         objective, space, n_calls=30, random_state=42, verbose=verbose
     )
     elapsed = time.perf_counter() - start_time
