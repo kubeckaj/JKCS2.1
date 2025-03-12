@@ -313,12 +313,12 @@ def hyperopt(
     # hard-coded search spaces (for now)
     if Qrepresentation == "fchl":
         space = {
-            "rcut": skopt.space.Real(0.1, 20, prior="log-uniform"),
-            "acut": skopt.space.Real(0.1, 20, prior="log-uniform"),
+            "rcut": skopt.space.Real((0.1, 20, "log-uniform")),
+            "acut": skopt.space.Real((0.1, 20, "log-uniform")),
         }
     elif Qrepresentation == "mbdf":
         space = {
-            "cutoff": skopt.space.Real(0.1, 20, prior="log-uniform"),
+            "cutoff": skopt.space.Real((0.1, 20, "log-uniform")),
         }
     elif Qrepresentation == "mbtr":
         # these values are based on stuke2021efficient
@@ -335,7 +335,7 @@ def hyperopt(
     # TODO: add time print
 
     # add k-nn specific hyperparameter
-    space["n_neighbors"] = skopt.space.Integer(3, 15)
+    space["n_neighbors"] = skopt.space.Integer((3, 15))
     space["weights"] = skopt.space.Categorical(["uniform", "distance"])
 
     knn_param_names = ["n_neighbors", "weights"]
