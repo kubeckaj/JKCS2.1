@@ -541,7 +541,7 @@ for sampleeach_i in sampleeach_all:
         if Qmethod == "knn":
             from src.QKNN import hyperopt
 
-            params = hyperopt(Qrepresentation, strs, Y_train, varsoutfile, nometric)
+            params = hyperopt(Qrepresentation, strs, Y_train, varsoutfile, no_metric)
 
         else:
             raise ValueError(
