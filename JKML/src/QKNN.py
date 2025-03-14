@@ -26,7 +26,7 @@ def _generate_fchl19(strs: List[Atoms], rcut=8.0, acut=8.0, **kwargs) -> np.ndar
     n = len(strs)
     representation = generate_representation(
         strs[0].get_atomic_numbers(),
-        strs[1].get_positions(),
+        strs[0].get_positions(),
         rcut=rcut,
         acut=acut,
     )
