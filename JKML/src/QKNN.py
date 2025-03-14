@@ -403,7 +403,7 @@ def hyperopt(
 
     start_time = time.perf_counter()
     res = skopt.gp_minimize(
-        objective, space, n_calls=30, random_state=42, verbose=verbose
+        objective, space, n_calls=50, random_state=42, verbose=verbose
     )
     elapsed = time.perf_counter() - start_time
     print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.", flush=True)
