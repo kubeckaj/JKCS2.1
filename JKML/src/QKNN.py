@@ -247,6 +247,7 @@ def training(
     knn_params = knn.get_params()
     knn_params["metric"] = "MLKR_placeholder"
     with open(varsoutfile, "wb") as f:
+        print(f"JKML(Q-kNN): Saving training data to {varsoutfile}")
         if not no_metric:
             pickle.dump([X_train, Y_train, X_atoms, A, mlkr, knn_params], f)
         else:
@@ -416,5 +417,6 @@ def hyperopt(
 
     with open(hyperparamfile, "wb") as f:
         pickle.dump(params, f)
+        print(f"JKML(Q-kNN): Saved hyperparams to {hyperparamfile}")
 
     return params
