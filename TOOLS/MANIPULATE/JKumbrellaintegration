@@ -4,6 +4,7 @@ FROM=0.0
 TO=10.0
 Qfromto=0
 Qflatfit=0
+Qflatten=-1
 SKIP=0 #those are steps
 UPTO=0 # those are steps
 MULTIPLIER=1
@@ -35,6 +36,7 @@ function print_help(){
     -folder <string> ........... folder name [default umbrella_integration]
     -versions <string of ints> . list of versions to take into account [default all]
     -flatfit ................... finds dept by fitting to a flat part, otherwise Morse is used
+    -flatten <float> ........... flattens PMF from 0 to <float> with PMF(<float>) value
     OTHERS: -qc
 
   EXAMPLES:
@@ -154,6 +156,17 @@ do
     Qflatfit=1
     continue
   fi
+  if [ "$iter" == "-flatten" ]
+  then
+    last="-flatten"
+    continue
+  fi
+  if [ "$last" == "-flatten" ]
+  then
+    last=""
+    Qflatten=$iter
+    continue
+  fi
   echo "I do not understand this: $iter"
   exit
 done
@@ -251,6 +264,6 @@ fi
 if [ -e out ]; 
 then
   echo program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $Qflatfit $m1 $m2 >> output
-  program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $Qflatfit $m1 $m2 >> output 2>&1
+  program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $Qflatfit $Qflatten $m1 $m2 >> output 2>&1
 fi
 cd ..

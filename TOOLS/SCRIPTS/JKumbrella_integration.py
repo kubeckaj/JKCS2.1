@@ -20,6 +20,18 @@ Ang2Bohr = 1.88973
 amu2au = 1822.888486209
 print(" ----- Post-Processing ----- ")
 
+### ARGUMENTS ###
+
+Qfit = int(sys.argv[2])
+Qflatten = float(sys.argv[3])
+try:
+  M1=float(sys.argv[4])
+  M2=float(sys.argv[5])
+except:
+  print("QC not possible to solve. I need commands_TODO.txt file for it")
+  exit()
+
+
 ### PREPARING DATA ###
 data = np.loadtxt('out', usecols=(0,1)) #Ang kJ/mol
 data = data[~np.isnan(data).any(axis=1)]
@@ -41,8 +53,15 @@ print("PIC: PMF_3D_kcalmol-1.png created.")
 PMF_1D = np.column_stack((PMF_3D[:, 0], PMF_3D[:, 1]+ 2*kBT*np.log(PMF_3D[:, 0]))) #Ang Eh
 PMF_1D = np.column_stack((PMF_1D[:, 0], PMF_1D[:, 1]-np.min(PMF_1D[:, 1]))) #Ang Eh
 
+PMF_1D_orginal = np.copy(PMF_1D)
+if Qflatten > 0:
+  mask=PMF_1D[:, 0] <= Qflatten
+  PMF_1D[mask, 1] = (PMF_1D[mask, 1])[-1] 
+ 
 plt.figure()
-plt.plot(PMF_1D[:, 0], PMF_1D[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+plt.plot(PMF_1D[:, 0], PMF_1D_orginal[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+if Qflatten > 0:
+  plt.plot(PMF_1D[mask, 0], PMF_1D[mask, 1]*Eh2kcalmol, marker='.', linestyle='-', color='g')
 plt.xlabel('coordinate')
 plt.ylabel('PMF (kcal/mol)')
 plt.savefig('PMF_1D_kcalmol-1.png')
@@ -53,7 +72,7 @@ min_index = np.argmin(PMF_1D[:, 1]) #index
 print("MIN: Position of minimun has index: "+str(min_index))
 
 ### FITTING ###
-if 0==int(sys.argv[2]):
+if Qfit==0:
   def model(w, a, xe, De):
       return (1 - np.exp(-a * (w - xe)))**2 * De
   initial_guess = [1.0, PMF_1D[min_index, 0], 0.001]
@@ -80,7 +99,9 @@ else:
   y_fit = model(w_fit, np.array([De]*100))
 
 plt.figure()
-plt.plot(PMF_1D[:, 0], PMF_1D[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+plt.plot(PMF_1D[:, 0], PMF_1D_orginal[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+if Qflatten > 0:
+  plt.plot(PMF_1D[mask, 0], PMF_1D[mask, 1]*Eh2kcalmol, marker='.', linestyle='-', color='g')
 plt.plot(w_fit, y_fit*Eh2kcalmol, color='red')
 plt.xlabel('coordinate')
 plt.ylabel('PMF (kcal/mol)')
@@ -119,13 +140,6 @@ print("\ndG = "+str((F-kBT)*Eh2kcalmol)+" kcal/mol\n")
 ###########################################
 #####  SOLVIND SCHRODINGER 1D #############
 ###########################################
-
-try:
-  M1=float(sys.argv[3])
-  M2=float(sys.argv[4])
-except:
-  print("QC not possible to solve. I need commands_TODO.txt file for it")
-  exit()
 
 # Convert units to atomic units (a.u.)
 x = PMF_1D[:,0]*Ang2Bohr # Bohr
