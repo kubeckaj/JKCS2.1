@@ -92,6 +92,6 @@ def compute_energies_forces(positions, charges, sr_cut=5.0):
     energy = np.sum(np.triu(np.where(r < sr_cut, -qiqj / sr_cut**2 * (intsw(r) + c), qiqj / r), k=1)) * conv_hartree    
 
     force_magnitude = np.where(r < sr_cut, switch(r) * qiqj / sr_cut**2, qiqj / r2 )
-    forces = np.sum(force_magnitude[:, :, np.newaxis] * pos_diff / r[:, :, np.newaxis], axis=1) * conv_hartree**2
+    forces = np.sum(force_magnitude[:, :, np.newaxis] * pos_diff / r[:, :, np.newaxis], axis=1) * conv_hartree
 
     return energy, forces

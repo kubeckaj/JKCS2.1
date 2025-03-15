@@ -123,7 +123,7 @@ while not Qfollow_activated == 0:
   if len(QEF) > 0:
     for i in range(QEF_applied,len(QEF)):
       QEF_applied += 1
-      if QEF[i] == "h_A" or QEF[i] == "fbh_A" or QEF[i] == "c_COM":
+      if QEF[i] == "h_A" or "h_A_xyz" or "fbh_A" or "fbh_A_xyz" or "c_COM":
         from externalforce import ExternalForce
         constraints.append(ExternalForce(QEF[i],QEF_par[i],QEF_systems[i]))
         if Qout > 1:

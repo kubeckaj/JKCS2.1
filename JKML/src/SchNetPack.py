@@ -53,51 +53,66 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
 
   # PREPARING TRAINING DATABASE
   print("JKML(SchNetPack): Adjusting training database for SchNetPack.", flush=True)
-  #D_dipole = np.array([np.array(i)[0] for i in D_dipole])
   
   if Qifdipole == 1:
     from src.JKelectrostatics import compute_energies_forces
     from src.JKdispersions import compute_d4_energy_forces as compute_dispersions
     #from src.JKdispersions import compute_d3bj_energy_forces as compute_dispersions
-
-    #print(D_dipole)
-    D_dipole = []
-    for i in range(0,len(Q_charges)):
-      Dx = 0
-      Dy = 0
-      Dz = 0
-      #dipole moment
-      from tblite.ase import TBLite
-      tmpatoms = strs.values[i].copy()
-      #tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 30000, accuracy = 1.0)
-      #Q_charges_tmp = tmpatoms.get_charges()
-      Q_charges_tmp = Q_charges[i] 
-      #print(Q_charges_tmp)
-      #print(Q_charges[i])
-      R_tmp = strs.values[i].get_positions()
-      Ntmp = len(Q_charges_tmp)
-      for k in range(0,Ntmp):
-          Dx += Q_charges_tmp[k]*(R_tmp[k][0])
-          Dy += Q_charges_tmp[k]*(R_tmp[k][1])
-          Dz += Q_charges_tmp[k]*(R_tmp[k][2])
-      D_dipole.append(list([Dx, Dy, Dz]))
-      
-      electrostatics_E, electrostatics_F = compute_energies_forces(strs.values[i].get_positions(), Q_charges_tmp)
-      dispersions_E, dispersions_F = compute_dispersions(strs.values[i].get_positions(), symbols = np.array(strs.values[i].get_chemical_symbols()), totalcharge = 0)
-      Y_train[i] -= electrostatics_E + dispersions_E
-      print(f"EE:JKML(SchNetPack): {Y_train[i]+electrostatics_E+dispersions_E} {Y_train[i]} {electrostatics_E} {dispersions_E}")
-      F_train[i] -= electrostatics_F + dispersions_F
-      import numpy as np
-      #print(F_train[i])
-      #print(electrostatics_F)
-      #print(np.sum((F_train[i])**2,axis=1))
-      #print(np.sum((electrostatics_F)**2,axis=1))
-      #print(np.sum((F_train[i]+electrostatics_F)**2,axis=1))
-      #print(f"FF:(SchNetPack): {np.mean(np.sum((F_train[i]+electrostatics_F+dispersions_F)**2,axis=1)**0.5)} {np.mean(np.sum((F_train[i])**2,axis=1)**0.5)} {np.mean(np.sum((electrostatics_F)**2,axis=1)**0.5)} {np.mean(np.sum((dispersions_F)**2,axis=1)**0.5)}")
-      print(f"FF:(SchNetPack): {np.sum(np.sum((F_train[i]+electrostatics_F+dispersions_F)**2,axis=1)**0.5)} {np.sum(np.sum((F_train[i])**2,axis=1)**0.5)} {np.sum(np.sum((electrostatics_F)**2,axis=1)**0.5)} {np.sum(np.sum((dispersions_F)**2,axis=1)**0.5)}")
-      #print(f"FF:(SchNetPack): {np.sum(np.sum((F_train[i]+electrostatics_F+dispersions_F),axis=0)**2)**0.5} {np.sum(np.sum((F_train[i]),axis=0)**2)**0.5} {np.sum(np.sum((electrostatics_F),axis=0)**2)**0.5} {np.sum(np.sum((dispersions_F),axis=0)**2)**0.5}")
-    Qifdipole = 0
-    Qifcharges = 0  
+    if 1==0:
+      #D_dipole = np.array([np.array(i)[0] for i in D_dipole])
+      Qifdipole = 2
+    else:
+      #print(D_dipole)
+      D_dipole = []
+      for i in range(0,len(Q_charges)):
+        Dx = 0
+        Dy = 0
+        Dz = 0
+        #dipole moment
+        tmpatoms = strs.values[i].copy()
+        if 1==0:
+          from tblite.ase import TBLite
+          tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 30000, accuracy = 1.0)
+          Q_charges_tmp = tmpatoms.get_charges()
+        elif 1==1:
+          from schnetpack.interfaces import SpkCalculator
+          spk_calc_charges = SpkCalculator(
+            model_file="/home/kubeckaj/TEST/Ivo/PN/S_100/charges.pkl",
+            device="cpu",
+            neighbor_list=trn.ASENeighborList(cutoff=10.0),
+            position_unit="Ang",
+          )
+          tmpatoms.calc = spk_calc_charges
+          print(tmpatoms.get_potential_energy())
+          Q_charges_tmp = spk_calc_charges.model_results['partial_charges'].detach().numpy()
+        else:
+          Q_charges_tmp = Q_charges[i] 
+        print(Q_charges_tmp)
+        print(Q_charges[i])
+        R_tmp = strs.values[i].get_positions()
+        Ntmp = len(Q_charges_tmp)
+        for k in range(0,Ntmp):
+            Dx += Q_charges_tmp[k]*(R_tmp[k][0])
+            Dy += Q_charges_tmp[k]*(R_tmp[k][1])
+            Dz += Q_charges_tmp[k]*(R_tmp[k][2])
+        D_dipole.append(list([Dx, Dy, Dz]))
+        
+        electrostatics_E, electrostatics_F = compute_energies_forces(strs.values[i].get_positions(), Q_charges_tmp)
+        dispersions_E, dispersions_F = compute_dispersions(strs.values[i].get_positions(), symbols = np.array(strs.values[i].get_chemical_symbols()), totalcharge = 0)
+        Y_train[i] -= electrostatics_E + dispersions_E
+        print(f"EE:JKML(SchNetPack): {Y_train[i]+electrostatics_E+dispersions_E} {Y_train[i]} {electrostatics_E} {dispersions_E}")
+        F_train[i] -= electrostatics_F + dispersions_F
+        import numpy as np
+        #print(F_train[i])
+        #print(electrostatics_F)
+        #print(np.sum((F_train[i])**2,axis=1))
+        #print(np.sum((electrostatics_F)**2,axis=1))
+        #print(np.sum((F_train[i]+electrostatics_F)**2,axis=1))
+        #print(f"FF:(SchNetPack): {np.mean(np.sum((F_train[i]+electrostatics_F+dispersions_F)**2,axis=1)**0.5)} {np.mean(np.sum((F_train[i])**2,axis=1)**0.5)} {np.mean(np.sum((electrostatics_F)**2,axis=1)**0.5)} {np.mean(np.sum((dispersions_F)**2,axis=1)**0.5)}")
+        print(f"FF:(SchNetPack): {np.sum(np.sum((F_train[i]+electrostatics_F+dispersions_F)**2,axis=1)**0.5)} {np.sum(np.sum((F_train[i])**2,axis=1)**0.5)} {np.sum(np.sum((electrostatics_F)**2,axis=1)**0.5)} {np.sum(np.sum((dispersions_F)**2,axis=1)**0.5)}")
+        #print(f"FF:(SchNetPack): {np.sum(np.sum((F_train[i]+electrostatics_F+dispersions_F),axis=0)**2)**0.5} {np.sum(np.sum((F_train[i]),axis=0)**2)**0.5} {np.sum(np.sum((electrostatics_F),axis=0)**2)**0.5} {np.sum(np.sum((dispersions_F),axis=0)**2)**0.5}")
+      Qifdipole = 0
+      Qifcharges = 0  
 
   temperary_file_name = "training.db"
   if os.path.exists(temperary_file_name):
@@ -113,7 +128,7 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
                     Y_train]
       target_properties = [spk.properties.energy]
       tradoffs = [1]
-  elif Qifdipole == 1: #DOES NOT WORK
+  elif Qifdipole == 1:
       new_dataset = ASEAtomsData.create(temperary_file_name,
                                         distance_unit='Ang',
                                         property_unit_dict={'energy': 'eV', 'forces': 'eV/Ang',
@@ -124,14 +139,15 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
                      'total_charge': np.array([0], dtype=np.float32), 'dipole_moment': np.array([D_dipole[i]], dtype=np.float32)} for i in range(len(Y_train))]
       target_properties = [spk.properties.energy, spk.properties.forces, spk.properties.dipole_moment]
       tradoffs = [Qenergytradoff, 1, Qenergytradoff]
-  elif Qifdipole == 1: #DOES NOT WORK
+  elif Qifdipole == 2: #DOES NOT WORK
       new_dataset = ASEAtomsData.create(temperary_file_name,
                                         distance_unit='Ang',
-                                        property_unit_dict={'total_charge': 'e', 'dipole_moment': 'e*Ang'}
+                                        property_unit_dict={'energy': 'eV', 'total_charge': 'e', 'dipole_moment': 'e*Ang'},
+                                        atomrefs={'energy': [0] * 100}
                                         )
-      properties = [{'total_charge': np.array([0], dtype=np.float32), 'dipole_moment': np.array(D_dipole[i], dtype=np.float32)} for i in range(len(Y_train))]
-      target_properties = [spk.properties.dipole_moment]
-      tradoffs = [1]
+      properties = [{'energy': 27.2107 * np.array([0], dtype=np.float32), 'total_charge': np.array([0], dtype=np.float32), 'dipole_moment': np.array([D_dipole[i]], dtype=np.float32)} for i in range(len(Y_train))]
+      target_properties = [spk.properties.energy, spk.properties.dipole_moment]
+      tradoffs = [0, 1]
   elif Qifcharges == 1: #DOES NOT WORK
       new_dataset = ASEAtomsData.create(temperary_file_name,
                                         distance_unit='Ang',
@@ -225,8 +241,8 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
       elif p == spk.properties.forces:
           pred = spk.atomistic.Forces(energy_key=spk.properties.energy, force_key=spk.properties.forces)
       elif p == spk.properties.dipole_moment:
-          print(p)
-          pred = spk.atomistic.DipoleMoment(n_in=nn_atom_basis, return_charges=True) #, use_vector_representation = True)
+          #pred = spk.atomistic.DipoleMoment(n_in=nn_atom_basis, return_charges=True) #, use_vector_representation = True)
+          pred = spk.atomistic.DipoleMoment(n_in=nn_atom_basis, return_charges=True, use_vector_representation = True)
       elif p == spk.properties.partial_charges:
           pred = spk.atomistic.Atomwise(n_in=nn_atom_basis, output_key=p)
       else:
@@ -415,7 +431,7 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin,Qifcharges):
           energy_unit="eV",  # YEAH BUT THE OUTPUT UNITS ARE ACTUALLY Hartree
           position_unit="Ang",
           #dipole_key="dipole_moment",
-	  #dipole_unit="e*Ang",
+          #dipole_unit="e*Ang",
       )
   else:
       spk_calc = SpkCalculator(
@@ -445,12 +461,27 @@ def evaluate(Qforces,varsoutfile,nn_cutoff,clusters_df,method,Qmin,Qifcharges):
         internal_E = atoms.get_potential_energy()
         internal_F = atoms.get_forces()
         #TODO
-        #Q_charges_i = spk_calc.model_results['partial_charges'].detach().numpy()
+        if 1==0:
+          from tblite.ase import TBLite
+          tmpatoms = atoms.copy()
+          tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
+          Q_charges_i = array([tmpatoms.get_charges()]) #.transpose()
+        elif 1==1:
+          from schnetpack.interfaces import SpkCalculator
+          tmpatoms = atoms.copy()
+          spk_calc_charges = SpkCalculator(
+            model_file="/home/kubeckaj/TEST/Ivo/PN/S_100/charges.pkl",
+            device="cpu",
+            neighbor_list=trn.ASENeighborList(cutoff=10.0),
+            position_unit="Ang",
+          )
+          tmpatoms.calc = spk_calc_charges
+          print(tmpatoms.get_potential_energy())
+          Q_charges_i = spk_calc_charges.model_results['partial_charges'].detach().numpy()
+        else:
+          Q_charges_i = spk_calc.model_results['partial_charges'].detach().numpy()
         #print(f"JKML(SchNetPack): {Q_charges_i}")
-        from tblite.ase import TBLite
-        tmpatoms = atoms.copy()
-        tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
-        Q_charges_i = array([tmpatoms.get_charges()]) #.transpose()
+        #TODO
 	#print(f"JKML(SchNetPack): {Q_charges_i}")
         #TODO add charge PERHAPS NOT NECESSARY STEP
         #Q_charges_i = Q_charges_i - (Q_charges_i - 0).mean()

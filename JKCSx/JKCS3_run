@@ -53,7 +53,7 @@ function help {
              -arraymax X = max jobs per array
              -add maxiter <inter> = max number of iteration in ORCA
              -xtbpath,-char,-mult, -mnof/-mf = max number of files per folder
-             -JKCS4/-collect
+             -JKCS4/-collect, -cpall
   
   ${cfMAGENTA}EXAMPLES:${cfDEF}
 
@@ -396,6 +396,11 @@ do
     last=""
     continue
   fi
+  if [ "$iter" == "-cpall" ]
+  then
+    Qcpall=" -cpall"
+    continue
+  fi
   #JKCS4
   if [ "$iter" == "-collect" ] || [ "$iter" == "-JKCS4" ]
   then
@@ -539,9 +544,9 @@ then
     rm $newsub/.* 2> /dev/null #NO fucking clue why this is here
     if [ "$Qperform" == 2 ]
     then
-      #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
-      command0="cd $currentdirpath/$folderNEW; ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt$loc; program_$program \$file${addbase};\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
-      #command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt$loc; program_$program \$file${addbase};\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
+      #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file${Qcpall};\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt"
+      command0="cd $currentdirpath/$folderNEW; ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt$loc; program_$program \$file${addbase}${Qcpall};\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
+      #command0="cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > files.txt;L=\`cat files.txt | wc -l\`;fi=0;while [\$fi -lt \$L]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsubs/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt$loc; program_$program \$file${addbase}${Qcpall};\"; echo \$commandTODO >> $newsub/commands_TODO.txt; done; cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt; echo \"1 $newsub/\" >> .link.txt;" 
     else
       if [ $Qpickle -eq 0 ]
       then
@@ -560,10 +565,10 @@ then
       fi
       if [ $Qpickle -eq 1 ]
       then
-        command0="source ~/.JKCSusersetup.txt$loc;cd $currentdirpath/$folderOLD/${sub}/${name}-LM/; program_JKQCpickle *.pkl -xyz -noex; cd $currentdirpath/$folderNEW; ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file${addbase};\"; eval \"\$commandTODO\"; done; rm $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz; program_JKQCpickle *.log -noex -out collection${folderOLD}.pkl; rm *.log; rm *.xyz;"
+        command0="source ~/.JKCSusersetup.txt$loc;cd $currentdirpath/$folderOLD/${sub}/${name}-LM/; program_JKQCpickle *.pkl -xyz -noex; cd $currentdirpath/$folderNEW; ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file${addbase}${Qcpall};\"; eval \"\$commandTODO\"; done; rm $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz; program_JKQCpickle *.log -noex -out collection${folderOLD}.pkl; rm *.log; rm *.xyz;"
       else
-        #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file;\"; eval \"\$commandTODO\"; done;" 
-        command0="cd $currentdirpath/$folderNEW;source ~/.JKCSusersetup.txt$loc;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file${addbase};\"; eval \"\$commandTODO\"; done;"
+        #command0="cd $currentdirpath/$folderOLD/${sub}/${name}-LM/;files=\`ls *.xyz\`;cd $currentdirpath/$folderNEW;mkdir $newsub/${name}-LM;source ~/.JKCSusersetup.txt;for file in \$files; do commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/\$file${Qcpall};\"; eval \"\$commandTODO\"; done;" 
+        command0="cd $currentdirpath/$folderNEW;source ~/.JKCSusersetup.txt$loc;ls $currentdirpath/$folderOLD/${sub}/${name}-LM/*.xyz | xargs -n 1 > $newsub/files.txt;L=\`cat $newsub/files.txt | wc -l\`;fi=0;while [ \$fi -lt \$L ]; do fi=\`echo \$fi+1|bc\`;file=\`head -n \$fi $currentdirpath/$folderNEW/$newsub/files.txt | tail -n 1\`;commandTODO=\"cd $currentdirpath/$folderNEW/$newsub/${name}-LM/;program_$program \$file${addbase}${Qcpall};\"; eval \"\$commandTODO\"; done;"
       fi
     fi
     if [ "$Qperform" == 2 ]
@@ -584,7 +589,7 @@ then
     fi
     #for file in $files
     #do
-    #  commandTODO="cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/$file;"
+    #  commandTODO="cd $currentdirpath/$folderNEW/$newsub/${name}-LM/; source ~/.JKCSusersetup.txt; program_$program $currentdirpath/$folderOLD/$sub/${name}-LM/$file${Qcpall};"
     #  echo $commandTODO >> $newsub/commands_TODO.txt
     #done
     #cp $newsub/commands_TODO.txt $newsub/.crealTODO.txt
@@ -647,9 +652,9 @@ else
     fi
     Qjpt_iter=`echo $Qjpt_iter + 1 |bc`
     const_iter=`echo $const_iter+1 |bc`
-    #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file"
+    #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file${Qcpall}"
     #printf "$command" > run${scriptfilecommand}.sh
-    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM$ADDc/; program_$program $file${addbase};"
+    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM$ADDc/; program_$program $file${addbase}${Qcpall};"
     if [ "$Qperform" == 2 ]
     then
       echo "$commandTODO" >> $currentdirpath/$folderNEW/commands_TODO.txt
