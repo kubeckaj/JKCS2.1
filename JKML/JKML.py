@@ -281,7 +281,7 @@ for sampleeach_i in sampleeach_all:
             f.close()
             print("JKML: Trained model loaded.", flush=True)
             # store the training metadata to locals
-            locals.update(train_metadata)
+            locals().update(train_metadata)
         elif Qmethod == "knn":
             import pickle
             from sklearn.neighbors import KNeighborsRegressor
@@ -305,7 +305,7 @@ for sampleeach_i in sampleeach_all:
             knn = KNeighborsRegressor(**knn_params)
             knn.fit(X_train, Y_train)
             # store the training metadata to locals
-            locals.update(train_metadata)
+            locals().update(train_metadata)
         elif Qmethod == "nn" or Qmethod == "physnet":
             varsoutfile = VARS_PKL
             print("JKML: Trained model found.")
