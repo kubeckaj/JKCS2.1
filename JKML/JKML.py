@@ -273,13 +273,15 @@ for sampleeach_i in sampleeach_all:
             import pickle
 
             if Qrepresentation == "fchl":
-                X_train, sigmas, alpha = pickle.load(f)
+                X_train, sigmas, alpha, train_metadata = pickle.load(f)
             elif Qrepresentation == "mbdf":
-                X_train, X_atoms, sigmas, alpha = pickle.load(f)
+                X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
             if len(alpha) != 1:
                 alpha = [alpha]
             f.close()
             print("JKML: Trained model loaded.", flush=True)
+            # store the training metadata to locals
+            locals.update(train_metadata)
         elif Qmethod == "knn":
             import pickle
             from sklearn.neighbors import KNeighborsRegressor
@@ -288,12 +290,22 @@ for sampleeach_i in sampleeach_all:
             warn("Loading KNN models is untested, and may not work properly!")
 
             with open(VARS_PKL, "wb") as f:
-                X_train, Y_train, X_atoms, A, mlkr, knn_params = pickle.load(f)
+                if not no_metric:
+                    X_train, Y_train, X_atoms, A, mlkr, knn_params, train_metadata = (
+                        pickle.load(f)
+                    )
+                else:
+                    X_train, Y_train, X_atoms, knn_params, train_metadata = pickle.load(
+                        f
+                    )
 
             # need to recreate the model due to not being able to pickle the custom metric
-            knn_params["metric"] = mlkr.get_metric()
+            if not no_metric:
+                knn_params["metric"] = mlkr.get_metric()
             knn = KNeighborRegressor(**knn_params)
             knn.fit(X_train, Y_train)
+            # store the training metadata to locals
+            locals.update(train_metadata)
         elif Qmethod == "nn" or Qmethod == "physnet":
             varsoutfile = VARS_PKL
             print("JKML: Trained model found.")

@@ -248,15 +248,25 @@ def training(
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
     n_train, d_train = X_train.shape
+    train_metadata = {
+        "repr_train_wall": repr_train_wall,
+        "repr_train_cpu": repr_train_cpu,
+        "train_wall": train_wall,
+        "train_cpu": train_cpu,
+        "n_train": n_train,
+        "d_train": d_train,
+    }
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()
     knn_params["metric"] = "MLKR_placeholder"
     with open(varsoutfile, "wb") as f:
         print(f"JKML(Q-kNN): Saving training data to {varsoutfile}")
         if not no_metric:
-            pickle.dump([X_train, Y_train, X_atoms, A, mlkr, knn_params], f)
+            pickle.dump(
+                [X_train, Y_train, X_atoms, A, mlkr, knn_params, train_metadata], f
+            )
         else:
-            pickle.dump([X_train, Y_train, X_atoms, knn_params], f)
+            pickle.dump([X_train, Y_train, X_atoms, knn_params, train_metadata], f)
     return {
         key: value
         for key, value in locals().items()

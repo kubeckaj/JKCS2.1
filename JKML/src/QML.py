@@ -74,6 +74,8 @@ def training(
 
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
+    n_train = X_train.shape[0]
+    d_train = np.sum(X_train.shape[1:])
     # some info about the full representation
     print(
         "JKML(QML): Shape of the training representation: " + str(X_train.shape),
@@ -123,8 +125,16 @@ def training(
         alpha = [cho_solve(K, Y_train)]
         train_wall = time.perf_counter() - train_wall_start
         train_cpu = time.perf_counter() - train_cpu_start
+        train_metadata = {
+            "repr_train_wall": repr_train_wall,
+            "repr_train_cpu": repr_train_cpu,
+            "train_wall": train_wall,
+            "train_cpu": train_cpu,
+            "n_train": n_train,
+            "d_train": d_train,
+        }
         f = open(varsoutfile, "wb")
-        pickle.dump([X_train, sigmas, alpha], f)
+        pickle.dump([X_train, sigmas, alpha, train_metadata], f)
         f.close()
         print("JKML(QML): Training completed.", flush=True)
     elif Qsplit == 1:
@@ -143,12 +153,20 @@ def training(
         train_wall = time.perf_counter() - train_wall_start
         train_cpu = time.process_time() - train_cpu_start
 
+        train_metadata = {
+            "repr_train_wall": repr_train_wall,
+            "repr_train_cpu": repr_train_cpu,
+            "train_wall": train_wall,
+            "train_cpu": train_cpu,
+            "n_train": n_train,
+            "d_train": d_train,
+        }
         # I will for now everytime save the trained QML
         f = open(varsoutfile, "wb")
         if Qrepresentation == "fchl":
-            pickle.dump([X_train, sigmas, alpha], f)
+            pickle.dump([X_train, sigmas, alpha, train_metadata], f)
         elif Qrepresentation == "mbdf":
-            pickle.dump([X_train, X_atoms, sigmas, alpha], f)
+            pickle.dump([X_train, X_atoms, sigmas, alpha, train_metadata], f)
         f.close()
         print("JKML(QML): Training completed.", flush=True)
     else:
@@ -165,6 +183,14 @@ def training(
             K = JKML_kernel(X_train_i, X_train_j, kernel_args={"sigma": sigmas})
         train_wall = time.perf_counter() - train_wall_start
         train_cpu = time.process_time() - train_cpu_start
+        train_metadata = {
+            "repr_train_wall": repr_train_wall,
+            "repr_train_cpu": repr_train_cpu,
+            "train_wall": train_wall,
+            "train_cpu": train_cpu,
+            "n_train": n_train,
+            "d_train": d_train,
+        }
         f = open(
             varsoutfile.split(".pkl")[0]
             + "_"
@@ -176,12 +202,10 @@ def training(
             + ".pkl",
             "wb",
         )
-        pickle.dump([K, Y_train], f)
+        pickle.dump([K, Y_train, train_metadata], f)
         f.close()
         alpha = None
         print("JKML(QML): Training completed.", flush=True)
-    n_train = X_train.shape[0]
-    d_train = np.sum(X_train.shape[1:])
 
     return {
         key: value
