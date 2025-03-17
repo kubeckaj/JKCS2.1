@@ -47,9 +47,14 @@ def _generate_fchl19(strs: List[Atoms], rcut=8.0, acut=8.0, **kwargs) -> np.ndar
 def _generate_mbdf(strs: List[Atoms], cutoff: float = 8.0, **kwargs) -> np.ndarray:
     from MBDF import generate_mbdf as generate_representation
 
+    n = len(strs)
+    ragged_atomic_numbers = np.empty(n, dtype=object)
+    ragged_atomic_numbers[:] = [i.get_atomic_numbers() for i in strs]
+    ragged_positions = np.empty(n, dtype=object)
+    ragged_positions[:] = [i.get_positions() for i in strs]
     X = generate_representation(
-        [i.get_atomic_numbers() for i in strs],
-        [i.get_positions() for i in strs],
+        ragged_atomic_numbers,
+        ragged_positions,
         cutoff_r=cutoff,
         normalized=False,
         local=False,
