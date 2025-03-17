@@ -258,7 +258,8 @@ def training(
     }
     print("JKML(Q-kNN): Training completed.", flush=True)
     knn_params = knn.get_params()
-    knn_params["metric"] = "MLKR_placeholder"
+    if not no_metric:
+        knn_params["metric"] = "MLKR_placeholder"
     with open(varsoutfile, "wb") as f:
         print(f"JKML(Q-kNN): Saving training data to {varsoutfile}")
         if not no_metric:
