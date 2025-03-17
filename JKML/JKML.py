@@ -287,12 +287,12 @@ for sampleeach_i in sampleeach_all:
 
             warn("Loading KNN models is untested, and may not work properly!")
 
-            with open(VARS_PKL, "wb") as f:
+            with open(VARS_PKL, "rb") as f:
                 X_train, Y_train, X_atoms, A, mlkr, knn_params = pickle.load(f)
 
             # need to recreate the model due to not being able to pickle the custom metric
             knn_params["metric"] = mlkr.get_metric()
-            knn = KNeighborRegressor(**knn_params)
+            knn = KNeighborsRegressor(**knn_params)
             knn.fit(X_train, Y_train)
         elif Qmethod == "nn" or Qmethod == "physnet":
             varsoutfile = VARS_PKL
