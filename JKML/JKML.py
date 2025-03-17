@@ -285,9 +285,6 @@ for sampleeach_i in sampleeach_all:
         elif Qmethod == "knn":
             import pickle
             from sklearn.neighbors import KNeighborsRegressor
-            from warnings import warn
-
-            warn("Loading KNN models is untested, and may not work properly!")
 
             with open(VARS_PKL, "rb") as f:
                 if not no_metric:
