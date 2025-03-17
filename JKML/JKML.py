@@ -302,7 +302,7 @@ for sampleeach_i in sampleeach_all:
             # need to recreate the model due to not being able to pickle the custom metric
             if not no_metric:
                 knn_params["metric"] = mlkr.get_metric()
-            knn = KNeighborRegressor(**knn_params)
+            knn = KNeighborsRegressor(**knn_params)
             knn.fit(X_train, Y_train)
             # store the training metadata to locals
             locals.update(train_metadata)
