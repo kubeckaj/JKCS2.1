@@ -289,7 +289,7 @@ for sampleeach_i in sampleeach_all:
 
             warn("Loading KNN models is untested, and may not work properly!")
 
-            with open(VARS_PKL, "wb") as f:
+            with open(VARS_PKL, "rb") as f:
                 if not no_metric:
                     X_train, Y_train, X_atoms, A, mlkr, knn_params, train_metadata = (
                         pickle.load(f)
