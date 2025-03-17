@@ -34,8 +34,8 @@ def _generate_fchl19(strs: List[Atoms], rcut=8.0, acut=8.0, **kwargs) -> np.ndar
     X[0, :] = np.sum(representation, axis=0)
     for i in range(1, n):
         X[i, :] = generate_representation(
-            strs.iloc[i].get_atomic_numbers(),
-            strs.iloc[i].get_positions(),
+            strs[i].get_atomic_numbers(),
+            strs[i].get_positions(),
             rcut=rcut,
             acut=acut,
         ).sum(axis=0)
@@ -59,8 +59,8 @@ def _generate_mbdf(strs: List[Atoms], cutoff: float = 8.0, **kwargs) -> np.ndarr
     X[0, :] = representation
     for i in range(1, n):
         X[i, :] = generate_representation(
-            strs.iloc[i].get_atomic_numbers(),
-            strs.iloc[i].get_positions(),
+            strs[i].get_atomic_numbers(),
+            strs[i].get_positions(),
             cutoff_r=cutoff,
             normalized=False,
             local=False,
