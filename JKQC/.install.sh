@@ -288,7 +288,7 @@ then
 fi
 
 #ArbAlign stuff:
-cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$(basename PYTHON)/site-packages/ArbAlign.py
+cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$(basename $PYTHON)/site-packages/ArbAlign.py
 
 #echo "- exporting environment"
 #conda env export > environment.yml
