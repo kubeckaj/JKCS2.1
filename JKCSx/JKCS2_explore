@@ -94,6 +94,7 @@ function helpxtb {
     -repeat \"X\" ....... each simulation is repeated X-times [def=1]
  
     OTHERS: -gfn \"X\" ............ defines GFN1-xTB or GFN2-xTB [def=1]
+            -cinput <file> ........ inputs for contstraing the system
             -constraints <string> . contrastrained interactions (thx to Jakko Kahara)
                                     uses GFN-FF and requires the bonding info
 
@@ -353,6 +354,18 @@ do
     last=""
     continue
   fi
+  if [ "$iter" == "-cinput" ]
+  then
+    last="-cinput"
+    continue
+  fi
+  if [ "$last" == "-cinput" ]
+  then
+    Qconstrains=2
+    Qconstrainsfile="$( cd "$(dirname "$iter")" ; pwd -P )/"$(basename $iter)
+    last=""
+    continue
+  fi
   #### 
   arguments_help+=( "${arguments[i]}" )
 done
@@ -369,7 +382,7 @@ SC=`echo "($SC+0.5)/1" | bc`
 BOX=`echo $BOX   | sed "s/M/$M/g" | sed "s/NoC/$NoC/g" | bc -l`
 BOX=`echo "($BOX+0.5)/1" | bc`
 #CORRECT IF THERE IS JUST 1 MOLECULE:
-if [ $M -eq 1 ]
+if [ $M -eq 1 ] && [ $Qabcxtb -eq 0 ]
 then
   LM=1
   GEN=1
@@ -581,6 +594,10 @@ end""" >> $F2
 
     ######################
     ### CREATE runxTB.sh
+        if [  $Qconstrains -eq 2 ]
+        then
+          cp $Qconstrainsfile constraints0.inp
+	fi
         echo """source ~/.JKCSusersetup.txt
 cp \$1 \$3.xyz
 if [ ! -e constraints0.inp ]
@@ -594,9 +611,9 @@ n=\`echo \$1 | sed 's/.*-//' | sed 's/\..*//'\`
 # Optimization with constraints
 for c in constraints*
 do
-    i=\`basename \${c:11} .inp\`
+    i=\`basename \${co:11} .inp\`
 
-    program_XTB \$3.xyz "--input \$c -o loose --gfnff"
+    program_XTB \$3.xyz "--input \$PWD/\$c -o loose --gfnff"
     # more efficients to run tight opt afterwards
     #program_XTB -o tight --gfn 1 xtbopt.xyz > \$3.out 2>/dev/null
 
@@ -615,14 +632,16 @@ do
         mv temp $name-LM/\$n\_\$i.xyz
     fi
 done
-
-rm \$3.xyz \$3.log charges wbo xtbopt.log xtbopt.xyz xtbrestart xtbtopo.mol .xtboptok gfnff* 2>/dev/null
 """ >> runxTB.sh
       fi
     fi
     ######################
     ### CREATE rename.sh
-    echo """rm abc*.gjf abc*.log abc*.cluster abc*.xyz 2>/dev/null
+    if [ $Qconstrains -ne 2 ]
+    then
+      echo "rm abc*.gjf abc*.log abc*.cluster abc*.xyz 2>/dev/null" > rename.sh
+    fi
+    echo """
 cd $name-LM
 rm *.gjf *.cluster 2>/dev/null
 for i in \`ls *.xyz\`
