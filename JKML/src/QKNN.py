@@ -232,7 +232,8 @@ def training(
     train_cpu_start = time.process_time()
     if not no_metric:
         print("JKML(Q-kNN): Training MLKR metric.", flush=True)
-        mlkr = MLKR()
+        # Limit the number of MLKR components for faster training
+        mlkr = MLKR(n_components=50)
         mlkr.fit(X_train, Y_train)
         A = mlkr.get_mahalanobis_matrix()
         print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
