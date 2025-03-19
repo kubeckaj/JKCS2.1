@@ -353,6 +353,7 @@ def hyperopt(
     no_metric=False,
     cv_folds=5,
     verbose=True,
+    optimise_representation=False,
 ):
 
     import skopt
@@ -362,27 +363,34 @@ def hyperopt(
 
     # hard-coded search spaces (for now)
     space = []
-    if Qrepresentation == "fchl":
-        space += [
-            Real(name="rcut", low=1.0, high=20.0, prior="uniform"),
-            Real(name="acut", low=1.0, high=20.0, prior="uniform"),
-        ]
-    elif Qrepresentation == "mbdf":
-        space += [
-            Real(name="cutoff", low=1.0, high=20.0, prior="uniform"),
-        ]
-    elif Qrepresentation == "mbtr":
-        # these values are based on stuke2021efficient
-        raise NotImplementedError("MBTR is still under construction!")
-    else:
-        raise NotImplementedError(
-            "Hyperparameter tuning not yet implement for representation {Qrepresentation}!"
-        )
+    if optimise_representation:
+        if Qrepresentation == "fchl":
+            space += [
+                Real(name="rcut", low=1.0, high=20.0, prior="uniform"),
+                Real(name="acut", low=1.0, high=20.0, prior="uniform"),
+            ]
+        elif Qrepresentation == "mbdf":
+            space += [
+                Real(name="cutoff", low=1.0, high=20.0, prior="uniform"),
+            ]
+        elif Qrepresentation == "mbtr":
+            # these values are based on stuke2021efficient
+            raise NotImplementedError("MBTR is still under construction!")
+        else:
+            raise NotImplementedError(
+                "Hyperparameter tuning not yet implement for representation {Qrepresentation}!"
+            )
 
-    print(
-        f"JKML(Q-kNN): Begin hyperparameter optimisation with {Qrepresentation.upper()} representation.",
-        flush=True,
-    )
+        print(
+            f"JKML(Q-kNN): Begin hyperparameter optimisation with {Qrepresentation.upper()} representation.",
+            flush=True,
+        )
+    else:
+        print(
+            f"JKML(Q-kNN): Begin hyperparameter optimisation with {Qrepresentation.upper()} representation (only k-NN).",
+            flush=True,
+        )
+        X = calculate_representation(Qrepresentation, strs, **repr_params)
     # TODO: add time print
 
     # add k-nn specific hyperparameter
@@ -394,7 +402,8 @@ def hyperopt(
     @skopt.utils.use_named_args(space)
     @lru_cache
     def objective(n_neighbors, weights, **repr_params):
-        X = calculate_representation(Qrepresentation, strs, **repr_params)
+        if optimise_representation:
+            X = calculate_representation(Qrepresentation, strs, **repr_params)
         if not no_metric:
             mlkr = MLKR()
             mlkr.fit(X, Y_train)
