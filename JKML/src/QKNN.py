@@ -316,24 +316,24 @@ def evaluate(Qrepresentation, X_train, strs, knn_model, hyper_cache=None):
 
     ### CORRECTING THE FCHL MATRIX SIZES
     # IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
-    if Qrepresentation == "fchl":
-        if X_train.shape[1] != X_test.shape[1]:
-            if X_train.shape[1] > X_test.shape[1]:
-                small = X_test
-                large = X_train
-            else:
-                small = X_train
-                large = X_test
-            newmatrix = np.zeros([small.shape[0], large.shape[1], 5, large.shape[3]])
-            newmatrix[:, :, 0, :] = 1e100
-            newmatrix[
-                0 : small.shape[0], 0 : small.shape[1], 0:5, 0 : small.shape[3]
-            ] = small
-            if X_train.shape[1] > X_test.shape[1]:
-                X_test = newmatrix
-            else:
-                X_train = newmatrix
-
+#    if Qrepresentation == "fchl":
+#        if X_train.shape[1] != X_test.shape[1]:
+#            if X_train.shape[1] > X_test.shape[1]:
+#                small = X_test
+#                large = X_train
+#            else:
+#                small = X_train
+#                large = X_test
+#            newmatrix = np.zeros([small.shape[0], large.shape[1], 5, large.shape[3]])
+#            newmatrix[:, :, 0, :] = 1e100
+#            newmatrix[
+#                0 : small.shape[0], 0 : small.shape[1], 0:5, 0 : small.shape[3]
+#            ] = small
+#            if X_train.shape[1] > X_test.shape[1]:
+#                X_test = newmatrix
+#            else:
+#                X_train = newmatrix
+#
     ### THE EVALUATION
     test_wall_start = time.perf_counter()
     test_cpu_start = time.process_time()
