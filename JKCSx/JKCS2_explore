@@ -613,7 +613,7 @@ for c in constraints*
 do
     i=\`basename \${co:11} .inp\`
 
-    program_XTB \$3.xyz "--input \$PWD/\$c -o loose --gfnff"
+    program_XTB \$3.xyz "--input \$PWD/\$c -o loose --chrg \$4  --uhf \$5 --gfn${GFN}"
     # more efficients to run tight opt afterwards
     #program_XTB -o tight --gfn 1 xtbopt.xyz > \$3.out 2>/dev/null
 
