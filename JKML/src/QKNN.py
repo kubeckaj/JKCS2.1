@@ -463,7 +463,8 @@ def hyperopt(
         space,
         n_calls=10 if optimise_representation else 50,
         random_state=42,
-        verbose=verbose
+        verbose=verbose,
+        n_jobs=-1
     )
     elapsed = time.perf_counter() - start_time
     print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.", flush=True)
