@@ -391,7 +391,8 @@ def hyperopt(
             f"JKML(Q-kNN): Begin hyperparameter optimisation with {Qrepresentation.upper()} representation (only k-NN).",
             flush=True,
         )
-        X = calculate_representation(Qrepresentation, strs, **repr_params)
+        global X
+        X = calculate_representation(Qrepresentation, strs)
     # TODO: add time print
 
     # add k-nn specific hyperparameter
@@ -400,38 +401,71 @@ def hyperopt(
 
     knn_param_names = ["n_neighbors", "weights"]
 
-    @skopt.utils.use_named_args(space)
-    @lru_cache
-    def objective(n_neighbors, weights, **repr_params):
-        if optimise_representation:
+    if optimise_representation:
+        @skopt.utils.use_named_args(space)
+        @lru_cache
+        def objective(n_neighbors, weights, **repr_params):
             X = calculate_representation(Qrepresentation, strs, **repr_params)
-        if not no_metric:
-            mlkr = MLKR()
-            mlkr.fit(X, Y_train)
-            knn = KNeighborsRegressor(
-                metric=mlkr.get_metric(),
-                n_neighbors=n_neighbors,
-                weights=weights,
-                algorithm="ball_tree",
+            if not no_metric:
+                mlkr = MLKR(n_components=50)
+                mlkr.fit(X, Y_train)
+                knn = KNeighborsRegressor(
+                    metric=mlkr.get_metric(),
+                    n_neighbors=n_neighbors,
+                    weights=weights,
+                    algorithm="ball_tree",
+                )
+            else:
+                knn = KNeighborsRegressor(
+                    n_jobs=-1, n_neighbors=n_neighbors, weights=weights, algorithm="auto"
+                )
+            return -np.mean(
+                cross_val_score(
+                    knn,
+                    X,
+                    Y_train,
+                    cv=cv_folds,
+                    n_jobs=-1,
+                    scoring="neg_mean_absolute_error",
+                )
             )
-        else:
-            knn = KNeighborsRegressor(
-                n_jobs=-1, n_neighbors=n_neighbors, weights=weights, algorithm="auto"
+    else:
+        @skopt.utils.use_named_args(space)
+        @lru_cache
+        def objective(n_neighbors, weights, **repr_params):
+            if not no_metric:
+                mlkr = MLKR(n_components=50)
+                mlkr.fit(X, Y_train)
+                knn = KNeighborsRegressor(
+                    metric=mlkr.get_metric(),
+                    n_neighbors=n_neighbors,
+                    weights=weights,
+                    algorithm="ball_tree",
+                )
+            else:
+                knn = KNeighborsRegressor(
+                    n_jobs=-1, n_neighbors=n_neighbors, weights=weights, algorithm="auto"
+                )
+            return -np.mean(
+                cross_val_score(
+                    knn,
+                    X,
+                    Y_train,
+                    cv=cv_folds,
+                    n_jobs=-1,
+                    scoring="neg_mean_absolute_error",
+                )
             )
-        return -np.mean(
-            cross_val_score(
-                knn,
-                X,
-                Y_train,
-                cv=cv_folds,
-                n_jobs=-1,
-                scoring="neg_mean_absolute_error",
-            )
-        )
+
 
     start_time = time.perf_counter()
     res = skopt.gp_minimize(
-        objective, space, n_calls=10, random_state=42, verbose=verbose
+        objective,
+        space,
+        n_calls=10 if optimise_representation else 50,
+        random_state=42,
+        verbose=verbose,
+        n_jobs=-1
     )
     elapsed = time.perf_counter() - start_time
     print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.", flush=True)
