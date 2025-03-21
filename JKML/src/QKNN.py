@@ -393,15 +393,17 @@ def hyperopt(
         )
         global X
         X = calculate_representation(Qrepresentation, strs)
-    # TODO: add time print
 
-    # add k-nn specific hyperparameter
+    # add k-nn specific hyperparameters
     space.append(skopt.space.Integer(3, 15, name="n_neighbors"))
     space.append(skopt.space.Categorical(["uniform", "distance"], name="weights"))
 
     knn_param_names = ["n_neighbors", "weights"]
 
+    # need to have two different optimisation functions to use precalculate X
+    # in the case where we don't optimise the representation hyperparams
     if optimise_representation:
+
         @skopt.utils.use_named_args(space)
         @lru_cache
         def objective(n_neighbors, weights, **repr_params):
@@ -417,7 +419,10 @@ def hyperopt(
                 )
             else:
                 knn = KNeighborsRegressor(
-                    n_jobs=-1, n_neighbors=n_neighbors, weights=weights, algorithm="auto"
+                    n_jobs=-1,
+                    n_neighbors=n_neighbors,
+                    weights=weights,
+                    algorithm="auto",
                 )
             return -np.mean(
                 cross_val_score(
@@ -429,7 +434,9 @@ def hyperopt(
                     scoring="neg_mean_absolute_error",
                 )
             )
+
     else:
+
         @skopt.utils.use_named_args(space)
         @lru_cache
         def objective(n_neighbors, weights, **repr_params):
@@ -444,7 +451,10 @@ def hyperopt(
                 )
             else:
                 knn = KNeighborsRegressor(
-                    n_jobs=-1, n_neighbors=n_neighbors, weights=weights, algorithm="auto"
+                    n_jobs=-1,
+                    n_neighbors=n_neighbors,
+                    weights=weights,
+                    algorithm="auto",
                 )
             return -np.mean(
                 cross_val_score(
@@ -457,15 +467,15 @@ def hyperopt(
                 )
             )
 
-
     start_time = time.perf_counter()
     res = skopt.gp_minimize(
         objective,
         space,
+        # can afford more calls if not optimising representation
         n_calls=10 if optimise_representation else 50,
         random_state=42,
         verbose=verbose,
-        n_jobs=-1
+        n_jobs=-1,
     )
     elapsed = time.perf_counter() - start_time
     print(f"JKML: Hyperparameter tuning done, took {elapsed:.2f} s.", flush=True)
