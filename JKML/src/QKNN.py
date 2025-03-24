@@ -207,6 +207,9 @@ def training(
 
     hyperparams = load_hyperparams(hyper_cache)
     # Convert structures to list to avoid indexing issues
+    for i, struct in enumerate(strs.values):
+        assert struct == strs.iloc[i]
+    print("Values works!")
     strs = strs.values
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
@@ -302,6 +305,10 @@ def evaluate(Qrepresentation, X_train, strs, knn_model, hyper_cache=None):
 
     hyperparams = load_hyperparams(hyper_cache)
     ### REPRESENTATION CALCULATION ###
+    # Convert structures to list to avoid indexing issues
+    for i, struct in enumerate(strs.values):
+        assert struct == strs.iloc[i]
+    strs = strs.values
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
@@ -365,6 +372,11 @@ def hyperopt(
     from functools import lru_cache
     from sklearn.model_selection import cross_val_score
 
+
+    # Convert structures to list to avoid indexing issues
+    for i, struct in enumerate(strs.values):
+        assert struct == strs.iloc[i]
+    strs = strs.values
     # hard-coded search spaces (for now)
     space = []
     if optimise_representation:
