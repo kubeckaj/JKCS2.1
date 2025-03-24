@@ -287,20 +287,39 @@ for sampleeach_i in sampleeach_all:
             from sklearn.neighbors import KNeighborsRegressor
 
             with open(VARS_PKL, "rb") as f:
-                if not no_metric:
-                    X_train, Y_train, X_atoms, A, mlkr, knn_params, train_metadata = (
-                        pickle.load(f)
-                    )
-                else:
+                if no_metric:
                     X_train, Y_train, X_atoms, knn_params, train_metadata = pickle.load(
                         f
                     )
+                elif Qrepresentation == "fchl-kernel":
+                    (
+                        X_train,
+                        Y_train,
+                        X_atoms,
+                        K_train,
+                        D_train,
+                        knn_params,
+                        train_metadata,
+                    ) = pickle.load(f)
+                else:
+                    (
+                        X_train,
+                        Y_train,
+                        X_atoms,
+                        A,
+                        mlkr,
+                        knn_params,
+                        train_metadata,
+                    ) = pickle.load(f)
 
             # need to recreate the model due to not being able to pickle the custom metric
             if not no_metric:
                 knn_params["metric"] = mlkr.get_metric()
             knn = KNeighborsRegressor(**knn_params)
-            knn.fit(X_train, Y_train)
+            if Qrepresentaion == "fchl-kernel":
+                knn.fit(D_train, Y_train)
+            else:
+                knn.fit(X_train, Y_train)
             # store the training metadata to locals
             locals().update(train_metadata)
         elif Qmethod == "nn" or Qmethod == "physnet":
@@ -365,7 +384,14 @@ for sampleeach_i in sampleeach_all:
             from src.QKNN import evaluate
 
             Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
-                evaluate(Qrepresentation, X_train, strs, knn, hyper_cache=hyper_cache)
+                evaluate(
+                    Qrepresentation,
+                    X_train,
+                    strs,
+                    knn,
+                    K_train=K_train,
+                    hyper_cache=hyper_cache,
+                )
             )
             Qforces = 0
             F_predicted = None
