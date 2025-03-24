@@ -3,6 +3,7 @@
 ###############################################################################
 
 import numpy as np
+import pandas as pd
 import pickle
 from sklearn.neighbors import KNeighborsRegressor
 from metric_learn import MLKR
@@ -197,7 +198,7 @@ def load_hyperparams(hyper_cache: str):
 
 def training(
     Qrepresentation: str,
-    strs: List[Atoms],
+    strs: pd.Series,
     Y_train: np.ndarray,
     varsoutfile: Union[str, os.PathLike],
     no_metric=False,
@@ -205,6 +206,8 @@ def training(
 ):
 
     hyperparams = load_hyperparams(hyper_cache)
+    # Convert structures to list to avoid indexing issues
+    strs = strs.values
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
