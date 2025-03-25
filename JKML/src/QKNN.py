@@ -163,7 +163,7 @@ def _generate_mbtr(
     return X
 
 
-def _generate_fchl18(strs: Iterable[Atoms], cut_distance=8.0):
+def _generate_fchl18(strs: Iterable[Atoms], cutoff=8.0):
     from qmllib.representations import generate_fchl18 as generate_representation
 
     max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
@@ -175,7 +175,7 @@ def _generate_fchl18(strs: Iterable[Atoms], cut_distance=8.0):
                 struct.get_positions(),
                 max_size=max_atoms,
                 neighbors=max_atoms,
-                cut_distance=cut_distance,
+                cut_distance=cutoff,
             )
         )
     return np.array(representations)
@@ -226,7 +226,7 @@ def calculate_kernel(X: np.ndarray, X_other: np.ndarray = None, **kernel_kwargs)
     )
     from qmllib.representations.fchl import get_local_kernels as JKML_kernel
 
-    if X_other is None:
+    if X_other is not None:
         return JKML_kernel(X, X_other, **kernel_kwargs)
     else:
         return JKML_sym_kernel(X, **kernel_kwargs)
@@ -309,7 +309,7 @@ def training(
     )
     if Qrepresentation == "fchl-kernel":
         print("JKML(k-NN): Calculate train kernels.", flush=True)
-        K_train = calculate_kernel(X_train, **hyperparams["kernel"])
+        K_train = calculate_kernel(X_train, **(hyperparams["kernel"] if "kernel" in hyperparams else {}))
         D_train = induced_kernel_distance(K_train)
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
@@ -325,7 +325,7 @@ def training(
         print(f"Saved pretrain vars to {str(f)}.", flush=True)
     train_wall_start = time.perf_counter()
     train_cpu_start = time.process_time()
-    if not no_metric:
+    if not no_metric and Qrepresentation != "fchl-kernel":
         print("JKML(Q-kNN): Training MLKR metric.", flush=True)
         # Limit the number of MLKR components for faster training
         mlkr = MLKR(n_components=50)
@@ -348,7 +348,10 @@ def training(
         knn.fit(X_train, Y_train)
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
-    n_train, d_train = X_train.shape
+    if Qrepresentation != "fchl-kernel":
+        n_train, d_train = X_train.shape
+    else:
+        n_train, d_train = X_train.shape[0], sum(X_train.shape[1:])
     train_metadata = {
         "repr_train_wall": repr_train_wall,
         "repr_train_cpu": repr_train_cpu,
