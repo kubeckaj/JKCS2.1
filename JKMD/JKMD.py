@@ -269,6 +269,16 @@ while not Qfollow_activated == 0:
         call_calculator()
         #all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
       dyn.attach(updatephysnet, interval = 1)
+    if Qcalculator == "XTB":
+      if Qcalculator_input == "GFNFF":
+        def removetopologyfiles():
+          import os
+          os.system("ls")
+          print(os.system("rm -rf gfnff_adjacency"))
+          os.system("rm -rf gfnff_topo")
+          os.system("ls")
+          call_calculator()
+        dyn.attach(removetopologyfiles, interval = 1)
     if Qnn_EFD == 1:
       from src.JKelectrostatics import compute_energies_forces
       from src.JKdispersions import compute_d4_energy_forces as compute_dispersions
