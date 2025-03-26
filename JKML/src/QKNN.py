@@ -309,7 +309,9 @@ def training(
     )
     if Qrepresentation == "fchl-kernel":
         print("JKML(k-NN): Calculate train kernels.", flush=True)
-        K_train = calculate_kernel(X_train, **(hyperparams["kernel"] if "kernel" in hyperparams else {}))
+        K_train = calculate_kernel(
+            X_train, **(hyperparams["kernel"] if "kernel" in hyperparams else {})
+        )
         D_train = induced_kernel_distance(K_train)
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
@@ -479,8 +481,8 @@ def hyperopt(
     import skopt
     from skopt.space import Real, Integer, Categorical
     from functools import lru_cache
-    from sklearn.model_selection import cross_val_score
-
+    from sklearn.model_selection import cross_val_score, KFold
+    from sklearn.metrics import pairwise_distances
 
     # Convert structures to list to avoid indexing issues
     for i, struct in enumerate(strs.values):
@@ -564,35 +566,48 @@ def hyperopt(
 
     else:
 
+        # precalculate distances and sorted Y matrices for SPEED
+        kf = KFold(cv_folds)
+        # could preallocate, but won't bother >:)
+        distance_matrices = []
+        sorted_Ys = []
+        if not no_metric:
+            mlkrs = []
+
+        for i, (train_index, test_index) in enumerate(kf.split(X)):
+            X_fold, Y_fold = X[train_index], Y_train[train_index]
+            X_test = X[test_index]
+            if no_metric:
+                D = pairwise_distances(X_test, X_fold, n_jobs=-1)
+            else:
+                mlkr = MLKR(n_components=50)
+                mlkr.fit(X_fold, Y_fold)
+                mlkrs.append(mlkr)
+                D = pairwise_distances(
+                    X_test, X_fold, metric=mlkr.get_metric(), n_jobs=-1
+                )
+            sorted_indices = np.argsort(D, axis=1)
+            # presort distance matrix
+            D = np.take_along_axis(D, sorted_indices, axis=1)
+            distance_matrices.append(D)
+            # also store sorted y_train for prediction
+            Y_sorted = Y_fold[sorted_indices]
+            sorted_Ys.append(Y_sorted)
+
         @skopt.utils.use_named_args(space)
         @lru_cache
         def objective(n_neighbors, weights, **repr_params):
-            if not no_metric:
-                mlkr = MLKR(n_components=50)
-                mlkr.fit(X, Y_train)
-                knn = KNeighborsRegressor(
-                    metric=mlkr.get_metric(),
-                    n_neighbors=n_neighbors,
-                    weights=weights,
-                    algorithm="ball_tree",
-                )
-            else:
-                knn = KNeighborsRegressor(
-                    n_jobs=-1,
-                    n_neighbors=n_neighbors,
-                    weights=weights,
-                    algorithm="auto",
-                )
-            return -np.mean(
-                cross_val_score(
-                    knn,
-                    X,
-                    Y_train,
-                    cv=cv_folds,
-                    n_jobs=-1,
-                    scoring="neg_mean_absolute_error",
-                )
-            )
+            maes = np.zeros(cv_folds)
+            # manual k-NN implementation
+            for i, (_, test_index) in enumerate(kf.split(X)):
+                Y_test = Y_train[test_index]
+                if weights == "uniform":
+                    yhat = np.mean(sorted_Ys[i][:, :n_neighbors], axis=1)
+                elif weights == "distance":
+                    w = 1 / distance_matrices[i][:, :n_neighbors]
+                    yhat = np.average(sorted_Ys[i][:, :n_neighbors], axis=1, weights=w)
+                maes[i] = np.mean(np.abs(Y_test - yhat))
+            return np.mean(maes)
 
     start_time = time.perf_counter()
     res = skopt.gp_minimize(
