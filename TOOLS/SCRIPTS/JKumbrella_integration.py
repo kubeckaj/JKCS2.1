@@ -72,6 +72,9 @@ min_index = np.argmin(PMF_1D[:, 1]) #index
 print("MIN: Position of minimun has index: "+str(min_index))
 
 ### FITTING ###
+max_index = min_index + np.argmax(PMF_3D[min_index:, 1]) #index
+print("MAX: Position of maximum has index: "+str(max_index))
+print("Max = ", PMF_1D[max_index, 0]," Angstrom")
 if Qfit==0:
   def model(w, a, xe, De):
       return (1 - np.exp(-a * (w - xe)))**2 * De
@@ -86,16 +89,15 @@ if Qfit==0:
   w_fit = np.linspace(PMF_1D[min_index, 0], PMF_1D[-1, 0], 100)
   y_fit = model(w_fit, *popt)
 else:
-  max_index = np.argmax(PMF_3D[min_index:, 1]) #index
   def model(w,De):
       return De
-  initial_guess = PMF_1D[(min_index+max_index), 1] #Eh
+  initial_guess = PMF_1D[(max_index), 1] #Eh
   from scipy.optimize import curve_fit
-  popt, pcov = curve_fit(model, PMF_1D[min_index+max_index:, 0], PMF_1D[min_index+max_index:, 1], p0=initial_guess, bounds=(0, np.inf))
+  popt, pcov = curve_fit(model, PMF_1D[max_index:, 0], PMF_1D[max_index:, 1], p0=initial_guess, bounds=(0, np.inf))
   De = popt[0] #Eh
   print("FIT:Fitting parameters of function: 1*De")
   print("FIT: De[kcal/mol] = "+str(De*Eh2kcalmol))
-  w_fit = np.linspace(PMF_1D[min_index+max_index, 0], PMF_1D[-1, 0], 100)
+  w_fit = np.linspace(PMF_1D[max_index, 0], PMF_1D[-1, 0], 100)
   y_fit = model(w_fit, np.array([De]*100))
 
 plt.figure()
@@ -120,13 +122,16 @@ print("Multiplier = "+str(mult)+" [1 or 2 for symmetric reactions]")
 ### INTEGRATION/SUM ###
 dx = PMF_1D[1, 0] - PMF_1D[0, 0]
 sum_element = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/kBT)*4*pi*PMF_1D[:, 0]**2*dx))
+sum_element_ivo = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/kBT)*PMF_1D[:, 0]**2))
+sum_table_ivo = np.array([np.array([sum_element[i,0], np.sum(sum_element_ivo[i,1])]) for i in range(0, len(sum_element))])
 sum_table = np.array([np.array([sum_element[i,0], np.sum(sum_element[0:i,1])]) for i in range(0, len(sum_element))])
 F_well = sum_table[-1, 1] #Eh
 F_table = -kBT*np.log(np.exp(De/kBT)*sum_table[:, 1]/V0/mult) 
-F = F_table[-1] #Eh
+F = F_table[max_index] #Eh
 
 plt.figure()
-plt.plot(sum_table[:, 0], sum_table[:, 1], marker='.', linestyle='-', color='b')
+plt.plot(sum_table[:, 0], F_table[:]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+#plt.plot(sum_table[:, 0], sum_table_ivo[:,1], marker='.', linestyle='-', color='b')
 plt.xlabel('coordinate')
 plt.ylabel('dF (kcal/mol)')
 plt.savefig('dF_convergence.png')

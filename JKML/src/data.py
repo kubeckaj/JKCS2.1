@@ -92,7 +92,13 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
 
   ### FORCES
   if ("extra","forces") in clusters_df.columns and Qifforces == 1:
-    F_train = clusters_df["extra"]["forces"].values
+    if method == "delta":
+      from numpy import array
+      F1 = array([array(i) for i in clusters_df["extra"]["forces"].values])
+      F2 = array([array(i) for i in clusters_df2["extra"]["forces"].values])
+      F_train = F1 - F2
+    else:
+      F_train = clusters_df["extra"]["forces"].values
     Qforces = 1
   else:
     F_train = float("nan")
@@ -202,7 +208,13 @@ def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_
 
   ### FORCES
   if ("extra","forces") in clusters_df.columns and Qifforces == 1:
-    F_test = clusters_df["extra"]["forces"].values
+    if method == "delta":
+      from numpy import array
+      F1 = array([array(i) for i in clusters_df["extra"]["forces"].values])
+      F2 = array([array(i) for i in clusters_df2["extra"]["forces"].values])
+      F_test = F1 - F2
+    else:
+      F_test = clusters_df["extra"]["forces"].values
     Qforces = 1
   elif Qifforces == 1:
     F_test = None
