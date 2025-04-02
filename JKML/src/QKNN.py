@@ -678,7 +678,7 @@ def training(
     knn.fit(X_train, Y_train)
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
-    n_train, d_train = X_train.shape
+    n_train, d_train = X_train.shape[0], np.sum(X_train.shape[1:])
     train_metadata = {
         "repr_train_wall": repr_train_wall,
         "repr_train_cpu": repr_train_cpu,
