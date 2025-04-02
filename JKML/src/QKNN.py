@@ -699,7 +699,7 @@ def training(
     knn.fit(X_train, Y_train)
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
-    n_train, d_train = X_train.shape
+    n_train, d_train = X_train.shape[0], np.sum(X_train.shape[1:])
     train_metadata = {
         "repr_train_wall": repr_train_wall,
         "repr_train_cpu": repr_train_cpu,
@@ -904,6 +904,8 @@ def hyperopt(
 
     else:
 
+        print("JKML(k-NN): Precalculating distance matrices for hyperopt.", flush=True)
+        precalc_start = time.perf_counter()
         # precalculate distances and sorted Y matrices for SPEED
         kf = KFold(cv_folds)
         # could preallocate, but won't bother >:)
@@ -944,6 +946,7 @@ def hyperopt(
                 Y_sorted = Y_fold[sorted_indices]
             sorted_Ys.append(Y_sorted)
 
+        print(f"JKML(k-NN): Precalculation done, took {time.perf_counter() - precalc_start:.1f} s.", flush=True)
         @skopt.utils.use_named_args(space)
         @lru_cache
         def objective(n_neighbors, weights, **repr_params):
