@@ -444,6 +444,27 @@ class VPTreeKNN:
             w = 1 / D
             return np.average(Y, weights=w, axis=1)
 
+    def get_params(self, deep=True):
+        """
+        Get parameters for this estimator.
+
+        Parameters
+        ----------
+        deep : bool, default=True
+            If True, will return the parameters for this estimator and
+            contained subobjects that are estimators.
+
+        Returns
+        -------
+        params : dict
+            Parameter names mapped to their values.
+        """
+        out = dict()
+        out["n_neighbors"] = self.k
+        out["weights"] = self.weights
+        out["n_jobs"] = self.max_workers
+        return out
+
 
 def fast_kernel(
     alchemy: str = "periodic-table",
