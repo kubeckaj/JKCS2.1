@@ -892,7 +892,6 @@ def hyperopt(
             elif Qrepresentation == "fchl-kernel":
                 knn = VPTreeKNN(kernel, n_neighbors=15, weights="uniform")
                 knn.fit(X_fold, Y_fold)
-                # TODO: this maybe works
                 Y_fold, D = knn.k_neighbours(X_test, k=max_k)
             else:
                 mlkr = MLKR(n_components=50)
