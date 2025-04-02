@@ -346,13 +346,16 @@ class VPTreeKNN:
         query_idx: int,
         dist_fn: Callable[[int, int], float],
         heap: List[Tuple[float, int]],
+        k: int = None,
     ):
+        if k is None:
+            k = self.k
         if node is None:
             return
 
         d = dist_fn(query_idx, node.idx)
         heapq.heappush(heap, (-d, node.idx))
-        if len(heap) > self.k:
+        if len(heap) > k:
             heapq.heappop(heap)
 
         if node.left is None and node.right is None:
@@ -363,11 +366,11 @@ class VPTreeKNN:
         else:
             near, far = node.right, node.left
 
-        self._search_vptree(near, query_idx, dist_fn, heap)
+        self._search_vptree(near, query_idx, dist_fn, heap, k=k)
 
         # Prune using triangle inequality
-        if len(heap) < self.k or abs(d - node.threshold) < -heap[0][0]:
-            self._search_vptree(far, query_idx, dist_fn, heap)
+        if len(heap) < k or abs(d - node.threshold) < -heap[0][0]:
+            self._search_vptree(far, query_idx, dist_fn, heap, k=k)
 
     def fit(
         self,
@@ -389,10 +392,10 @@ class VPTreeKNN:
         self.X_train = X
         self.Y_train = Y
 
-    def k_neighbours(self, X: np.ndarray, k: int = None):
+    def kneighbours(self, X: np.ndarray, n_neighbors: int = None, return_distance=True):
         """Find closest k neighbors in the tree."""
-        if k is None:
-            k = self.k
+        if n_neighbors is None:
+            n_neighbors = self.k
 
         def _test_dist_fn(i: int, j: int):
             d_squared = (
@@ -405,35 +408,41 @@ class VPTreeKNN:
 
         def _find_single(test_idx: int):
             heap = []
-            self._search_vptree(self.vp_tree, test_idx, _test_dist_fn, heap, k=k)
-            neighbors = np.array([self.Y_train[idx] for (_, idx) in heap])
-            y = neighbors
+            self._search_vptree(
+                self.vp_tree, test_idx, _test_dist_fn, heap, k=n_neighbors
+            )
+            neighbors = np.array([idx for (_, idx) in heap])
             d = np.array([-d for (d, _) in heap])
-            return y, d
+            return neighbors, d
 
         m_test = X.shape[0]
         if self.max_workers is not None:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                y_d = list(executor.map(_find_single, range(m_test)))
-            ys = np.stack([x[0] for x in y_d])
-            D = np.stack([x[1] for x in y_d])
+                n_d = list(executor.map(_find_single, range(m_test)))
+            neighbors = np.stack([x[0] for x in n_d])
+            D = np.stack([x[1] for x in n_d])
         else:
-            ys = np.zeros((m_test, k))
-            D = np.zeros_like(ys)
+            neighbors = np.zeros((m_test, n_neighbors))
+            D = np.zeros_like(neighbors)
             for i in range(m_test):
-                y, d = _find_single(i)
-                ys[i, :] = y
+                n, d = _find_single(i)
+                neighbors[i, :] = n
                 D[i, :] = d
-        return ys, D
+        neighbors = neighbors.astype(np.uint32)
+        if return_distance:
+            return D, neighbors
+        else:
+            return neighbors
 
     def predict(self, X: np.ndarray, k: int = None):
         """Wrapper to replicate sklearn k-NN model behaviour."""
-        ys, D = self.k_neighbours(X, k)
+        D, neighbors = self.kneighbours(X, k)
+        Y = self.Y_train[neighbors]
         if self.weights == "uniform":
-            return np.mean(ys, axis=1)
+            return np.mean(Y, axis=1)
         else:
             w = 1 / D
-            return np.average(ys, weights=w, axis=1)
+            return np.average(Y, weights=w, axis=1)
 
 
 def fast_kernel(
@@ -892,7 +901,8 @@ def hyperopt(
             elif Qrepresentation == "fchl-kernel":
                 knn = VPTreeKNN(kernel, n_neighbors=15, weights="uniform")
                 knn.fit(X_fold, Y_fold)
-                Y_fold, D = knn.k_neighbours(X_test, k=max_k)
+                D, neighbors = knn.kneighbours(X_test, n_neighbors=max_k)
+                Y_fold = Y_fold[neighbors]
             else:
                 mlkr = MLKR(n_components=50)
                 mlkr.fit(X_fold, Y_fold)
