@@ -566,6 +566,8 @@ def hyperopt(
 
     else:
 
+        print("JKML(k-NN): Precalculating distance matrices for hyperopt.", flush=True)
+        precalc_start = time.perf_counter()
         # precalculate distances and sorted Y matrices for SPEED
         kf = KFold(cv_folds)
         # could preallocate, but won't bother >:)
@@ -579,6 +581,9 @@ def hyperopt(
             X_test = X[test_index]
             if no_metric:
                 D = pairwise_distances(X_test, X_fold, n_jobs=-1)
+            elif Qrepresentation == "fchl-kernel":
+                # the distance is already precalculated
+                D = X[test_index, :][:, train_index]
             else:
                 mlkr = MLKR(n_components=50)
                 mlkr.fit(X_fold, Y_fold)
@@ -594,6 +599,7 @@ def hyperopt(
             Y_sorted = Y_fold[sorted_indices]
             sorted_Ys.append(Y_sorted)
 
+        print(f"JKML(k-NN): Precalculation done, took {time.perf_counter() - precalc_start:.1f} s.", flush=True)
         @skopt.utils.use_named_args(space)
         @lru_cache
         def objective(n_neighbors, weights, **repr_params):
