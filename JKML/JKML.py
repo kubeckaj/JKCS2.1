@@ -296,8 +296,6 @@ for sampleeach_i in sampleeach_all:
                         X_train,
                         Y_train,
                         X_atoms,
-                        K_train,
-                        D_train,
                         knn_params,
                         train_metadata,
                     ) = pickle.load(f)
@@ -389,7 +387,6 @@ for sampleeach_i in sampleeach_all:
                     X_train,
                     strs,
                     knn,
-                    K_train=K_train,
                     hyper_cache=hyper_cache,
                 )
             )
