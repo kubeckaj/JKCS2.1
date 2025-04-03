@@ -284,7 +284,7 @@ class VPTreeKNN:
     ):
         self.kernel = kernel_fun
         self.k = n_neighbors
-        self.max_workers = (
+        self.max_workers = int(
             os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count())
             if n_jobs == -1
             else n_jobs
