@@ -47,6 +47,7 @@ module kernel_distance
    public :: init_train, init_test
    public :: train_kernel_element, test_kernel_element, test_train_kernel_element, test_distance, train_distance
    private :: X_tr, X_te
+   private :: kernel_element
 
 contains
 

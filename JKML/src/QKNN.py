@@ -13,8 +13,6 @@ import os
 from collections import defaultdict
 import time
 import warnings
-from concurrent.futures import ThreadPoolExecutor, Future
-import heapq
 
 # ignore sklearn futurewarning
 warnings.filterwarnings(
