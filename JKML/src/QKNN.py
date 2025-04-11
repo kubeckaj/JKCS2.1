@@ -13,8 +13,13 @@ import os
 from collections import defaultdict
 import time
 import warnings
-from concurrent.futures import ThreadPoolExecutor, Future
-import heapq
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "fortran"))
+print(sys.path)
+from ffchl_vp_tree import vp_tree
+from qmllib.utils.alchemy import get_alchemy
+from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
 
 # ignore sklearn futurewarning
 warnings.filterwarnings(
@@ -267,9 +272,6 @@ def induced_kernel_distance(
 
 
 class VPTreeKNN:
-    from .fortran.ffchl_vp_tree import vp_tree
-    from qmllib.utils.alchemy import get_alchemy
-    from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
 
     def __init__(
         self,
