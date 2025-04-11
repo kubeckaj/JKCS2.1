@@ -267,7 +267,7 @@ def induced_kernel_distance(
 
 
 class VPTreeKNN:
-    from fortran.ffchl_vp_tree import vp_tree
+    from .fortran.ffchl_vp_tree import vp_tree
     from qmllib.utils.alchemy import get_alchemy
     from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
 
