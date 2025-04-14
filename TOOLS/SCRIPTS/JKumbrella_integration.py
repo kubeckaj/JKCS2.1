@@ -116,7 +116,7 @@ print("V0 = "+str(V0)+" Ang^3")
 #print("L0 = "+str((3/4/3.14*V0)**(1/3))+" Ang")
 
 ### MULTIPLIER ###
-mult=int(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwise 1
+mult=float(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwise 1
 print("Multiplier = "+str(mult)+" [1 or 2 for symmetric reactions]")
 
 ### INTEGRATION/SUM ###

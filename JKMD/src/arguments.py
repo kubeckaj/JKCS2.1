@@ -43,8 +43,9 @@ def print_help():
     -xtb2             GFN2-xTB {TBlite}
     -xtb "<str>"      xtb method (e.g., GFN1-xTB, GFNFF) {XTB}
     -nn_model <path>  Neural Network model defined by path {SchNetPack}
-     -EFD              use EFD module {SchNetPack}
-     -cutoff <float>   cutoff radius [Angstrom] {SchNetPack} [default = 10.0]
+     -EFD               use EFD module {SchNetPack}
+     -cutoff <float>    cutoff radius [Angstrom] {SchNetPack} [default = 10.0]
+     -dl,-deltalearning use delta learning +GFN1-xTB {SchNetPack}
     -pn_model <path>  Neural Network model defined by path {PhysNet_DER} [requires input.inp too]
     -orca "<str>"     QC method (e.g., "XTB1" or "B97-3c") {ORCA}
                       -additional setup might be required!!!
@@ -589,6 +590,11 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
         mfrom=mfrom+len(species[j])
       mto=mfrom+len(species[Qindex_of_specie])
       QMMM.append([mfrom,mto])
+      continue
+    if i == "-dl" or i == "-deltalearning":
+      QEF_systems.append("all")
+      QEF.append("deltalearning")
+      QEF_par.append("GFN1-xTB")
       continue
 
     ### EXTERNAL FORCES ###

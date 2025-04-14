@@ -1,0 +1,17 @@
+if [[ "$*" == *"-help"* ]]; then
+  echo """   Help for JKtblite_en_grad script:
+Submits calculations for tblite with energy and force calculation
+By default, JKCS2.1/TOOLS/MANIPULATE/JKsend is used with 8 threads
+  
+  COMMAND: JKtblite_en_grad <file>
+
+  EXAMPLES:
+  
+     JKtblite_en_grad file.pkl #creates tblite_en_force_file.pkl
+  """
+  exit
+fi
+
+if [ -z "$1" ]; then echo "ERROR: No input file"; exit; fi
+sbatch -n 8 JKsend "source ~/.JKCSusersetup.txt; program_PYTHON "$( cd "$(dirname "$0")" ; pwd -P )"/../SCRIPTS/JKtblite_en_grad.py $1"
+

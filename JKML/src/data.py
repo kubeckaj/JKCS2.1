@@ -94,8 +94,8 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
   if ("extra","forces") in clusters_df.columns and Qifforces == 1:
     if method == "delta":
       from numpy import array
-      F1 = array([array(i) for i in clusters_df["extra"]["forces"].values])
-      F2 = array([array(i) for i in clusters_df2["extra"]["forces"].values])
+      F1 = array([array(i) for i in clusters_df["extra"]["forces"].values], dtype=object)
+      F2 = array([array(i) for i in clusters_df2["extra"]["forces"].values], dtype=object)
       F_train = F1 - F2
     else:
       F_train = clusters_df["extra"]["forces"].values

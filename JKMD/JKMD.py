@@ -135,6 +135,11 @@ while not Qfollow_activated == 0:
           exit()
         from umbrellaconstraint import UmbrellaConstraint
         constraints.append(UmbrellaConstraint(all_species,QEF_par[i][0],len(species[0]),QEF_par[i][1],Qslow))
+      if QEF[i] == "deltalearning":
+        from deltalearning import DeltaLearning
+        constraints.append(DeltaLearning(QEF[i],QEF_par[i],QEF_systems[i]))
+        if Qout > 1:
+          print("Delta learning applied")
   #SET CONSTRAINTS
   if len(constraints) > 0:
     all_species.set_constraint(constraints)
