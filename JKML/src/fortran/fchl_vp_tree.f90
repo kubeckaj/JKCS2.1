@@ -43,7 +43,7 @@ contains
       if (allocated(vp_right)) deallocate(vp_right)
       if (allocated(vp_threshold)) deallocate(vp_threshold)
 
-   end subroutine clean_training_data()
+   end subroutine clean_training_data
 
    subroutine load(X_in, Y_in, vp_index_in, vp_left_in, vp_right_in, vp_threshold_in, verbose_in, n1, nneigh1_in, nm1, nsigmas_in, &
    & t_width_in, d_width_in, cut_start_in, cut_distance_in, order_in, pd_in, &

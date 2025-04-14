@@ -58,7 +58,7 @@ contains
       if (allocated(nneigh1)) deallocate(nneigh1)
       if (allocated(pd)) deallocate(pd)
       if (allocated(parameters)) deallocate(parameters)
-   end subroutine clean_train()
+   end subroutine clean_train
 
    subroutine init_train(x_in1, verbose_in, n1, nneigh1_in, nm1, nsigmas_in, &
    & t_width_in, d_width_in, cut_start_in, cut_distance_in, order_in, pd_in, &

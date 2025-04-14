@@ -419,10 +419,14 @@ class VPTreeKNN:
             (k_neighbors, distances) = vp_tree.kneighbors(
                 n_neighbors, X.shape[0], return_distances=True
             )
+            # fortran indexing is 1-based
+            k_neighbors = k_neighbors - 1
             # transpose required for sk-learn compatibility as fortran is column-based
             return distances.T, k_neighbors.T
         else:
             k_neighbors = vp_tree.kneighbors(n_neighbors, X.shape[0])
+            # fortran indexing is 1-based
+            k_neighbors = k_neighbors - 1
             # transpose required for sk-learn compatibility as fortran is column-based
             return k_neighbors.T
 
