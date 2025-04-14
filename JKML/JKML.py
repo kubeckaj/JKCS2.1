@@ -297,6 +297,7 @@ for sampleeach_i in sampleeach_all:
                         Y_train,
                         X_atoms,
                         knn_params,
+                        vp_params,
                         train_metadata,
                     ) = pickle.load(f)
                 else:
@@ -311,12 +312,14 @@ for sampleeach_i in sampleeach_all:
                     ) = pickle.load(f)
 
             # need to recreate the model due to not being able to pickle the custom metric
-            if not no_metric:
+            if not no_metric and Qrepresentation != "fchl-kernel":
                 knn_params["metric"] = mlkr.get_metric()
-            knn = KNeighborsRegressor(**knn_params)
-            if Qrepresentaion == "fchl-kernel":
-                knn.fit(D_train, Y_train)
+            if Qrepresentation == "fchl-kernel":
+                from src.QKNN import load_vp_knn
+
+                knn = load_vp_knn(X_train, Y_train, vp_params, **knn_params)
             else:
+                knn = KNeighborsRegressor(**knn_params)
                 knn.fit(X_train, Y_train)
             # store the training metadata to locals
             locals().update(train_metadata)

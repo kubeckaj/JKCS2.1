@@ -21,6 +21,12 @@ contains
       implicit none
       integer, intent(in) :: max_nodes
 
+      ! clean up old
+      if (allocated(vp_index)) deallocate(vp_index)
+      if (allocated(vp_left)) deallocate(vp_left)
+      if (allocated(vp_right)) deallocate(vp_right)
+      if (allocated(vp_threshold)) deallocate(vp_threshold)
+
       allocate(vp_index(max_nodes))
       allocate(vp_left(max_nodes))
       allocate(vp_right(max_nodes))
@@ -28,6 +34,105 @@ contains
 
       vp_next = 1
    end subroutine init_tree
+
+   subroutine clean_training_data()
+      if (allocated(X_train)) deallocate(X_train)
+      if (allocated(Y_train)) deallocate(Y_train)
+      if (allocated(vp_index)) deallocate(vp_index)
+      if (allocated(vp_left)) deallocate(vp_left)
+      if (allocated(vp_right)) deallocate(vp_right)
+      if (allocated(vp_threshold)) deallocate(vp_threshold)
+
+   end subroutine clean_training_data()
+
+   subroutine load(X_in, Y_in, vp_index_in, vp_left_in, vp_right_in, vp_threshold_in, verbose_in, n1, nneigh1_in, nm1, nsigmas_in, &
+   & t_width_in, d_width_in, cut_start_in, cut_distance_in, order_in, pd_in, &
+   & distance_scale_in, angular_scale_in, alchemy_in, two_body_power_in, three_body_power_in, &
+   & kernel_idx_in, parameters_in, root_id)
+      ! raw input data
+      double precision, intent(in) :: X_in(:,:, :, :), Y_in(:)
+
+      ! previously learned VP params
+      integer, intent(in) :: vp_index_in(:), vp_left_in(:), vp_right_in(:)
+      double precision, intent(in) :: vp_threshold_in(:)
+
+      ! Whether to be verbose with output
+      logical, intent(in) :: verbose_in
+
+      ! List of numbers of atoms in each molecule
+      integer, dimension(:), intent(in) :: n1 ! save
+
+      ! Number of molecules
+      integer, intent(in) :: nm1 ! save
+
+      ! Number of sigmas
+      integer, intent(in) :: nsigmas_in ! save
+
+      ! Number of neighbors for each atom in each compound
+      integer, dimension(:, :), intent(in) :: nneigh1_in ! save
+
+      ! Angular Gaussian width
+      double precision, intent(in) :: t_width_in ! save
+
+      ! Distance Gaussian width
+      double precision, intent(in) :: d_width_in ! save
+
+      ! Fraction of cut_distance at which cut-off starts
+      double precision, intent(in) :: cut_start_in ! save
+      double precision, intent(in) :: cut_distance_in ! save
+
+      ! Truncation order for Fourier terms
+      integer, intent(in) :: order_in ! save
+
+      ! Periodic table distance matrix
+      double precision, dimension(:, :), intent(in) :: pd_in ! save
+
+      ! Scaling for angular and distance terms
+      double precision, intent(in) :: distance_scale_in ! save
+      double precision, intent(in) :: angular_scale_in ! save
+
+      ! Switch alchemy on or off
+      logical, intent(in) :: alchemy_in ! save
+
+      ! Decaying power laws for two- and three-body terms
+      double precision, intent(in) :: two_body_power_in ! save
+      double precision, intent(in) :: three_body_power_in ! save
+
+      ! Kernel ID and corresponding parameters
+      integer, intent(in) :: kernel_idx_in ! save
+      double precision, dimension(:, :), intent(in) :: parameters_in ! save
+      integer, intent(out) :: root_id
+
+      integer :: n_train, i
+      integer, allocatable :: indices(:)
+
+      ! openmp parameters
+      integer :: nthreads, max_depth
+
+      ! clean up training data (if already allocated)
+      call clean_training_data()
+      allocate(X_train(size(X_in,1), size(X_in,2), size(X_in,3), size(X_in,4)))
+      X_train = X_in
+      allocate(Y_train(size(Y_in,1)))
+      Y_train = Y_in
+      ! get size of X_train
+      n_train = size(X_train, 1)
+
+      ! initialize vp-tree
+      call init_tree(n_train)
+      ! copy learned vp tree parameters to collections
+      vp_index = vp_index_in
+      vp_left = vp_left_in
+      vp_right = vp_right_in
+      vp_threshold = vp_threshold_in
+
+      ! initialise kernel
+      call init_train(X_train, verbose_in, n1, nneigh1_in, nm1, nsigmas_in, t_width_in, &
+      & d_width_in, cut_start_in, cut_distance_in, order_in, pd_in, distance_scale_in, &
+      & angular_scale_in, alchemy_in, two_body_power_in, three_body_power_in, kernel_idx_in, &
+      & parameters_in)
+
+   end subroutine load
 
    subroutine train(X_in, Y_in, verbose_in, n1, nneigh1_in, nm1, nsigmas_in, &
    & t_width_in, d_width_in, cut_start_in, cut_distance_in, order_in, pd_in, &
@@ -88,6 +193,8 @@ contains
       ! openmp parameters
       integer :: nthreads, max_depth
 
+      ! clean up training data (if already allocated)
+      call clean_training_data()
       allocate(X_train(size(X_in,1), size(X_in,2), size(X_in,3), size(X_in,4)))
       X_train = X_in
       allocate(Y_train(size(Y_in,1)))

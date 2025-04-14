@@ -51,6 +51,15 @@ module kernel_distance
 
 contains
 
+   subroutine clean_train()
+      ! clean up training data if it exists to avoid double alloc
+      if (allocated(X_tr)) deallocate(X_tr)
+      if (allocated(num_atoms1)) deallocate(num_atoms1)
+      if (allocated(nneigh1)) deallocate(nneigh1)
+      if (allocated(pd)) deallocate(pd)
+      if (allocated(parameters)) deallocate(parameters)
+   end subroutine clean_train()
+
    subroutine init_train(x_in1, verbose_in, n1, nneigh1_in, nm1, nsigmas_in, &
    & t_width_in, d_width_in, cut_start_in, cut_distance_in, order_in, pd_in, &
    & distance_scale_in, angular_scale_in, alchemy_in, two_body_power_in, three_body_power_in, &
@@ -104,6 +113,8 @@ contains
       integer, intent(in) :: kernel_idx_in ! save
       double precision, dimension(:, :), intent(in) :: parameters_in ! save
 
+      ! clean up old data
+      call clean_train()
       ! allocate raw datas
       allocate(X_tr(size(x_in1,1), size(x_in1,2), size(x_in1,3), size(x_in1,4)))
       X_tr = x_in1
