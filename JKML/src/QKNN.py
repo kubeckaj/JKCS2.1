@@ -57,9 +57,13 @@ def _generate_fchl19(
     return X
 
 
-def _generate_mbdf(strs: Iterable[Atoms], cutoff: float = 8.0, **kwargs) -> np.ndarray:
+def _generate_mbdf(
+    strs: Iterable[Atoms], max_atoms=None, cutoff: float = 8.0, **kwargs
+) -> np.ndarray:
     from MBDF import generate_mbdf as generate_representation
 
+    if max_atoms is None:
+        max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
     n = len(strs)
     ragged_atomic_numbers = np.empty(n, dtype=object)
     ragged_atomic_numbers[:] = [i.get_atomic_numbers() for i in strs]
@@ -71,6 +75,7 @@ def _generate_mbdf(strs: Iterable[Atoms], cutoff: float = 8.0, **kwargs) -> np.n
         cutoff_r=cutoff,
         normalized=False,
         local=False,
+        pad=max_atoms,
     )
     return X
 
@@ -958,7 +963,11 @@ def hyperopt(
                 Y_sorted = Y_fold[sorted_indices]
             sorted_Ys.append(Y_sorted)
 
-        print(f"JKML(k-NN): Precalculation done, took {time.perf_counter() - precalc_start:.1f} s.", flush=True)
+        print(
+            f"JKML(k-NN): Precalculation done, took {time.perf_counter() - precalc_start:.1f} s.",
+            flush=True,
+        )
+
         @skopt.utils.use_named_args(space)
         @lru_cache
         def objective(n_neighbors, weights, **repr_params):
