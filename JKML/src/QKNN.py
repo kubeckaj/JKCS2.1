@@ -23,15 +23,23 @@ warnings.filterwarnings(
 )
 
 
-def _generate_fchl19(strs: Iterable[Atoms], rcut=8.0, acut=8.0, **kwargs) -> np.ndarray:
+def _generate_fchl19(
+    strs: Iterable[Atoms], max_atoms=None, elements=None, rcut=8.0, acut=8.0, **kwargs
+) -> np.ndarray:
     from qmllib.representations import generate_fchl19 as generate_representation
 
+    if elements is None:
+        elements = [1, 6, 7, 8, 16]
+    if max_atoms is None:
+        max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
     n = len(strs)
     representation = generate_representation(
         strs[0].get_atomic_numbers(),
         strs[0].get_positions(),
+        elements=elements,
         rcut=rcut,
         acut=acut,
+        pad=max_atoms,
     )
     X = np.zeros((n, representation.shape[1]))
     X[0, :] = np.sum(representation, axis=0)
@@ -39,8 +47,10 @@ def _generate_fchl19(strs: Iterable[Atoms], rcut=8.0, acut=8.0, **kwargs) -> np.
         X[i, :] = generate_representation(
             strs[i].get_atomic_numbers(),
             strs[i].get_positions(),
+            elements=elements,
             rcut=rcut,
             acut=acut,
+            pad=max_atoms,
         ).sum(axis=0)
     if np.isnan(X).any():
         raise ValueError("NaNs in FCHL representation!")
@@ -165,10 +175,12 @@ def _generate_mbtr(
     return X
 
 
-def _generate_fchl18(strs: Iterable[Atoms], cutoff=8.0):
+def _generate_fchl18(strs: Iterable[Atoms], max_atoms=None, cutoff=8.0):
     from qmllib.representations import generate_fchl18 as generate_representation
 
-    max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
+    if max_atoms is None:
+        max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
+
     representations = []
     for struct in strs:
         representations.append(
@@ -782,7 +794,7 @@ def evaluate(Qrepresentation, X_train, strs, knn_model, hyper_cache=None):
     )
     if Qrepresentation == "fchl-kernel":
         X_test, X_train = correct_fchl18_kernel_size(X_test, X_train)
-        print("JKML(k-NN): Calculate test kernel(s).", flush=True)
+    print("JKML(k-NN): Calculate test kernel(s).", flush=True)
     repr_test_wall = time.perf_counter() - repr_wall_start
     repr_test_cpu = time.process_time() - repr_cpu_start
 
