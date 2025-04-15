@@ -542,8 +542,18 @@ def load_vp_knn(X_train, Y_train, vp_params, **knn_params):
 def load_hyperparams(hyper_cache: str):
     if hyper_cache is not None:
         with open(hyper_cache, "rb") as f:
-            hyperparams = pickle.load(f)
+            hyperparams: dict = pickle.load(f)
         print(f"JKML(Q-kNN): Loaded hyperparameters from {hyper_cache}:", flush=True)
+        if "representation" not in hyperparams:
+            hyperparams["representation"] = {"cutoff": 8.0}
+            print(
+                f"JKML (Q-kNN): Representation params not defined in hyperparams, use default value."
+            )
+        if "knn" not in hyperparams:
+            hyperparams["knn"] = {"n_neighbors": 5, "weights": "uniform"}
+            print(
+                f"JKML (Q-kNN): knn params not defined in hyperparams, use default values."
+            )
         print(hyperparams, flush=True)
     else:
         # use defaults
@@ -734,6 +744,7 @@ def hyperopt(
     cv_folds=5,
     verbose=True,
     optimise_representation=False,
+    hyper_cache=None,
 ):
 
     import skopt
@@ -775,8 +786,14 @@ def hyperopt(
             f"JKML(Q-kNN): Begin hyperparameter optimisation with {Qrepresentation.upper()} representation (only k-NN).",
             flush=True,
         )
+        if hyper_cache is not None:
+            print("JKML(Q-kNN): Loading representation hyperparams.", flush=True)
+            hyperparams = load_hyperparams(hyper_cache)
+            repr_params = hyperparams["representation"]
+        else:
+            repr_params = {}
         global X
-        X = calculate_representation(Qrepresentation, strs)
+        X = calculate_representation(Qrepresentation, strs, **repr_params)
 
     # add k-nn specific hyperparameters
     max_k = 15
@@ -822,7 +839,7 @@ def hyperopt(
 
     else:
 
-        print("JKML(k-NN): Precalculating distance matrices for hyperopt.", flush=True)
+        print("JKML(Q-kNN): Precalculating distance matrices for hyperopt.", flush=True)
         precalc_start = time.perf_counter()
         # precalculate distances and sorted Y matrices for SPEED
         kf = KFold(cv_folds)
@@ -908,6 +925,9 @@ def hyperopt(
         else:
             params["representation"][s.name] = v
 
+    if (hyper_cache is not None) and (not optimise_representation):
+        # use provided representation hyperparams
+        params["representation"] = repr_params
     with open(hyperparamfile, "wb") as f:
         pickle.dump(params, f)
         print(f"JKML(Q-kNN): Saved hyperparams to {hyperparamfile}")
