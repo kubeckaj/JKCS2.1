@@ -576,8 +576,14 @@ for sampleeach_i in sampleeach_all:
         if Qmethod == "knn":
             from src.QKNN import hyperopt
 
-            params = hyperopt(Qrepresentation, strs, Y_train, varsoutfile, no_metric)
-
+            params = hyperopt(
+                Qrepresentation,
+                strs,
+                Y_train,
+                varsoutfile,
+                no_metric,
+                hyper_cache=hyper_cache,
+            )
         else:
             raise ValueError(
                 f"Hyperparameter optimisation not implemented for {Qmethod}!"
