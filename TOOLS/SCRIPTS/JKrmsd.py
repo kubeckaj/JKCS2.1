@@ -1,5 +1,6 @@
 from joblib import Parallel, delayed
 from os import environ
+import sys
 
 print("")
 print("################")
@@ -20,28 +21,29 @@ clusters_df = pd.read_pickle("db_for_rmsd.pkl")
 original_length = len(clusters_df)
 myNaN = lambda x : missing if x == "NaN" else x
 
-def compare_pair0(arg):
+if len(sys.argv) == 2:
+  def compare_pair(arg):
     from ArbAlign import compare
     tobecompared = comparepairs[arg]
     AAci = clusters_df.loc[allindexes[tobecompared[0]],("xyz","structure")]
     AAcj = clusters_df.loc[allindexes[tobecompared[1]],("xyz","structure")]
     return compare(AAci,AAcj)
-
-def compare_pair(arg):
-    from qmllib.representations import generate_fchl18 as gen_repr
-    from qmllib.representations.fchl import get_local_symmetric_kernels as JKML_symm_kernel    
-    from qmllib.representations.fchl import get_local_kernels as JKML_kernel    
-    from qmllib.solvers import cho_solve
+else:
+  def compare_pair(arg):
+    from qmllib2.representations import generate_fchl18 as gen_repr
+    #from qmllib2.representations.fchl import get_local_symmetric_kernels as JKML_symm_kernel    
+    from qmllib2.representations.fchl import get_local_kernels as JKML_kernel    
+    from qmllib2.solvers import cho_solve
     from numpy import array, eye, dot, log, exp
     tobecompared = comparepairs[arg]
     AAci = clusters_df.loc[allindexes[tobecompared[0]],("xyz","structure")]
     AAcj = clusters_df.loc[allindexes[tobecompared[1]],("xyz","structure")]
     max_atoms = len(AAci.get_atomic_numbers())
-    reprA = gen_repr(AAci.get_atomic_numbers(), AAci.get_positions(), max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
-    reprB = gen_repr(AAcj.get_atomic_numbers(), AAcj.get_positions(), max_size = max_atoms, neighbors = max_atoms, cut_distance=10.0)
-    K = JKML_kernel(array([reprA]), array([reprB]), kernel_args = {"sigma": [1.0]})[0][0][0]
-    K0 = JKML_kernel(array([reprA]), array([reprA]), kernel_args = {"sigma": [1.0]})[0][0][0]
-    return log(abs(K-K0))
+    reprA = gen_repr(AAci.get_atomic_numbers(), AAci.get_positions(), max_size = max_atoms, neighbors = max_atoms, cut_distance=5.0)
+    reprB = gen_repr(AAcj.get_atomic_numbers(), AAcj.get_positions(), max_size = max_atoms, neighbors = max_atoms, cut_distance=5.0)
+    K = JKML_kernel(array([reprA]), array([reprB]), kernel_args = {"sigma": [2.0]})[0][0][0]
+    #K0 = JKML_kernel(array([reprA]), array([reprA]), kernel_args = {"sigma": [1.0]})[0][0][0]
+    return -log(K)*0.5*2.0**2*10**10
     K = JKML_symm_kernel(array([reprA]), kernel_args = {"sigma": array([1.0])})[0]
     K = K + 1e-7*eye(len(K)) 
     alpha = cho_solve(K, array([1.0]))  

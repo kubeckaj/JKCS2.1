@@ -12,10 +12,17 @@ NOTE: Might take long for too many structures.
   """
   exit
 fi
+if [[ "$*" == *"-fchl"* ]]; then
+  module load mkl
+  ADD="-fchl"
+  #python -m numpy.f2py -c ffchl_module.f90 ffchl_scalar_kernels.f90 ffchl_kernel_types.f90 ffchl_kernels.f90 ffchl_force_kernels.f90 ffchl_kernels_ef.f90 ffchl_module_ef.f90  -m ffchl_module --fcompiler=gnu95 --f90flags='-fopenmp -fPIC -cpp -DNO_BLAS'  -lgomp  --noopt --noarch -lmkl_rt -lgomp -lpthread -lm
+else
+  ADD=""
+fi
 
 
 JKQCscriptpath="$( cd "$(dirname "$0")" ; pwd -P )"/../../JKQC/src
 export PYTHONPATH=$JKQCscriptpath
 source ~/.JKCSusersetup.txt
-program_JKQCpickle ${@} -out db_for_rmsd.pkl -noname
-program_PYTHON $JKQCscriptpath/../../TOOLS/SCRIPTS/JKrmsd.py db_for_rmsd.pkl 
+program_JKQCpickle ${@//-fchl/} -out db_for_rmsd.pkl -noname
+program_PYTHON $JKQCscriptpath/../../TOOLS/SCRIPTS/JKrmsd.py db_for_rmsd.pkl $ADD
