@@ -18,6 +18,10 @@ import psutil
 #  os.environ['OPENBLAS_NUM_THREADS'] = f'{len(psutil.Process().cpu_affinity())}'
 #except:
 os.environ['OMP_NUM_THREADS'] = str(1)
+os.environ['MKL_NUM_THREADS'] = str(1)
+os.environ['OPENBLAS_NUM_THREADS'] = str(1)
+os.environ['NUMEXPR_MAX_THREADS'] = str(1)
+
 #                               #f'{len(psutil.Process().cpu_affinity())},1'
 #os.environ['OMP_MAX_ACTIVE_LEVELS'] = '1'
 #import resource
@@ -123,7 +127,7 @@ while not Qfollow_activated == 0:
   if len(QEF) > 0:
     for i in range(QEF_applied,len(QEF)):
       QEF_applied += 1
-      if QEF[i] == "h_A" or "h_A_xyz" or "fbh_A" or "fbh_A_xyz" or "c_COM":
+      if QEF[i] == "h_A" or QEF[i] == "h_A_xyz" or QEF[i] == "fbh_A" or QEF[i] == "fbh_A_xyz" or QEF[i] == "c_COM":
         from externalforce import ExternalForce
         constraints.append(ExternalForce(QEF[i],QEF_par[i],QEF_systems[i]))
         if Qout > 1:
@@ -156,14 +160,20 @@ while not Qfollow_activated == 0:
       species[1].calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qmultiplicity, Qout, species[1],Qmixer_damping,Qcutoff)
     else:
       all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qmultiplicity, Qout, all_species,Qmixer_damping,Qcutoff)
+  if Qout > 1:
+    print("Calling calculator.", flush = True)
+    print("  Qconstraints: "+str(Qconstraints), flush = True)
   call_calculator()
   if Qout > 1:
     print(all_species)
     #print(all_species.get_positions())
     #print(all_species.get_potential_energy())
+    #print(all_species.get_forces())
     #exit()
   
   #THERMOSTAT
+  if Qout > 1:
+    print("Setting thermostat.", flush = True)
   if Qthermostat == "VV":
     from ase import units
     from ase.md.verlet import VelocityVerlet
@@ -211,6 +221,8 @@ while not Qfollow_activated == 0:
   else:
     print("Some weird thermostat.")
     exit()
+  if Qout > 1:
+    print("Finished setting Qthermostat: "+str(Qthermostat), flush = True)
  
   #DUMPING
   if Qdump != 0:
@@ -316,6 +328,8 @@ while not Qfollow_activated == 0:
   #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
 
   #SIMULATION
+  if Qout > 1:
+    print("Starting simulation.", flush = True)
   if 'current_step' in globals():
     steps_before_sim = current_step
   else:
@@ -340,13 +354,13 @@ while not Qfollow_activated == 0:
         current_time = current_time - Qdt*Qdump
         current_step = current_step - Qdump
     except Exception as e:
+      print("Something got screwed up within the dyn.run(Qns). Small adjustment to the structure!!!", flush = True)
+      print(str(e), flush = True)
       from numpy import random
       positions = all_species.get_positions()
       noise = random.normal(scale=0.01, size=positions.shape)
       all_species.set_positions(positions + noise)
       call_calculator()
-      print(str(e))
-      print("Something got screwed up within the dyn.run(Qns). Small adjustment to the structure!!!")
       sim_tot_errors += 1
       if current_step == sim_last_error:
         sim_errors += 1
