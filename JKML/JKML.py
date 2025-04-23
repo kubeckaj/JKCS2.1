@@ -589,15 +589,14 @@ for sampleeach_i in sampleeach_all:
                 f"Hyperparameter optimisation not implemented for {Qmethod}!"
             )
         print(f"JKML: optimal parameters:")
-        print("{:<10} {:<10}".format("Parameter", "Value"))
         if "representation" in params:
             print("-------Representation-------")
             for k, v in params["representation"].items():
-                print("{:<10} {:<10}".format(k, v))
+                print(f"{k}: {v}")
         if "knn" in params:
             print("-------KNN-------")
             for k, v in params["knn"].items():
-                print("{:<10} {:<10}".format(k, v))
+                print(f"{k}: {v}")
         print("", flush=True)
 
 
