@@ -12,3 +12,7 @@ output
 .run1
 TEST
 TMP
+# compiled fortran files
+*.so
+*.mod
+*.o

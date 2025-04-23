@@ -13,8 +13,14 @@ import os
 from collections import defaultdict
 import time
 import warnings
-from concurrent.futures import ThreadPoolExecutor, Future
-import heapq
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "fortran"))
+print(sys.path)
+from ffchl_vp_tree import vp_tree
+from qmllib.utils.alchemy import get_alchemy
+from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
 
 # ignore sklearn futurewarning
 warnings.filterwarnings(
@@ -239,227 +245,217 @@ def correct_fchl18_kernel_size(X_test: np.ndarray, X_train: np.ndarray):
     return X_test, X_train
 
 
-def calculate_kernel(X: np.ndarray, X_other: np.ndarray = None, **kernel_kwargs):
-    from qmllib.representations.fchl import (
-        get_local_symmetric_kernels as JKML_sym_kernel,
-    )
-    from qmllib.representations.fchl import get_local_kernels as JKML_kernel
-
-    if X_other is not None:
-        return JKML_kernel(X, X_other, **kernel_kwargs)
-    else:
-        return JKML_sym_kernel(X, **kernel_kwargs)
-
-
-def induced_kernel_distance(
-    K: np.ndarray, K_train: np.ndarray = None, K_test: np.ndarray = None
-):
-
-    def _remove_extra_dim(K: np.ndarray, kernel_name: str):
-        # FCHL kernels return a matrix with an extra leading dimension; this function drops that.
-        if K.ndim > 2:
-            if K.shape[0] == 1:
-                K = K[0]
-            else:
-                raise ValueError(
-                    f"Incompatible {kernel_name} kernel shape! (got shape {K.shape})"
-                )
-        return K
-
-    K = _remove_extra_dim(K, "K")
-    if K_train is None:
-        diag_1 = diag_2 = np.diag(K)
-    else:
-        assert K_test is not None, "Need both self-similarity kernels!"
-        K_train = _remove_extra_dim(K_train, "train")
-        K_test = _remove_extra_dim(K_test, "test")
-        diag_1 = np.diag(K_test)
-        diag_2 = np.diag(K_train)
-    # first two terms broadcast the self-similarities to a [n x m] matrix
-    D_squared = diag_1[:, None] + diag_2[None, :] - 2 * K
-    # get rid of possible numerical problems
-    D_squared = np.maximum(D_squared, 0.0)
-    D = np.sqrt(D_squared)
-    return D
-
-
-class VPTreeNode:
-    def __init__(self, idx: int, threshold: float, left=None, right=None):
-        self.idx = idx
-        self.threshold = threshold
-        self.left = left
-        self.right = right
-
-
 class VPTreeKNN:
+
     def __init__(
         self,
-        kernel_fun: Callable[[int, int, np.ndarray, np.ndarray], float],
         n_neighbors: int = 5,
-        n_jobs: int = -1,
         weights: Literal["uniform", "distance"] = "uniform",
+        alchemy: str = "periodic-table",
+        alchemy_period_width: float = 1.6,
+        alchemy_group_width: float = 1.6,
+        verbose: bool = False,
+        two_body_scaling: float = np.sqrt(8),
+        three_body_scaling: float = 1.6,
+        two_body_width: float = 0.2,
+        three_body_width: float = np.pi,
+        two_body_power: float = 4.0,
+        three_body_power: float = 2.0,
+        cut_start: float = 1.0,
+        cut_distance: float = 5.0,
+        fourier_order: int = 1,
+        kernel: str = "gaussian",
+        kernel_args=None,
     ):
-        self.kernel = kernel_fun
+        """
+        :param two_body_scaling: Weight for 2-body terms.
+        :type two_body_scaling: float
+        :param three_body_scaling: Weight for 3-body terms.
+        :type three_body_scaling: float
+
+        :param two_body_width: Gaussian width for 2-body terms
+        :type two_body_width: float
+        :param three_body_width: Gaussian width for 3-body terms.
+        :type three_body_width: float
+
+        :param two_body_power: Powerlaw for :math:`r^{-n}` 2-body terms.
+        :type two_body_power: float
+        :param three_body_power: Powerlaw for Axilrod-Teller-Muto 3-body term
+        :type three_body_power: float
+
+        :param cut_start: The fraction of the cut-off radius at which cut-off damping start.
+        :type cut_start: float
+        :param cut_distance: Cut-off radius. (default=5 angstrom)
+        :type cut_distance: float
+
+        :param fourier_order: 3-body Fourier-expansion truncation order.
+        :type fourier_order: integer
+        :param alchemy: Type of alchemical interpolation ``"periodic-table"`` or ``"off"`` are possible options. Disabling alchemical interpolation can yield dramatic speedups.
+        :type alchemy: string
+
+        :param alchemy_period_width: Gaussian width along periods (columns) in the periodic table.
+        :type alchemy_period_width: float
+        :param alchemy_group_width: Gaussian width along groups (rows) in the periodic table.
+        :type alchemy_group_width: float
+        """
+        # knn params
         self.k = n_neighbors
-        self.max_workers = int(
-            os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count())
-            if n_jobs == -1
-            else n_jobs
-        )
         self.weights = weights
-
-    def _build_vptree(
-        self,
-        indices: List[int],
-        dist_fn: Callable[[int, int], float],
-        executor: Optional[ThreadPoolExecutor] = None,
-        depth: int = 0,
-        max_parallel_depth: int = 4,
-    ) -> Optional[VPTreeNode]:
-        if not indices:
-            return None
-        if len(indices) == 1:
-            return VPTreeNode(idx=indices[0], threshold=0.0)
-
-        vp = indices[-1]
-        others = indices[:-1]
-        dists = [dist_fn(vp, i) for i in others]
-        median = float(np.median(np.array(dists)))
-
-        left = [i for i, d in zip(others, dists) if d <= median]
-        right = [i for i, d in zip(others, dists) if d > median]
-
-        if executor and depth < max_parallel_depth:
-            left_future: Future = executor.submit(
-                self._build_vptree,
-                left,
-                dist_fn,
-                executor,
-                depth + 1,
-                max_parallel_depth,
-            )
-            right_future: Future = executor.submit(
-                self._build_vptree,
-                right,
-                dist_fn,
-                executor,
-                depth + 1,
-                max_parallel_depth,
-            )
-            left_node = left_future.result()
-            right_node = right_future.result()
-        else:
-            left_node = self._build_vptree(
-                left, dist_fn, executor, depth + 1, max_parallel_depth
-            )
-            right_node = self._build_vptree(
-                right, dist_fn, executor, depth + 1, max_parallel_depth
-            )
-        return VPTreeNode(idx=vp, threshold=median, left=left_node, right=right_node)
-
-    def _search_vptree(
-        self,
-        node: VPTreeNode,
-        query_idx: int,
-        dist_fn: Callable[[int, int], float],
-        heap: List[Tuple[float, int]],
-        k: int = None,
-    ):
-        if k is None:
-            k = self.k
-        if node is None:
-            return
-
-        d = dist_fn(query_idx, node.idx)
-        heapq.heappush(heap, (-d, node.idx))
-        if len(heap) > k:
-            heapq.heappop(heap)
-
-        if node.left is None and node.right is None:
-            return
-
-        if d < node.threshold:
-            near, far = node.left, node.right
-        else:
-            near, far = node.right, node.left
-
-        self._search_vptree(near, query_idx, dist_fn, heap, k=k)
-
-        # Prune using triangle inequality
-        if len(heap) < k or abs(d - node.threshold) < -heap[0][0]:
-            self._search_vptree(far, query_idx, dist_fn, heap, k=k)
+        # kernel params
+        self.alchemy = alchemy
+        self.alchemy_period_width = alchemy_period_width
+        self.alchemy_group_width = alchemy_group_width
+        self.verbose = verbose
+        self.two_body_scaling = two_body_scaling
+        self.three_body_scaling = three_body_scaling
+        self.two_body_width = two_body_width
+        self.three_body_width = three_body_width
+        self.two_body_power = two_body_power
+        self.three_body_power = three_body_power
+        self.cut_start = cut_start
+        self.cut_distance = cut_distance
+        self.fourier_order = fourier_order
+        self.kernel = kernel
+        self.doalchemy, self.pd = get_alchemy(
+            alchemy, emax=100, r_width=alchemy_group_width, c_width=alchemy_period_width
+        )
+        self.kernel_args = kernel_args
+        # data containers
+        self.X_train = None
+        self.Y_train = None
+        self.X_test = None
 
     def fit(
         self,
         X: np.ndarray,
         Y: np.ndarray,
     ):
-        """Build VP-tree on training data."""
+        """Calculates the Gaussian kernel matrix K elements, where :math:`K_{ij}`:
 
-        def _train_dist_fn(i: int, j: int):
-            d_squared = (
-                self.kernel(i, i, X, X)
-                + self.kernel(j, j, X, X)
-                - 2 * self.kernel(i, j, X, X)
-            )
-            d_squared = np.maximum(d_squared, 0.0)
-            return np.sqrt(d_squared)
+            :math:`K_{ij} = \\exp \\big( -\\frac{\\|A_i - B_j\\|_2^2}{2\\sigma^2} \\big)`
 
-        self.vp_tree = self._build_vptree(list(range(X.shape[0])), _train_dist_fn)
+        Where :math:`A_{i}` and :math:`B_{j}` are FCHL representation vectors.
+        K is calculated analytically using an OpenMP parallel Fortran routine.
+        Note, that this kernel will ONLY work with FCHL representations as input.
+
+        :param A: Array of FCHL representation - shape=(N, maxsize, 5, maxneighbors).
+        :type A: numpy array
+        :param B: Array of FCHL representation - shape=(M, maxsize, 5, maxneighbors).
+        :type B: numpy array
+
+        """
+
+        atoms_max = X.shape[1]
+
+        nm1 = X.shape[0]
+
+        N1 = np.zeros((nm1), dtype=np.int32)
+
+        for a in range(nm1):
+            N1[a] = len(np.where(X[a, :, 1, 0] > 0.0001)[0])
+
+        neighbors1 = np.zeros((nm1, atoms_max), dtype=np.int32)
+
+        for a, representation in enumerate(X):
+            ni = N1[a]
+            for i, x in enumerate(representation[:ni]):
+                neighbors1[a, i] = len(np.where(x[0] < self.cut_distance)[0])
+
+        kernel_idx, kernel_parameters, n_kernels = get_kernel_parameters(
+            self.kernel, self.kernel_args
+        )
         self.X_train = X
         self.Y_train = Y
+
+        vp_tree.train(
+            X,
+            Y,
+            self.verbose,
+            N1,
+            neighbors1,
+            nm1,
+            n_kernels,
+            self.three_body_width,
+            self.two_body_width,
+            self.cut_start,
+            self.cut_distance,
+            self.fourier_order,
+            self.pd,
+            self.two_body_scaling,
+            self.three_body_scaling,
+            self.doalchemy,
+            self.two_body_power,
+            self.three_body_power,
+            kernel_idx,
+            kernel_parameters,
+        )
+        return
+
+    def _check_test(self, X_test):
+        if self.X_test is not None:
+            f_X_test = self.X_test
+            # the test data is already in the fortran module, no need to reset
+            if np.array_equal(f_X_test, X_test):
+                return True
+        return False
+
+    def _set_test(self, X_test, cut_distance=5.0):
+        if self._check_test(X_test):
+            return
+
+        atoms_max = self.X_train.shape[1]
+        neighbors_max = self.X_train.shape[3]
+        if not X_test.shape[1] == atoms_max:
+            raise ValueError("Check FCHL representation sizes")
+        if not X_test.shape[3] == neighbors_max:
+            raise ValueError("Check FCHL representation sizes")
+        nm2 = X_test.shape[0]
+        neighbors2 = np.zeros((nm2, atoms_max), dtype=np.int32)
+        N2 = np.zeros((nm2), dtype=np.int32)
+        for a in range(nm2):
+            N2[a] = len(np.where(X_test[a, :, 1, 0] > 0.0001)[0])
+        for a, representation in enumerate(X_test):
+            ni = N2[a]
+            for i, x in enumerate(representation[:ni]):
+                neighbors2[a, i] = len(np.where(x[0] < cut_distance)[0])
+        vp_tree.set_up_test(
+            X_test,
+            N2,
+            neighbors2,
+            nm2,
+        )
+        self.X_test = X_test
 
     def kneighbours(self, X: np.ndarray, n_neighbors: int = None, return_distance=True):
         """Find closest k neighbors in the tree."""
         if n_neighbors is None:
             n_neighbors = self.k
 
-        def _test_dist_fn(i: int, j: int):
-            d_squared = (
-                self.kernel(i, i, X, X)
-                + self.kernel(j, j, self.X_train, self.X_train)
-                - 2 * self.kernel(i, j, X, self.X_train)
-            ).sum()
-            d_squared = np.maximum(d_squared, 0.0)
-            return np.sqrt(d_squared)
-
-        def _find_single(test_idx: int):
-            heap = []
-            self._search_vptree(
-                self.vp_tree, test_idx, _test_dist_fn, heap, k=n_neighbors
-            )
-            neighbors = np.array([idx for (_, idx) in heap])
-            d = np.array([-d for (d, _) in heap])
-            return neighbors, d
-
-        m_test = X.shape[0]
-        if self.max_workers is not None:
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                n_d = list(executor.map(_find_single, range(m_test)))
-            neighbors = np.stack([x[0] for x in n_d])
-            D = np.stack([x[1] for x in n_d])
-        else:
-            neighbors = np.zeros((m_test, n_neighbors))
-            D = np.zeros_like(neighbors)
-            for i in range(m_test):
-                n, d = _find_single(i)
-                neighbors[i, :] = n
-                D[i, :] = d
-        neighbors = neighbors.astype(np.uint32)
+        self._set_test(X)
         if return_distance:
-            return D, neighbors
+            (k_neighbors, distances) = vp_tree.kneighbors(
+                n_neighbors, X.shape[0], return_distances=True
+            )
+            # fortran indexing is 1-based
+            k_neighbors = k_neighbors - 1
+            # transpose required for sk-learn compatibility as fortran is column-based
+            return distances.T, k_neighbors.T
         else:
-            return neighbors
+            k_neighbors = vp_tree.kneighbors(n_neighbors, X.shape[0])
+            # fortran indexing is 1-based
+            k_neighbors = k_neighbors - 1
+            # transpose required for sk-learn compatibility as fortran is column-based
+            return k_neighbors.T
 
-    def predict(self, X: np.ndarray, k: int = None):
+    def predict(self, X: np.ndarray, n_neighbors: int = None):
         """Wrapper to replicate sklearn k-NN model behaviour."""
-        D, neighbors = self.kneighbours(X, k)
-        Y = self.Y_train[neighbors]
+        self._set_test(X)
+        if n_neighbors is None:
+            n_neighbors = self.k
         if self.weights == "uniform":
-            return np.mean(Y, axis=1)
-        else:
-            w = 1 / D
-            return np.average(Y, weights=w, axis=1)
+            return vp_tree.predict(n_neighbors, X.shape[0])
+        elif self.weights == "distance":
+            return vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
 
     def get_params(self, deep=True):
         """
@@ -479,163 +475,85 @@ class VPTreeKNN:
         out = dict()
         out["n_neighbors"] = self.k
         out["weights"] = self.weights
-        out["n_jobs"] = self.max_workers
+        return out
+
+    def get_tree_params(self):
+        """Get the vp-tree collections, which can be used to rebuild the tree later."""
+        out = dict()
+        out["vp_index"] = vp_tree.vp_index
+        out["vp_left"] = vp_tree.vp_left
+        out["vp_right"] = vp_tree.vp_right
+        out["vp_threshold"] = vp_tree.vp_threshold
         return out
 
 
-def fast_kernel(
-    alchemy: str = "periodic-table",
-    alchemy_period_width: float = 1.6,
-    alchemy_group_width: float = 1.6,
-):
+def load_vp_knn(X_train, Y_train, vp_params, **knn_params):
+    knn = VPTreeKNN(**knn_params)
+    atoms_max = X_train.shape[1]
 
-    from qmllib.utils.alchemy import get_alchemy
-
-    doalchemy, pd = get_alchemy(
-        alchemy, emax=100, r_width=alchemy_group_width, c_width=alchemy_period_width
-    )
-    return lambda X, Y, k_args: get_local_kernels(
-        X, Y, doalchemy, pd, kernel_args=k_args
-    )
-
-
-def get_local_kernels(
-    A: np.ndarray,
-    B: np.ndarray,
-    doalchemy,
-    pd,
-    verbose: bool = False,
-    two_body_scaling: float = np.sqrt(8),
-    three_body_scaling: float = 1.6,
-    two_body_width: float = 0.2,
-    three_body_width: float = np.pi,
-    two_body_power: float = 4.0,
-    three_body_power: float = 2.0,
-    cut_start: float = 1.0,
-    cut_distance: float = 5.0,
-    fourier_order: int = 1,
-    kernel: str = "gaussian",
-    kernel_args: Optional[Dict[str, List[float]]] = None,
-) -> np.ndarray:
-    """Calculates the Gaussian kernel matrix K, where :math:`K_{ij}`:
-
-        :math:`K_{ij} = \\exp \\big( -\\frac{\\|A_i - B_j\\|_2^2}{2\\sigma^2} \\big)`
-
-    Where :math:`A_{i}` and :math:`B_{j}` are FCHL representation vectors.
-    K is calculated analytically using an OpenMP parallel Fortran routine.
-    Note, that this kernel will ONLY work with FCHL representations as input.
-
-    :param A: Array of FCHL representation - shape=(N, maxsize, 5, maxneighbors).
-    :type A: numpy array
-    :param B: Array of FCHL representation - shape=(M, maxsize, 5, maxneighbors).
-    :type B: numpy array
-
-    :param two_body_scaling: Weight for 2-body terms.
-    :type two_body_scaling: float
-    :param three_body_scaling: Weight for 3-body terms.
-    :type three_body_scaling: float
-
-    :param two_body_width: Gaussian width for 2-body terms
-    :type two_body_width: float
-    :param three_body_width: Gaussian width for 3-body terms.
-    :type three_body_width: float
-
-    :param two_body_power: Powerlaw for :math:`r^{-n}` 2-body terms.
-    :type two_body_power: float
-    :param three_body_power: Powerlaw for Axilrod-Teller-Muto 3-body term
-    :type three_body_power: float
-
-    :param cut_start: The fraction of the cut-off radius at which cut-off damping start.
-    :type cut_start: float
-    :param cut_distance: Cut-off radius. (default=5 angstrom)
-    :type cut_distance: float
-
-    :param fourier_order: 3-body Fourier-expansion truncation order.
-    :type fourier_order: integer
-    :param alchemy: Type of alchemical interpolation ``"periodic-table"`` or ``"off"`` are possible options. Disabling alchemical interpolation can yield dramatic speedups.
-    :type alchemy: string
-
-    :param alchemy_period_width: Gaussian width along periods (columns) in the periodic table.
-    :type alchemy_period_width: float
-    :param alchemy_group_width: Gaussian width along groups (rows) in the periodic table.
-    :type alchemy_group_width: float
-
-    :return: Array of FCHL kernel matrices matrix - shape=(n_sigmas, N, M),
-    :rtype: numpy array
-    """
-
-    from qmllib.representations.fchl.ffchl_module import fget_kernels_fchl
-    from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
-
-    atoms_max = A.shape[1]
-    neighbors_max = A.shape[3]
-
-    if not B.shape[1] == atoms_max:
-        raise ValueError("Check FCHL representation sizes")
-    if not B.shape[3] == neighbors_max:
-        raise ValueError("Check FCHL representation sizes")
-
-    nm1 = A.shape[0]
-    nm2 = B.shape[0]
+    nm1 = X_train.shape[0]
 
     N1 = np.zeros((nm1), dtype=np.int32)
-    N2 = np.zeros((nm2), dtype=np.int32)
 
     for a in range(nm1):
-        N1[a] = len(np.where(A[a, :, 1, 0] > 0.0001)[0])
-
-    for a in range(nm2):
-        N2[a] = len(np.where(B[a, :, 1, 0] > 0.0001)[0])
+        N1[a] = len(np.where(X[a, :, 1, 0] > 0.0001)[0])
 
     neighbors1 = np.zeros((nm1, atoms_max), dtype=np.int32)
-    neighbors2 = np.zeros((nm2, atoms_max), dtype=np.int32)
 
-    for a, representation in enumerate(A):
+    for a, representation in enumerate(X):
         ni = N1[a]
         for i, x in enumerate(representation[:ni]):
-            neighbors1[a, i] = len(np.where(x[0] < cut_distance)[0])
-
-    for a, representation in enumerate(B):
-        ni = N2[a]
-        for i, x in enumerate(representation[:ni]):
-            neighbors2[a, i] = len(np.where(x[0] < cut_distance)[0])
+            neighbors1[a, i] = len(np.where(x[0] < knn.cut_distance)[0])
 
     kernel_idx, kernel_parameters, n_kernels = get_kernel_parameters(
-        kernel, kernel_args
+        knn.kernel, knn.kernel_args
     )
-
-    return fget_kernels_fchl(
-        A,
-        B,
-        verbose,
+    knn.X_train = X_train
+    knn.Y_train = Y_train
+    vp_tree.load(
+        X_train,
+        Y_train,
+        vp_params["index"],
+        vp_params["left"],
+        vp_params["right"],
+        vp_params["threshold"],
+        knn.verbose,
         N1,
-        N2,
         neighbors1,
-        neighbors2,
         nm1,
-        nm2,
         n_kernels,
-        three_body_width,
-        two_body_width,
-        cut_start,
-        cut_distance,
-        fourier_order,
-        pd,
-        two_body_scaling,
-        three_body_scaling,
-        doalchemy,
-        two_body_power,
-        three_body_power,
+        knn.three_body_width,
+        knn.two_body_width,
+        knn.cut_start,
+        knn.cut_distance,
+        knn.fourier_order,
+        knn.pd,
+        knn.two_body_scaling,
+        knn.three_body_scaling,
+        knn.doalchemy,
+        knn.two_body_power,
+        knn.three_body_power,
         kernel_idx,
         kernel_parameters,
     )
+    return knn
 
 
 def load_hyperparams(hyper_cache: str):
     if hyper_cache is not None:
         with open(hyper_cache, "rb") as f:
-            hyperparams = pickle.load(f)
+            hyperparams: dict = pickle.load(f)
         print(f"JKML(Q-kNN): Loaded hyperparameters from {hyper_cache}:", flush=True)
+        if "representation" not in hyperparams:
+            hyperparams["representation"] = {"cutoff": 8.0}
+            print(
+                f"JKML (Q-kNN): Representation params not defined in hyperparams, use default value."
+            )
+        if "knn" not in hyperparams:
+            hyperparams["knn"] = {"n_neighbors": 5, "weights": "uniform"}
+            print(
+                f"JKML (Q-kNN): knn params not defined in hyperparams, use default values."
+            )
         print(hyperparams, flush=True)
     else:
         # use defaults
@@ -702,13 +620,9 @@ def training(
             **hyperparams["knn"],
         )
     elif Qrepresentation == "fchl-kernel":
-        kernel_fun = fast_kernel()
-
-        def kernel(i, j, X1, X2):
-            return kernel_fun(X1[None, i], X2[None, j], {"sigma": [1.0]})
 
         print("JKML(Q-kNN): Learn VP-tree of kernel distances.")
-        knn = VPTreeKNN(kernel_fun=kernel, n_jobs=-1, **hyperparams["knn"])
+        knn = VPTreeKNN(kernel_args={"sigma": [1.0]}, **hyperparams["knn"])
     else:
         # "vanilla" k-NN
         knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto", **hyperparams["knn"])
@@ -734,12 +648,14 @@ def training(
         if no_metric:
             pickle.dump([X_train, Y_train, X_atoms, knn_params, train_metadata], f)
         elif Qrepresentation == "fchl-kernel":
+            vp_params = knn.get_tree_params()
             pickle.dump(
                 [
                     X_train,
                     Y_train,
                     X_atoms,
                     knn_params,
+                    vp_params,
                     train_metadata,
                 ],
                 f,
@@ -828,6 +744,7 @@ def hyperopt(
     cv_folds=5,
     verbose=True,
     optimise_representation=False,
+    hyper_cache=None,
 ):
 
     import skopt
@@ -869,13 +786,14 @@ def hyperopt(
             f"JKML(Q-kNN): Begin hyperparameter optimisation with {Qrepresentation.upper()} representation (only k-NN).",
             flush=True,
         )
+        if hyper_cache is not None:
+            print("JKML(Q-kNN): Loading representation hyperparams.", flush=True)
+            hyperparams = load_hyperparams(hyper_cache)
+            repr_params = hyperparams["representation"]
+        else:
+            repr_params = {}
         global X
-        X = calculate_representation(Qrepresentation, strs)
-        if Qrepresentation == "fchl-kernel":
-            kernel_fun = fast_kernel()
-
-            def kernel(i, j, X1, X2):
-                return kernel_fun(X1[None, i], X2[None, j], {"sigma": [1.0]})
+        X = calculate_representation(Qrepresentation, strs, **repr_params)
 
     # add k-nn specific hyperparameters
     max_k = 15
@@ -921,7 +839,7 @@ def hyperopt(
 
     else:
 
-        print("JKML(k-NN): Precalculating distance matrices for hyperopt.", flush=True)
+        print("JKML(Q-kNN): Precalculating distance matrices for hyperopt.", flush=True)
         precalc_start = time.perf_counter()
         # precalculate distances and sorted Y matrices for SPEED
         kf = KFold(cv_folds)
@@ -940,7 +858,7 @@ def hyperopt(
             if no_metric:
                 D = pairwise_distances(X_test, X_fold, n_jobs=-1)
             elif Qrepresentation == "fchl-kernel":
-                knn = VPTreeKNN(kernel, n_neighbors=15, weights="uniform")
+                knn = VPTreeKNN(kernel_args={"sigma": [1.0]})
                 knn.fit(X_fold, Y_fold)
                 D, neighbors = knn.kneighbours(X_test, n_neighbors=max_k)
                 Y_fold = Y_fold[neighbors]
@@ -963,8 +881,10 @@ def hyperopt(
                 # Y_fold is still a vector; can index directly
                 Y_sorted = Y_fold[sorted_indices]
             sorted_Ys.append(Y_sorted)
-            print(f"\tFold {i+1}/{cv_folds} done, took {time.perf_counter() - fold_start:.1f} s.", flush=True)
-
+            print(
+                f"\tFold {i+1}/{cv_folds} done, took {time.perf_counter() - fold_start:.1f} s.",
+                flush=True,
+            )
 
         print(
             f"JKML(k-NN): Precalculation done, took {time.perf_counter() - precalc_start:.1f} s.",
@@ -1005,6 +925,9 @@ def hyperopt(
         else:
             params["representation"][s.name] = v
 
+    if (hyper_cache is not None) and (not optimise_representation):
+        # use provided representation hyperparams
+        params["representation"] = repr_params
     with open(hyperparamfile, "wb") as f:
         pickle.dump(params, f)
         print(f"JKML(Q-kNN): Saved hyperparams to {hyperparamfile}")
