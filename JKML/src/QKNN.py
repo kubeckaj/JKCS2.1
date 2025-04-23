@@ -301,7 +301,7 @@ class VPTreeKNN:
     ):
         self.kernel = kernel_fun
         self.k = n_neighbors
-        self.max_workers = (
+        self.max_workers = int(
             os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count())
             if n_jobs == -1
             else n_jobs
@@ -934,6 +934,7 @@ def hyperopt(
             mlkrs = []
 
         for i, (train_index, test_index) in enumerate(kf.split(X)):
+            fold_start = time.perf_counter()
             X_fold, Y_fold = X[train_index], Y_train[train_index]
             X_test = X[test_index]
             if no_metric:
@@ -962,6 +963,8 @@ def hyperopt(
                 # Y_fold is still a vector; can index directly
                 Y_sorted = Y_fold[sorted_indices]
             sorted_Ys.append(Y_sorted)
+            print(f"\tFold {i+1}/{cv_folds} done, took {time.perf_counter() - fold_start:.1f} s.", flush=True)
+
 
         print(
             f"JKML(k-NN): Precalculation done, took {time.perf_counter() - precalc_start:.1f} s.",
