@@ -245,6 +245,53 @@ def correct_fchl18_kernel_size(X_test: np.ndarray, X_train: np.ndarray):
     return X_test, X_train
 
 
+class MLKRegressor:
+
+    def __init__(
+        self,
+        n_components=None,
+        init="auto",
+        tol=None,
+        max_iter=1000,
+        verbose=False,
+        preprocessor=None,
+        random_state=None,
+    ):
+        self.n_components = n_components
+        self.mlkr = MLKR(
+            n_components, init, tol, max_iter, verbose, preprocessor, random_state
+        )
+        self.X_train = None
+        self.Y_train = None
+        self.n_train = None
+
+    def gaussian_kernel(self, X_test):
+        m, d = X_test.shape
+        X_test_expanded = X_test[:, None, :]
+        X_train_expanded = self.X_train[None, :, :]
+        pairs = np.stack(
+            [
+                X_test_expanded.repeat(self.n_train, axis=1),
+                X_train_expanded.repeat(m, axis=0),
+            ],
+            axis=2,
+        )
+        pairs_reshaped = pairs.reshape(-1, 2, d)
+        D = self.mlkr.pair_distance(pairs_reshaped)
+        return np.exp(-D)
+
+    def fit(self, X_train, Y_train):
+        self.mlkr.fit(X_train, Y_train)
+        self.X_train = X_train
+        self.Y_train = Y_train
+
+    def predict(self, X_test):
+        K = self.gaussian_kernel(X_test)
+        num = K @ self.Y_train
+        denom = K.sum(axis=1)
+        return num / denom
+
+
 class VPTreeKNN:
 
     def __init__(
