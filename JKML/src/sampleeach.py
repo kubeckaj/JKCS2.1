@@ -8,12 +8,6 @@ def compare_mbtr(structa, structb):
   from numpy import sum, square
   return sum(square(structa-structb))
 
-def cr_mbtr_k2(struct):
-  '''
-  Expects xyz pickle structure
-  Returns the mbtr for bond lenghts. 
-  '''
-  return mbtr.create(struct)["k2"][:][:]
 
 def task_train(arg):
   #mbtr_train[arg] = cr_mbtr_k2(train_database[arg])
@@ -30,9 +24,13 @@ def flatten(l):
 
 def call_mbtr(chemsyms_uniques):
   from dscribe.descriptors import MBTR
-  global mbtr
   k2min, k2max, k2n = 0.7, 2.0, 100
-  mbtr = MBTR(
+  if 1==1:
+    import warnings
+    warnings.filterwarnings(
+        "ignore", ".*Please use atoms.calc.*"
+    )
+  return MBTR(
         species=chemsyms_uniques,
         #ATOMIC NUMBER
         #k1={
@@ -40,23 +38,23 @@ def call_mbtr(chemsyms_uniques):
         #    "grid": {"min": 0, "max": 16, "n": 100, "sigma": 0.1},
         #},
         #DISTANCE OR INVERSE DISTANCE
-        k2={
-            "geometry": {"function": "distance"},
-            "grid": {"min": k2min, "max": k2max, "n": k2n, "sigma": 0.000000001},
-            "weighting": {"function": "exp", "scale": 0.5, "threshold": 3e-3},
-            #"weighting": {"function": "unity"},#, "scale": 0.5, "threshold": 3e-3},
-        },
+        #k2={
+        geometry={"function": "distance"},
+        grid={"min": k2min, "max": k2max, "n": k2n, "sigma": 0.000000001},
+        weighting={"function": "exp", "scale": 0.5, "threshold": 3e-3},
+        #"weighting": {"function": "unity"},#, "scale": 0.5, "threshold": 3e-3},
+        #},
         #ANGLE OR COSINE(ANGLE)
         #TODO to be tested as well
-        k3={
-            "geometry": {"function": "cosine"},
-            "grid": {"min": -1, "max": 1, "n": 100, "sigma": 0.000000001},
-            "weighting": {"function": "exp", "scale": 0.5, "threshold": 3e-3},
-            #"weighting": {"function": "unity"},# "scale": 0.5, "threshold": 3e-3},
-        },
+        #k3={
+        #    "geometry": {"function": "cosine"},
+        #    "grid": {"min": -1, "max": 1, "n": 100, "sigma": 0.000000001},
+        #    "weighting": {"function": "exp", "scale": 0.5, "threshold": 3e-3},
+        #    #"weighting": {"function": "unity"},# "scale": 0.5, "threshold": 3e-3},
+        #},
         periodic=False,
-        normalization="l2_each",
-        flatten=False  # without this it's gonna be a dict and then should find out which part corresponds to which stuff
+        normalization="l2",
+        #flatten=False  # without this it's gonna be a dict and then should find out which part corresponds to which stuff
   )
 
 def sampleeach_mbtr(train_high_database, test_high_database):
@@ -64,10 +62,30 @@ def sampleeach_mbtr(train_high_database, test_high_database):
   import multiprocessing
   from dscribe.descriptors import MBTR
 
+
+  def cr_mbtr_k2(struct):
+    '''
+    Expects xyz pickle structure
+    Returns the mbtr for bond lenghts. 
+    '''
+    import warnings
+    warnings.filterwarnings("ignore", ".*Please use atoms.calc.*")
+    return mbtr.create(struct)#["k2"][:][:]
+
+  def task_train(arg):
+    #mbtr_train[arg] = cr_mbtr_k2(train_database[arg])
+    #return cr_mbtr_k2(train_database[arg])
+    return cr_mbtr_k2(arg)
+  
+  def task_test(arg):
+    #mbtr_test[arg] = cr_mbtr_k2(test_database[arg])
+    #return cr_mbtr_k2(test_database[arg])
+    return cr_mbtr_k2(arg)
+
   print("This likely does not work anymore !!!!!!!!", flush = True)
   chemsyms_uniques = list(set(flatten([i.get_chemical_symbols() for i in train_high_database["xyz"]["structure"]])))
   #max_atoms=max([len(i.get_chemical_symbols()) for i in pd.read_pickle(TRAIN_HIGH).sort_values([('info','file_basename')])["xyz"]["structure"]])
-  call_mbtr(chemsyms_uniques)
+  mbtr = call_mbtr(chemsyms_uniques)
   print("MBTR must be calculated (just once) for both train and test datasets", flush = True)
 
   num_cores = multiprocessing.cpu_count()
@@ -89,7 +107,7 @@ def sampleeach_fchl(train_high_database, test_high_database, krr_cutoff):
   def task(arg):
     return generate_representation(arg.get_positions(),arg.get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
 
-  num_cores = multiprocessing.cpu_count()
+  num_cores = 2 #multiprocessing.cpu_count()
   print("Trying to use "+str(num_cores)+" CPUs for FCHL. (If less are available I hope that nothing gets fucked up.)")
   max_atoms = max([len(i.get_atomic_numbers()) for i in train_high_database["xyz"]["structure"]])
   max_atoms2 = max([len(i.get_atomic_numbers()) for i in test_high_database["xyz"]["structure"]])

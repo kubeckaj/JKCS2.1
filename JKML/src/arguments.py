@@ -672,7 +672,7 @@ def arguments(argument_list=[]):
             continue
         if last == "-train":
             TRAIN_HIGH = arg
-            if Qtrain == 0:
+            if Qtrain == 0 or Qsampleeach != 0:
                 Qtrain = 1
             else:
                 raise Exception("Cannot train if taking trained [EXITING]")

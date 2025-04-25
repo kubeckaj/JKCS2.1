@@ -300,6 +300,7 @@ def print_results(
     clustersout_df.to_pickle(outfile)
     print(f"Saved results to {outfile}", flush=True)
     if Qsampleeach > 0:
+        import os
         if sampleeach_i == 0:
             os.system("JKQC " + outfile + " -out predicted_QML_FULL.pkl -noex")
         else:
