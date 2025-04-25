@@ -1,8 +1,11 @@
 # PREDEFINED ARGUMENTS
 import os.path
 
+
 def print_help():
-    print("#################################################################", flush=True)
+    print(
+        "#################################################################", flush=True
+    )
     word = "JKML"
     colors = ["\033[34m", "\033[31m", "\033[32m", "\033[33m"]
 
@@ -22,100 +25,223 @@ def print_help():
     print("", flush=True)
     print("  HELP OPTIONS:", flush=True)
     print("    -help                            prints basic help", flush=True)
-    print("    -help_nn                         prints help for neural network methods (e.g. PaiNN,SchNet,PhysNet)", flush=True)
-    print("    -help_krr                        prints help for kernel ridge regression methods (e.g. FCHL)",
-          flush=True)
-    print("    -help_adv                        print some advanced features (e.g., OPT, MD, seed, splits)")
+    print(
+        "    -help_nn                         prints help for neural network methods (e.g. PaiNN,SchNet,PhysNet)",
+        flush=True,
+    )
+    print(
+        "    -help_krr                        prints help for kernel ridge regression methods (e.g. FCHL)",
+        flush=True,
+    )
+    print(
+        "    -help_adv                        print some advanced features (e.g., OPT, MD, seed, splits)"
+    )
     print("", flush=True)
     print("  OPTIONS:", flush=True)
-    print("    -qml                             use KRR with FCHL19 [set by default]", flush=True)
+    print(
+        "    -qml                             use KRR with FCHL19 [set by default]",
+        flush=True,
+    )
     print("    -mbdf                            use KRR with MBDF", flush=True)
-    print("    -nn,-painn                       switch to NN = neural network with PaiNN", flush=True)
-    print("    -schnet                          switch to NN = neural network with SchNet", flush=True)
-    print("    -physnet                         switch to NN = neural network with PhysNet", flush=True)
+    print(
+        "    -nn,-painn                       switch to NN = neural network with PaiNN",
+        flush=True,
+    )
+    print(
+        "    -schnet                          switch to NN = neural network with SchNet",
+        flush=True,
+    )
+    print(
+        "    -physnet                         switch to NN = neural network with PhysNet",
+        flush=True,
+    )
     print("", flush=True)
     print("  INPUT FILES:", flush=True)
-    print("    -train <HIGH.pkl> [<LOW.pkl>]    train on given pikled files", flush=True)
+    print(
+        "    -train <HIGH.pkl> [<LOW.pkl>]    train on given pikled files", flush=True
+    )
     print("    -trained <model.pkl>             take pre-trained ML model", flush=True)
-    print("    -monomers <HIGH.pkl> [<LOW.pkl>] properties with respect to monomer(s) in pickled file(s)", flush=True)
-    print("    -test <HIGH.pkl> [<LOW.pkl>]     predict energies of structures in pickled file(s) with known truth",
-          flush=True)
+    print(
+        "    -monomers <HIGH.pkl> [<LOW.pkl>] properties with respect to monomer(s) in pickled file(s)",
+        flush=True,
+    )
+    print(
+        "    -test <HIGH.pkl> [<LOW.pkl>]     predict energies of structures in pickled file(s) with known truth",
+        flush=True,
+    )
     print(
         "    -eval <STRS.pkl> [<LOW.pkl>]     predict energies of structures in pickled file(s) with uknown truth (no verification)",
-        flush=True)
+        flush=True,
+    )
     print("", flush=True)
     print("  OUTPUT FILES:", flush=True)
-    print("    -out <file.pkl>                  name of file with predicted values [def = predicted.pkl]", flush=True)
-    print("    -modelout <file.pkl>             name of file with saved model [def = model.pkl]", flush=True)
+    print(
+        "    -out <file.pkl>                  name of file with predicted values [def = predicted.pkl]",
+        flush=True,
+    )
+    print(
+        "    -modelout <file.pkl>             name of file with saved model [def = model.pkl]",
+        flush=True,
+    )
     print("", flush=True)
     print("  EXAMPLES:", flush=True)
     print(f"    ", end="")
     pJKML()
-    print(" -loc -train collected_structures.pkl -modelout trained_example.pkl", flush=True)
+    print(
+        " -loc -train collected_structures.pkl -modelout trained_example.pkl",
+        flush=True,
+    )
     print(f"    ", end="")
     pJKML()
-    print(" -par q64 -cpu 64 -train tr_high.pkl tr_low.pkl -test te_high.pkl te_low.pkl", flush=True)
+    print(
+        " -par q64 -cpu 64 -train tr_high.pkl tr_low.pkl -test te_high.pkl te_low.pkl",
+        flush=True,
+    )
     print(f"    ", end="")
     pJKML()
-    print(" -par qgpu -cpu 2 -nn -epochs 10000 -train x.pkl -eval str.pkl -monomers monomers.pkl", flush=True)
+    print(
+        " -par qgpu -cpu 2 -nn -epochs 10000 -train x.pkl -eval str.pkl -monomers monomers.pkl",
+        flush=True,
+    )
     print(f"    ", end="")
     pJKML()
-    print(" -loc -trained model_for_atomization_en.pkl -eval diff_molecules.pkl -monomers atoms.pkl ", flush=True)
+    print(
+        " -loc -trained model_for_atomization_en.pkl -eval diff_molecules.pkl -monomers atoms.pkl ",
+        flush=True,
+    )
     print("    ", end="")
     pJKML()
-    print(" -loc -train train.pkl -physnet -nn_features 128 -nn_basis 64 -nn_blocks 5 -epochs 1000", flush=True)
+    print(
+        " -loc -train train.pkl -physnet -nn_features 128 -nn_basis 64 -nn_blocks 5 -epochs 1000",
+        flush=True,
+    )
     print("", flush=True)
 
 
 def help_adv():
     print("  ADVANCED OPTIONS:", flush=True)
-    print("    -column <str> <str> selects a different column from the pickled files (e.g. log entropy)", flush=True)
-    print("    -noforces           forces are not trained/tested even if it is possible")
-    print("    -size <int>         randomly selects only portion of the trainin database (e.g. 200)", flush=True)
+    print(
+        "    -column <str> <str> selects a different column from the pickled files (e.g. log entropy)",
+        flush=True,
+    )
+    print(
+        "    -noforces           forces are not trained/tested even if it is possible"
+    )
+    print(
+        "    -size <int>         randomly selects only portion of the trainin database (e.g. 200)",
+        flush=True,
+    )
     print("    -seed <int>         seed for random number generators [def = 42]")
-    print("    -categorize <int>   selects structures with similar MBTR (our similarity definition)", flush=True)
-    print("    -similarity <int>   selects structures with similar FCHL (uses kernel)", flush=True)
-    print("    -forcemonomers      adds (extra) monomers to sampleeach/selection", flush=True)
-    print("    -printforces        print out all forces (this might be a lot of numbers)", flush=True)
+    print(
+        "    -categorize <int>   selects structures with similar MBTR (our similarity definition)",
+        flush=True,
+    )
+    print(
+        "    -similarity <int>   selects structures with similar FCHL (uses kernel)",
+        flush=True,
+    )
+    print(
+        "    -forcemonomers      adds (extra) monomers to sampleeach/selection",
+        flush=True,
+    )
+    print(
+        "    -printforces        print out all forces (this might be a lot of numbers)",
+        flush=True,
+    )
     print("   OPT:", flush=True)
     print("    -opt <STRS.pkl>     optimize structure based on model [NN]", flush=True)
     print("    -opt_maxs <float>   max step in Angstrom in optimization [def = 0.02]")
-    print("    -opt_steps <int>    maximal number of the optimization steps [def = 100]", flush=True)
-    print("    -opt_dump <int>                 dump structure every n-th step [def = 1]", flush=True)
+    print(
+        "    -opt_steps <int>    maximal number of the optimization steps [def = 100]",
+        flush=True,
+    )
+    print(
+        "    -opt_dump <int>                 dump structure every n-th step [def = 1]",
+        flush=True,
+    )
     print("   MD:", flush=True)
-    print("    -md <STRS.pkl>                 run md starting from provided structure(s) based on model [NN]",
-          flush=True)
-    print("    -md_temperature <float>        temperature of the simulation [def = 300.0]", flush=True)
-    print("    -md_timestep <int>             integration time step [def = 0.1]", flush=True)
-    print("    -md_thermostatfriction <float> strength of the themrostat [def = 0.002]", flush=True)
+    print(
+        "    -md <STRS.pkl>                 run md starting from provided structure(s) based on model [NN]",
+        flush=True,
+    )
+    print(
+        "    -md_temperature <float>        temperature of the simulation [def = 300.0]",
+        flush=True,
+    )
+    print(
+        "    -md_timestep <int>             integration time step [def = 0.1]",
+        flush=True,
+    )
+    print(
+        "    -md_thermostatfriction <float> strength of the themrostat [def = 0.002]",
+        flush=True,
+    )
     print("    -md_steps <int>                number of steps [def = 2000]", flush=True)
-    print("    -md_dump <int>                 dump structure every n-th step [def = 1]", flush=True)
-    print("    -nn_cutoff <float>             cutoff function (Angstrom) [def = 5.0]", flush=True)
+    print(
+        "    -md_dump <int>                 dump structure every n-th step [def = 1]",
+        flush=True,
+    )
+    print(
+        "    -nn_cutoff <float>             cutoff function (Angstrom) [def = 5.0]",
+        flush=True,
+    )
     print("   SPKMD:", flush=True)
     print("    -spkmd                         use spkmd script", flush=True)
     print("    -langevin                      use langevin thermostat", flush=True)
-    print("    -rpmd <int>                    run ring polymer MD with n simulations", flush=True)
-    print("    -md <STRS.xyz>                 run md starting from provided structure(s) based on model [NN]",
-          flush=True)
-    print("    -md_timestep <int>             integration time step [def = 0.1]", flush=True)
-    print("    -md_thermostatconstant <float> frequency of the themrostat [def = 100]", flush=True)
+    print(
+        "    -rpmd <int>                    run ring polymer MD with n simulations",
+        flush=True,
+    )
+    print(
+        "    -md <STRS.xyz>                 run md starting from provided structure(s) based on model [NN]",
+        flush=True,
+    )
+    print(
+        "    -md_timestep <int>             integration time step [def = 0.1]",
+        flush=True,
+    )
+    print(
+        "    -md_thermostatconstant <float> frequency of the themrostat [def = 100]",
+        flush=True,
+    )
     print("    -md_steps <int>                number of steps [def = 2000]", flush=True)
-    print("    -spkmd_extra <string>          extra arguments based on spkmd", flush=True)
-    print("    -nn_cutoff <float>             cutoff function (Angstrom) [def = 5.0]", flush=True)
+    print(
+        "    -spkmd_extra <string>          extra arguments based on spkmd", flush=True
+    )
+    print(
+        "    -nn_cutoff <float>             cutoff function (Angstrom) [def = 5.0]",
+        flush=True,
+    )
     print("", flush=True)
     print("  EXTRA ADVANCED OPTIONS:", flush=True)
-    print("    -so3net             switch to NN = neural network with SO3net (from SchNetPack)", flush=True)
-    print("    -split <int>        only with -krr/-fchl how many splits of KRR matrix do you do", flush=True)
-    print("    -startsplit <int>   the same like above but only construct kernels", flush=True)
-    print("    -finishsplit <int>  (see -split) combines the splitted kernel and creates model", flush=True)
+    print(
+        "    -so3net             switch to NN = neural network with SO3net (from SchNetPack)",
+        flush=True,
+    )
+    print(
+        "    -split <int>        only with -krr/-fchl how many splits of KRR matrix do you do",
+        flush=True,
+    )
+    print(
+        "    -startsplit <int>   the same like above but only construct kernels",
+        flush=True,
+    )
+    print(
+        "    -finishsplit <int>  (see -split) combines the splitted kernel and creates model",
+        flush=True,
+    )
     print("    -wolfram            prints {} instead of []", flush=True)
     print("", flush=True)
 
 
 def help_krr():
     print("  OPTIONS FOR KERNEL RIDGE REGRESSION:", flush=True)
-    print("    -sigma <int>        Gaussian width hyperparameter [def = 1.0]", flush=True)
-    print("    -lambda <int>       numerical stability (for matrix inv.) hyperparameter [def = 1e-4]")
+    print(
+        "    -sigma <int>        Gaussian width hyperparameter [def = 1.0]", flush=True
+    )
+    print(
+        "    -lambda <int>       numerical stability (for matrix inv.) hyperparameter [def = 1e-4]"
+    )
     print("    -laplacian          switch to Laplacian kernel (FCHL)")
     print("    -krr_cutoff <float> cutoff function (Angstrom) [def = 10.0]", flush=True)
     print("", flush=True)
@@ -124,25 +250,55 @@ def help_krr():
 def help_nn():
     print("  OPTIONS FOR NEURAL NETWORKS:", flush=True)
     print("    -epochs <int>              number of epochs [def = 1000]", flush=True)
-    print("    -batch_size,-bs <int>      batch size [def = 16], the same size is used for validation", flush=True)
-    print("    -nn_train <float>          portion of training data (exlc. validation) [def = 0.9]", flush=True)
-    print("    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]", flush=True)
-    print("    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]", flush=True)
+    print(
+        "    -batch_size,-bs <int>      batch size [def = 16], the same size is used for validation",
+        flush=True,
+    )
+    print(
+        "    -nn_train <float>          portion of training data (exlc. validation) [def = 0.9]",
+        flush=True,
+    )
+    print(
+        "    -nn_ESpatience <int>       Early-Stop patience of epochs for no improvement [def = 200]",
+        flush=True,
+    )
+    print(
+        "    -nn_energytradeoff <float> trade-off [energy, force] = [<float>, 1] [def = 0.01]",
+        flush=True,
+    )
     print("    -nn_lr                     learning rate [def = 1e-4]", flush=True)
-    print("    -nw                        number of workers for database manipulation [def = 1] {SchNetPack}", flush=True)
-    print("    -ckpt,-chkp <file>         resume from last check point [def = None] {SchNetPack}", flush=True)
+    print(
+        "    -nw                        number of workers for database manipulation [def = 1] {SchNetPack}",
+        flush=True,
+    )
+    print(
+        "    -ckpt,-chkp <file>         resume from last check point [def = None] {SchNetPack}",
+        flush=True,
+    )
     print("", flush=True)
     print("  OPTIONS FOR REPRESENTATION:", flush=True)
-    print("    -nn_ab, -nn_features <int>    number of atom basis/features/size of embeding vector [def = 256]", flush=True)
-    print("    -nn_int, -nn_blocks <int>     number of (interaction) blocks [def = 5]", flush=True)
-    print("    -nn_rb, -nn_basis <int>       number of (radial) basis [def = 20]", flush=True)
-    print("    -nn_cutoff <float>            cutoff function (Angstrom) [def = 5.0]", flush=True)
+    print(
+        "    -nn_ab, -nn_features <int>    number of atom basis/features/size of embeding vector [def = 256]",
+        flush=True,
+    )
+    print(
+        "    -nn_int, -nn_blocks <int>     number of (interaction) blocks [def = 5]",
+        flush=True,
+    )
+    print(
+        "    -nn_rb, -nn_basis <int>       number of (radial) basis [def = 20]",
+        flush=True,
+    )
+    print(
+        "    -nn_cutoff <float>            cutoff function (Angstrom) [def = 5.0]",
+        flush=True,
+    )
     print("", flush=True)
 
 
 def arguments(argument_list=[]):
     # Predefined arguments
-    method = "direct" #direct/delta/min
+    method = "direct"  # direct/delta/min
     Qmin = 0
     size = "full"
     seed = 42
@@ -168,11 +324,14 @@ def arguments(argument_list=[]):
     column_name_1 = "log"
     column_name_2 = "electronic_energy"
     Qifforces = 1  # IF forces exist use them in calculations
-    Qifcharges = 0 
-    Qifdipole = 0 
+    Qifcharges = 0
+    Qifdipole = 0
 
     Qmethod = "krr"
     Qrepresentation = "fchl"
+
+    # knn default
+    no_metric = False
 
     # Predefined QML
     Qkernel = "Gaussian"
@@ -206,6 +365,10 @@ def arguments(argument_list=[]):
     md_steps = 2000
     md_dump = 1
 
+    # hyperparams
+    Qhyper = False
+    hyper_cache = None
+
     # Output files
     outfile = "predicted.pkl"
     varsoutfile = "model.pkl"
@@ -224,7 +387,10 @@ def arguments(argument_list=[]):
                 help_adv()
             if arg == "-help_krr":
                 help_krr()
-            print("#################################################################", flush=True)
+            print(
+                "#################################################################",
+                flush=True,
+            )
             exit()
 
         # Vars out file
@@ -299,9 +465,9 @@ def arguments(argument_list=[]):
                 except Exception:
                     raise Exception(f"I do not understand your input:\n{arg}")
 
-                return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds) - timedelta(days=0, hours=0,
-                                                                                                       minutes=20,
-                                                                                                       seconds=0)
+                return timedelta(
+                    days=days, hours=hours, minutes=minutes, seconds=seconds
+                ) - timedelta(days=0, hours=0, minutes=20, seconds=0)
 
             if arg is not None:
                 Qtime = parse_duration(arg)
@@ -589,6 +755,23 @@ def arguments(argument_list=[]):
             Qmethod = "nn"
             Qrepresentation = "so3net"
             continue
+        if arg == "-knn":
+            Qmethod = "knn"
+            continue
+
+        # override representation
+        if arg == "-repr":
+            last = "-repr"
+            continue
+        if last == "-repr":
+            Qrepresentation = arg
+            last = ""
+            continue
+
+        # turn off metric learning for k-NN
+        if arg == "-nometric":
+            no_metric = True
+            continue
 
         # Epochs
         if arg == "-nn_epochs" or arg == "-epochs":
@@ -599,7 +782,9 @@ def arguments(argument_list=[]):
             try:
                 nn_epochs = int(arg)
             except ValueError:
-                raise Exception(f"Number of epochs must be an integer. Got {arg}. [EXITING]")
+                raise Exception(
+                    f"Number of epochs must be an integer. Got {arg}. [EXITING]"
+                )
             continue
 
         # Epochs
@@ -609,9 +794,11 @@ def arguments(argument_list=[]):
         if last == "-nn_tvv":
             last = ""
             try:
-                nn_tvv = float(arg) # TODO Exceptions up from here
+                nn_tvv = float(arg)  # TODO Exceptions up from here
             except ValueError:
-                raise Exception(f"Number of epochs must be an integer. Got {arg}. [EXITING]")
+                raise Exception(
+                    f"Number of epochs must be an integer. Got {arg}. [EXITING]"
+                )
             continue
 
         # Radial basis
@@ -623,7 +810,9 @@ def arguments(argument_list=[]):
             try:
                 nn_rbf = int(arg)
             except ValueError:
-                raise Exception(f'Number of radial basis must be an integer. Got {arg}. [EXITING]')
+                raise Exception(
+                    f"Number of radial basis must be an integer. Got {arg}. [EXITING]"
+                )
             continue
 
         # NN cutoff
@@ -674,7 +863,9 @@ def arguments(argument_list=[]):
             try:
                 opt_steps = int(arg)
             except ValueError:
-                raise Exception(f"Number of opt steps must be an integer. Got {arg} [EXITING]")
+                raise Exception(
+                    f"Number of opt steps must be an integer. Got {arg} [EXITING]"
+                )
             continue
 
         # MD time step
@@ -698,7 +889,9 @@ def arguments(argument_list=[]):
             try:
                 md_thermostatfriction = float(arg)
             except ValueError:
-                raise Exception(f"Thermostatfriction must be an integer. Got {arg}. [EXITING]")
+                raise Exception(
+                    f"Thermostatfriction must be an integer. Got {arg}. [EXITING]"
+                )
             continue
 
         # MD steps
@@ -710,7 +903,9 @@ def arguments(argument_list=[]):
             try:
                 md_steps = int(arg)
             except ValueError:
-                raise Exception(f"Number of MD step must be an integer. Got {arg}. [EXITING]")
+                raise Exception(
+                    f"Number of MD step must be an integer. Got {arg}. [EXITING]"
+                )
             continue
 
         # MD dump
@@ -748,7 +943,9 @@ def arguments(argument_list=[]):
             try:
                 nn_interactions = int(arg)
             except ValueError:
-                raise Exception(f"NN interactions argument must be an integer. Got {arg}. [EXITING]")
+                raise Exception(
+                    f"NN interactions argument must be an integer. Got {arg}. [EXITING]"
+                )
             continue
 
         # NN interactions
@@ -760,7 +957,9 @@ def arguments(argument_list=[]):
             try:
                 nw = int(arg)
             except ValueError:
-                raise Exception(f"NN interactions must be an integer. Got {arg}. [EXITING]")
+                raise Exception(
+                    f"NN interactions must be an integer. Got {arg}. [EXITING]"
+                )
             continue
 
         # Energy tradeoff
@@ -772,7 +971,9 @@ def arguments(argument_list=[]):
             try:
                 nn_energytradeoff = float(arg)
             except ValueError:
-                raise Exception(f"Energy tradeoff must be a number. Got {arg}. [EXITING]")
+                raise Exception(
+                    f"Energy tradeoff must be a number. Got {arg}. [EXITING]"
+                )
             continue
 
         # Checkpoint
@@ -784,7 +985,9 @@ def arguments(argument_list=[]):
             if os.path.isfile(arg):
                 Qcheckpoint = arg
             else:
-                raise Exception(f"Path {arg} to the checkpoint does not exist [EXITING]")
+                raise Exception(
+                    f"Path {arg} to the checkpoint does not exist [EXITING]"
+                )
             continue
 
         # Early stop
@@ -818,7 +1021,7 @@ def arguments(argument_list=[]):
         if last == "-bs":
             last = ""
             try:
-                Qbatch_size = int(arg) # float 16.0 can be int 16
+                Qbatch_size = int(arg)  # float 16.0 can be int 16
             except ValueError:
                 raise Exception(f"Batch size must be an integer. Got {arg}. [EXITING]")
             continue
@@ -844,6 +1047,22 @@ def arguments(argument_list=[]):
         if arg == "-mbdf":
             Qmethod = "krr"
             Qrepresentation = "mbdf"
+            continue
+
+        # Hyperparameter optimisation
+        if arg == "-hyper":
+            Qhyper = True
+            Qtrain = 0  # set Qtrain to zero, as the "training" be part of the tuning
+            Qeval = 0  # similarly as above
+            continue
+
+        # Load hyperparameter cache
+        if last == "-hyper-cache":
+            hyper_cache = arg
+            last = ""
+            continue
+        if arg == "-hyper-cache":
+            last = arg
             continue
 
         # Unknown argument
