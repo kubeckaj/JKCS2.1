@@ -97,7 +97,7 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
       F1 = array([array(i) for i in clusters_df["extra"]["forces"].values], dtype=object)
       F2 = array([array(i) for i in clusters_df2["extra"]["forces"].values], dtype=object)
       F_train = F1 - F2
-      F_train = array([i.tolist() for i in F_train])
+      #F_train = array([i.tolist() for i in F_train])
     else:
       F_train = clusters_df["extra"]["forces"].values
     Qforces = 1
