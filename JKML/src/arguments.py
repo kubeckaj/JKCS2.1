@@ -332,6 +332,7 @@ def arguments(argument_list=[]):
 
     # knn default
     no_metric = False
+    metric_only = False
 
     # Predefined QML
     Qkernel = "Gaussian"
@@ -758,6 +759,9 @@ def arguments(argument_list=[]):
         if arg == "-knn":
             Qmethod = "knn"
             continue
+        if arg == "-mlkr":
+            Qmethod = "mlkr"
+            continue
 
         # override representation
         if arg == "-repr":
@@ -771,6 +775,10 @@ def arguments(argument_list=[]):
         # turn off metric learning for k-NN
         if arg == "-nometric":
             no_metric = True
+            continue
+        # only perform metric learning (no k-NN)
+        if arg == "-metric_only":
+            metric_only = True
             continue
 
         # Epochs
