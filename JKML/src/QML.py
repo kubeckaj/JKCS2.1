@@ -235,8 +235,10 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
     from pandas import DataFrame
     import time
 
-    if Qrepresentation == "fchl":
+    if (Qrepresentation == "fchl") or (Qrepresentation == "fchl18"):
         from qmllib.representations import generate_fchl18 as generate_representation
+    elif Qrepresentation == "fchl19":
+        from qmllib.representations import generate_fchl19 as generate_representation
     elif Qrepresentation == "mbdf":
         from MBDF import generate_mbdf as generate_representation
     else:
@@ -244,6 +246,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
         exit()
     from qmllib.solvers import cho_solve
 
+    # TODO: need to apply switching logic to the kernel as well
     if Qkernel == "Gaussian":
         from qmllib.representations.fchl import get_local_kernels as JKML_kernel
     else:
@@ -253,6 +256,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
     ### REPRESENTATION CALCULATION ###
+    # TODO: move to functions (similar to QKNN)
     if Qrepresentation == "fchl":
         repres_dataframe = DataFrame(index=strs.index, columns=["xyz"])
         max_atoms = max(
