@@ -127,26 +127,35 @@ for sampleeach_i in sampleeach_all:
         from src.data import prepare_data_for_training as prepare_data
 
         # returns: strs, Y_train, F_train, Qforces, Q_charge, Q_charges, Qcharge, D_dipole, Qdipole, size
-        locals().update(
-            prepare_data(
-                train_high_database,
-                monomers_high_database,
-                train_low_database,
-                monomers_low_database,
-                seed,
-                size,
-                method,
-                column_name_1,
-                column_name_2,
-                Qmin,
-                Qifforces,
-                Qifcharges,
-                Qifdipole,
-                Qsampleeach,
-                Qforcemonomers,
-                sampledist,
-                Qmonomers,
-            )
+        (
+            strs_train,
+            Y_train,
+            F_train,
+            Qforces_train,
+            Q_charge_train,
+            Q_charges_train,
+            Qcharge_train,
+            D_dipole_train,
+            Qdipole_train,
+            size_train,
+        ) = prepare_data(
+            train_high_database,
+            monomers_high_database,
+            train_low_database,
+            monomers_low_database,
+            seed,
+            size,
+            method,
+            column_name_1,
+            column_name_2,
+            Qmin,
+            Qifforces,
+            Qifcharges,
+            Qifdipole,
+            Qsampleeach,
+            Qforcemonomers,
+            sampledist,
+            Qmonomers,
         )
 
         #####################################
@@ -160,7 +169,7 @@ for sampleeach_i in sampleeach_all:
                     Qrepresentation,
                     Qkernel,
                     Qsplit,
-                    strs,
+                    strs_train,
                     Y_train,
                     krr_cutoff,
                     lambdas,
@@ -177,7 +186,7 @@ for sampleeach_i in sampleeach_all:
             locals().update(
                 training(
                     Qrepresentation,
-                    strs,
+                    strs_train,
                     Y_train,
                     varsoutfile,
                     no_metric=no_metric,
@@ -189,11 +198,11 @@ for sampleeach_i in sampleeach_all:
             from src.SchNetPack import training
 
             training(
-                Qforces,
+                Qforces_train,
                 Y_train,
                 F_train,
                 Qenergytradoff,
-                strs,
+                strs_train,
                 nn_tvv,
                 nn_cutoff,
                 nw,
@@ -211,9 +220,9 @@ for sampleeach_i in sampleeach_all:
                 Qcheckpoint,
                 Qtime,
                 Qifcharges,
-                Q_charges,
+                Q_charges_train,
                 Qifdipole,
-                D_dipole,
+                D_dipole_train,
             )
         ###################################
         elif Qmethod == "physnet":
@@ -223,10 +232,10 @@ for sampleeach_i in sampleeach_all:
                 Qforces,
                 Y_train,
                 F_train,
-                D_dipole,
-                Q_charge,
-                Q_charges,
-                strs,
+                D_dipole_train,
+                Q_charge_train,
+                Q_charges_train,
+                strs_train,
                 nn_atom_basis,
                 nn_rbf,
                 nn_interactions,
@@ -272,10 +281,7 @@ for sampleeach_i in sampleeach_all:
             f = open(VARS_PKL, "rb")
             import pickle
 
-            if Qrepresentation == "fchl":
-                X_train, sigmas, alpha, train_metadata = pickle.load(f)
-            elif Qrepresentation == "mbdf":
-                X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
+            X_train, X_atoms_train, sigmas, alpha, train_metadata = pickle.load(f)
             if len(alpha) != 1:
                 alpha = [alpha]
             f.close()
@@ -374,7 +380,14 @@ for sampleeach_i in sampleeach_all:
 
             Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
                 evaluate(
-                    Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel
+                    Qrepresentation,
+                    krr_cutoff,
+                    X_train,
+                    X_atoms_train,
+                    sigmas,
+                    alpha,
+                    strs,
+                    Qkernel,
                 )
             )
             Qforces = 0

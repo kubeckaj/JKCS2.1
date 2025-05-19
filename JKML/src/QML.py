@@ -63,7 +63,7 @@ def training(
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
-    X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    X_atoms_train = [strs[i].get_atomic_numbers() for i in range(len(strs))]
     X_train = generate_representation(strs, cutoff=krr_cutoff)
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
@@ -127,7 +127,7 @@ def training(
             "d_train": d_train,
         }
         f = open(varsoutfile, "wb")
-        pickle.dump([X_train, sigmas, alpha, train_metadata], f)
+        pickle.dump([X_train, X_atoms_train, strs, sigmas, alpha, train_metadata], f)
         f.close()
         print("JKML(QML): Training completed.", flush=True)
     elif Qsplit == 1:
@@ -157,9 +157,13 @@ def training(
         # I will for now everytime save the trained QML
         f = open(varsoutfile, "wb")
         if Qrepresentation == "fchl":
-            pickle.dump([X_train, sigmas, alpha, train_metadata], f)
+            pickle.dump(
+                [X_train, X_atoms_train, strs, sigmas, alpha, train_metadata], f
+            )
         elif Qrepresentation == "mbdf":
-            pickle.dump([X_train, X_atoms, sigmas, alpha, train_metadata], f)
+            pickle.dump(
+                [X_train, X_atoms_train, strs, sigmas, alpha, train_metadata], f
+            )
         f.close()
         print("JKML(QML): Training completed.", flush=True)
     else:
@@ -206,7 +210,7 @@ def training(
         if key
         in [
             "X_train",
-            "X_atoms",
+            "X_atoms_train",
             "alpha",
             "repr_train_wall",
             "repr_train_cpu",
@@ -223,7 +227,9 @@ def training(
 ###############################################################################
 
 
-def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel):
+def evaluate(
+    Qrepresentation, krr_cutoff, X_train, X_atoms_train, sigmas, alpha, strs, Qkernel
+):
 
     from pandas import DataFrame
     import time
@@ -242,25 +248,13 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
 
     if Qkernel == "Gaussian":
         if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
-            from qmllib.representations.fchl import (
-                get_local_symmetric_kernels as JKML_sym_kernel,
-            )
             from qmllib.representations.fchl import get_local_kernels as JKML_kernel
         else:
-            from qmllib.kernels.kernels import (
-                gaussian_kernel_symmetric as JKML_sym_kernel,
-            )
             from qmllib.kernels.kernels import get_local_kernels_gaussian as JKML_kernel
     else:
         if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
-            from qmllib.representations.fchl import (
-                laplacian_kernel_symmetric as JKML_sym_kernel,
-            )
             from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
         else:
-            from qmllib.kernels.kernels import (
-                laplacian_kernel_symmetric as JKML_sym_kernel,
-            )
             from qmllib.kernels.kernels import (
                 get_local_kernels_laplacian as JKML_kernel,
             )
@@ -270,7 +264,7 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
     repr_cpu_start = time.process_time()
     ### REPRESENTATION CALCULATION ###
     X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
-    #TODO: allow passing more args
+    # TODO: allow passing more args
     X_test = generate_representation(strs, cutoff=krr_cutoff)
     repr_test_wall = time.perf_counter() - repr_wall_start
     repr_test_cpu = time.process_time() - repr_cpu_start
@@ -290,7 +284,15 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
     if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
         Ks = JKML_kernel(X_test, X_train, kernel_args={"sigma": sigmas})
     else:
-        Ks = [JKML_kernel(X_train, X_test, sigmas[0])]
+        Ks = [
+            JKML_kernel(
+                X_test,
+                X_train,
+                na=[np.sum(x) for x in X_atoms],
+                nb=[np.sum(x) for x in X_atoms_train],
+                sigmas=sigmas,
+            )
+        ]
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
 
     test_wall = time.perf_counter() - test_wall_start
