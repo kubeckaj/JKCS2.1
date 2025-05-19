@@ -23,6 +23,8 @@ def training(
 
     if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
         from representations import generate_fchl18 as generate_representation
+    if Qrepresentation == "fchl19":
+        from representations import generate_fchl19 as generate_representation
     elif Qrepresentation == "mbdf":
         from representations import generate_mbdf as generate_representation
     else:

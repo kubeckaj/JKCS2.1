@@ -8,6 +8,14 @@ import numpy as np
 def generate_global_fchl19(
     strs: Iterable[Atoms], max_atoms=None, elements=None, rcut=8.0, acut=8.0, **kwargs
 ) -> np.ndarray:
+    X = generate_fchl19(strs, max_atoms, elements, rcut, acut, **kwargs)
+    X = np.sum(X, axis=1)
+    return X
+
+
+def generate_fchl19(
+    strs: Iterable[Atoms], max_atoms=None, elements=None, rcut=8.0, acut=8.0, **kwargs
+) -> np.ndarray:
     from qmllib.representations import generate_fchl19 as generate_representation
 
     if elements is None:
@@ -23,8 +31,7 @@ def generate_global_fchl19(
         acut=acut,
         pad=max_atoms,
     )
-    X = np.zeros((n, representation.shape[1]))
-    X[0, :] = np.sum(representation, axis=0)
+    X = np.zeros((n, max_atoms, representation.shape[-1]))
     for i in range(1, n):
         X[i, :] = generate_representation(
             strs[i].get_atomic_numbers(),
@@ -33,7 +40,7 @@ def generate_global_fchl19(
             rcut=rcut,
             acut=acut,
             pad=max_atoms,
-        ).sum(axis=0)
+        )
     if np.isnan(X).any():
         raise ValueError("NaNs in FCHL representation!")
     return X
