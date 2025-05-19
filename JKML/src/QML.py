@@ -131,12 +131,12 @@ def training(
         f.close()
         print("JKML(QML): Training completed.", flush=True)
     elif Qsplit == 1:
-        if Qrepresentation == "fchl":
+        if (Qrepresentation == "fchl") or (Qrepresentation == "fchl18"):
             K = JKML_sym_kernel(
                 X_train, kernel_args={"sigma": sigmas}
             )  # calculates kernel
-        elif Qrepresentation == "mbdf":
-            K = [JKML_sym_kernel(X_train, X_atoms, sigmas[0])]  # calculates kernel
+        else:
+            K = [JKML_sym_kernel(X_train, sigmas[0])]  # calculates kernel
         K = [
             K[i] + lambdas[i] * np.eye(len(K[i])) for i in range(len(sigmas))
         ]  # corrects kernel
@@ -229,51 +229,49 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
     import time
 
     if (Qrepresentation == "fchl") or (Qrepresentation == "fchl18"):
-        from qmllib.representations import generate_fchl18 as generate_representation
+        from .representations import generate_fchl18 as generate_representation
+        from .representations import correct_fchl18_kernel_size
     elif Qrepresentation == "fchl19":
-        from qmllib.representations import generate_fchl19 as generate_representation
+        from .representations import generate_fchl19 as generate_representation
     elif Qrepresentation == "mbdf":
-        from MBDF import generate_mbdf as generate_representation
+        from .representations import generate_mbdf as generate_representation
     else:
         print("JKML(QML): Unknown representation: " + Qrepresentation)
         exit()
     from qmllib.solvers import cho_solve
 
-    # TODO: need to apply switching logic to the kernel as well
     if Qkernel == "Gaussian":
-        from qmllib.representations.fchl import get_local_kernels as JKML_kernel
+        if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
+            from qmllib.representations.fchl import (
+                get_local_symmetric_kernels as JKML_sym_kernel,
+            )
+            from qmllib.representations.fchl import get_local_kernels as JKML_kernel
+        else:
+            from qmllib.kernels.kernels import (
+                gaussian_kernel_symmetric as JKML_sym_kernel,
+            )
+            from qmllib.kernels.kernels import get_local_kernels_gaussian as JKML_kernel
     else:
-        from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
+        if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
+            from qmllib.representations.fchl import (
+                laplacian_kernel_symmetric as JKML_sym_kernel,
+            )
+            from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
+        else:
+            from qmllib.kernels.kernels import (
+                laplacian_kernel_symmetric as JKML_sym_kernel,
+            )
+            from qmllib.kernels.kernels import (
+                get_local_kernels_laplacian as JKML_kernel,
+            )
     import numpy as np
 
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
     ### REPRESENTATION CALCULATION ###
-    # TODO: move to functions (similar to QKNN)
-    if Qrepresentation == "fchl":
-        repres_dataframe = DataFrame(index=strs.index, columns=["xyz"])
-        max_atoms = max(
-            [len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))]
-        )
-        for i in range(len(repres_dataframe)):
-            # repres_dataframe["xyz"][i] = generate_representation(strs[i].get_positions(), strs[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
-            repres_dataframe["xyz"].iloc[i] = generate_representation(
-                strs.iloc[i].get_atomic_numbers(),
-                strs.iloc[i].get_positions(),
-                max_size=max_atoms,
-                neighbors=max_atoms,
-                cut_distance=krr_cutoff,
-            )
-        X_test = np.array([mol for mol in repres_dataframe["xyz"]])
-    elif Qrepresentation == "mbdf":
-        X_test_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
-        X_test = generate_representation(
-            np.array([i.get_atomic_numbers() for i in strs]),
-            np.array([i.get_positions() for i in strs]),
-            cutoff_r=krr_cutoff,
-            normalized=False,
-        )
-
+    X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    #TODO: allow passing more args
+    X_test = generate_representation(strs, cutoff=krr_cutoff)
     repr_test_wall = time.perf_counter() - repr_wall_start
     repr_test_cpu = time.process_time() - repr_cpu_start
     # some info about the full representation
@@ -284,31 +282,15 @@ def evaluate(Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel)
 
     ### CORRECTING THE FCHL MATRIX SIZES
     # IF YOU ARE EXTENDING THIS WILL MAKE THE MATRIXES OF THE SAME SIZE
-    if Qrepresentation == "fchl":
-        if X_train.shape[1] != X_test.shape[1]:
-            if X_train.shape[1] > X_test.shape[1]:
-                small = X_test
-                large = X_train
-            else:
-                small = X_train
-                large = X_test
-            newmatrix = np.zeros([small.shape[0], large.shape[1], 5, large.shape[3]])
-            newmatrix[:, :, 0, :] = 1e100
-            newmatrix[
-                0 : small.shape[0], 0 : small.shape[1], 0:5, 0 : small.shape[3]
-            ] = small
-            if X_train.shape[1] > X_test.shape[1]:
-                X_test = newmatrix
-            else:
-                X_train = newmatrix
-
+    if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
+        X_test, X_train = correct_fchl18_kernel_size(X_test, X_train)
     test_wall_start = time.perf_counter()
     test_cpu_start = time.process_time()
     ### THE EVALUATION
-    if Qrepresentation == "fchl":
+    if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
         Ks = JKML_kernel(X_test, X_train, kernel_args={"sigma": sigmas})
-    elif Qrepresentation == "mbdf":
-        Ks = [JKML_kernel(X_train, X_test, X_atoms, X_test_atoms, sigmas[0])]
+    else:
+        Ks = [JKML_kernel(X_train, X_test, sigmas[0])]
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
 
     test_wall = time.perf_counter() - test_wall_start
