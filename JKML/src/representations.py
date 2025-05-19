@@ -62,6 +62,22 @@ def generate_global_mbdf(
     return X
 
 
+def generate_mbdf(strs: Iterable[Atoms], max_atoms=None, neighbors=None, cutoff=8.0):
+    from MBDF import generate_mbdf as generate_representation
+
+    if max_atoms is None:
+        max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
+    if neighbors is None:
+        neighbors = max_atoms
+    X = generate_representation(
+        np.array([i.get_atomic_numbers() for i in strs]),
+        np.array([i.get_positions() for i in strs]),
+        cutoff_r=cutoff,
+        normalized=False,
+    )
+    return X
+
+
 def generate_bob(
     strs: Iterable[Atoms],
     max_atoms: int = None,

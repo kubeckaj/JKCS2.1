@@ -8,7 +8,7 @@ import pickle
 from sklearn.neighbors import KNeighborsRegressor
 from metric_learn import MLKR
 from ase.atoms import Atoms
-from typing import Iterable, Tuple, Union, Dict, Literal, Callable, List, Optional
+from typing import Iterable, Tuple, Union, Dict, Literal, Callable, List, Optional, Any
 import os
 from collections import defaultdict
 import time
@@ -125,9 +125,9 @@ class VPTreeKNN:
         )
         self.kernel_args = kernel_args
         # data containers
-        self.X_train = None
-        self.Y_train = None
-        self.X_test = None
+        self.X_train: Optional[np.ndarray] = None
+        self.Y_train: Optional[np.ndarray] = None
+        self.X_test: Optional[np.ndarray] = None
 
     def fit(
         self,
@@ -203,7 +203,7 @@ class VPTreeKNN:
                 return True
         return False
 
-    def _set_test(self, X_test, cut_distance=5.0):
+    def _set_test(self, X_test: np.ndarray, cut_distance=5.0):
         if self._check_test(X_test):
             return
 
@@ -230,7 +230,9 @@ class VPTreeKNN:
         )
         self.X_test = X_test
 
-    def kneighbours(self, X: np.ndarray, n_neighbors: int = None, return_distance=True):
+    def kneighbours(
+        self, X: np.ndarray, n_neighbors: Optional[int] = None, return_distance=True
+    ):
         """Find closest k neighbors in the tree."""
         if n_neighbors is None:
             n_neighbors = self.k
@@ -251,7 +253,7 @@ class VPTreeKNN:
             # transpose required for sk-learn compatibility as fortran is column-based
             return k_neighbors.T
 
-    def predict(self, X: np.ndarray, n_neighbors: int = None):
+    def predict(self, X: np.ndarray, n_neighbors: Optional[int] = None):
         """Wrapper to replicate sklearn k-NN model behaviour."""
         self._set_test(X)
         if n_neighbors is None:
@@ -281,7 +283,7 @@ class VPTreeKNN:
         out["weights"] = self.weights
         return out
 
-    def get_tree_params(self):
+    def get_tree_params(self) -> Dict[str, np.ndarray]:
         """Get the vp-tree collections, which can be used to rebuild the tree later."""
         out = dict()
         out["vp_index"] = vp_tree.vp_index
@@ -343,7 +345,7 @@ def load_vp_knn(X_train, Y_train, vp_params, **knn_params):
     return knn
 
 
-def load_hyperparams(hyper_cache: str):
+def load_hyperparams(hyper_cache: Optional[Union[str, os.PathLike]]):
     if hyper_cache is not None:
         with open(hyper_cache, "rb") as f:
             hyperparams: dict = pickle.load(f)
@@ -374,8 +376,8 @@ def training(
     strs: pd.Series,
     Y_train: np.ndarray,
     varsoutfile: Union[str, os.PathLike],
-    no_metric=False,
-    hyper_cache=None,
+    no_metric: bool = False,
+    hyper_cache: Optional[Union[str, os.PathLike]] = None,
 ):
 
     hyperparams = load_hyperparams(hyper_cache)

@@ -21,25 +21,39 @@ def training(
     # TODO: Do I really need pandas?
     from pandas import DataFrame
 
-    if Qrepresentation == "fchl":
-        from qmllib.representations import generate_fchl18 as generate_representation
+    if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
+        from representations import generate_fchl18 as generate_representation
     elif Qrepresentation == "mbdf":
-        from MBDF import generate_mbdf as generate_representation
+        from representations import generate_mbdf as generate_representation
     else:
         print("JKML(QML): Unknown representation: " + Qrepresentation)
         exit()
     from qmllib.solvers import cho_solve
 
     if Qkernel == "Gaussian":
-        from qmllib.representations.fchl import (
-            get_local_symmetric_kernels as JKML_sym_kernel,
-        )
-        from qmllib.representations.fchl import get_local_kernels as JKML_kernel
+        if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
+            from qmllib.representations.fchl import (
+                get_local_symmetric_kernels as JKML_sym_kernel,
+            )
+            from qmllib.representations.fchl import get_local_kernels as JKML_kernel
+        else:
+            from qmllib.kernels.kernels import (
+                gaussian_kernel_symmetric as JKML_sym_kernel,
+            )
+            from qmllib.kernels.kernels import get_local_kernels_gaussian as JKML_kernel
     else:
-        from qmllib.representations.fchl import (
-            laplacian_kernel_symmetric as JKML_sym_kernel,
-        )
-        from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
+        if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
+            from qmllib.representations.fchl import (
+                laplacian_kernel_symmetric as JKML_sym_kernel,
+            )
+            from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
+        else:
+            from qmllib.kernels.kernels import (
+                laplacian_kernel_symmetric as JKML_sym_kernel,
+            )
+            from qmllib.kernels.kernels import (
+                get_local_kernels_laplacian as JKML_kernel,
+            )
     import numpy as np
     import pickle
     import time
@@ -47,31 +61,8 @@ def training(
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
-    if Qrepresentation == "fchl":
-        repres_dataframe = DataFrame(index=strs.index, columns=["xyz"])
-        max_atoms = max(
-            [len(strs.iloc[i].get_atomic_numbers()) for i in range(len(strs))]
-        )
-        for i in range(len(repres_dataframe)):
-            # repres_dataframe["xyz"].iloc[i] = generate_representation(strs.iloc[i].get_positions(), strs.iloc[i].get_atomic_numbers(),max_size = max_atoms, neighbors = max_atoms, cut_distance=krr_cutoff)
-            repres_dataframe["xyz"].iloc[i] = generate_representation(
-                strs.iloc[i].get_atomic_numbers(),
-                strs.iloc[i].get_positions(),
-                max_size=max_atoms,
-                neighbors=max_atoms,
-                cut_distance=krr_cutoff,
-            )
-        X_atoms = None
-        X_train = np.array([mol for mol in repres_dataframe["xyz"]])
-    elif Qrepresentation == "mbdf":
-        X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
-        X_train = generate_representation(
-            np.array([i.get_atomic_numbers() for i in strs]),
-            np.array([i.get_positions() for i in strs]),
-            cutoff_r=krr_cutoff,
-            normalized=False,
-        )
-
+    X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    X_train = generate_representation(strs, cutoff=krr_cutoff)
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
     n_train = X_train.shape[0]
