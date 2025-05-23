@@ -136,7 +136,7 @@ def training(
                 X_train, kernel_args={"sigma": sigmas}
             )  # calculates kernel
         else:
-            K = [JKML_sym_kernel(X_train, sigmas[0])]  # calculates kernel
+            K = [JKML_sym_kernel(X_train, X_atoms, sigmas[0])]  # calculates kernel
         K = [
             K[i] + lambdas[i] * np.eye(len(K[i])) for i in range(len(sigmas))
         ]  # corrects kernel
@@ -286,10 +286,10 @@ def evaluate(
     else:
         Ks = [
             JKML_kernel(
-                X_test,
                 X_train,
-                na=[np.sum(x) for x in X_atoms],
-                nb=[np.sum(x) for x in X_atoms_train],
+                X_test,
+                X_atoms_train,
+                X_atoms,
                 sigmas=sigmas,
             )
         ]
