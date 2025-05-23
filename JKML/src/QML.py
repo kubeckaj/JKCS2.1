@@ -39,10 +39,12 @@ def training(
             )
             from qmllib.representations.fchl import get_local_kernels as JKML_kernel
         else:
-            from qmllib.kernels.kernels import (
-                gaussian_kernel_symmetric as JKML_sym_kernel,
-            )
-            from qmllib.kernels.kernels import get_local_kernels_gaussian as JKML_kernel
+            from qmllib.kernels import get_local_symmetric_kernel as JKML_sym_kernel
+            from qmllib.kernels import get_local_kernel as JKML_kernel
+
+            assert (
+                len(sigmas) == 1
+            ), f"Multiple sigmas not supported with {Qrepresentation} representation!"
     else:
         if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
             from qmllib.representations.fchl import (
@@ -50,11 +52,8 @@ def training(
             )
             from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
         else:
-            from qmllib.kernels.kernels import (
-                laplacian_kernel_symmetric as JKML_sym_kernel,
-            )
-            from qmllib.kernels.kernels import (
-                get_local_kernels_laplacian as JKML_kernel,
+            raise ValueError(
+                f"Laplace kernel is only supported with the FCHL'18 representation"
             )
     import numpy as np
     import pickle
