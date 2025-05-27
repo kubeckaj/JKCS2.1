@@ -15,7 +15,7 @@ import time
 import warnings
 import sys
 import os
-import representations as rpr
+from .representations import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "fortran"))
 print(sys.path)
@@ -32,17 +32,17 @@ warnings.filterwarnings(
 
 def calculate_representation(Qrepresentation, strs, **repr_kwargs):
     if Qrepresentation == "fchl":
-        return rpr.generate_global_fchl19(strs, **repr_kwargs)
+        return generate_global_fchl19(strs, **repr_kwargs)
     elif Qrepresentation == "mbdf":
-        return rpr.generate_global_mbdf(strs, **repr_kwargs)
+        return generate_global_mbdf(strs, **repr_kwargs)
     elif Qrepresentation == "bob":
-        return rpr.generate_bob(strs, **repr_kwargs)
+        return generate_bob(strs, **repr_kwargs)
     elif Qrepresentation == "coulomb":
-        return rpr.generate_coulomb(strs, **repr_kwargs)
+        return generate_coulomb(strs, **repr_kwargs)
     elif Qrepresentation == "mbtr":
-        return rpr.generate_global_mbtr(strs, **repr_kwargs)
+        return generate_global_mbtr(strs, **repr_kwargs)
     elif Qrepresentation == "fchl-kernel":
-        return rpr.generate_fchl18(strs, **repr_kwargs)
+        return generate_fchl18(strs, **repr_kwargs)
     else:
         raise NotImplementedError(
             f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
@@ -520,7 +520,7 @@ def evaluate(Qrepresentation, X_train, strs, knn_model, hyper_cache=None):
         Qrepresentation, strs, **hyperparams["representation"]
     )
     if Qrepresentation == "fchl-kernel":
-        X_test, X_train = rpr.correct_fchl18_kernel_size(X_test, X_train)
+        X_test, X_train = correct_fchl18_kernel_size(X_test, X_train)
     print("JKML(k-NN): Calculate test kernel(s).", flush=True)
     repr_test_wall = time.perf_counter() - repr_wall_start
     repr_test_cpu = time.process_time() - repr_cpu_start
