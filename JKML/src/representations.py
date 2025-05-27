@@ -32,6 +32,7 @@ def generate_fchl19(
         pad=max_atoms,
     )
     X = np.zeros((n, max_atoms, representation.shape[-1]))
+    X[0, :, :] = representation
     for i in range(1, n):
         X[i, :] = generate_representation(
             strs[i].get_atomic_numbers(),
