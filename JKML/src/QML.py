@@ -135,7 +135,7 @@ def training(
                 X_train, kernel_args={"sigma": sigmas}
             )  # calculates kernel
         else:
-            K = [JKML_sym_kernel(X_train, X_atoms, sigmas[0])]  # calculates kernel
+            K = [JKML_sym_kernel(X_train, X_atoms_train, sigmas[0])]  # calculates kernel
         K = [
             K[i] + lambdas[i] * np.eye(len(K[i])) for i in range(len(sigmas))
         ]  # corrects kernel
@@ -249,13 +249,13 @@ def evaluate(
         if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
             from qmllib.representations.fchl import get_local_kernels as JKML_kernel
         else:
-            from qmllib.kernels.kernels import get_local_kernels_gaussian as JKML_kernel
+            from qmllib.kernels import get_local_kernel as JKML_kernel
     else:
         if Qrepresentation == "fchl" or Qrepresentation == "fchl18":
             from qmllib.representations.fchl import laplacian_kernel as JKML_kernel
         else:
-            from qmllib.kernels.kernels import (
-                get_local_kernels_laplacian as JKML_kernel,
+            raise ValueError(
+                f"Laplace kernel is only supported with the FCHL'18 representation"
             )
     import numpy as np
 
@@ -289,7 +289,7 @@ def evaluate(
                 X_test,
                 X_atoms_train,
                 X_atoms,
-                sigmas=sigmas,
+                sigmas[0],
             )
         ]
     Y_predicted = [np.dot(Ks[i], alpha[i]) for i in range(len(sigmas))]
