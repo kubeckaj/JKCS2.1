@@ -194,6 +194,19 @@ for sampleeach_i in sampleeach_all:
                 )
             )
         #####################################
+        elif Qmethod == "mlkr":
+            from src.QMLKR import training
+
+            locals().update(
+                training(
+                    Qrepresentation,
+                    strs,
+                    Y_train,
+                    varsoutfile,
+                    hyper_cache=hyper_cache,
+                )
+            )
+        #####################################
         elif Qmethod == "nn":
             from src.SchNetPack import training
 
@@ -403,6 +416,22 @@ for sampleeach_i in sampleeach_all:
                     X_train,
                     strs,
                     knn,
+                    hyper_cache=hyper_cache,
+                )
+            )
+            Qforces = 0
+            F_predicted = None
+            Qa_predicted = None
+        #####################################
+        elif Qmethod == "mlkr":
+            from src.QMLKR import evaluate
+
+            Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
+                evaluate(
+                    Qrepresentation,
+                    X_train,
+                    strs,
+                    mlkr,
                     hyper_cache=hyper_cache,
                 )
             )
