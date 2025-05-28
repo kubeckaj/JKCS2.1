@@ -200,7 +200,7 @@ for sampleeach_i in sampleeach_all:
             locals().update(
                 training(
                     Qrepresentation,
-                    strs,
+                    strs_train,
                     Y_train,
                     varsoutfile,
                     hyper_cache=hyper_cache,

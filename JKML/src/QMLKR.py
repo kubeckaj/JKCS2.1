@@ -1,4 +1,4 @@
-from QKNN import calculate_representation
+from .QKNN import calculate_representation
 import pandas as pd
 import numpy as np
 from typing import Union
