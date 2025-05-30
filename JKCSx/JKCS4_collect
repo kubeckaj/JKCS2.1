@@ -376,10 +376,11 @@ else
   then
     logsouts=`ls $method/calc-LM/*.xyz $method/*/calc-LM/*.xyz $method/*/*/calc-LM/*.xyz 2>/dev/null | wc -w`
   else
-    logs=`ls $method/*.log $method/*/*.log $method/*/*/*.log 2>/dev/null`
-    if [ ! -z "$logs" ]
+    #logs=`ls $method/*.log $method/*/*.log $method/*/*/*.log 2>/dev/null`
+    logs=`find XTB -maxdepth 4 -name "*.log" | wc -l`
+    if [ $logs -gt 0 ]
     then 
-      for i in $logs
+      for i in $method/*.log $method/*/*.log $method/*/*/*.log 2>/dev/null
       do
         xyz=`echo $i | rev | cut -c4- | rev`xyz
         if [ ! -e $xyz ]; then JKlog2xyz $i -topath; fi
