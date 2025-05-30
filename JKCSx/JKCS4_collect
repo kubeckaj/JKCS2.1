@@ -381,6 +381,7 @@ else
     then 
       for i in $method/*.log $method/*/*.log $method/*/*/*.log
       do
+        if [ ! -e $i ]; then continue; fi
         xyz=`echo $i | rev | cut -c4- | rev`xyz
         if [ ! -e $xyz ]; then JKlog2xyz $i -topath; fi
       done
