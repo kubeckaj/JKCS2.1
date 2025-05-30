@@ -376,19 +376,17 @@ else
   then
     logsouts=`ls $method/calc-LM/*.xyz $method/*/calc-LM/*.xyz $method/*/*/calc-LM/*.xyz 2>/dev/null | wc -w`
   else
-    #logs=`ls $method/*.log $method/*/*.log $method/*/*/*.log 2>/dev/null`
-    logs=`find XTB -maxdepth 4 -name "*.log" | wc -l`
+    logs=`find $method -maxdepth 4 -name "*.log" | wc -l`
     if [ $logs -gt 0 ]
     then 
-      for i in $method/*.log $method/*/*.log $method/*/*/*.log 2>/dev/null
+      for i in $method/*.log $method/*/*.log $method/*/*/*.log
       do
         xyz=`echo $i | rev | cut -c4- | rev`xyz
         if [ ! -e $xyz ]; then JKlog2xyz $i -topath; fi
       done
     else
       program="ORCA"
-      outs=`ls $method/*.out $method/*/*.out $method/*/*/*.out 2>/dev/null`
-      for i in $outs
+      for i in $method/*.out $method/*/*.out $method/*/*/*.out
       do
 	xyz=`echo $i | rev | cut -c5- | rev`.xyz
 	if [ ! -e $xyz ]; then JKout2xyz $i ; fi
