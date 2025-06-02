@@ -389,6 +389,7 @@ else
       program="ORCA"
       for i in $method/*.out $method/*/*.out $method/*/*/*.out
       do
+	if [ ! -e $i ]; then continue; fi
 	xyz=`echo $i | rev | cut -c5- | rev`.xyz
 	if [ ! -e $xyz ]; then JKout2xyz $i ; fi
       done
