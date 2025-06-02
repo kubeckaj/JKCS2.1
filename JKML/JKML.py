@@ -239,6 +239,29 @@ for sampleeach_i in sampleeach_all:
                 varsoutfile,
             )
         ###################################
+        elif Qmethod == "aimnet":
+            from src.AIMNetInterface import training
+            
+            training(
+                Y_train,
+                F_train,
+                Z_atoms,
+                N_atoms,
+                Qenergytradoff,
+                strs,nn_tvv,
+                Qbatch_size,
+                Qlearningrate,
+                parentdir,
+                varsoutfile,
+                Qearlystop,
+                nn_epochs,
+                Q_charge,
+                Q_charges,
+                file_basenames,
+                seed,
+                Qmonomers
+            )
+        ###################################
         else:
             print(
                 "JKML: Wrong method ("
@@ -408,6 +431,12 @@ for sampleeach_i in sampleeach_all:
             from src.PhysNetInterface import evaluate
 
             Y_predicted, F_predicted = evaluate(varsoutfile, clusters_df, method, Qmin)
+            Qa_predicted = None
+        #####################################
+        elif Qmethod == "aimnet":
+            from src.AIMNetInterface import evaluate
+            
+            Y_predicted, F_predicted = evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_atoms)
             Qa_predicted = None
         #####################################
         else:
@@ -598,7 +627,6 @@ for sampleeach_i in sampleeach_all:
             for k, v in params["knn"].items():
                 print(f"{k}: {v}")
         print("", flush=True)
-
 
 ####################################################################################################
 ####################################################################################################

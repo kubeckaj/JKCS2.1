@@ -289,6 +289,14 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qcalculator = "PhysNet"
       last = "-nn_model"
       continue
+    if i == "-aimnet2_model":
+      Qcalculator = "AIMNET2"
+      last = "-aimnet2_model"
+      continue
+    if last == "-aimnet2_model":
+      last = ""
+      Qcalculator_input = i
+      continue
     if i == "-max_iter":
       last = "-max_iter"
       continue

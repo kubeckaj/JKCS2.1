@@ -1,51 +1,48 @@
-def substract_monomers(the_clusters_df,the_monomers_df,Qmonomers,column_name_1,column_name_2):
-
-  if Qmonomers == 2: #no difference from monomers at all
-    the_ens_correction = [0]*len(the_clusters_df)
-  else:
-    from numpy import sum, transpose
-    if Qmonomers == 1:
-      clusters_df0 = the_monomers_df
-      ins_monomers = [sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
-      monomers_df = clusters_df0[ins_monomers]
+def substract_monomers(the_clusters_df, the_monomers_df, Qmonomers, column_name_1, column_name_2, Qifeldisp):
+    if Qmonomers == 2:  # no difference from monomers at all
+        the_ens_correction = [0] * len(the_clusters_df)
     else:
-      ins_monomers = [sum(the_clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(the_clusters_df))]
-      monomers_df = the_clusters_df[ins_monomers]
-    the_ens_correction = [0]*len(the_clusters_df)
-    n = 0
-    #TODO: it is possible that if the monomers are present multiple times, that I substract each of them. CHECK the code below 
-    #print("JKML(data): FOR JAKUB: I should check whether these are unique:"+str(monomers_df["info"]["components"].values)+"\n")
-    for i in transpose([the_clusters_df["info"]["components"].values,the_clusters_df["info"]["component_ratio"].values]):
-      nn = 0
-      #print(i)
-      if type(i[0]) == type([]):
-        all_mons = i[0]
-        all_mons_ratios = i[1]
-      else:
-        all_mons = [i[0]]
-        all_mons_ratios = [i[1]]
-      for j in all_mons:
-        test = 0
-        #print(monomers_df["info"]["components"])
-        for k in range(len(monomers_df)):
-          monomer_k = monomers_df.iloc[k]
-          monomer_k_name = monomer_k["info"]["components"]
-          if type(monomer_k_name) == type([]):
-            monomer_k_name = monomer_k_name[0]
-          #print([j,monomer_k_name])
-          if j == monomer_k_name:
-            the_ens_correction[n] += monomer_k[column_name_1][column_name_2]*all_mons_ratios[nn]
-            test = 1
-            break
-        if test == 0:
-          print("JKML(data): OMG; monomer "+j+" was not found in:")
-          print(monomers_df["info"]["components"].values)
-          exit()
-        nn += 1
-      n += 1
-  return the_ens_correction
+        from numpy import sum, transpose
+        if Qmonomers == 1:
+            clusters_df0 = the_monomers_df
+            ins_monomers = [sum(clusters_df0["info"]["component_ratio"].values[i]) == 1 for i in range(len(clusters_df0))]
+            monomers_df = clusters_df0[ins_monomers]
+        else:
+            ins_monomers = [sum(the_clusters_df["info"]["component_ratio"].values[i]) == 1 for i in range(len(the_clusters_df))]
+            monomers_df = the_clusters_df[ins_monomers]
+        the_ens_correction = [0] * len(the_clusters_df)
+        n = 0
+        for i in transpose([the_clusters_df["info"]["components"].values, the_clusters_df["info"]["component_ratio"].values]):
+            nn = 0
+            if type(i[0]) == type([]):
+                all_mons = i[0]
+                all_mons_ratios = i[1]
+            else:
+                all_mons = [i[0]]
+                all_mons_ratios = [i[1]]
+            for j in all_mons:
+                test = 0
+                for k in range(len(monomers_df)):
+                    monomer_k = monomers_df.iloc[k]
+                    monomer_k_name = monomer_k["info"]["components"]
+                    if type(monomer_k_name) == type([]):
+                        monomer_k_name = monomer_k_name[0]
+                    if j == monomer_k_name:
+                        mon_energy = monomer_k[column_name_1][column_name_2]
+                        if Qifeldisp == 1 and ("extra", "dispersion_electronic_energy") in monomer_k and monomer_k[("extra", "dispersion_electronic_energy")] is not None:
+                            mon_energy -= monomer_k[("extra", "dispersion_electronic_energy")]
+                        the_ens_correction[n] += mon_energy * all_mons_ratios[nn]
+                        test = 1
+                        break
+                if test == 0:
+                    print("JKML(data): OMG; monomer " + j + " was not found in:")
+                    print(monomers_df["info"]["components"].values)
+                    exit()
+                nn += 1
+            n += 1
+    return the_ens_correction
 
-def prepare_data_for_training(train_high_database, monomers_high_database, train_low_database, monomers_low_database, seed, size, method, column_name_1, column_name_2, Qmin, Qifforces, Qifcharges, Qifdipole, Qsampleeach, Qforcemonomers, sampledist, Qmonomers):
+def prepare_data_for_training(train_high_database, monomers_high_database, train_low_database, monomers_low_database, seed, size, method, column_name_1, column_name_2, Qmin, Qifforces, Qifcharges, Qifdipole, Qsampleeach, Qforcemonomers, sampledist, Qmonomers, Qifeldisp, Qifforcedisp):
 
   from sklearn.model_selection import train_test_split    
 
@@ -90,6 +87,21 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
   if method == "min":
     ens -= Qmin
 
+  ### NUMBERS
+  from ase import Atoms
+  from ase.io import read
+  Z_atoms = []
+  N_atoms = []
+  
+  for s in strs:
+    atoms = s if isinstance(s, Atoms) else read(s)
+    atomic_numbers = atoms.get_atomic_numbers()
+    Z_atoms.append(atomic_numbers)
+    N_atoms.append(len(atomic_numbers))
+
+  ### BASENAME
+  file_basenames = clusters_df["info"]["file_basename"].values
+
   ### FORCES
   if ("extra","forces") in clusters_df.columns and Qifforces == 1:
     if method == "delta":
@@ -104,6 +116,15 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
   else:
     F_train = float("nan")
     Qforces = 0
+
+  ### DISPERSION CORRECTIONS
+  if ("extra", "dispersion_electronic_energy") in clusters_df.columns and Qifeldisp == 1:
+    disp_energies = clusters_df["extra"]["dispersion_electronic_energy"].values.astype(float)
+    ens -= disp_energies  
+  if ("extra", "dispersion_forces") in clusters_df.columns and Qifforcedisp == 1:
+    from numpy import array
+    disp_forces = clusters_df["extra"]["dispersion_forces"].values
+    F_train = [array(f) - array(df) for f, df in zip(F_train, disp_forces)]
 
   ### CHARGE
   if ("log","charge") in clusters_df.columns and ("log","mulliken_charges") in clusters_df.columns and Qifcharges == 1:
@@ -142,10 +163,10 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
 
   ### BINDING PROPERTIES CALCULATION (i.e. relative to monomers) ###
   #HIGH LEVEL
-  ens_correction = substract_monomers(clusters_df,monomers_high_database,Qmonomers,column_name_1,column_name_2)
+  ens_correction = substract_monomers(clusters_df,monomers_high_database,Qmonomers,column_name_1,column_name_2,Qifeldisp)
   #LOW LEVEL
   if method == "delta":
-    ens2_correction = substract_monomers(clusters_df2,monomers_low_database,Qmonomers,column_name_1,column_name_2)
+    ens2_correction = substract_monomers(clusters_df2,monomers_low_database,Qmonomers,column_name_1,column_name_2,Qifeldisp)
 
   #The binding (formation) energy calculation (or final property)
   form_ens = ens - ens_correction
@@ -165,7 +186,7 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
 ###########################################################################################
 ###########################################################################################
 
-def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_database,monomers_low_database,Qsampleeach,sampleeach_i,method,size,seed,column_name_1,column_name_2,Qeval,Qifforces,Qmonomers,Qmin,Qprintforces,Qifcharges):
+def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_database,monomers_low_database,Qsampleeach,sampleeach_i,method,size,seed,column_name_1,column_name_2,Qeval,Qifforces,Qmonomers,Qmin,Qprintforces,Qifcharges,Qifeldisp):
 
   from sklearn.model_selection import train_test_split
 
@@ -224,6 +245,18 @@ def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_
     F_test = None
     Qforces = 0
 
+  ### NUMBERS
+  from ase import Atoms
+  from ase.io import read
+  Z_atoms = []
+  N_atoms = []
+
+  for s in strs:
+    atoms = s if isinstance(s, Atoms) else read(s)
+    atomic_numbers = atoms.get_atomic_numbers()
+    Z_atoms.append(atomic_numbers)
+    N_atoms.append(len(atomic_numbers))
+
   ### CHARGE
   if ("log","charge") in clusters_df.columns and ("log","mulliken_charges") in clusters_df.columns and Qifcharges == 1:
     Q_charge = clusters_df["log"]["charge"].values
@@ -259,10 +292,10 @@ def prepare_data_for_testing(test_high_database,test_low_database,monomers_high_
 
   ### BINDING PROPERTIES CALCULATION (i.e. relative to monomers) ###
   #HIGH LEVEL
-  ens_correction = substract_monomers(clusters_df,monomers_high_database,Qmonomers,column_name_1,column_name_2)
+  ens_correction = substract_monomers(clusters_df,monomers_high_database,Qmonomers,column_name_1,column_name_2,Qifeldisp)
   #LOW LEVEL
   if method == "delta":
-    ens2_correction = substract_monomers(clusters_df2,monomers_low_database,Qmonomers,column_name_1,column_name_2)
+    ens2_correction = substract_monomers(clusters_df2,monomers_low_database,Qmonomers,column_name_1,column_name_2,Qifeldisp)
   else:
     ens2_correction = None
   #TODO clustername given as argument
