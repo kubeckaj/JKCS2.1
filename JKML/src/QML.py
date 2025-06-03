@@ -7,13 +7,15 @@ import pickle
 ###############################################################################
 
 
-def load_hyperparams(hyper_cache: Optional[Union[str, os.PathLike]]) -> Dict[str, Any]:
+def load_hyperparams(
+    hyper_cache: Optional[Union[str, os.PathLike]], krr_cutoff: float
+) -> Dict[str, Any]:
     if hyper_cache is not None:
         with open(hyper_cache, "rb") as f:
             hyperparams: dict = pickle.load(f)
         print(f"JKML(QML): Loaded hyperparameters from {hyper_cache}:", flush=True)
         if "representation" not in hyperparams:
-            hyperparams["representation"] = {"cutoff": 8.0}
+            hyperparams["representation"] = {"cutoff": krr_cutoff}
             print(
                 f"JKML (QML): Representation params not defined in hyperparams, use default value."
             )
@@ -21,7 +23,7 @@ def load_hyperparams(hyper_cache: Optional[Union[str, os.PathLike]]) -> Dict[str
     else:
         # use defaults
         hyperparams = {
-            "representation": {"cutoff": 8.0},
+            "representation": {"cutoff": krr_cutoff},
         }
         print(f"JKML(QML): Using default hyperparams {hyperparams}", flush=True)
     return hyperparams
@@ -84,7 +86,7 @@ def training(
     import pickle
     import time
 
-    hyperparams = load_hyperparams(hyper_cache)
+    hyperparams = load_hyperparams(hyper_cache, krr_cutoff)
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
@@ -259,7 +261,15 @@ def training(
 
 
 def evaluate(
-    Qrepresentation, krr_cutoff, X_train, X_atoms_train, sigmas, alpha, strs, Qkernel
+    Qrepresentation,
+    krr_cutoff,
+    X_train,
+    X_atoms_train,
+    sigmas,
+    alpha,
+    strs,
+    Qkernel,
+    hyper_cache: Optional[Union[str, os.PathLike]] = None,
 ):
 
     from pandas import DataFrame
@@ -291,6 +301,7 @@ def evaluate(
             )
     import numpy as np
 
+    hyperparams = load_hyperparams(hyper_cache, krr_cutoff)
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
     ### REPRESENTATION CALCULATION ###
