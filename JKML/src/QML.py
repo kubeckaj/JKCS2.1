@@ -88,7 +88,11 @@ def training(
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
-    X_atoms_train = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    X_atoms_train = [strs.iloc[i].get_atomic_numbers() for i in range(len(strs))]
+    if not (Qrepresentation == "fchl" or Qrepresentation == "fchl18"):
+        # by getting the values, we can treat the structures as a list and no worry about
+        # pandas indexing
+        strs = strs.values
     X_train = generate_representation(strs, **hyperparams["representation"])
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
@@ -290,7 +294,11 @@ def evaluate(
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
     ### REPRESENTATION CALCULATION ###
-    X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+    X_atoms = [strs.iloc[i].get_atomic_numbers() for i in range(len(strs))]
+    if not (Qrepresentation == "fchl" or Qrepresentation == "fchl18"):
+        # by getting the values, we can treat the structures as a list and no worry about
+        # pandas indexing
+        strs = strs.values
     # TODO: allow passing more args
     X_test = generate_representation(strs, cutoff=krr_cutoff)
     repr_test_wall = time.perf_counter() - repr_wall_start
