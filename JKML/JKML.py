@@ -177,6 +177,7 @@ for sampleeach_i in sampleeach_all:
                     varsoutfile,
                     Qsplit_i,
                     Qsplit_j,
+                    hyper_cache,
                 )
             )
         #####################################
@@ -401,6 +402,7 @@ for sampleeach_i in sampleeach_all:
                     alpha,
                     strs,
                     Qkernel,
+                    hyper_cache,
                 )
             )
             Qforces = 0
