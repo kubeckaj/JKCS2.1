@@ -1,6 +1,30 @@
+from typing import Optional, Union, Dict, Any
+import os
+import pickle
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
+
+
+def load_hyperparams(hyper_cache: Optional[Union[str, os.PathLike]]) -> Dict[str, Any]:
+    if hyper_cache is not None:
+        with open(hyper_cache, "rb") as f:
+            hyperparams: dict = pickle.load(f)
+        print(f"JKML(QML): Loaded hyperparameters from {hyper_cache}:", flush=True)
+        if "representation" not in hyperparams:
+            hyperparams["representation"] = {"cutoff": 8.0}
+            print(
+                f"JKML (QML): Representation params not defined in hyperparams, use default value."
+            )
+        print(hyperparams, flush=True)
+    else:
+        # use defaults
+        hyperparams = {
+            "representation": {"cutoff": 8.0},
+        }
+        print(f"JKML(QML): Using default hyperparams {hyperparams}", flush=True)
+    return hyperparams
 
 
 def training(
@@ -15,6 +39,7 @@ def training(
     varsoutfile,
     Qsplit_i,
     Qsplit_j,
+    hyper_cache: Optional[Union[str, os.PathLike]] = None,
 ):
 
     ### IMPORTS ###
@@ -59,11 +84,12 @@ def training(
     import pickle
     import time
 
+    hyperparams = load_hyperparams(hyper_cache)
     ### REPRESENTATION CALCULATION ###
     repr_wall_start = time.perf_counter()
     repr_cpu_start = time.process_time()
     X_atoms_train = [strs[i].get_atomic_numbers() for i in range(len(strs))]
-    X_train = generate_representation(strs, cutoff=krr_cutoff)
+    X_train = generate_representation(strs, **hyperparams["representation"])
     repr_train_wall = time.perf_counter() - repr_wall_start
     repr_train_cpu = time.process_time() - repr_cpu_start
     n_train = X_train.shape[0]
@@ -135,7 +161,9 @@ def training(
                 X_train, kernel_args={"sigma": sigmas}
             )  # calculates kernel
         else:
-            K = [JKML_sym_kernel(X_train, X_atoms_train, sigmas[0])]  # calculates kernel
+            K = [
+                JKML_sym_kernel(X_train, X_atoms_train, sigmas[0])
+            ]  # calculates kernel
         K = [
             K[i] + lambdas[i] * np.eye(len(K[i])) for i in range(len(sigmas))
         ]  # corrects kernel
