@@ -44,7 +44,7 @@ function help {
    -help ............ print this help and exit 
    -oc/-onlycollect . only collects pickle file
    -orca ............ if you collect results from ORCA runs
-   OTHERS: -clean,-cleanfull,-forces
+   OTHERS: -clean,-cleanfull,-forces,-eldisp,-forcedisp
   
   ${cfMAGENTA}OUTPUTS:${cfDEF} 
     -collection[${cfBLUE}FOLDER${cfDEF}].pkl:
@@ -127,6 +127,9 @@ Qonlycollect=0 #after JKQC no recollecting will be done
 Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 Qforces=0 #collect forces?
+Qdisp_electronic_energy=0
+Qdisp_forces=0
+
 ADDdependency=""
 
 last=""
@@ -154,6 +157,18 @@ do
     if [ "$iter" == "-forces" ] || [ "$iter" == "-force" ]
     then
       Qforces=1
+      continue
+    fi
+    # Electronic energy dispersion correction
+    if [ "$iter" == "-eldisp" ]
+    then
+      Qdisp_electronic_energy=1
+      continue
+    fi
+    # Forces dispersion correction
+    if [ "$iter" == "-forcedisp" ]
+    then
+      Qdisp_forces=1
       continue
     fi
     # Array submission
@@ -477,6 +492,14 @@ do
       if [ $Qforces == "1" ]
       then
         addarg+=" -forces"
+      fi
+      if [ $Qdisp_electronic_energy == "1" ]
+      then
+        addarg+=" -eldisp"
+      fi
+      if [ $Qdisp_forces == "1" ]
+      then
+        addarg+=" -forcedisp"
       fi
       echo "source ~/.JKCSusersetup.txt;" > run${scriptfilecommand}.sh
       echo "program_JKQCpickle $addarg -noex -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh

@@ -109,6 +109,11 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations = 300,
       charge=Qcharge,
       config='input.inp')
 
+  ### AIMNET2 ###
+  elif Qcalculator == "AIMNET2":
+    from aimnet2calc import AIMNet2ASE
+    return AIMNet2ASE(Qcalculator_input, charge=Qcharge, mult=Qmultiplicity)
+
   else:
     print("Unknown calculator.")
     exit()

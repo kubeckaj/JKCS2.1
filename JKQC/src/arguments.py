@@ -84,6 +84,7 @@ def print_help():
   print(" -forces [Eh/Ang], -meanforce, -shuffle, -seed <int>, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
   print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize, -gif")
+  print(" -eldisp [Eh], -forcedisp [Eh/Ang], -aimnet_prep")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -172,7 +173,12 @@ def arguments(argument_list = []):
   conc = []
   CNTfactor = 0 #see Wyslouzil
   Qsolvation = "0"
-  
+
+  #global Qdisp_electronic_energy,Qdisp_forces,Qaimnet_prep
+  Qdisp_electronic_energy = 0
+  Qdisp_forces = 0
+  Qaimnet_prep = 0
+
   #global folderMAIN,folderSP
   folderMAIN = ""
   folderSP = ""
@@ -319,6 +325,18 @@ def arguments(argument_list = []):
     #FORCES
     if i == "-forces" or i == "-force":
       Qforces = 1
+      continue
+    #ELECTRONIC ENERGY DISPERSION CORRECTION
+    if i == "-eldisp":
+      Qdisp_electronic_energy = 1
+      continue
+    #FORCES DISPERSION CORRECTION
+    if i == "-forcedisp":
+      Qdisp_forces = 1
+      continue
+    #CREATE AIMNET PREPARATION FILES
+    if i == "-aimnet_prep":
+      Qaimnet_prep = 1
       continue
     #ORCA EXTENSION
     if i == "-orcaext" or i == "-orca":

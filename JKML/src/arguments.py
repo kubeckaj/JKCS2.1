@@ -55,6 +55,10 @@ def print_help():
         "    -physnet                         switch to NN = neural network with PhysNet",
         flush=True,
     )
+    print(
+        "    -aimnet                          switch to NN = neural network with AIMNet2",
+        flush=True,
+    )
     print("", flush=True)
     print("  INPUT FILES:", flush=True)
     print(
@@ -324,8 +328,10 @@ def arguments(argument_list=[]):
     column_name_1 = "log"
     column_name_2 = "electronic_energy"
     Qifforces = 1  # IF forces exist use them in calculations
-    Qifcharges = 0
+    Qifcharges = 0 
     Qifdipole = 0
+    Qifeldisp = 0
+    Qifforcedispi = 0
 
     Qmethod = "krr"
     Qrepresentation = "fchl"
@@ -758,6 +764,12 @@ def arguments(argument_list=[]):
         if arg == "-knn":
             Qmethod = "knn"
             continue
+        if arg == "-aimnet":
+            Qmethod = "aimnet"
+            Qrepresentation = "aimnet"
+            Qifeldisp = 1
+            Qifforcedisp = 1
+            Qifcharges = 1
 
         # override representation
         if arg == "-repr":
