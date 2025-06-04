@@ -286,6 +286,26 @@ then
     cd -
   fi
 fi
+if [[ "$*" == *"-aimnet"* ]]
+then
+  #Installation of aimnet:
+  #  conda create -n aimnet2 python=3.11
+  #  conda activate aimnet
+  #Install PyTorch with a proper CUDA version according to instructions at pytorch.org. E.g.
+  #  conda install pytorch pytorch-cuda=12.4 -c pytorch -c nvidia
+  #Install other dependencies.
+  #  conda install -c conda-forge -c pytorch -c nvidia -f requirements.txt
+  #Finally, install using setuptools.
+  #  python setup.py install
+  echo "======================"
+  currdir=$PWD
+  cd JKCS/lib64/py*/site-packages/
+  git clone https://github.com/zubatyuk/aimnet2.git
+  cd aimnet2
+  $PYTHON setup.py build
+  cd $currdir	
+  echo "======================"
+fi
 
 #ArbAlign stuff:
 cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$(basename $PYTHON)/site-packages/ArbAlign.py

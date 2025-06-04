@@ -168,7 +168,12 @@ EXAMPLE:
   fi
   if [ "$i" == "-all" ]
   then
-    ADD+=" -qml -xtb -descriptors -nn -physnet "
+    ADD+=" -qml -xtb -descriptors -nn -physnet -aimnet"
+    continue
+  fi
+  if [ "$i" == "-aimnet" ]
+  then
+    ADD+=" -aimnet "
     continue
   fi
   if [ "$i" == "-physnet" ]
