@@ -9,7 +9,7 @@ def replace_by_nonnegative(new, orig, q):
   orig[mask] = new[mask]
   return list(orig)
 
-def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
+def thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg):
   from numpy import array, sum, log, exp, isnan, mean, pi
   from pandas import isna
   missing = float("nan")
@@ -28,7 +28,7 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
   ########################################################
   # LOW VIBRATIONAL FREQUNECY ANTITREATMENT (S // G,Gc) ##
   ########################################################
-  if Qfc < 0:
+  if Qafc > 0:
     for i in range(len(clusters_df)):
       try:
         lf = float(clusters_df.at[i,("log","vibrational_frequencies")][0])
@@ -38,7 +38,10 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
         clusters_df.at[i,("log","entropy")] = missing
         continue
       if isnan(Qt):
-        Qt = clusters_df.at[i,("log","temperature")]
+        try:
+          Qt = clusters_df.at[i,("log","temperature")]
+        except:
+          Qt = 298.15
       vibs = clusters_df.at[i,("log","vibrational_frequencies")]
       structure = clusters_df.at[i,("xyz","structure")]
 
@@ -47,14 +50,13 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
         mi = mean(structure.get_moments_of_inertia())
         Sr = [R*(0.5+log((8*pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K
         Sv = [R*h*vib*2.99793*10**10/k/Qt/(exp(h*vib*2.99793*10**10/k/Qt)-1)-R*log(1-exp(-h*vib*2.99793*10**10/k/Qt)) for vib in vibs] #cal/mol/K
-        w = [1/(1+(Qfc/vib)**4) for vib in vibs]
+        w = [1/(1+(Qafc/vib)**4) for vib in vibs]
         Sv_corr = sum([w[j]*Sv[j]+(1-w[j])*Sr[j] for j in range(len(w))])
         Sv_each = sum(Sv)  #cal/mol/K
         clusters_df.at[i,("log","entropy")] = clusters_df.at[i,("log","entropy")]-(Sv_corr-Sv_each)
       except:
         mi = missing
         clusters_df.at[i,("log","entropy")] = missing
-    Qfc = -Qfc
     ###
  
   #########################
@@ -226,7 +228,10 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
         clusters_df.at[i,("log","entropy")] = missing
         continue
       if isnan(Qt):
-        Qt = clusters_df.at[i,("log","temperature")]
+        try:
+          Qt = clusters_df.at[i,("log","temperature")]
+        except:
+          Qt = 298.15
       vibs = clusters_df.at[i,("log","vibrational_frequencies")]
       structure = clusters_df.at[i,("xyz","structure")]
       
@@ -247,7 +252,12 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
   ## CORRECTIONS FOR GIBBS FREE ENERGY
   for i in range(len(clusters_df)):
     try:
-      clusters_df.at[i,("log","gibbs_free_energy")] = clusters_df.at[i,("log","enthalpy_energy")] - clusters_df.at[i,("log","entropy")]/1000/627.503 * clusters_df.at[i,("log","temperature")]
+      if isnan(Qt):
+        try:
+          Qt = clusters_df.at[i,("log","temperature")]
+        except:
+          Qt = 298.15
+      clusters_df.at[i,("log","gibbs_free_energy")] = clusters_df.at[i,("log","enthalpy_energy")] - clusters_df.at[i,("log","entropy")]/1000/627.503 * Qt
     except:
       clusters_df.at[i,("log","gibbs_free_energy")] = missing
     try:

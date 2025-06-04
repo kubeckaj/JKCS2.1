@@ -1044,6 +1044,10 @@ def arguments(argument_list=[]):
             Qmethod = "krr"
             Qrepresentation = "fchl"
             continue
+        if arg == "-fchl19":
+            Qmethod = "krr"
+            Qrepresentation = "fchl19"
+            continue
         if arg == "-mbdf":
             Qmethod = "krr"
             Qrepresentation = "mbdf"

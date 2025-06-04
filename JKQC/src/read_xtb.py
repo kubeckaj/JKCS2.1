@@ -109,7 +109,7 @@ def read_xtb(mmm):
   #FINAL ENTROPY
   try:
     line, idx = find_line(rb'        TOT                      ', 0, 0)
-    out_entropy = float(line.split()[3])/1000/627.503
+    out_entropy = float(line.split()[3])#/1000/627.503
   except:
     out_entropy = missing
 

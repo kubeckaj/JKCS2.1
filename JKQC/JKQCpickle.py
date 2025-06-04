@@ -72,7 +72,7 @@ if Qoutpkl > 0:
 ## THERMODYNAMICS ##
 if Qqha == 1:
   from thermodynamics import thermodynamics
-  clusters_df = thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg)
+  clusters_df = thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg)
   if Qout == 2:
     print("DONE] Data modification done: "+str(time() - start));
 

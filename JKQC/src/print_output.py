@@ -37,7 +37,10 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       continue
     if last == "-extra":
       last = ""
-      output.append(clusters_df["extra"][i].values)
+      try:
+        output.append(clusters_df["extra"][i].values)
+      except:
+        output.append([missing]*len(clusters_df))
       continue
     #CITE
     if i == "-cite":
@@ -169,7 +172,10 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
           write(".movie.xyz",atoms, format='xyz')
           with open(".movie.xyz", 'r') as f2:
             lines = f2.readlines()
-            lines[1] = clusters_df.loc[ind,("info","file_basename")]+f" Total Energy: {clusters_df.loc[ind,('log','electronic_energy')]}\n"
+            try:
+              lines[1] = clusters_df.loc[ind,("info","file_basename")]+f" Total Energy: {clusters_df.loc[ind,('log','electronic_energy')]}\n"
+            except:
+              lines[1] = clusters_df.loc[ind,("info","file_basename")]+"\n"
           f.writelines(lines)
           f2.close()
         except:

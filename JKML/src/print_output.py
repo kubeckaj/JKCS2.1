@@ -54,7 +54,9 @@ def print_results(
         rb = "}"
 
     print("\n########   RESULTS   #########\n")
-
+    #print("Y_predicted = ", Y_predicted[0], flush=True)
+    #print("ens = ", ens, flush=True)
+    #print("ens_correction = ", ens_correction, flush=True)
     ### PRINT THE PROPERTIES ###
     if Qeval == 2:
         print("Ytest = " + lb + ",".join([str(i) for i in ens]) + rb + ";", flush=True)

@@ -167,6 +167,7 @@ def training(Qforces,Y_train,F_train,Qenergytradoff,strs,nn_tvv,nn_cutoff,nw,nn_
                                         atomrefs={'energy': [0] * 100}
                                         )
       properties = [{'energy': 27.2107 * np.array([Y_train[i]]), 'forces': 27.2114 * np.array(F_train[i]),
+      #properties = [{'energy': np.round(27.2107 * np.array([Y_train[i]]), 4), 'forces': np.round(27.2114 * np.array(F_train[i]), 4),
                      'total_charge': np.array([0], dtype=np.float32)} for i in range(len(Y_train))]
       target_properties = [spk.properties.energy, spk.properties.forces]
       tradoffs = [Qenergytradoff, 1]

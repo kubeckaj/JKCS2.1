@@ -51,6 +51,7 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
 
   ## The high level of theory
   clusters_df = train_high_database.sample(frac = 1, random_state = seed)
+  #clusters_df = train_high_database
   if Qsampleeach != 0:
     clusters_df = clusters_df.iloc[sampledist]
   if Qforcemonomers == 1:

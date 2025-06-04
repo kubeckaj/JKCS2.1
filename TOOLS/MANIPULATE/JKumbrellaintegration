@@ -240,6 +240,7 @@ echo "Integrating from $FROM to $TO"
 if [ -e ../commands_TODO.txt ]; 
 then
   files="`head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .pkl | grep -v "model.pkl"` `head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .xyz`"
+  echo $files
   lenfiles=`echo $files | wc -w`
   if [ $lenfiles == 2 ]; 
   then 

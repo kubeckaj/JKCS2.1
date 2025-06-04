@@ -273,7 +273,16 @@ for sampleeach_i in sampleeach_all:
             import pickle
 
             if Qrepresentation == "fchl":
-                X_train, sigmas, alpha, train_metadata = pickle.load(f)
+                try:
+                  X_train, sigmas, alpha, train_metadata = pickle.load(f)
+                except:
+                  f.close()
+                  f = open(VARS_PKL, "rb")
+                  train_metadata = {}
+                  X_atoms = None
+                  X_train, sigmas, alpha = pickle.load(f)
+            elif Qrepresentation == "fchl19":
+                X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
             elif Qrepresentation == "mbdf":
                 X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
             if len(alpha) != 1:
@@ -374,7 +383,7 @@ for sampleeach_i in sampleeach_all:
 
             Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
                 evaluate(
-                    Qrepresentation, krr_cutoff, X_train, sigmas, alpha, strs, Qkernel
+                    Qrepresentation, krr_cutoff, X_train, X_atoms, sigmas, alpha, strs, Qkernel
                 )
             )
             Qforces = 0
