@@ -49,11 +49,11 @@ def training(
     from pandas import DataFrame
 
     if (Qrepresentation == "fchl") or (Qrepresentation == "fchl18"):
-        from .representations import generate_fchl18 as generate_representation
+        from representations import generate_fchl18 as generate_representation
     elif Qrepresentation == "fchl19":
-        from .representations import generate_fchl19 as generate_representation
+        from representations import generate_fchl19 as generate_representation
     elif Qrepresentation == "mbdf":
-        from .representations import generate_mbdf as generate_representation
+        from representations import generate_mbdf as generate_representation
     else:
         print("JKML(QML): Unknown representation: " + Qrepresentation)
         exit()
@@ -276,12 +276,12 @@ def evaluate(
     import time
 
     if (Qrepresentation == "fchl") or (Qrepresentation == "fchl18"):
-        from .representations import generate_fchl18 as generate_representation
-        from .representations import correct_fchl18_kernel_size
+        from representations import generate_fchl18 as generate_representation
+        from representations import correct_fchl18_kernel_size
     elif Qrepresentation == "fchl19":
-        from .representations import generate_fchl19 as generate_representation
+        from representations import generate_fchl19 as generate_representation
     elif Qrepresentation == "mbdf":
-        from .representations import generate_mbdf as generate_representation
+        from representations import generate_mbdf as generate_representation
     else:
         print("JKML(QML): Unknown representation: " + Qrepresentation)
         exit()
