@@ -49,11 +49,11 @@ def training(
     from pandas import DataFrame
 
     if (Qrepresentation == "fchl") or (Qrepresentation == "fchl18"):
-        from representations import generate_fchl18 as generate_representation
+        from src.representations import generate_fchl18 as generate_representation
     elif Qrepresentation == "fchl19":
-        from representations import generate_fchl19 as generate_representation
+        from src.representations import generate_fchl19 as generate_representation
     elif Qrepresentation == "mbdf":
-        from representations import generate_mbdf as generate_representation
+        from src.representations import generate_mbdf as generate_representation
     else:
         print("JKML(QML): Unknown representation: " + Qrepresentation)
         exit()
@@ -276,12 +276,12 @@ def evaluate(
     import time
 
     if (Qrepresentation == "fchl") or (Qrepresentation == "fchl18"):
-        from representations import generate_fchl18 as generate_representation
-        from representations import correct_fchl18_kernel_size
+        from src.representations import generate_fchl18 as generate_representation
+        from src.representations import correct_fchl18_kernel_size
     elif Qrepresentation == "fchl19":
-        from representations import generate_fchl19 as generate_representation
+        from src.representations import generate_fchl19 as generate_representation
     elif Qrepresentation == "mbdf":
-        from representations import generate_mbdf as generate_representation
+        from src.representations import generate_mbdf as generate_representation
     else:
         print("JKML(QML): Unknown representation: " + Qrepresentation)
         exit()
@@ -311,7 +311,7 @@ def evaluate(
         # pandas indexing
         strs = strs.values
     # TODO: allow passing more args
-    X_test = generate_representation(strs, cutoff=krr_cutoff)
+    X_test = generate_representation(strs, **hyperparams["representation"])
     repr_test_wall = time.perf_counter() - repr_wall_start
     repr_test_cpu = time.process_time() - repr_cpu_start
     # some info about the full representation

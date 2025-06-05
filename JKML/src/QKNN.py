@@ -15,7 +15,7 @@ import time
 import warnings
 import sys
 import os
-from representations import *
+from src.representations import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "fortran"))
 print(sys.path)
