@@ -595,8 +595,18 @@ for sampleeach_i in sampleeach_all:
         from src.data import prepare_data_for_training as prepare_data
 
         # returns: strs, Y_train, F_train, Qforces, Q_charge, Q_charges, Qcharge, D_dipole, Qdipole, size
-        locals().update(
-            prepare_data(
+        (
+            strs_train,
+            Y_train,
+            F_train,
+            Qforces_train,
+            Q_charge_train,
+            Q_charges_train,
+            Qcharge_train,
+            D_dipole_train,
+            Qdipole_train,
+            size_train,
+        ) = prepare_data(
                 train_high_database,
                 monomers_high_database,
                 train_low_database,
@@ -622,7 +632,7 @@ for sampleeach_i in sampleeach_all:
 
             params = hyperopt(
                 Qrepresentation,
-                strs,
+                strs_train,
                 Y_train,
                 varsoutfile,
                 no_metric,
