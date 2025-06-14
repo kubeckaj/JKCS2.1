@@ -1,4 +1,4 @@
-def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None, fail = False):
+def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None, fail = False, QINFOfile_basename = "str", QINFOcluster_type = "", QINFOcomponents = [], QINFOcomponent_ratio = []):
   from ase.md.velocitydistribution import Stationary
   from ase.md.velocitydistribution import ZeroRotation
   from ase import units
@@ -26,6 +26,9 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
     dist_n = sqrt(sum(((species_copy[0:split].get_center_of_mass()-species_copy[split:].get_center_of_mass())**2)))
     spread_a = species_copy[0:split].get_all_distances().max()
     spread_b = species_copy[split:].get_all_distances().max()
+  elif Qdistance == 2:
+    from umbrellaRMSDconstraint import RMSD3
+    dist_n, spread_a, spread_b = RMSD3(species_copy)
   else:
     dist_n = 0.0
     spread_a = 0.0
@@ -46,7 +49,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
     T_vib = 3*len(species_copy)/(3*len(species_copy)-5)*T_rotate
   else:
     T_vib = 0
-  if Qconstraints > 0 or Qdistance == 1:
+  if Qconstraints > 0 or Qdistance > 0:
     if current_step == 0:
       print('      STEP_[-] TIME_[fs] | Et[kcal/mol] Ep[kcal/mol] Ek[kcal/mol] | T_[K] Tt[K] Tr[K] Tv[K] | COMd_[A] MaxA_[A] MaxB_[A]', flush=True)
     print('JKMD: %-*i %-*.1f | %-*.3f %-*.3f %-*.3f | %-*.0f %-*.0f %-*.0f %-*.0f | %-8.4f %-8.2f %-8.2f' % (8,current_step, 9,current_time, 12,epot + ekin, 12,epot, 12,ekin, 5,T_temp, 5,T_tr, 5,T_rot, 5,T_vib, dist_n, spread_a, spread_b), flush=True)
@@ -59,7 +62,11 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
   from os import path
   folder_path = path.abspath("./test")[::-1].split("/",1)[1][::-1]+"/"
   dic = {("info","folder_path"):[folder_path]}
-  dic.update({("info","file_basename"):["str-"+str(current_step)]})
+  dic.update({("info","file_basename"):[QINFOfile_basename+"-"+str(current_step)]})
+  if QINFOfile_basename != "str":
+    dic.update({("info","cluster_type"):[QINFOcluster_type]})
+    dic.update({("info","components"):[QINFOcomponents]})
+    dic.update({("info","component_ratio"):[QINFOcomponent_ratio]})
   dic.update({("xyz","structure"):[species_copy_for_saving]})
   dic.update({("log","md_time"):[current_time]})
   dic.update({("log","md_step"):[current_step]})

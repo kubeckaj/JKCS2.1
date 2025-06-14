@@ -392,6 +392,8 @@ else
     logsouts=`ls $method/calc-LM/*.xyz $method/*/calc-LM/*.xyz $method/*/*/calc-LM/*.xyz 2>/dev/null | wc -w`
   else
     logs=`find $method -maxdepth 4 -name "*.log" | wc -l`
+    outs=`find $method -maxdepth 4 -name "*.out" | wc -l`
+    JKecho 3 "    Found $logs log files."
     if [ $logs -gt 0 ]
     then 
       for i in $method/*.log $method/*/*.log $method/*/*/*.log
@@ -402,6 +404,7 @@ else
       done
     else
       program="ORCA"
+      JKecho 3 "    Found $outs out files."
       for i in $method/*.out $method/*/*.out $method/*/*/*.out
       do
 	if [ ! -e $i ]; then continue; fi
@@ -409,21 +412,21 @@ else
 	if [ ! -e $xyz ]; then JKout2xyz $i ; fi
       done
     fi
-    logsouts=`echo $logs $outs 2>/dev/null | wc -w`
+    logsouts=`echo $logs+$outs | bc`
   fi
   if [ $logsouts -eq 0 ]
   then
     JKecho 2 "I cannot recollect if there is anything to collect (xyz/logs/outs)"
     Qrecollect=0
   fi
+  JKecho 3 "Qrecollect = $Qrecollect"
   if [ $Qrecollect -eq 1 ] #&& [[ "$method" != *"ABC"* ]]
   then
     rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null
   fi
   PKLinsubfolders=`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs`
   if [ ! -z "$PKLinsubfolders" ]
-  then
-    if [ $Qclean -eq 0 ]
+  then if [ $Qclean -eq 0 ]
     then
       subfolders=""
       JKecho 2 "No need to enter any subfolder (.pkl files exist) ... straight to collecting."

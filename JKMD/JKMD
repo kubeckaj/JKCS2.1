@@ -207,20 +207,20 @@ cd $Qnewfolder
 JKecho 2 "Calculations will be performed in directory ${cfBLUE}$Qnewfolder/${name}-LM${cfDEF}"
 if [ 1 -eq 1 ] #MAC cannot handle this part, so just 1 -eq 0
 then
-  LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
+  LOOPresult=$(echo "$therest" | grep -oP "(m)?\d+(\.\d+)?--(m)?\d+(\.\d+)?--(m)?\d+(\.\d+)?" | head -n 1)
   if [ ! -z "$LOOPresult" ]
   then 
     JKecho 3 "LOOPresult = $LOOPresult"
-    LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
-    LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $3}'`
-    LOOPby=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
+    LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}' | sed "s/m/-/g"`
+    LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $3}' | sed "s/m/-/g"`
+    LOOPby=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}' | sed "s/m//g"`
   else
-    LOOPresult=$(echo "$therest" | grep -oP "\d+(\.\d+)?--\d+(\.\d+)?" | head -n 1)
+    LOOPresult=$(echo "$therest" | grep -oP "(m)?\d+(\.\d+)?--(m)?\d+(\.\d+)?" | head -n 1)
     if [ ! -z "$LOOPresult" ]
     then
       JKecho 3 "LOOPresult = $LOOPresult"
-      LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}'`
-      LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}'`
+      LOOPfrom=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $1}' | sed "s/m/-/g"`
+      LOOPto=`echo $LOOPresult | sed "s/--/ /g" | awk '{print $2}' | sed "s/m/-/g"`
       LOOPby=1
     else
       LOOPfrom=1

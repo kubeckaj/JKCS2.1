@@ -217,8 +217,8 @@ then
     test_above=`grep 'JKMD:' ../calc-LM_${distance}${veradd}/output | sort -nk  14 | tail -n 1 | awk '{print $14}'`
     test_below=`grep 'JKMD:' ../calc-LM_${distance}${veradd}/output | sort -nrk 14 | tail -n 1 | awk '{print $14}'`
     #echo "$test_above $test_below"
-    test_above=`echo "$test_above-$distance>10.0" | bc -l`
-    test_below=`echo "$test_below-$distance<-10.0" | bc -l`
+    test_above=`echo "$test_above-1.0*$distance>10.0" | bc -l`
+    test_below=`echo "$test_below-1.0*$distance<-10.0" | bc -l`
     #echo "$test_above $test_below"
     if [ $test_above -gt 0 ] || [ $test_below -gt 0 ]; then echo "1 simulation skipped"; continue; fi
     command="grep 'JKMD:' ../calc-LM_${distance}${veradd}/output"

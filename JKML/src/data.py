@@ -29,7 +29,9 @@ def substract_monomers(the_clusters_df, the_monomers_df, Qmonomers, column_name_
                         monomer_k_name = monomer_k_name[0]
                     if j == monomer_k_name:
                         mon_energy = monomer_k[column_name_1][column_name_2]
+                        #print("here", flush=True)
                         if Qifeldisp == 1 and ("extra", "dispersion_electronic_energy") in monomer_k and monomer_k[("extra", "dispersion_electronic_energy")] is not None:
+                            #print(monomer_k)
                             mon_energy -= monomer_k[("extra", "dispersion_electronic_energy")]
                         the_ens_correction[n] += mon_energy * all_mons_ratios[nn]
                         test = 1
@@ -74,7 +76,8 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
     size = "full" #IT IS BECAUSE I DO NOT WANT TO MAKE MY TEST SET SMALLER
 
   ### ENERGIES = VARIABLES / STRUCTURES
-  print(clusters_df["info"]["file_basename"].values)
+  #TODO print names
+  #print(clusters_df["info"]["file_basename"].values)
   ens = (clusters_df[column_name_1][column_name_2]).values.astype("float")
   strs = clusters_df["xyz"]["structure"]
   print("JKML(data): data length = "+str(ens.shape[0]), flush = True)

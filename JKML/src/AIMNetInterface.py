@@ -7,10 +7,15 @@ def training(Y_train,F_train,Z_atoms,N_atoms,Qenergytradoff,strs,nn_tvv,Qbatch_s
     import h5py
     from collections import defaultdict
     import os
+    import sys
     import subprocess
     import yaml
     import glob
     import shutil
+
+    thepath=glob.glob(os.path.dirname(os.path.abspath(__file__))+'/../../JKQC/JKCS/AIMNET/lib/py*/site-packages/')[0]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = thepath
 
     grouped_data = defaultdict(lambda: defaultdict(list))
     str_dtype = h5py.string_dtype(encoding="utf-8")
@@ -26,6 +31,7 @@ def training(Y_train,F_train,Z_atoms,N_atoms,Qenergytradoff,strs,nn_tvv,Qbatch_s
         grouped_data[group]["numbers"].append(Z_atoms[i].astype(np.int32))                     # (N_atoms,)
         grouped_data[group]["forces"].append(F_train[i].astype(np.float32) * hartree_to_ev)    # (N_atoms, 3)
         grouped_data[group]["energy"].append(np.float32(Y_train[i] * hartree_to_ev))           # scalar
+        #print(np.float32(Y_train[i] * hartree_to_ev))
         grouped_data[group]["charges"].append(np.asarray(Q_charges[i], dtype=np.float32))      # (N_atoms,)
         grouped_data[group]["charge"].append(np.float32(Q_charge[i]))                          # scalar
         grouped_data[group]["basename"].append(file_basenames[i])
@@ -42,7 +48,7 @@ def training(Y_train,F_train,Z_atoms,N_atoms,Qenergytradoff,strs,nn_tvv,Qbatch_s
                 else:
                     g.create_dataset(key, data=arr.astype(np.float32))
     
-    subprocess.run(["aimnet", "calc_sae", "dataset.h5", "dataset_sae.yaml"])
+    subprocess.run(["aimnet", "calc_sae", "dataset.h5", "dataset_sae.yaml"], env=env)
     
     if Qmonomers != 2:
         with open("dataset_sae.yaml", "r") as f:
@@ -86,7 +92,7 @@ def training(Y_train,F_train,Z_atoms,N_atoms,Qenergytradoff,strs,nn_tvv,Qbatch_s
                         "batch_size": Qbatch_size,
                         "batch_mode": "molecules",
                         "shuffle": True,
-                        "batches_per_epoch": 500
+                        "batches_per_epoch": 1
                     }
                 },
                 "val": {
@@ -201,13 +207,14 @@ def training(Y_train,F_train,Z_atoms,N_atoms,Qenergytradoff,strs,nn_tvv,Qbatch_s
         "data.train=dataset.h5",
         "data.sae.energy.file=dataset_sae.yaml",
         "--config", "extra_conf.yaml"
-    ])
+    ], env=env, check=True)
 
     # Find the model file in the checkpoints directory
     model_pattern = os.path.join("checkpoints", f"{run_name}*.pt")
     matching_files = glob.glob(model_pattern)
+    print(matching_files)
     pt_path = matching_files[0]
-    subprocess.run(["aimnet", "jitcompile", pt_path, varsoutfile], check=True)
+    subprocess.run(["aimnet", "jitcompile", pt_path, varsoutfile], env=env, check=True)
 
 ####################################################################################################
 ####################################################################################################
@@ -216,7 +223,6 @@ def evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_ato
     import os, sys
     import yaml
     from torch import cuda
-    from aimnet2calc import AIMNet2ASE
     from numpy import array
 
     # Suppress pickle warnings from torch
@@ -225,7 +231,13 @@ def evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_ato
         warnings.filterwarnings(
             "ignore",
             ".*which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling.*"
-    )
+        )
+        warnings.filterwarnings(
+            "ignore",
+            "PySisiphus is not installed"
+        )
+    
+    from aimnet.calculators.aimnet2ase import AIMNet2ASE
 
     # Load self-atomic energies from file
     sae_path = os.path.join(parentdir, "dataset_sae.yaml")
@@ -238,17 +250,21 @@ def evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_ato
     Y_predicted = []
     F_predicted = []
 
+    chargeREM = None
     for i in range(len(clusters_df)):
         atoms = clusters_df["xyz"]["structure"].values[i].copy()
 
         # Determine charge
         if ("log", "charge") in clusters_df.columns:
             charge = clusters_df["log"]["charge"].values[i]
+            if charge != chargeREM:
+                chargeREM = charge
+                calc = AIMNet2ASE(varsoutfile, charge=charge, mult=1)
         else:
             charge = 0
+            calc = AIMNet2ASE(varsoutfile, charge=charge, mult=1)
 
         # Set up AIMNet calculator
-        calc = AIMNet2ASE(varsoutfile, charge=charge, mult=1)
         atoms.calc = calc
 
         energy = atoms.get_potential_energy()  # eV
@@ -259,12 +275,12 @@ def evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_ato
             )
             energy += sae_total  # Add self-atomic energy contribution (eV)
 
-        Y_predicted.append(0.0367493 * energy[0])  # Convert to Hartree
+        Y_predicted.append(0.0367493 * energy) #energy[0])  # Convert to Hartree
         F_predicted.append(0.0367493 * atoms.get_forces())  # Hartree/Angstrom
 
     Y_predicted = [array(Y_predicted)]
     F_predicted = [F_predicted]
-    print(Y_predicted)
+    #print(Y_predicted)
 
     if method == "min":
         Y_predicted[0] += Qmin

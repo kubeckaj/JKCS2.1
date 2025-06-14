@@ -57,7 +57,7 @@ while not Qfollow_activated == 0:
   else:
     if Qout > 1:
       print("Next -follow")
-    locals().update(arguments(Qfollow,all_species,charge_from_previous_run=Qcharge,multiplicity_from_previous_run=Qmultiplicity))
+    locals().update(arguments(Qfollow,all_species,charge_from_previous_run=Qcharge,multiplicity_from_previous_run=Qmultiplicity, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio))
   if Qout > 1:
     from time import time
     start = time()
@@ -144,6 +144,10 @@ while not Qfollow_activated == 0:
         constraints.append(DeltaLearning(QEF[i],QEF_par[i],QEF_systems[i]))
         if Qout > 1:
           print("Delta learning applied")
+      if QEF[i] == "h_RMSD":
+        from umbrellaRMSDconstraint import UmbrellaConstraint
+        Qdistance = 2
+        constraints.append(UmbrellaConstraint(all_species,QEF_par[i][1],QEF_par[i][0],Qslow))
   #SET CONSTRAINTS
   if len(constraints) > 0:
     all_species.set_constraint(constraints)
@@ -254,11 +258,11 @@ while not Qfollow_activated == 0:
       global current_time,current_step
       if Qconstraints == 4 and len(species) == 2:
         global cluster_dic1,cluster_dic2
-        toupdate1,current_time,current_step = print_properties(species = species[0], timestep = 0, interval = 0, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
-        toupdate2,current_time,current_step = print_properties(species = species[1], timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
+        toupdate1,current_time,current_step = print_properties(species = species[0], timestep = 0, interval = 0, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio)
+        toupdate2,current_time,current_step = print_properties(species = species[1], timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio)
       else:
         global cluster_dic
-        toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail)
+        toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio)
       if Qsavepickle == 1:
         if Qconstraints == 4 and len(species) == 2:
           toupdate1.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
@@ -325,7 +329,6 @@ while not Qfollow_activated == 0:
     dyn2.attach(stepsmadeadd, interval = 1)
   else:
     dyn.attach(stepsmadeadd, interval = 1)
-  #dyn.attach(mergeDictionary(cluster_dic, print_properties(species = all_species, timestep = Qdt, interval = Qdump)), interval = Qdump) 
 
   #SIMULATION
   if Qout > 1:

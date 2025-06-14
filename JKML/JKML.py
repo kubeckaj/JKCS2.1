@@ -146,6 +146,8 @@ for sampleeach_i in sampleeach_all:
                 Qforcemonomers,
                 sampledist,
                 Qmonomers,
+                Qifeldisp,
+                Qifforcedisp
             )
         )
 
@@ -275,7 +277,7 @@ for sampleeach_i in sampleeach_all:
 
         train_time = timer() - train_start
         print(
-            f"JKML training done. Took {train_time:.3f} s ({train_time / X_train.shape[0]:.4f} per sample)."
+            f"JKML training done. Took {train_time:.3f} s ({train_time / Y_train.shape[0]:.4f} per sample)."
         )
     ####################################################################################################
     ####################################################################################################
@@ -305,7 +307,17 @@ for sampleeach_i in sampleeach_all:
                   X_atoms = None
                   X_train, sigmas, alpha = pickle.load(f)
             elif Qrepresentation == "fchl19":
-                X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
+                try:
+                  X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
+                except:
+                  f.close()
+                  f = open(VARS_PKL, "rb")
+                  train_metadata = {}
+                  X_train, sigmas, alpha = pickle.load(f)
+                  #X_atoms = [strs.iloc[i].get_atomic_numbers() for i in range(len(strs))]
+                  X_atoms = [ sum((X_train[i,0,0]<1e99)) for i in range(len(X_train)) ]
+                  print("JK: This should not work")
+                  exit()
             elif Qrepresentation == "mbdf":
                 X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
             if len(alpha) != 1:
@@ -355,7 +367,7 @@ for sampleeach_i in sampleeach_all:
                 knn.fit(X_train, Y_train)
             # store the training metadata to locals
             locals().update(train_metadata)
-        elif Qmethod == "nn" or Qmethod == "physnet":
+        elif Qmethod == "nn" or Qmethod == "physnet" or Qmethod == "aimnet":
             varsoutfile = VARS_PKL
             print("JKML: Trained model found.")
         else:
@@ -395,6 +407,7 @@ for sampleeach_i in sampleeach_all:
                 Qmin,
                 Qprintforces,
                 Qifcharges,
+                Qifeldisp
             )
         )
 
@@ -454,12 +467,13 @@ for sampleeach_i in sampleeach_all:
         #####################################
 
         eval_time = timer() - eval_start
-        time_per_sample = eval_time / X_train.shape[0]
+        time_per_sample = eval_time / len(Y_predicted)
         print(
             f"JKML evaluation done. Took {eval_time:.3f} s ({time_per_sample:.4f} per sample)."
         )
         ### PRINTING THE RESULTS
         from src.print_output import print_results
+        repr_train_wall = None; repr_train_cpu = None; repr_test_wall = None; repr_test_cpu = None; train_wall = None; train_cpu = None; test_wall = None; test_cpu = None; n_train = None; d_train = None; d_test = None
 
         print_results(
             clusters_df,

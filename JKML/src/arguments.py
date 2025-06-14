@@ -1,7 +1,3 @@
-# PREDEFINED ARGUMENTS
-import os.path
-
-
 def print_help():
     print(
         "#################################################################", flush=True
@@ -301,6 +297,7 @@ def help_nn():
 
 
 def arguments(argument_list=[]):
+    import os
     # Predefined arguments
     method = "direct"  # direct/delta/min
     Qmin = 0
@@ -331,7 +328,7 @@ def arguments(argument_list=[]):
     Qifcharges = 0 
     Qifdipole = 0
     Qifeldisp = 0
-    Qifforcedispi = 0
+    Qifforcedisp = 0
 
     Qmethod = "krr"
     Qrepresentation = "fchl"
@@ -733,6 +730,13 @@ def arguments(argument_list=[]):
 
         # Models and representations
         if arg == "-painn" or arg == "-nn":
+            import sys, os, glob
+            try:
+              thepath=glob.glob(os.path.dirname(os.path.abspath(__file__))+'/../../JKQC/JKCS/SCHNETPACK/lib/py*/site-packages/')[0]
+            except:
+              print("SCHNETPACK was not set properly during setup (run: sh setup.sh -nn -up grendel). [EXITING]")
+              exit()
+            sys.path.append(thepath)
             Qmethod = "nn"
             Qrepresentation = "painn"
             continue
@@ -765,11 +769,19 @@ def arguments(argument_list=[]):
             Qmethod = "knn"
             continue
         if arg == "-aimnet":
+            import sys, os, glob
+            try:
+              thepath=glob.glob(os.path.dirname(os.path.abspath(__file__))+'/../../JKQC/JKCS/AIMNET/lib/py*/site-packages/')[0]
+            except:
+              print("AIMNET was not set properly during setup (run: sh setup.sh -aimnet -up grendel). [EXITING]")
+              exit()
+            sys.path.append(thepath)
             Qmethod = "aimnet"
             Qrepresentation = "aimnet"
             Qifeldisp = 1
             Qifforcedisp = 1
             Qifcharges = 1
+            continue
 
         # override representation
         if arg == "-repr":

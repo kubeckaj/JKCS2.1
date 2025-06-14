@@ -24,13 +24,6 @@ print(" ----- Post-Processing ----- ")
 
 Qfit = int(sys.argv[2])
 Qflatten = float(sys.argv[3])
-try:
-  M1=float(sys.argv[4])
-  M2=float(sys.argv[5])
-except:
-  print("QC not possible to solve. I need commands_TODO.txt file for it")
-  exit()
-
 
 ### PREPARING DATA ###
 data = np.loadtxt('out', usecols=(0,1)) #Ang kJ/mol
@@ -109,6 +102,13 @@ plt.xlabel('coordinate')
 plt.ylabel('PMF (kcal/mol)')
 plt.savefig('FITTED.png')
 print("PIC: FITTED.png created.")
+
+try:
+  M1=float(sys.argv[4])
+  M2=float(sys.argv[5])
+except:
+  print("QC not possible to solve. I need commands_TODO.txt file for it")
+  exit()
 
 ### V0 ###
 V0 = kBT*Eh2J/patm * 10**30 #Ang^3

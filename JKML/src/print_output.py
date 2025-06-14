@@ -242,7 +242,7 @@ def print_results(
             ]
             print("RMSE = " + ",".join([str(i) for i in rmse]) + units, flush=True)
 
-        if Qcharge == 1:
+        if Qcharge == 1 and Qa_predicted is not None:
             print("", flush=True)
             print("Results for charges:", flush=True)
             Qa_predicted = flatten(array([flatten(array(i)) for i in Qa_predicted]))

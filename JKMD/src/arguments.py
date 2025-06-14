@@ -1,3 +1,81 @@
+def seperate_string_number(string):
+    previous_character = string[0]
+    groups = []
+    newword = string[0]
+    for x, i in enumerate(string[1:]):
+        if i == "_" or previous_character == "_":
+            newword += i
+        elif i.isalpha() and previous_character.isalpha():
+            newword += i
+        elif i.isnumeric() and previous_character.isnumeric():
+            newword += i
+        else:
+            groups.append(newword)
+            newword = i
+        previous_character = i
+        if x == len(string) - 2:
+            groups.append(newword)
+            newword = ''
+    return groups
+
+def zeros(input_array):
+  output_string = ""
+  skip = 0
+  for i in range(len(input_array)):
+    if skip == 1:
+      skip = 0
+      continue
+    if input_array[i] == "0":
+      skip = 1
+      continue
+    output_string += input_array[i]
+  return output_string
+
+def is_nameable(input_array):
+  nameable_test = True
+  if len(input_array) % 2 == 0:
+    for input_array_i in input_array[0::2]:
+      if not input_array_i.isnumeric():
+        nameable_test = False
+        break
+    for input_array_i in input_array[1::2]:
+      if input_array_i.isnumeric():
+        nameable_test = False
+        break
+  else:
+    nameable_test = False
+  return nameable_test
+
+def adjustnames(file_basename, QINFOfile_basename, QINFOcluster_type, QINFOcomponents, QINFOcomponent_ratio):
+  from re import split
+  file_basename_split = file_basename.split("-")[0].split("_")[0]
+  split_numbers_letters = split('(\d+)',file_basename_split)[1:]
+  #cluster_type_array = seperate_string_number(file_basename_split)
+  if is_nameable(split_numbers_letters):
+    components = split_numbers_letters[1::2]
+    component_ratio = [int(i) for i in split_numbers_letters[0::2]]
+    for i in range(len(components)):
+      wasthere = False
+      for j in range(len(QINFOcomponents)):
+        if components[i] == QINFOcomponents[j]:
+          QINFOcomponent_ratio[j] += component_ratio[i]
+          wasthere = True
+          break
+      if wasthere == False:
+        QINFOcomponents.append(components[i])
+        QINFOcomponent_ratio.append(component_ratio[i])
+    split_numbers_letters = [str(item) for pair in zip(QINFOcomponent_ratio, QINFOcomponents) for item in pair]
+    cluster_type_2array_sorted = sorted([split_numbers_letters[i:i + 2] for i in range(0, len(split_numbers_letters), 2)],key=lambda x: x[1])
+    cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
+    cluster_type = zeros(cluster_type_array_sorted)
+    QINFOcomponents = split_numbers_letters[1::2]
+    QINFOcomponent_ratio = [int(i) for i in split_numbers_letters[0::2]]
+    QINFOcluster_type = cluster_type
+    return QINFOcluster_type, QINFOcluster_type, QINFOcomponents, QINFOcomponent_ratio
+  else:
+    return "str", None, [], []
+
+
 def print_help():
   print("""###################################
     JKMD [ SIMULATION_ARGUMENTS ] [-follow [OTHER_SIMULATION_ARGUMENTS]]
@@ -31,6 +109,7 @@ def print_help():
     -EF_fbh_A_xyz <pos> <float>   -EF_fbh_A with centrum of flat bott harmonic in pos = [x0,y0,z0]
     -EF_c_COM <array>             constant ext. force on COM (e.g., [1,0,0]) 
     -EF_h_COM_COM <float> <float> harmonic potential between COMs of last two molecules [harm k_bias]
+    -EF_h_RMSD <float> <float>    <testing reaction RMSD constrain> [harmonic k_bias]
     UMBRELLA SAMPLING:
     -harm <float>      add harmonic potential COM <float> distance constrain [2 species]
     -k_bias <float>    strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
@@ -75,7 +154,7 @@ def print_help():
     -nopickle         do not store and save structures
     -seed             set random seed (use at the begginning before specie setup) [TESTING]
     -repeat <int>     repeat x times
-    --                use for looping (e.g. 0--10, or 0--0.2--5)
+    --                use for looping [m=minus] (e.g. 0--10, m1.1--0.1--m0.1, or 0--0.2--5)
     
   EXAMPLES:
       ### Water equilibration followed by longer simulation. 
@@ -96,7 +175,7 @@ def print_help():
 """)
 
 
-def arguments(argument_list = [], species_from_previous_run = [], charge_from_previous_run = 0, multiplicity_from_previous_run = 1):
+def arguments(argument_list = [], species_from_previous_run = [], charge_from_previous_run = 0, multiplicity_from_previous_run = 1, QINFOcluster_type = "", QINFOcomponents = [], QINFOcomponent_ratio = []):
   from os import path
   missing = float("nan")
 
@@ -146,6 +225,11 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qthermostat_NH = 25
     Qthermostat_B = 25
     Qfixcm = 0
+ 
+    QINFOfile_basename = "" #IF SOMETHING GETS FUCKED UP, I WILL USE "str" as file_basename
+    QINFOcluster_type = ""
+    QINFOcomponents = []
+    QINFOcomponent_ratio = []
 
   else:
     Qindex_of_specie = 0
@@ -322,7 +406,11 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     #SPECIES
     if i[-4:] == ".xyz" and last == "":
       from ase.io import read
+      if not QINFOfile_basename == "str": 
+        file_basename = i[:-4][::-1].split("/",1)[0][::-1]
+        QINFOfile_basename, QINFOcluster_type, QINFOcomponents, QINFOcomponent_ratio = adjustnames(file_basename, QINFOfile_basename, QINFOcluster_type, QINFOcomponents, QINFOcomponent_ratio)
       species.append(read(i,"-2"))
+      
       if Qindex_of_specie == -1:
         Qlenfirst = len(species[0])
       Qindex_of_specie = len(species) - 1
@@ -330,6 +418,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       continue
     if i[-4:] == ".pkl" and last == "":
       from pandas import read_pickle
+      if not QINFOfile_basename == "str":
+        file_basename = read_pickle(i).iloc[Qindex][("info","file_basename")]
+        QINFOfile_basename, QINFOcluster_type, QINFOcomponents, QINFOcomponent_ratio = adjustnames(file_basename, QINFOfile_basename, QINFOcluster_type, QINFOcomponents, QINFOcomponent_ratio)
       species.append(read_pickle(i).iloc[Qindex][("xyz","structure")])
       if Qindex_of_specie == -1:
         Qlenfirst = len(species[0])
@@ -675,6 +766,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if i == "-EF_h_COM_COM":
       last = "-EF_h_COM_COM"
       continue
+    #TODO THIS IS A BIT WEIRD
     if last == "-EF_h_COM_COM":
       last = "-EF_h_COM_COM_2"
       QEF.append("h_COM_COM")
@@ -687,6 +779,20 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       last = ""
       QEF_par.append([x,float(i)])
       QEF_systems.append([Qspecies-1,Qspecies])
+      continue
+    ## RMSD HARMONIC ##
+    if i == "-EF_h_RMSD":
+      last = "-EF_h_RMSD"
+      QEF.append("h_RMSD")
+      continue
+    if last == "-EF_h_RMSD":
+      last = "-EF_h_RMSD_2"
+      x=float(i)
+      continue
+    if last == "-EF_h_RMSD_2":
+      last = ""
+      QEF_par.append([x,float(i)])
+      QEF_systems.append([])
       continue
     if i == "-fix":
       from ase.constraints import FixAtoms
@@ -716,6 +822,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     print("VELOCITIES:")
     print(species[i].get_velocities())
     print("==============")
+  print("NAME: " + str(QINFOcluster_type))
   print("FOLLOW: ")
   print(Qfollow)
   print("==============", flush=True)
