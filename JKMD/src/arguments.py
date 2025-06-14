@@ -125,7 +125,7 @@ def print_help():
      -EFD               use EFD module {SchNetPack}
      -cutoff <float>    cutoff radius [Angstrom] {SchNetPack} [default = 10.0]
      -dl,-deltalearning use delta learning +GFN1-xTB {SchNetPack}
-    -pn_model <path>  Neural Network model defined by path {PhysNet_DER} [requires input.inp too]
+    -pn_model <path>  Neural Network model defined by path {PhysNet_DER} [requires input.inp too]    -aiment <path>    AIMNet model defined by path {AIMNet}
     -orca "<str>"     QC method (e.g., "XTB1" or "B97-3c") {ORCA}
                       -additional setup might be required!!!
     -max_iter <int>   maximum number of SCF iterations (e.g., 50) [default = 250] {TBlite}
@@ -359,6 +359,13 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qcalculator_input = i
       continue
     if i == "-nn_model":
+      import sys, os, glob
+      try:
+        thepath=glob.glob(os.path.dirname(os.path.abspath(__file__))+'/../../JKQC/JKCS/SCHNETPACK/lib/py*/site-packages/')[0]
+      except:
+        print("SCHNETPACK was not set properly during setup (run: sh setup.sh -nn -up grendel). [EXITING]")
+        exit()
+      sys.path.append(thepath)
       Qcalculator = "NN"
       last = "-nn_model"
       continue
@@ -373,7 +380,14 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qcalculator = "PhysNet"
       last = "-nn_model"
       continue
-    if i == "-aimnet2_model":
+    if i == "-aimnet2_model" or i == "-aimnet":
+      import sys, os, glob
+      try:
+        thepath=glob.glob(os.path.dirname(os.path.abspath(__file__))+'/../../JKQC/JKCS/AIMNET/lib/py*/site-packages/')[0]
+      except:
+        print("AIMNET was not set properly during setup (run: sh setup.sh -aimnet -up grendel). [EXITING]")
+        exit()
+      sys.path.append(thepath)
       Qcalculator = "AIMNET2"
       last = "-aimnet2_model"
       continue
