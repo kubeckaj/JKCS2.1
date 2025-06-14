@@ -268,7 +268,9 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
 
   newclusters_df = DataFrame(clusters_dict,index=range(len(clusters_df),len(clusters_df)+len(files)))
   if len(clusters_df) > 0:
-    clusters_df = clusters_df.append(newclusters_df)
+    from pandas import concat
+    clusters_df = concat([clusters_df,newclusters_df.copy()], ignore_index=True)
+    #clusters_df = clusters_df.append(newclusters_df)
   else:
     clusters_df = newclusters_df
 

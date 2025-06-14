@@ -15,7 +15,9 @@ def load_pickles(input_pkl,Qout,Qid):
       if i == 0:
         clusters_df = newclusters_df
       else:
-        clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
+        from pandas import concat
+        clusters_df = concat([clusters_df,newclusters_df.copy()], ignore_index=True)
+        #clusters_df = clusters_df.append(newclusters_df, ignore_index=True)
       gc.collect()
     if Qout >= 2:
       print("Pickles collected, resetting index...")

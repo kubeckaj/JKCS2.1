@@ -115,7 +115,9 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
     if len(newclusters_df) == 0:
       newclusters_df = preselected_df.copy()
     else:
-      newclusters_df = newclusters_df.append(preselected_df.copy())
+      from pandas import concat
+      newclusters_df = concat([newclusters_df,preselected_df.copy()], ignore_index=True)
+      #newclusters_df = newclusters_df.append(preselected_df.copy())
 
   if Qout >= 1:
     print("Threshold filtering: "+str(original_length)+" --> "+str(len(newclusters_df)))

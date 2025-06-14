@@ -55,7 +55,9 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
     clusters_df = clusters_df.iloc[sampledist]
   if Qforcemonomers == 1:
     clusters_df0 = monomers_high_database
-    clusters_df = clusters_df.append(clusters_df0, ignore_index=True)
+    from pandas import concat
+    clusters_df = concat([clusters_df, clusters_df0.copy()], ignore_index=True)
+    #clusters_df = clusters_df.append(clusters_df0, ignore_index=True)
   ## The low level of theory
   if method == "delta":
     clusters_df2 = train_low_database.sample(frac = 1, random_state = seed)
@@ -63,7 +65,9 @@ def prepare_data_for_training(train_high_database, monomers_high_database, train
       clusters_df2 = clusters_df2.iloc[sampledist]
     if Qforcemonomers == 1:
       clusters_df0l = monomers_low_database
-      clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
+      from pandas import concat
+      clusters_df2 = concat([clusters_df2, clusters_df0l.copy()], ignore_index=True)
+      #clusters_df2 = clusters_df2.append(clusters_df0l, ignore_index=True)
 
   #Do we take only subset for training?
   if size != "full":

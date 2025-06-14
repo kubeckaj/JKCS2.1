@@ -100,7 +100,9 @@ def filter_reacted(clusters_df, Qclustername = 0, Qreacted = 1, bonddistancethre
     if k0 == 0:
       selclusters_df = clusters_df.loc[cluster_subsets[0][nind]].copy()
     else:
-      selclusters_df = selclusters_df.append(clusters_df.loc[cluster_subsets[k0][nind]].copy())
+      from pandas import concat
+      selclusters_df = concat([selclusters_df, clusters_df.loc[cluster_subsets[k0][nind]].copy()], ignore_index=True)
+      #selclusters_df = selclusters_df.append(clusters_df.loc[cluster_subsets[k0][nind]].copy())
   if Qout >= 1:
     original_length = len(clusters_df)
   clusters_df = selclusters_df.copy()

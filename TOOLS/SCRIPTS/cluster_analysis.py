@@ -128,7 +128,9 @@ def read_pickled_data(file_in, input_pkl=[]):
         else:
             len_clusters_df = len(clusters_df)
             newclusters_df.index = [str(j+len_clusters_df) for j in range(len(newclusters_df))]
-            clusters_df = clusters_df.append(newclusters_df)
+            from pandas import concat
+            clusters_df = concat([clusters_df, newclusters_df.copy()], ignore_index=True)
+            #clusters_df = clusters_df.append(newclusters_df)
 
     # Read data from .dat files
     lines = []
@@ -169,7 +171,9 @@ def read_pickled_data(file_in, input_pkl=[]):
         if len_clusters_df == 0:
             clusters_df = clusters_df2
         else:
-            clusters_df = clusters_df.append(clusters_df2)
+            from pandas import concat
+            clusters_df = concat([clusters_df, clusters_df2.copy()], ignore_index=True)
+            #clusters_df = clusters_df.append(clusters_df2)
             
     return clusters_df
 
