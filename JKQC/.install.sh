@@ -212,7 +212,7 @@ then
   then
     echo "Requirement already satisfied: aimnet in ../lib/python3.11/site-packages"
   else
-    $PIP install --prefix ./ git+https://github.com/isayevlab/aimnetcentral.git
+    $PIP install --no-deps --prefix ./ git+https://github.com/isayevlab/aimnetcentral.git
     sed -i 's/if loss_fn\.weights is not None:/if hasattr(loss_fn, "weights") and loss_fn.weights is not None:/g' lib/$PYTHON/site-packages/aimnet/train/utils.py
     if [ ! -e ../bin/aimnet ]
     then
