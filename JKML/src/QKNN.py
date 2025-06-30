@@ -49,7 +49,7 @@ def calculate_representation(Qrepresentation, strs, **repr_kwargs):
         )
 
 
-class VPTreeKNN:
+class VPTreeKNN18:
 
     def __init__(
         self,
@@ -294,7 +294,7 @@ class VPTreeKNN:
 
 
 def load_vp_knn(X_train, Y_train, vp_params, **knn_params):
-    knn = VPTreeKNN(**knn_params)
+    knn = VPTreeKNN18(**knn_params)
     atoms_max = X_train.shape[1]
 
     nm1 = X_train.shape[0]
@@ -428,7 +428,7 @@ def training(
     elif Qrepresentation == "fchl-kernel":
 
         print("JKML(Q-kNN): Learn VP-tree of kernel distances.")
-        knn = VPTreeKNN(kernel_args={"sigma": [1.0]}, **hyperparams["knn"])
+        knn = VPTreeKNN18(kernel_args={"sigma": [1.0]}, **hyperparams["knn"])
     else:
         # "vanilla" k-NN
         knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto", **hyperparams["knn"])
@@ -664,7 +664,7 @@ def hyperopt(
             if no_metric:
                 D = pairwise_distances(X_test, X_fold, n_jobs=-1)
             elif Qrepresentation == "fchl-kernel":
-                knn = VPTreeKNN(kernel_args={"sigma": [1.0]})
+                knn = VPTreeKNN18(kernel_args={"sigma": [1.0]})
                 knn.fit(X_fold, Y_fold)
                 D, neighbors = knn.kneighbours(X_test, n_neighbors=max_k)
                 Y_fold = Y_fold[neighbors]
