@@ -45,7 +45,7 @@ def calculate_representation(Qrepresentation, strs, **repr_kwargs):
         return generate_fchl18(strs, **repr_kwargs)
     else:
         raise NotImplementedError(
-            f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
+            f"Representation '{Qrepresentation}' not supported with the k-NN model!"
         )
 
 
