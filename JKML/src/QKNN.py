@@ -172,26 +172,26 @@ class VPTreeKNN:
         self.Y_train = Y
 
         vp_tree.train(
-            X,
-            Y,
-            self.verbose,
-            N1,
-            neighbors1,
-            nm1,
-            n_kernels,
-            self.three_body_width,
-            self.two_body_width,
-            self.cut_start,
-            self.cut_distance,
-            self.fourier_order,
-            self.pd,
-            self.two_body_scaling,
-            self.three_body_scaling,
-            self.doalchemy,
-            self.two_body_power,
-            self.three_body_power,
-            kernel_idx,
-            kernel_parameters,
+            x_in=X,
+            y_in=Y,
+            verbose_in=self.verbose,
+            n1=N1,
+            nneigh1_in=neighbors1,
+            nm1=nm1,
+            nsigmas_in=n_kernels,
+            t_width_in=self.three_body_width,
+            d_width_in=self.two_body_width,
+            cut_start_in=self.cut_start,
+            cut_distance_in=self.cut_distance,
+            order_in=self.fourier_order,
+            pd_in=self.pd,
+            distance_scale_in=self.two_body_scaling,
+            angular_scale_in=self.three_body_scaling,
+            alchemy_in=self.doalchemy,
+            two_body_power_in=self.two_body_power,
+            three_body_power_in=self.three_body_power,
+            kernel_idx_in=kernel_idx,
+            parameters_in=kernel_parameters,
         )
         return
 
@@ -417,7 +417,7 @@ def training(
         print("JKML(Q-kNN): Training MLKR metric.", flush=True)
         # Limit the number of MLKR components for faster training
         mlkr = MLKR(n_components=50)
-        subsample_size = 5_000
+        subsample_size = 25_000
         if subsample_mlkr and (X_train.shape[0] > subsample_size):
             subsample_indices = np.random.permutation(X_train.shape[0])[:subsample_size]
             X_mlkr, Y_mlkr = X_train[subsample_indices, :], Y_train[subsample_indices]
