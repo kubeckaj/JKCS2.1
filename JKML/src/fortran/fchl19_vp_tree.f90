@@ -90,14 +90,10 @@ contains
 
    end subroutine load
 
-   subroutine train(X_in, Q_in, Y_in, vp_index_in, vp_left_in, vp_right_in, vp_threshold_in, verbose_in, n1, nm1, sigma_in, root_id)
+   subroutine train(X_in, Q_in, Y_in, verbose_in, n1, nm1, sigma_in, root_id)
 
       double precision, intent(in) :: X_in(:, :, :), Y_in(:)
       integer, intent(in) :: Q_in(:, :)
-
-      ! previously learned VP params
-      integer, intent(in) :: vp_index_in(:), vp_left_in(:), vp_right_in(:)
-      double precision, intent(in) :: vp_threshold_in(:)
 
       ! Whether to be verbose with output
       logical, intent(in) :: verbose_in
@@ -130,11 +126,6 @@ contains
 
       ! initialize vp-tree
       call init_tree(n_train)
-      ! copy learned vp tree parameters to collections
-      vp_index = vp_index_in
-      vp_left = vp_left_in
-      vp_right = vp_right_in
-      vp_threshold = vp_threshold_in
 
       ! initialise kernel
       call init_train(X_train, Q_in, verbose_in, n1, nm1, sigma_in)
