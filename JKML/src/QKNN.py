@@ -54,7 +54,6 @@ def calculate_representation(Qrepresentation, strs, **repr_kwargs):
 
 class VPTreeKNN19:
 
-
     def __init__(
         self,
         n_neighbors: int = 5,
@@ -191,7 +190,9 @@ class VPTreeKNN19:
         if self.weights == "uniform":
             return fchl19_vp_tree.predict(n_neighbors, X.shape[0])
         elif self.weights == "distance":
-            return fchl19_vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
+            return fchl19_vp_tree.predict(
+                n_neighbors, X.shape[0], weight_by_distance=True
+            )
 
     def get_params(self, deep=True):
         """
@@ -435,7 +436,9 @@ class VPTreeKNN18:
         if self.weights == "uniform":
             return fchl18_vp_tree.predict(n_neighbors, X.shape[0])
         elif self.weights == "distance":
-            return fchl18_vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
+            return fchl18_vp_tree.predict(
+                n_neighbors, X.shape[0], weight_by_distance=True
+            )
 
     def get_params(self, deep=True):
         """
@@ -581,9 +584,10 @@ def training(
     strs: pd.Series,
     Y_train: np.ndarray,
     varsoutfile: Union[str, os.PathLike],
+    sigmas,
     no_metric: bool = False,
     hyper_cache: Optional[Union[str, os.PathLike]] = None,
-    subsample_mlkr: bool = True
+    subsample_mlkr: bool = True,
 ):
 
     hyperparams = load_hyperparams(hyper_cache)
@@ -644,7 +648,7 @@ def training(
     elif Qrepresentation == "fchl19-kernel":
 
         print("JKML(Q-kNN): Learn VP-tree of kernel distances.")
-        knn = VPTreeKNN19(**hyperparams["knn"])
+        knn = VPTreeKNN19(sigma=sigmas[0], **hyperparams["knn"])
     else:
         # "vanilla" k-NN
         knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto", **hyperparams["knn"])
