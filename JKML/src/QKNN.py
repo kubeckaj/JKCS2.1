@@ -588,6 +588,7 @@ def training(
     varsoutfile: Union[str, os.PathLike],
     no_metric: bool = False,
     hyper_cache: Optional[Union[str, os.PathLike]] = None,
+    subsample_mlkr: bool = True
 ):
 
     hyperparams = load_hyperparams(hyper_cache)
@@ -626,7 +627,13 @@ def training(
         print("JKML(Q-kNN): Training MLKR metric.", flush=True)
         # Limit the number of MLKR components for faster training
         mlkr = MLKR(n_components=50)
-        mlkr.fit(X_train, Y_train)
+        subsample_size = 25_000
+        if subsample_mlkr and (X_train.shape[0] > subsample_size):
+            subsample_indices = np.random.permutation(X_train.shape[0])[:subsample_size]
+            X_mlkr, Y_mlkr = X_train[subsample_indices, :], Y_train[subsample_indices]
+        else:
+            X_mlkr, Y_mlkr = X_train, Y_train
+        mlkr.fit(X_mlkr, Y_mlkr)
         A = mlkr.get_mahalanobis_matrix()
         print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
         knn = KNeighborsRegressor(
