@@ -21,6 +21,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "fortran"))
 print(sys.path)
 from qmllib.utils.alchemy import get_alchemy
 from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
+from src.fortran.ffchl19_vp_tree import fchl19_vp_tree
+from src.fortran.ffchl18_vp_tree import fchl18_vp_tree
 
 # ignore sklearn futurewarning
 warnings.filterwarnings(
@@ -52,7 +54,6 @@ def calculate_representation(Qrepresentation, strs, **repr_kwargs):
 
 class VPTreeKNN19:
 
-    from ffchl19_vp_tree import fchl19_vp_tree as vp_tree
 
     def __init__(
         self,
@@ -116,7 +117,7 @@ class VPTreeKNN19:
         self.X_train = X
         self.Y_train = Y
 
-        vp_tree.train(
+        fchl19_vp_tree.train(
             x_in=X,
             q_in=Q_tr,
             y_in=Y,
@@ -145,7 +146,7 @@ class VPTreeKNN19:
             Q_te[: len(q), i] = q
 
         nm2 = X_test.shape[0]
-        vp_tree.set_up_test(
+        fchl19_vp_tree.set_up_test(
             X_test,
             Q_te,
             na_test,
@@ -166,7 +167,7 @@ class VPTreeKNN19:
 
         self._set_test(X, X_atoms_test)
         if return_distance:
-            (k_neighbors, distances) = vp_tree.kneighbors(
+            (k_neighbors, distances) = fchl19_vp_tree.kneighbors(
                 n_neighbors, X.shape[0], return_distances=True
             )
             # fortran indexing is 1-based
@@ -174,7 +175,7 @@ class VPTreeKNN19:
             # transpose required for sk-learn compatibility as fortran is column-based
             return distances.T, k_neighbors.T
         else:
-            k_neighbors = vp_tree.kneighbors(n_neighbors, X.shape[0])
+            k_neighbors = fchl19_vp_tree.kneighbors(n_neighbors, X.shape[0])
             # fortran indexing is 1-based
             k_neighbors = k_neighbors - 1
             # transpose required for sk-learn compatibility as fortran is column-based
@@ -188,9 +189,9 @@ class VPTreeKNN19:
         if n_neighbors is None:
             n_neighbors = self.k
         if self.weights == "uniform":
-            return vp_tree.predict(n_neighbors, X.shape[0])
+            return fchl19_vp_tree.predict(n_neighbors, X.shape[0])
         elif self.weights == "distance":
-            return vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
+            return fchl19_vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
 
     def get_params(self, deep=True):
         """
@@ -215,16 +216,14 @@ class VPTreeKNN19:
     def get_tree_params(self) -> Dict[str, np.ndarray]:
         """Get the vp-tree collections, which can be used to rebuild the tree later."""
         out = dict()
-        out["vp_index"] = vp_tree.vp_index
-        out["vp_left"] = vp_tree.vp_left
-        out["vp_right"] = vp_tree.vp_right
-        out["vp_threshold"] = vp_tree.vp_threshold
+        out["vp_index"] = fchl19_vp_tree.vp_index
+        out["vp_left"] = fchl19_vp_tree.vp_left
+        out["vp_right"] = fchl19_vp_tree.vp_right
+        out["vp_threshold"] = fchl19_vp_tree.vp_threshold
         return out
 
 
 class VPTreeKNN18:
-
-    from ffchl18_vp_tree import fchl18_vp_tree as vp_tree
 
     def __init__(
         self,
@@ -346,7 +345,7 @@ class VPTreeKNN18:
         self.X_train = X
         self.Y_train = Y
 
-        vp_tree.train(
+        fchl18_vp_tree.train(
             x_in=X,
             y_in=Y,
             verbose_in=self.verbose,
@@ -397,7 +396,7 @@ class VPTreeKNN18:
             ni = N2[a]
             for i, x in enumerate(representation[:ni]):
                 neighbors2[a, i] = len(np.where(x[0] < cut_distance)[0])
-        vp_tree.set_up_test(
+        fchl18_vp_tree.set_up_test(
             X_test,
             N2,
             neighbors2,
@@ -414,7 +413,7 @@ class VPTreeKNN18:
 
         self._set_test(X)
         if return_distance:
-            (k_neighbors, distances) = vp_tree.kneighbors(
+            (k_neighbors, distances) = fchl18_vp_tree.kneighbors(
                 n_neighbors, X.shape[0], return_distances=True
             )
             # fortran indexing is 1-based
@@ -422,7 +421,7 @@ class VPTreeKNN18:
             # transpose required for sk-learn compatibility as fortran is column-based
             return distances.T, k_neighbors.T
         else:
-            k_neighbors = vp_tree.kneighbors(n_neighbors, X.shape[0])
+            k_neighbors = fchl18_vp_tree.kneighbors(n_neighbors, X.shape[0])
             # fortran indexing is 1-based
             k_neighbors = k_neighbors - 1
             # transpose required for sk-learn compatibility as fortran is column-based
@@ -434,9 +433,9 @@ class VPTreeKNN18:
         if n_neighbors is None:
             n_neighbors = self.k
         if self.weights == "uniform":
-            return vp_tree.predict(n_neighbors, X.shape[0])
+            return fchl18_vp_tree.predict(n_neighbors, X.shape[0])
         elif self.weights == "distance":
-            return vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
+            return fchl18_vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
 
     def get_params(self, deep=True):
         """
@@ -461,16 +460,14 @@ class VPTreeKNN18:
     def get_tree_params(self) -> Dict[str, np.ndarray]:
         """Get the vp-tree collections, which can be used to rebuild the tree later."""
         out = dict()
-        out["vp_index"] = vp_tree.vp_index
-        out["vp_left"] = vp_tree.vp_left
-        out["vp_right"] = vp_tree.vp_right
-        out["vp_threshold"] = vp_tree.vp_threshold
+        out["vp_index"] = fchl18_vp_tree.vp_index
+        out["vp_left"] = fchl18_vp_tree.vp_left
+        out["vp_right"] = fchl18_vp_tree.vp_right
+        out["vp_threshold"] = fchl18_vp_tree.vp_threshold
         return out
 
 
 def load_fchl18_vp_knn(X_train, Y_train, vp_params, **knn_params):
-    from ffchl18_vp_tree import fchl18_vp_tree as vp_tree
-
     knn = VPTreeKNN18(**knn_params)
     atoms_max = X_train.shape[1]
 
@@ -493,7 +490,7 @@ def load_fchl18_vp_knn(X_train, Y_train, vp_params, **knn_params):
     )
     knn.X_train = X_train
     knn.Y_train = Y_train
-    vp_tree.load(
+    fchl18_vp_tree.load(
         X_train,
         Y_train,
         vp_params["index"],
@@ -523,8 +520,6 @@ def load_fchl18_vp_knn(X_train, Y_train, vp_params, **knn_params):
 
 
 def load_fchl19_vp_knn(X_train, X_atoms, Y_train, vp_params, **knn_params):
-    from ffchl19_vp_tree import fchl19_vp_tree as vp_tree
-
     knn = VPTreeKNN19(**knn_params)
     na = np.array([len(x) for x in X_atoms])
     Q_tr = np.zeros((max(na), X.shape[0]), dtype=np.int32)
@@ -539,7 +534,7 @@ def load_fchl19_vp_knn(X_train, X_atoms, Y_train, vp_params, **knn_params):
 
     knn.X_train = X_train
     knn.Y_train = Y_train
-    vp_tree.load(
+    fchl19_vp_tree.load(
         x_in=X_train,
         q_in=Q_tr,
         y_in=Y_train,
@@ -758,7 +753,7 @@ def evaluate(Qrepresentation, X_train, strs, knn_model, hyper_cache=None):
     test_wall_start = time.perf_counter()
     test_cpu_start = time.process_time()
     if Qrepresentation == "fchl19-kernel":
-        knn_model.predict(X_test, X_atoms)
+        Y_predicted = knn_model.predict(X_test, X_atoms)
     else:
         Y_predicted = knn_model.predict(X_test)
     test_wall = time.perf_counter() - test_wall_start
@@ -825,10 +820,11 @@ def hyperopt(
             repr_params = hyperparams["representation"]
         else:
             repr_params = {}
+            hyperparams = {"knn": {}, "representation": {}}
         global X
         global X_atoms
         X = calculate_representation(Qrepresentation, strs, **repr_params)
-        X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
+        X_atoms = np.array([strs[i].get_atomic_numbers() for i in range(len(strs))])
 
     # add k-nn specific hyperparameters
     max_k = 15
@@ -918,7 +914,7 @@ def hyperopt(
             D = np.take_along_axis(D, sorted_indices, axis=1)
             distance_matrices.append(D)
             # also store sorted y_train for prediction
-            if Qrepresentation == "fchl-kernel":
+            if "-kernel" in Qrepresentation:
                 # Y_fold is already made into a matrix; hence need to take along axis
                 Y_sorted = np.take_along_axis(Y_fold, indices=sorted_indices, axis=1)
             else:
