@@ -772,6 +772,7 @@ def hyperopt(
     strs,
     Y_train,
     hyperparamfile,
+    sigmas,
     no_metric=False,
     cv_folds=5,
     verbose=True,
@@ -902,7 +903,7 @@ def hyperopt(
                 D, neighbors = knn.kneighbours(X_test, n_neighbors=max_k)
                 Y_fold = Y_fold[neighbors]
             elif Qrepresentation == "fchl19-kernel":
-                knn = VPTreeKNN19(**hyperparams["knn"])
+                knn = VPTreeKNN19(sigma=sigmas[0], **hyperparams["knn"])
                 knn.fit(X_fold, X_atoms_fold, Y_fold)
                 D, neighbors = knn.kneighbours(X_test, X_atoms_test, n_neighbors=max_k)
                 Y_fold = Y_fold[neighbors]

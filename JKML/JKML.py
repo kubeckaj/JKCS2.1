@@ -635,6 +635,7 @@ for sampleeach_i in sampleeach_all:
                 strs_train,
                 Y_train,
                 varsoutfile,
+                sigmas,
                 no_metric,
                 hyper_cache=hyper_cache,
             )
