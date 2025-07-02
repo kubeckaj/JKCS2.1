@@ -829,7 +829,7 @@ def hyperopt(
         global X
         global X_atoms
         X = calculate_representation(Qrepresentation, strs, **repr_params)
-        X_atoms = np.array([strs[i].get_atomic_numbers() for i in range(len(strs))])
+        X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
 
     # add k-nn specific hyperparameters
     max_k = 15
@@ -889,12 +889,13 @@ def hyperopt(
 
         for i, (train_index, test_index) in enumerate(kf.split(X)):
             fold_start = time.perf_counter()
-            X_fold, X_atoms_fold, Y_fold = (
+            X_fold, Y_fold = (
                 X[train_index],
-                X_atoms[train_index],
                 Y_train[train_index],
             )
-            X_test, X_atoms_test = X[test_index], X_atoms[test_index]
+            X_test = X[test_index]
+            X_atoms_fold = [X_atoms[j] for j in train_index]
+            X_atoms_test = [X_atoms[j] for j in test_index]
             if no_metric:
                 D = pairwise_distances(X_test, X_fold, n_jobs=-1)
             elif Qrepresentation == "fchl-kernel":
