@@ -587,7 +587,7 @@ def training(
     sigmas,
     no_metric: bool = False,
     hyper_cache: Optional[Union[str, os.PathLike]] = None,
-    subsample_mlkr: bool = True,
+    subsample_mlkr: bool = False,
 ):
 
     hyperparams = load_hyperparams(hyper_cache)
