@@ -825,7 +825,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
 
   print("==============")
   print("Total charge: " + str(Qcharge))
-  print("Total multiplicity: " + str(1))
+  print("Total multiplicity: " + str(Qmultiplicity))
   print("Number of species: " + str(len(species)))
   print("==============")
   for i in range(len(species)):
