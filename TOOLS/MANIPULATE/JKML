@@ -373,8 +373,8 @@ do
         fi
         #md_rpmd/md_langevin/md_verlet"
         cp $toolspath/SCRIPTS/JKMD.py .
-        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what \"" >> output
-        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; time spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what \"" > .run
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONPATH=\"\";export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what \"" >> output
+        echo "$SC_command \"source ~/.JKCSusersetup.txt$loc;export PYTHONPATH=\"\";export PYTHONIOENCODING=utf-8;program_PYTHON -V >/dev/null; time spkmd simulation_dir=$md_folder system.molecule_file=$md_structure calculator.model_file=$md_model calculator.neighbor_list.cutoff=$md_cutoff calculator.energy_unit=eV device=$md_device dynamics.n_steps=$md_steps $md_what \"" > .run
       else 
         echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit -nw $SCcpu -dir $PWD -time $SCtime\"" >> output
         echo  "$SC_command \"source ~/.JKCSusersetup.txt$loc;program_JKML $scriptpath/../../JKML/JKML.py $therest $addsplit -nw $SCcpu -dir $PWD -time $SCtime\"" > .run
