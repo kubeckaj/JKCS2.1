@@ -333,6 +333,7 @@ def arguments(argument_list=[]):
     # knn default
     no_metric = False
     metric_only = False
+    subsample_mlkr = False
 
     # Predefined QML
     Qkernel = "Gaussian"
@@ -1071,6 +1072,10 @@ def arguments(argument_list=[]):
             continue
         if arg == "-hyper-cache":
             last = arg
+            continue
+
+        if arg == "-subsample-mlkr":
+            subsample_mlkr = True
             continue
 
         # Unknown argument

@@ -78,6 +78,7 @@ def training(
     Y_train: np.ndarray,
     varsoutfile: Union[str, os.PathLike],
     hyper_cache=None,
+    subsample_mlkr=False,
 ):
 
     hyperparams = load_hyperparams(hyper_cache)
@@ -110,7 +111,13 @@ def training(
     train_wall_start = time.perf_counter()
     train_cpu_start = time.process_time()
     mlkr = MLKRegressor(**hyperparams["mlkr"])
-    mlkr.fit(X_train, Y_train)
+    subsample_size = 25_000
+    if subsample_mlkr and (X_train.shape[0] > subsample_size):
+        subsample_indices = np.random.permutation(X_train.shape[0])[:subsample_size]
+        X_mlkr, Y_mlkr = X_train[subsample_indices, :], Y_train[subsample_indices]
+    else:
+        X_mlkr, Y_mlkr = X_train, Y_train
+    mlkr.fit(X_mlkr, Y_mlkr)
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
     A = mlkr.mlkr.get_mahalanobis_matrix()

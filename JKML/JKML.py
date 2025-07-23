@@ -193,6 +193,7 @@ for sampleeach_i in sampleeach_all:
                     sigmas=sigmas,
                     no_metric=no_metric,
                     hyper_cache=hyper_cache,
+                    subsample_mlkr=subsample_mlkr,
                 )
             )
         #####################################
@@ -206,6 +207,7 @@ for sampleeach_i in sampleeach_all:
                     Y_train,
                     varsoutfile,
                     hyper_cache=hyper_cache,
+                    subsample_mlkr=subsample_mlkr,
                 )
             )
         #####################################
