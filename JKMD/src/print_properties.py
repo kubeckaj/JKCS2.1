@@ -22,10 +22,16 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
 
   ### DISTANCE
   if Qconstraints == 3 or Qdistance == 1:
-    from numpy import sqrt, sum
-    dist_n = sqrt(sum(((species_copy[0:split].get_center_of_mass()-species_copy[split:].get_center_of_mass())**2)))
-    spread_a = species_copy[0:split].get_all_distances().max()
-    spread_b = species_copy[split:].get_all_distances().max()
+    from numpy import sqrt, sum, ones, array
+    if 1==0:
+      mask1 = ones(len(species_copy[0:split]), dtype=bool)
+      mask2 = ones(len(species_copy[split:]), dtype=bool)
+    else:
+      mask1 = array(species_copy[0:split].symbols) != 'H'
+      mask2 = array(species_copy[split:].symbols) != 'H'
+    dist_n = sqrt(sum(((species_copy[0:split][mask1].get_center_of_mass()-species_copy[split:][mask2].get_center_of_mass())**2)))
+    spread_a = species_copy[0:split][mask1].get_all_distances().max()
+    spread_b = species_copy[split:][mask2].get_all_distances().max()
   elif Qdistance == 2:
     from umbrellaRMSDconstraint import RMSD3
     dist_n, spread_a, spread_b = RMSD3(species_copy)

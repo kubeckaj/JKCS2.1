@@ -79,7 +79,7 @@ while not Qfollow_activated == 0:
       print("Nice try. The umbrella sampling part of JKMD is yet not ready for your jokes.")
       exit()
     from umbrellaconstraint import UmbrellaConstraint
-    constraints.append(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm,Qslow))
+    constraints.append(UmbrellaConstraint(all_species,Qk_bias,len(species[0]),Qharm,Qslow,Qheavyatoms))
     Qconstraints = 3
   if Qconstraints == 2:
     if not ( len(species) == 1 or len(species) == 2):

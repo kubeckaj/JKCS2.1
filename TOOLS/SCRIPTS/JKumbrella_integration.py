@@ -7,8 +7,6 @@ from scipy.linalg import eigh
 
 ## UNITS ##
 kB = 0.000003166811563 #Eh/K
-T = 298.15 #K
-kBT = T*kB #Eh
 patm = 101325 #Pa
 NA = 6.022*10**23 #mol^-1
 pi = 3.14159265359
@@ -24,6 +22,8 @@ print(" ----- Post-Processing ----- ")
 
 Qfit = int(sys.argv[2])
 Qflatten = float(sys.argv[3])
+T = float(sys.argv[4]) #K
+kBT = T*kB #Eh
 
 ### PREPARING DATA ###
 data = np.loadtxt('out', usecols=(0,1)) #Ang kJ/mol

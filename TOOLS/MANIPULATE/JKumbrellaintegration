@@ -5,6 +5,7 @@ TO=10.0
 Qfromto=0
 Qflatfit=0
 Qflatten=-1
+Qtemp=298.15
 SKIP=0 #those are steps
 UPTO=0 # those are steps
 MULTIPLIER=1
@@ -33,6 +34,7 @@ function print_help(){
     -bins <float> .............. width of the bins in Angstrom [default 0.02]
     -multiplier <int> .......... 1 or 2 for the same molecules [default 1]
     -symm ...................... = multiplier 2
+    -temp ...................... temperature in K [default 298.15]
     -folder <string> ........... folder name [default umbrella_integration]
     -versions <string of ints> . list of versions to take into account [default all]
     -flatfit ................... finds dept by fitting to a flat part, otherwise Morse is used
@@ -167,6 +169,17 @@ do
     Qflatten=$iter
     continue
   fi
+  if [ "$iter" == "-temp" ]
+  then
+    last="-temp"
+    continue
+  fi
+  if [ "$last" == "-temp" ]
+  then
+    last=""
+    Qtemp=$iter
+    continue
+  fi
   echo "I do not understand this: $iter"
   exit
 done
@@ -239,7 +252,7 @@ echo "Integrating from $FROM to $TO"
 #MASSES
 if [ -e ../commands_TODO.txt ]; 
 then
-  files="`head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .pkl | grep -v "model.pkl"` `head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .xyz`"
+  files="`head -n 1 ../commands_TODO.txt | xargs -n 1 | grep .pkl | grep -v "model.pkl"` `head -n 1 ../commands_TODO.txt | xargs -n 1 | grep ".xyz "`"
   echo $files
   lenfiles=`echo $files | wc -w`
   if [ $lenfiles == 2 ]; 
@@ -260,11 +273,11 @@ module load python/2.7.14
 #TODO -nb 1
 if [ $QonlyQC -eq 0 ];
 then
-  python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t 298.15 -b $BINS -o out -m $FROM $TO -ph Histograms >> output 2>&1
+  python2.7 /home/kubeckaj/Applications/umbrella_integration/umbrella_integration.py -i input.txt -t $Qtemp -b $BINS -o out -m $FROM $TO -ph Histograms >> output 2>&1
 fi
 if [ -e out ]; 
 then
-  echo program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $Qflatfit $m1 $m2 >> output
-  program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $Qflatfit $Qflatten $m1 $m2 >> output 2>&1
+  echo program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $Qflatfit $m1 $m2 $Qtemp >> output
+  program_PYTHON $toolspath/SCRIPTS/JKumbrella_integration.py $MULTIPLIER $Qflatfit $Qflatten $m1 $m2 $Qtemp >> output 2>&1
 fi
 cd ..

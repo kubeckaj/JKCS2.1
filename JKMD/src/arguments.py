@@ -114,6 +114,7 @@ def print_help():
     -harm <float>      add harmonic potential COM <float> distance constrain [2 species]
     -k_bias <float>    strength of the biasing harmonic potential in kcal/mol/A^2 [e.g., 100]
     -slow <int>        linearly increases the US potential in <int> steps [default = 0]
+    -ha,-heavyatoms    apply only to non-hydrogen atoms       
     -QMMM              the last structure is treated as QM(GFN1-xTB) assuming you use MM(GFNFF)
     -rmsd <int> <file> RMSD to be reached between simulaiton and file structure
  
@@ -201,6 +202,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qharm = 10
     Qk_bias = 100
     Qslow = 0
+    Qheavyatoms = 0
     QEF = []         #h_COM_COM, h_A, c_COM
     QEF_par = []
     QEF_systems = []
@@ -309,7 +311,10 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qslow = int(i)
       last = ""
       continue
-
+    #-heavyatoms for umbrella sampling
+    if i == "-heavyatoms" or i == "-ha":
+      Qheavyatoms = 1
+      continue
 
     #INDEX
     if i == "-index":
