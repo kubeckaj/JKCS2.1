@@ -387,7 +387,7 @@ then
   JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 else
   #TODO Do I really want to recollect everytime?
-  if [[ "$method" == *"ABC"* ]]
+  if [[ "$method" == *"ABC"* ]] && [[ "$method" != *"DFT"* ]]
   then
     logsouts=`ls $method/calc-LM/*.xyz $method/*/calc-LM/*.xyz $method/*/*/calc-LM/*.xyz 2>/dev/null | wc -w`
   else
@@ -449,7 +449,7 @@ do
   #command="$toolspath/SCRIPTS/JKcollect RUN $savefile  "${arguments[@]}
   #printf "$command" > run${scriptfilecommand}.sh
   #if [ $method == "ABC" ] || [ $method == "ABC-XTB" ] || [ $method == "ABC_XTB" ]
-  if [[ "$method" == *"ABC"* ]]
+  if [[ "$method" == *"ABC"* ]] && [[ "$method" != *"DFT"* ]]
   then
     if [ -e 0.xyz ]
     then

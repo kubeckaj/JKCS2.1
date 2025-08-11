@@ -670,6 +670,9 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
       Qthermostat = "A"
       Qthermostat_A = float(i)
       continue
+    if i == "-opt":
+      Qthermostat = "OPT"
+      continue
  
     #CONSTRAINTS
     if i == "-rmsd":

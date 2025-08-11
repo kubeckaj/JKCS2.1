@@ -222,6 +222,9 @@ while not Qfollow_activated == 0:
     from ase import units
     from ase.md.andersen import Andersen 
     dyn = Andersen(all_species, Qdt * units.fs, temperature_K = Qtemp, andersen_prob = Qthermostat_A * units.fs, rng = Qrng)
+  elif Qthermostat == "OPT":
+    from ase.optimize import BFGS
+    dyn = BFGS(all_species)
   else:
     print("Some weird thermostat.")
     exit()
@@ -348,6 +351,8 @@ while not Qfollow_activated == 0:
       if Qconstraints == 4 and len(species) == 2:
         dyn1.run(1)
         dyn2.run(1)
+      elif Qthermostat == "OPT":
+        dyn.run(fmax=0.05)
       else:
         dyn.run(Qns - stepsmade)
       if Qdump == 0:

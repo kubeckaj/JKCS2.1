@@ -239,14 +239,6 @@ def evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_ato
     
     from aimnet.calculators.aimnet2ase import AIMNet2ASE
 
-    # Load self-atomic energies from file
-    sae_path = os.path.join(parentdir, "dataset_sae.yaml")
-    with open(sae_path, 'r') as f:
-        sae_data = yaml.safe_load(f)
-
-    # Ensure keys are integers
-    sae_data = {int(k): v for k, v in sae_data.items()}
-
     Y_predicted = []
     F_predicted = []
 
@@ -268,12 +260,6 @@ def evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_ato
         atoms.calc = calc
 
         energy = atoms.get_potential_energy()  # eV
-
-        if Qmonomers == 2:
-            sae_total = sum(
-                sae_data[Z] for Z in Z_atoms[i] if Z in sae_data
-            )
-            energy += sae_total  # Add self-atomic energy contribution (eV)
 
         Y_predicted.append(0.0367493 * energy) #energy[0])  # Convert to Hartree
         F_predicted.append(0.0367493 * atoms.get_forces())  # Hartree/Angstrom

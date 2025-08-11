@@ -259,6 +259,12 @@ def print_results(
                 F_predicted = F_predicted_rem
 
     ### PRINTING THE QML PICKLES
+    if Qforces == 1:
+      if ("extra", "forces") not in clustersout_df.columns:
+          # clustersout_df.loc[clustersout_df.iloc[i].name,("extra","forces")] = [array(force) for force in F_predicted[0][i]]
+          clustersout_df.loc[:, ("extra", "forces")] = None
+      if ("extra", "forces_true") not in clustersout_df.columns:
+          clustersout_df.loc[:, ("extra", "forces_true")] = None
     for i in range(len(clustersout_df)):
         if method != "delta":
             clustersout_df.loc[
@@ -276,12 +282,13 @@ def print_results(
                 multiplier * Y_validation[i]
             )
         if Qforces == 1:
-            if ("extra", "forces") not in clustersout_df.columns:
-                # clustersout_df.loc[clustersout_df.iloc[i].name,("extra","forces")] = [array(force) for force in F_predicted[0][i]]
-                clustersout_df.loc[:, ("extra", "forces")] = None
+            clustersout_df.at[clustersout_df.iloc[i].name, ("extra", "forces_true")] = [
+                array(force) for force in F_test[i]
+            ]
             clustersout_df.at[clustersout_df.iloc[i].name, ("extra", "forces")] = [
                 array(force) for force in F_predicted[0][i]
             ]
+            
     ### SAVE TIME AND SHAPE INFORMATION
     clustersout_df.loc[:, ("extra", "repr_train_wall")] = repr_train_wall
     clustersout_df.loc[:, ("extra", "repr_train_cpu")] = repr_train_cpu
