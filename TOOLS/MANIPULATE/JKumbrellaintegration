@@ -227,8 +227,11 @@ then
     if [ ! -e ../calc-LM_${distance}${veradd} ]; then continue; fi
     if [   -e ../calc-LM_${distance}${veradd}/error.pkl ]; then continue; fi
     if [ ! -e ../calc-LM_${distance}${veradd}/output ]; then continue; fi
-    test_above=`grep 'JKMD:' ../calc-LM_${distance}${veradd}/output | sort -nk  14 | tail -n 1 | awk '{print $14}'`
-    test_below=`grep 'JKMD:' ../calc-LM_${distance}${veradd}/output | sort -nrk 14 | tail -n 1 | awk '{print $14}'`
+    filter_command="grep 'JKMD:' ../calc-LM_${distance}${veradd}/output"
+    if [ $SKIP -gt 0 ]; then filter_command+=" | awk '\$2 >= $SKIP'"; fi
+    if [ $UPTO -gt 0 ]; then filter_command+=" | awk '\$2 <= $UPTO'"; fi
+    test_above=`eval "$filter_command" | sort -nk  14 | tail -n 1 | awk '{print $14}'`
+    test_below=`eval "$filter_command" | sort -nrk 14 | tail -n 1 | awk '{print $14}'`
     #echo "$test_above $test_below"
     test_above=`echo "$test_above-1.0*$distance>10.0" | bc -l`
     test_below=`echo "$test_below-1.0*$distance<-10.0" | bc -l`
