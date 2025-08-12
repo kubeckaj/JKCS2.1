@@ -1,4 +1,4 @@
-def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None, fail = False, QINFOfile_basename = "str", QINFOcluster_type = "", QINFOcomponents = [], QINFOcomponent_ratio = []):
+def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdistance = 0, split = None, fail = False, QINFOfile_basename = "str", QINFOcluster_type = "", QINFOcomponents = [], QINFOcomponent_ratio = [], heavyatoms = 0):
   from ase.md.velocitydistribution import Stationary
   from ase.md.velocitydistribution import ZeroRotation
   from ase import units
@@ -23,7 +23,7 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
   ### DISTANCE
   if Qconstraints == 3 or Qdistance == 1:
     from numpy import sqrt, sum, ones, array
-    if 1==0:
+    if heavyatoms==0:
       mask1 = ones(len(species_copy[0:split]), dtype=bool)
       mask2 = ones(len(species_copy[split:]), dtype=bool)
     else:

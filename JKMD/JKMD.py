@@ -261,11 +261,11 @@ while not Qfollow_activated == 0:
       global current_time,current_step
       if Qconstraints == 4 and len(species) == 2:
         global cluster_dic1,cluster_dic2
-        toupdate1,current_time,current_step = print_properties(species = species[0], timestep = 0, interval = 0, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio)
-        toupdate2,current_time,current_step = print_properties(species = species[1], timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio)
+        toupdate1,current_time,current_step = print_properties(species = species[0], timestep = 0, interval = 0, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, Qheavyatoms)
+        toupdate2,current_time,current_step = print_properties(species = species[1], timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, Qheavyatoms)
       else:
         global cluster_dic
-        toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio)
+        toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, Qheavyatoms)
       if Qsavepickle == 1:
         if Qconstraints == 4 and len(species) == 2:
           toupdate1.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
