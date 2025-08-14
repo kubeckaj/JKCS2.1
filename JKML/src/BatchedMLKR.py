@@ -172,6 +172,9 @@ class BatchedMLKR(MahalanobisMixin, TransformerMixin):
         self.n_iter_ = 0
         if n > self.max_non_batched:
             print("Using batched loss computation for MLKR.", flush=True)
+            # force verbose for batched
+            verbose_temp = self.verbose
+            self.verbose = True
             res = minimize(
                 self._batched_loss,
                 A.ravel(),
@@ -181,6 +184,7 @@ class BatchedMLKR(MahalanobisMixin, TransformerMixin):
                 tol=self.tol,
                 options=dict(maxiter=self.max_iter),
             )
+            self.verbose = verbose_temp
         else:
             res = minimize(
                 self._loss,
