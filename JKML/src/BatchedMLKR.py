@@ -10,7 +10,7 @@ from scipy.optimize import minimize
 from scipy.special import logsumexp
 from sklearn.base import TransformerMixin
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.metrics import pairwise_distances_chunked
+from sklearn.metrics import pairwise_distances_chunked, pairwise_distances
 
 from metric_learn.base_metric import MahalanobisMixin
 from metric_learn._util import _initialize_components, _check_n_components
