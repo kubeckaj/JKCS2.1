@@ -632,6 +632,10 @@ def training(
             X_mlkr, Y_mlkr = X_train[subsample_indices, :], Y_train[subsample_indices]
         else:
             X_mlkr, Y_mlkr = X_train, Y_train
+        if X_mlkr.shape[0] > 40_000:
+            # cast to float 32 to save memory
+            X_mlkr = X_mlkr.astype(np.float32)
+            Y_mlkr = Y_mlkr.astype(np.float32)
         mlkr.fit(X_mlkr, Y_mlkr)
         A = mlkr.get_mahalanobis_matrix()
         print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
