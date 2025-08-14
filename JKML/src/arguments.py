@@ -1100,4 +1100,7 @@ def arguments(argument_list=[]):
         print(last)
         raise Exception(f"Hey looser, the last argument is incomplete. [EXITING]")
 
+    if Qcheckpoint is not None:
+	Qtime = None
+
     return locals()
