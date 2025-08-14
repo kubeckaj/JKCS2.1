@@ -3,6 +3,7 @@
 from ase import Atoms
 from typing import Iterable, Dict, Union
 import numpy as np
+from collections import defaultdict
 
 
 def generate_global_fchl19(
