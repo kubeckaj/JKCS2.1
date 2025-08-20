@@ -82,7 +82,7 @@ def print_help():
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx, -maxdist")
   print(" -forces [Eh/Ang], -meanforce, -shuffle, -seed <int>, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
+  print(" -column <COL1> <COL2>, -drop <COL>, -log2out, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize, -gif")
   print(" -eldisp [Eh], -forcedisp [Eh/Ang], -aimnet_prep")
 
@@ -147,7 +147,7 @@ def arguments(argument_list = []):
   Qsplit = 1 #should I split the base on several parts
   Qindex = "no"#
   Qdrop = "0" #drop some column
-  Qout2log = 0 #change column name
+  Qout2log = 0 #change column name #1 = out->log, -1=log->out
   
   #global Qsort,Qselect,Qsample,Quniq,Qarbalign,formation_input_file,Qthreshold,Qcut,Qshuffle
   Qsort = 0 # 0=no sorting, otherwise string
@@ -452,6 +452,11 @@ def arguments(argument_list = []):
     # OUT 2 LOG
     if i == "-out2log":
       Qout2log = 1
+      Qmodify
+      continue
+    # OUT 2 LOG
+    if i == "-log2out":
+      Qout2log = -1
       Qmodify
       continue
     #RENAME

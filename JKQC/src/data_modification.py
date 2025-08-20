@@ -253,5 +253,7 @@ def data_modification(clusters_df, Qunderscore, Qrename, Qclustername, QrenameWH
   
   if Qout2log == 1:
     clusters_df = clusters_df.rename({'out': 'log'}, axis='columns')
+  if Qout2log == -1:
+    clusters_df = clusters_df.rename({'log': 'out'}, axis='columns')
   
   return clusters_df

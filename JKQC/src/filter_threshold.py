@@ -91,9 +91,13 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
         minimum = 0
       if Qcut[i][3+bonded_incr] == "nan" or Qcut[i][3+bonded_incr] == "NA" or Qcut[i][3+bonded_incr] == "na" or Qcut[i][3+bonded_incr] == "NaN":
         if Qcut[i][0] == "==" or Qcut[i][0] == ">=" or Qcut[i][0] == "<=":
+          #mask = preselected_df[what].apply(lambda x: pd.isna(x) or (hasattr(x, "__len__") and len(x) == 0))
+          #preselected_df = preselected_df.loc[mask]
           preselected_df = preselected_df.loc[isna(what-minimum)]
         else:
           preselected_df = preselected_df.drop(index=preselected_df[isna(what-minimum)].index)
+          #mask = preselected_df[array(what)].apply(lambda x: pd.isna(x) or (hasattr(x, "__len__") and len(x) == 0))
+          #preselected_df = preselected_df.loc[~mask]
       else:
         with errstate(invalid='ignore'):
           if Qcut[i][0] == ">":
