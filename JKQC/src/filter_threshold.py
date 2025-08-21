@@ -120,7 +120,8 @@ def filter_threshold(clusters_df,Qcut,Qclustername,Qout):
       newclusters_df = preselected_df.copy()
     else:
       from pandas import concat
-      newclusters_df = concat([newclusters_df,preselected_df.copy()], ignore_index=True)
+      #newclusters_df = concat([newclusters_df,preselected_df.copy()], ignore_index=True)
+      newclusters_df = concat([newclusters_df,preselected_df.copy()])
       #newclusters_df = newclusters_df.append(preselected_df.copy())
 
   if Qout >= 1:
