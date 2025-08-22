@@ -145,7 +145,8 @@ def filter_uniq(clusters_df,Quniq,Qclustername,Qsample,Qout):
          newclusters_df = selected_df
        else:
          from pandas import concat
-         newclusters_df = concat([newclusters_df,selected_df.copy()], ignore_index=True)
+         #newclusters_df = concat([newclusters_df,selected_df.copy()], ignore_index=True)
+         newclusters_df = concat([newclusters_df,selected_df.copy()])
          #newclusters_df = newclusters_df.append(selected_df)
   if Qout >= 1:
     if Qsample > 0:
