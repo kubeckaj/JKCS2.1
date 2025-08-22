@@ -115,11 +115,11 @@ def thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg):
               clusters_df.at[i,("log","vibrational_frequencies")] = replace_by_nonnegative(clusters_df.at[i,("extra","anharm")],clusters_df.at[i,("log","vibrational_frequencies")],0)
             ########################################################
             elif Qanh == "B97-3c_1":
-	      def anh_corr(x):
+              def anh_corr(x):
                 return 0.944*x
               clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
-	    elif Qanh == "B97-3c_2":
-	      def anh_corr(x):
+            elif Qanh == "B97-3c_2":
+              def anh_corr(x):
                 if x < 2000:
                   return 0.968*x
                 else:
