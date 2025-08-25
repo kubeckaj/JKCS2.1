@@ -65,10 +65,10 @@ def print_help():
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     removes higher/lower rel. values compared to lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("   OR")
-  print(" -filter_lt/le/==/ge/gt/ne  X Y      filter=kepp all fulfilling that absolute value of X is SYMB compared to Y value (e.g. -filter_le rg 3.0)")
-  print(" -rel_filter_lt/le/==/ge/gt/ne  X Y  filter=keep all fulfilling that minimum-relative value of X is SYMB compared to Y value (e.g. -rel_filter_lt el 5.0)")
+  print(" -filter_lt/le/eq/ge/gt/ne  X Y      filter=kepp all fulfilling that absolute value of X is SYMB compared to Y value (e.g. -filter_le rg 3.0)")
+  print(" -rel_filter_lt/le/eq/ge/gt/ne  X Y  filter=keep all fulfilling that minimum-relative value of X is SYMB compared to Y value (e.g. -rel_filter_lt el 5.0)")
   print("                                     SYMB :: lt=less than/le=less or equal/ge=greater or equal/gt=greater than/ne=not equal")
-  print(" -filter_== bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
+  print(" -filter_eq bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability calculated from Gibbs free energy")
   print(" -popEL                  prints column of population probability calculated from electronic energy")
@@ -583,7 +583,7 @@ def arguments(argument_list = []):
       last = ""
       Quniq = str(i)
       continue
-    if i == "-is" or i == "-filter_==":
+    if i == "-is" or i == "-filter_==" or i == "-filter_eq":
       Qthreshold = 1
       last = "-threshold"
       attach = ["==","absolute"]

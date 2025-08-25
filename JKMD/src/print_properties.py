@@ -44,11 +44,16 @@ def print_properties(species , timestep = 1, interval = 1, Qconstraints = 0, Qdi
   T_temp = species_copy.get_temperature()
   Stationary(species_copy, False)
   T_com = species_copy.get_temperature()
-  #TODO
-  ZeroRotation(species_copy, False)
-  T_rotate = species_copy.get_temperature()
-  T_tr =  len(species_copy)*(T_temp-T_com)
-  T_rot = len(species_copy)*(T_com-T_rotate)
+  #TODO I added something (try), let us see if it works
+  try:
+    ZeroRotation(species_copy, False)
+    T_rotate = species_copy.get_temperature()
+    T_tr =  len(species_copy)*(T_temp-T_com)
+    T_rot = len(species_copy)*(T_com-T_rotate)
+  except:
+    T_rotate = float("nan")
+    T_tr = float("nan")
+    T_rot = float("nan")
   if len(species_copy) > 2:
     T_vib = len(species_copy)/(len(species_copy)-2)*T_rotate
   elif len(species_copy) == 2:
