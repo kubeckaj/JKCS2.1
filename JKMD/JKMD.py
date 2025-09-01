@@ -334,6 +334,7 @@ while not Qfollow_activated == 0:
     dyn.attach(stepsmadeadd, interval = 1)
 
   #SIMULATION
+  #print(all_species)
   if Qout > 1:
     print("Starting simulation.", flush = True)
   if 'current_step' in globals():
@@ -369,6 +370,7 @@ while not Qfollow_activated == 0:
       noise = random.normal(scale=0.01, size=positions.shape)
       all_species.set_positions(positions + noise)
       call_calculator()
+      print(all_species)
       sim_tot_errors += 1
       if current_step == sim_last_error:
         sim_errors += 1

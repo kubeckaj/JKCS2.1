@@ -169,6 +169,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       for ind in clusters_df.index:
         try:
           atoms = clusters_df.loc[ind,("xyz","structure")]
+          atoms.wrap()
           write(".movie.xyz",atoms, format='xyz')
           with open(".movie.xyz", 'r') as f2:
             lines = f2.readlines()

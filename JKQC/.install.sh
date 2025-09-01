@@ -98,6 +98,7 @@ then
   #881 for 3.24.0
   sed -i '881s/.*/            CS = atoms.constraints\n            del atoms.constraints\n            self.atoms = atoms.copy()\n            atoms.set_constraint(CS)/' JKCS/lib/python*/site-packages/ase/calculators/calculator.py
 fi
+cp ../TOOLS/LOADING/JKvelocitydistribution.py JKCS/lib/python*/site-packages/ase/md/velocitydistribution.py
 ####################################
 #ArbAlign stuff:
 cp ../TOOLS/SCRIPTS/modifiedArbAlign.py JKCS/lib/$(basename $PYTHON)/site-packages/ArbAlign.py
