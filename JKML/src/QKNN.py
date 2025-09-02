@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pickle
 from sklearn.neighbors import KNeighborsRegressor
-from JKML.src.batched_mlkr import BatchedMLKR as MLKR
+from src.batched_mlkr import BatchedMLKR as MLKR
 from ase.atoms import Atoms
 from typing import Iterable, Tuple, Union, Dict, Literal, Callable, List, Optional, Any
 import os

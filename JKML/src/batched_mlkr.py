@@ -4,6 +4,7 @@ Batched variant of Metric Learning for Kernel Regression (MLKR)
 
 import time
 import sys
+import os
 import warnings
 import numpy as np
 from scipy.optimize import minimize
@@ -131,6 +132,11 @@ class BatchedMLKR(MahalanobisMixin, TransformerMixin):
         self.random_state = random_state
         self.dtype: np.dtype = dtype
         self.max_non_batched = max_non_batched
+        # get working memory;
+        # JKML sets SLURM_MEM_PER_CPU rather than SLURM_MEM_PER_NODE
+        self.dist_memory = os.environ.get("SLURM_MEM_PER_CPU")
+        if self.dist_memory is not None:
+            self.dist_memory = float(self.dist_memory)
         super(BatchedMLKR, self).__init__(preprocessor)
 
     def fit(self, X, y):
@@ -242,7 +248,7 @@ class BatchedMLKR(MahalanobisMixin, TransformerMixin):
         chunk_size = -1
 
         for dist_chunk in pairwise_distances_chunked(
-            X_embedded, X_embedded, metric="sqeuclidean", n_jobs=-1
+            X_embedded, X_embedded, metric="sqeuclidean", n_jobs=-1, working_memory=self.dist_memory
         ):
             B = dist_chunk.shape[0]
             if chunk_size == -1:
