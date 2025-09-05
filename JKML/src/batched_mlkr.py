@@ -122,7 +122,7 @@ class BatchedMLKR(MahalanobisMixin, TransformerMixin):
         preprocessor=None,
         random_state=None,
         dtype=np.float64,
-        max_non_batched=20_000,
+        max_non_batched=25_000,
     ):
         self.n_components = n_components
         self.init = init
@@ -248,7 +248,11 @@ class BatchedMLKR(MahalanobisMixin, TransformerMixin):
         chunk_size = -1
 
         for dist_chunk in pairwise_distances_chunked(
-            X_embedded, X_embedded, metric="sqeuclidean", n_jobs=-1, working_memory=self.dist_memory
+            X_embedded,
+            X_embedded,
+            metric="sqeuclidean",
+            n_jobs=-1,
+            working_memory=self.dist_memory,
         ):
             B = dist_chunk.shape[0]
             if chunk_size == -1:
