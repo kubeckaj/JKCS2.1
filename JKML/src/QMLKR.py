@@ -33,8 +33,15 @@ class MLKRegressor:
         D = pairwise_distances(X_test, self.X_train, metric=self.mlkr.get_metric())
         return np.exp(-D)
 
-    def fit(self, X_train, Y_train):
-        self.mlkr.fit(X_train, Y_train)
+    def fit(self, X_train, Y_train, X_mlkr=None, Y_mlkr=None):
+        if (X_mlkr is not None) or (Y_mlkr is not None):
+            assert (X_mlkr is not None) and (
+                Y_mlkr is not None
+            ), "Both X_mlkr and Y_mlkr need to be set!"
+        else:
+            X_mlkr = X_train
+            Y_mlkr = Y_train
+        self.mlkr.fit(X_mlkr, Y_mlkr)
         self.X_train = X_train
         self.Y_train = Y_train
         self.n_train = X_train.shape[0]
@@ -117,7 +124,7 @@ def training(
         X_mlkr, Y_mlkr = X_train[subsample_indices, :], Y_train[subsample_indices]
     else:
         X_mlkr, Y_mlkr = X_train, Y_train
-    mlkr.fit(X_mlkr, Y_mlkr)
+    mlkr.fit(X_train, Y_train, X_mlkr, Y_mlkr)
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
     A = mlkr.mlkr.get_mahalanobis_matrix()
