@@ -145,6 +145,7 @@ def print_help():
     -dt <float>       time step [in fs, default = 1] 
     -ns,-steps <int>  number of steps [default = 1000]
     -dump <int>       dumping properties every <int> step [0 means no dump, default = 1]
+    -save <int>       save every <int> step [default = -1 = no intermediate save]
 
   OTHER:
     -nf <str>         folder where the simulation will be performed
