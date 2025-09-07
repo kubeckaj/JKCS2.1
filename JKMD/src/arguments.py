@@ -220,6 +220,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qdt = 1    #timestep
     Qns = 1000 #number of steps
     Qdump = 1  #dump every
+    Qsave = -1
     Qtemp = 300
     
     Qthermostat = "VV" #VV = Velocity Verlet, L = Langevin, NH = Nose-Hoover, B = Bussi
@@ -623,6 +624,14 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-dump":
       last = ""
       Qdump = int(i)
+      continue
+    # SAVE
+    if i == "-save":
+      last = "-save"
+      continue
+    if last == "-save":
+      last = ""
+      Qsave = int(i)
       continue
 
     #TEMPERATURE

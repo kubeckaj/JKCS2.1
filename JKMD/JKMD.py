@@ -38,7 +38,25 @@ print("""
     JJJJ  KK  KKK MM      MM DDDDD
 """)
 
-
+def savepickle():
+  global cluster_dic
+  if "cluster_dic" in globals() or "cluster_dic1" in globals() or "cluster_dic2" in globals():
+    from pandas import DataFrame
+    if Qconstraints == 4 and len(species) == 2:
+      global cluster_dic1,cluster_dic2
+      for key in cluster_dic1:
+        cluster_dic2[key] = cluster_dic2[key][::-1]
+      cluster_dic = mergeDictionary(cluster_dic1, cluster_dic2)
+    else: 
+      for key in cluster_dic:
+        cluster_dic[key] = cluster_dic[key][::-1]
+    clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
+    global Qfolder
+    try:
+      clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
+      print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
+    except:
+      print("Something got fucked up.")
 
 #print(f"Using {os.environ['OMP_NUM_THREADS']} threads.")
 current_time = 0
@@ -232,97 +250,98 @@ while not Qfollow_activated == 0:
     print("Finished setting Qthermostat: "+str(Qthermostat), flush = True)
  
   #DUMPING
-  if Qdump != 0:
-    from print_properties import print_properties, init
-    def mergeDictionary(dict_1, dict_2):
-      if len(dict_1) == 0:
-        return dict_2
-      dict_3 = {**dict_1, **dict_2}
-      for key, value in dict_3.items():
-        if key in dict_1 and key in dict_2:
-          dict_3[key] = value + dict_1[key]
-        elif key in dict_1:
-          dict_3[key] = [float("nan")] + value
-        else:
-          ml = max([len(x) for x in dict_1.values()])
-          dict_3[key] = value + ml*[float("nan")]
-      return dict_3
-      #dict1 = dist3
+  from print_properties import print_properties, init
+  def mergeDictionary(dict_1, dict_2):
+    if len(dict_1) == 0:
+      return dict_2
+    dict_3 = {**dict_1, **dict_2}
+    for key, value in dict_3.items():
+      if key in dict_1 and key in dict_2:
+        dict_3[key] = value + dict_1[key]
+      elif key in dict_1:
+        dict_3[key] = [float("nan")] + value
+      else:
+        ml = max([len(x) for x in dict_1.values()])
+        dict_3[key] = value + ml*[float("nan")]
+    return dict_3
+    #dict1 = dist3
 
-    init(current_time,current_step)
-    #global cluster_dic
+  init(current_time,current_step)
+  #global cluster_dic
+  if Qconstraints == 4 and len(species) == 2:
+    cluster_dic1 = {}
+    cluster_dic2 = {}
+  else:
+    if "cluster_dic" not in globals(): #current_step == 0:
+      cluster_dic = {}
+  def save(fail = False):
+    global current_time,current_step
     if Qconstraints == 4 and len(species) == 2:
-      cluster_dic1 = {}
-      cluster_dic2 = {}
+      global cluster_dic1,cluster_dic2
+      toupdate1,current_time,current_step = print_properties(species = species[0], timestep = 0, interval = 0, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, heavyatoms = Qheavyatoms)
+      toupdate2,current_time,current_step = print_properties(species = species[1], timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, heavyatoms = Qheavyatoms)
     else:
-      if "cluster_dic" not in globals(): #current_step == 0:
-        cluster_dic = {}
-    def save(fail = False):
-      global current_time,current_step
+      global cluster_dic
+      toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, heavyatoms =Qheavyatoms)
+    if Qsavepickle == 1:
       if Qconstraints == 4 and len(species) == 2:
-        global cluster_dic1,cluster_dic2
-        toupdate1,current_time,current_step = print_properties(species = species[0], timestep = 0, interval = 0, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, heavyatoms = Qheavyatoms)
-        toupdate2,current_time,current_step = print_properties(species = species[1], timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, heavyatoms = Qheavyatoms)
+        toupdate1.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
+        toupdate2.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
       else:
-        global cluster_dic
-        toupdate,current_time,current_step = print_properties(species = all_species, timestep = Qdt, interval = Qdump, Qconstraints = Qconstraints, Qdistance = Qdistance, split = Qlenfirst, fail = fail, QINFOfile_basename = QINFOfile_basename, QINFOcluster_type = QINFOcluster_type, QINFOcomponents = QINFOcomponents, QINFOcomponent_ratio = QINFOcomponent_ratio, heavyatoms =Qheavyatoms)
-      if Qsavepickle == 1:
-        if Qconstraints == 4 and len(species) == 2:
-          toupdate1.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
-          toupdate2.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
-        else:
-          toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
-          if Qconstraints == 3:
-            toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
-        if Qconstraints == 4 and len(species) == 2:
-          cluster_dic1 = mergeDictionary(cluster_dic1, toupdate1)
-          cluster_dic2 = mergeDictionary(cluster_dic2, toupdate2)
-        else:
-          cluster_dic = mergeDictionary(cluster_dic, toupdate)
-    if Qdump == 0:
-      save()
+        toupdate.update({("log","method"):[" ".join(argv[1:])],("log","program"):["Python"]})
+        if Qconstraints == 3:
+          toupdate.update({("log","k_bias"):[min(current_step/max(Qslow,0.0000001),1)*Qk_bias],("log","harm_distance"):[Qharm]})
+      if Qconstraints == 4 and len(species) == 2:
+        cluster_dic1 = mergeDictionary(cluster_dic1, toupdate1)
+        cluster_dic2 = mergeDictionary(cluster_dic2, toupdate2)
+      else:
+        cluster_dic = mergeDictionary(cluster_dic, toupdate)
+  if Qdump == 0:
+    save()
+  else:
+    if Qconstraints == 4 and len(species) == 2:
+      #dyn1.attach(save, interval = 1)
+      dyn2.attach(save, interval = 1)
     else:
-      if Qconstraints == 4 and len(species) == 2:
-        #dyn1.attach(save, interval = 1)
-        dyn2.attach(save, interval = 1)
-      else:
-        dyn.attach(save, interval = Qdump)
-    if Qcalculator == "PhysNet": 
-      #from calculator import calculator
-      def updatephysnet():
+      dyn.attach(save, interval = Qdump)
+  if Qsave >= 0:
+    dyn.attach(savepickle, interval = Qsave)
+  if Qcalculator == "PhysNet": 
+    #from calculator import calculator
+    def updatephysnet():
+      call_calculator()
+      #all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
+    dyn.attach(updatephysnet, interval = 1)
+  if Qcalculator == "XTB":
+    if Qcalculator_input == "GFNFF":
+      def removetopologyfiles():
+        import os
+        os.system("ls")
+        print(os.system("rm -rf gfnff_adjacency"))
+        os.system("rm -rf gfnff_topo")
+        os.system("ls")
         call_calculator()
-        #all_species.calc = calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, all_species)
-      dyn.attach(updatephysnet, interval = 1)
-    if Qcalculator == "XTB":
-      if Qcalculator_input == "GFNFF":
-        def removetopologyfiles():
-          import os
-          os.system("ls")
-          print(os.system("rm -rf gfnff_adjacency"))
-          os.system("rm -rf gfnff_topo")
-          os.system("ls")
-          call_calculator()
-        dyn.attach(removetopologyfiles, interval = 1)
-    if Qnn_EFD == 1:
-      from src.JKelectrostatics import compute_energies_forces
-      from src.JKdispersions import compute_d4_energy_forces as compute_dispersions
-      #from src.JKdispersions import compute_d3bj_energy_forces as compute_dispersions
-      def updateElDisp():
-        internal_E = species.get_potential_energy()
-        internal_F = species.get_forces()
-        from tblite.ase import TBLite
-        CS = species.constraints
-        del species.constraints
-        tmpatoms = species.copy()
-        species.set_constraint(CS)
-        tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
-        Q_charges = array([tmpatoms.get_charges()]) #.transpose()
-        #Q_charges = spk_calc.model_results['partial_charges'].detach().numpy()
-        electrostatics_E, electrostatics_F = compute_energies_forces(species.get_positions(), Q_charges)
-        dispersions_E, dispersions_F = compute_dispersions(species.get_positions(), symbols = array(species.get_chemical_symbols()), totalcharge = 0)
-        print(f"JKML(SchNetPack): {0.0367493 * internal_E} {electrostatics_E} {dispersions_E}")
-        species.set_potential_energy(0.0367493 * internal_E + electrostatics_E + dispersions_E)
-        species.set_forces(0.0367493 * internal_F + electrostatics_F + dispersions_F)
+      dyn.attach(removetopologyfiles, interval = 1)
+  if Qnn_EFD == 1:
+    from src.JKelectrostatics import compute_energies_forces
+    from src.JKdispersions import compute_d4_energy_forces as compute_dispersions
+    #from src.JKdispersions import compute_d3bj_energy_forces as compute_dispersions
+    def updateElDisp():
+      internal_E = species.get_potential_energy()
+      internal_F = species.get_forces()
+      from tblite.ase import TBLite
+      CS = species.constraints
+      del species.constraints
+      tmpatoms = species.copy()
+      species.set_constraint(CS)
+      tmpatoms.calc = TBLite(method="GFN1-xTB", cache_api=True, charge=float(0), verbosity = 0, max_iterations = 300, accuracy = 1.0)
+      Q_charges = array([tmpatoms.get_charges()]) #.transpose()
+      #Q_charges = spk_calc.model_results['partial_charges'].detach().numpy()
+      electrostatics_E, electrostatics_F = compute_energies_forces(species.get_positions(), Q_charges)
+      dispersions_E, dispersions_F = compute_dispersions(species.get_positions(), symbols = array(species.get_chemical_symbols()), totalcharge = 0)
+      print(f"JKML(SchNetPack): {0.0367493 * internal_E} {electrostatics_E} {dispersions_E}")
+      species.set_potential_energy(0.0367493 * internal_E + electrostatics_E + dispersions_E)
+      species.set_forces(0.0367493 * internal_F + electrostatics_F + dispersions_F)
   stepsmade = 0
   def stepsmadeadd():
     global stepsmade
@@ -400,20 +419,22 @@ while not Qfollow_activated == 0:
 if Qsavepickle == 1:
   if Qout > 1:
     print("Done and now just saving pickle.")
-  if "cluster_dic" in globals() or "cluster_dic1" in globals() or "cluster_dic2" in globals():
-    from pandas import DataFrame
-    if Qconstraints == 4 and len(species) == 2:
-      for key in cluster_dic1:
-        cluster_dic2[key] = cluster_dic2[key][::-1]
-      cluster_dic = mergeDictionary(cluster_dic1, cluster_dic2) 
-    else:
-      for key in cluster_dic:
-        cluster_dic[key] = cluster_dic[key][::-1]
-    clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
-    try:
-      clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
-      print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
-    except:
-      print("Something got fucked up.")
+  savepickle()
+  #save(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
+ # if "cluster_dic" in globals() or "cluster_dic1" in globals() or "cluster_dic2" in globals():
+ #   from pandas import DataFrame
+ #   if Qconstraints == 4 and len(species) == 2:
+ #     for key in cluster_dic1:
+ #       cluster_dic2[key] = cluster_dic2[key][::-1]
+ #     cluster_dic = mergeDictionary(cluster_dic1, cluster_dic2) 
+ #   else:
+ #     for key in cluster_dic:
+ #       cluster_dic[key] = cluster_dic[key][::-1]
+ #   clusters_df = DataFrame(cluster_dic) #, index = range(len(cluster_dic)))
+ #   try:
+ #     clusters_df.to_pickle(Qfolder+"/../sim"+Qfolder.split("/")[-1]+".pkl")
+ #     print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
+ #   except:
+ #     print("Something got fucked up.")
 
 print("Done.")
