@@ -156,6 +156,7 @@ def print_help():
     -nopickle         do not store and save structures
     -seed             set random seed (use at the begginning before specie setup) [TESTING]
     -repeat <int>     repeat x times
+    -maxfails <int>   stop if number of failures exceed <int> [default = 20]
     --                use for looping [m=minus] (e.g. 0--10, m1.1--0.1--m0.1, or 0--0.2--5)
     
   EXAMPLES:
@@ -223,6 +224,7 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     Qdump = 1  #dump every
     Qsave = -1
     Qtemp = 300
+    Qmaxfails = 20
     
     Qthermostat = "VV" #VV = Velocity Verlet, L = Langevin, NH = Nose-Hoover, B = Bussi
     Qthermostat_L = 0.01
@@ -633,6 +635,15 @@ def arguments(argument_list = [], species_from_previous_run = [], charge_from_pr
     if last == "-save":
       last = ""
       Qsave = int(i)
+      continue
+
+    # MAXFAILS
+    if i == "-maxfails":
+      last = "-maxfails"
+      continue
+    if last == "-maxfails":
+      last = ""
+      Qmaxfails = int(i)
       continue
 
     #TEMPERATURE

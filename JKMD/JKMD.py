@@ -396,8 +396,8 @@ while not Qfollow_activated == 0:
       else:
         sim_errors = 1
         sim_last_error = current_step
-      if sim_errors == 4 or sim_tot_errors > 20:
-        if sim_tot_errors > 20:
+      if sim_errors == 4 or sim_tot_errors > Qmaxfails:
+        if sim_tot_errors > Qmaxfails:
           print("Too many errors in the simulation. Exiting.")
         if "cluster_dic" not in globals():
           print("I have nothing to save as the run failed immediately.")
