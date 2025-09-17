@@ -39,6 +39,7 @@ function print_help(){
     -versions <string of ints> . list of versions to take into account [default all]
     -flatfit ................... finds dept by fitting to a flat part, otherwise Morse is used
     -flatten <float> ........... flattens PMF from 0 to <float> with PMF(<float>) value
+    -exploded <float> <float> .. removes emploded structures with radius greater the values
     OTHERS: -qc
 
   EXAMPLES:
@@ -50,6 +51,7 @@ function print_help(){
 }
 
 last=""
+EXPLODED=0
 for i in "${!arguments[@]}"
 do
   iter="${arguments[$i]}"
@@ -80,6 +82,25 @@ do
   if [ "$iter" == "-qc" ]
   then
     QonlyQC=1
+    continue
+  fi
+  if [ "$iter" == "-exploded" ]
+  then
+    last="-exploded"
+    EXPLODED=1
+    continue
+  fi
+  if [ "$last" == "-exploded" ]
+  then
+    last=""
+    EXPLODED1=$iter
+    last="-exploded2"
+    continue
+  fi
+  if [ "$last" == "-exploded2" ]
+  then
+    last=""
+    EXPLODED2=$iter
     continue
   fi
   if [ "$iter" == "-bins" ]
@@ -236,10 +257,12 @@ then
     test_above=`echo "$test_above-1.0*$distance>10.0" | bc -l`
     test_below=`echo "$test_below-1.0*$distance<-10.0" | bc -l`
     #echo "$test_above $test_below"
-    if [ $test_above -gt 0 ] || [ $test_below -gt 0 ]; then echo "1 simulation skipped"; continue; fi
+    if [ $test_above -gt 0 ] || [ $test_below -gt 0 ]; then echo "1 simulation skipped (${distance}${veradd})"; continue; fi
     command="grep 'JKMD:' ../calc-LM_${distance}${veradd}/output"
     if [ $SKIP -gt 0 ]; then command+=" | awk '\$2 >= $SKIP'"; fi
     if [ $UPTO -gt 0 ]; then command+=" | awk '\$2 <= $UPTO'"; fi
+    if [ $EXPLODED -gt 0 ]; then command+=" | awk '\$15 <= $EXPLODED1'"; fi
+    if [ $EXPLODED -gt 0 ]; then command+=" | awk '\$16 <= $EXPLODED2'"; fi
     command+=" | awk -v d=$distance -v kbias=$k_bias '{printf(\"%s %s %s %.2f\n\",\$3,\$14,d,kbias*4.184)}' | grep -v nan | column -t >> input.txt"
     eval $command
   done
