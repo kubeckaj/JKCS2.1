@@ -98,7 +98,7 @@ def print_solvation(output,Qsolvation,Qt,Qrh,QPsolvent,Pout,QUenergy,Qout):
       print(f"RH = %.2f %%; "%(rh*100), end = "") 
     #Actually not the Antoine equation - see the link
     #https://www.omnicalculator.com/chemistry/vapour-pressure-of-water
-    p_solvent = rh*100*6.1094*exp(17.625*(Temp-273.15)/(Temp-273.15+234.04))
+    p_solvent = rh*100*6.1094*exp(17.625*(Temp-273.15)/(Temp-273.15+243.04))
   if Qout >= 1:
     print(f"p_solvent = %.2f Pa "%(p_solvent))
   p_ref = 101325
