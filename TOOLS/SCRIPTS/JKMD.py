@@ -15,6 +15,8 @@ time_axis = np.arange(data.entries) * data.time_step / spk_units.fs  # in fs
 
 if not os.path.exists("movie.xyz"):
   atoms=data.convert_to_atoms()
+  print(atoms)
+  (i.wrap() for i in atoms)
   from ase.io import write
   f = open("movie.xyz","w")
   for i in range(0,len(atoms),int(np.round(len(atoms)/100))):

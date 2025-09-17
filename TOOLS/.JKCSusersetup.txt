@@ -739,6 +739,13 @@ function program_ORCA {
   
   #ENTERING TO WORKING DIRECTORY AND PERFORMING CALCULATION
   DIR=$PWD
+  if [[ $args == *"-cpall"* ]];
+  then
+    Qcpall=1
+    args=$(echo "$args" | sed "s/-cpall//g")
+  else
+    Qcpall=0
+  fi
   #*.inp or *.xyz or *.pkl
   test=`echo $input | sed 's/\/\:EXTRACT\:\// /g' | awk '{print $1}' | rev | cut -c-4 | rev`
   if [ "$test" == ".xyz" ] || [ "$test" == ".pkl" ]
@@ -750,13 +757,6 @@ function program_ORCA {
     if [ -z "$CPU" ]; then CPU=1; fi
     if [ -z "$CHARGE" ]; then CHARGE=0; fi
     if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY=1; fi
-    if [[ $args == *"-cpall"* ]];
-    then
-      Qcpall=1
-      args=$(echo "$args" | sed "s/-cpall//g")
-    else
-      Qcpall=0
-    fi
     if [ -z "$method" ] # IF NO METHOD SPECIFIED ... THEN SOME TROUBLES MIGHT APPEAR 
     then    
       JKxyz2inp $input -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY $args
@@ -764,13 +764,6 @@ function program_ORCA {
       JKxyz2inp $input -method "$method" -mem1 $MEMinsert1 -mem2 $MEMinsert2 -cpu $CPU -char $CHARGE -mult $MULTIPLICITY  $args
     fi
     #if [ "$test" == ".pkl" ]; then rm ${base}.xyz; fi
-  fi
-  if [[ $args == *"-cpall"* ]];
-  then
-    Qcpall=1
-    args=$(echo "$args" | sed "s/-cpall//g")
-  else
-    Qcpall=0
   fi
 
   #CHANGE: ORCA, inputINP, .out

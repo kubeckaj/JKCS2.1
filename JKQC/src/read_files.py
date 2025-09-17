@@ -60,7 +60,7 @@ def is_nameable(input_array):
     nameable_test = False
   return nameable_test
 
-def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomoleext = "log", Qclustername = 1, Qforces = 0, Qanharm = 0):
+def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomoleext = "log", Qclustername = 1, Qforces = 0, Qanharm = 0, Qdisp_electronic_energy = 0, Qdisp_forces = 0):
   from os import path
   from re import split
   from pandas import DataFrame
@@ -179,9 +179,9 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
             if testORCA > 0:
               if Q_ORCA_used == 0:
                 from read_orca import read_orca,read_orca_init
-                read_orca_init(Qforces = Qforces, Qanharm = Qanharm)
+                read_orca_init(Qforces = Qforces, Qanharm = Qanharm, Qdisp_forces = Qdisp_forces)
                 Q_ORCA_used = 1
-              dic_orca = read_orca(mm, orcaextname, Qforces = Qforces, Qanharm = Qanharm)
+              dic_orca = read_orca(mm, orcaextname, Qforces = Qforces, Qanharm = Qanharm, Qdisp_electronic_energy = Qdisp_electronic_energy, Qdisp_forces = Qdisp_forces)
               dic.update(dic_orca)
               continue
           ###############
@@ -192,9 +192,9 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
             if testORCA > 0:
               if Q_ORCA_used == 0:
                 from read_orca import read_orca,read_orca_init
-                read_orca_init(Qforces = Qforces, Qanharm = Qanharm)
+                read_orca_init(Qforces = Qforces, Qanharm = Qanharm, Qdisp_forces = Qdisp_forces)
                 Q_ORCA_used = 1
-              dic_orca = read_orca(mm, orcaextname2, Qforces = Qforces, Qanharm = Qanharm)
+              dic_orca = read_orca(mm, orcaextname2, Qforces = Qforces, Qanharm = Qanharm, Qdisp_electronic_energy = Qdisp_electronic_energy, Qdisp_forces = Qdisp_forces)
               dic.update(dic_orca)
               continue
 
@@ -268,7 +268,9 @@ def read_files(clusters_df, files, orcaextname = "out", orcaext = "out", turbomo
 
   newclusters_df = DataFrame(clusters_dict,index=range(len(clusters_df),len(clusters_df)+len(files)))
   if len(clusters_df) > 0:
-    clusters_df = clusters_df.append(newclusters_df)
+    from pandas import concat
+    clusters_df = concat([clusters_df,newclusters_df.copy()], ignore_index=True)
+    #clusters_df = clusters_df.append(newclusters_df)
   else:
     clusters_df = newclusters_df
 

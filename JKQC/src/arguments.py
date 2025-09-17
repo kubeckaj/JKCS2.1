@@ -65,10 +65,10 @@ def print_help():
   print(" -cut/-pass X Y       removes higher/lower values of X=rg,el,g... with cutoff Y (e.g. -cut el -103.45)")
   print(" -cutr/-passr X Y     removes higher/lower rel. values compared to lowest of X=rg,el,g... with cutoff Y (e.g. -cutr g 5)")
   print("   OR")
-  print(" -filter_lt/le/==/ge/gt/ne  X Y      filter=kepp all fulfilling that absolute value of X is SYMB compared to Y value (e.g. -filter_le rg 3.0)")
-  print(" -rel_filter_lt/le/==/ge/gt/ne  X Y  filter=keep all fulfilling that minimum-relative value of X is SYMB compared to Y value (e.g. -rel_filter_lt el 5.0)")
+  print(" -filter_lt/le/eq/ge/gt/ne  X Y      filter=kepp all fulfilling that absolute value of X is SYMB compared to Y value (e.g. -filter_le rg 3.0)")
+  print(" -rel_filter_lt/le/eq/ge/gt/ne  X Y  filter=keep all fulfilling that minimum-relative value of X is SYMB compared to Y value (e.g. -rel_filter_lt el 5.0)")
   print("                                     SYMB :: lt=less than/le=less or equal/ge=greater or equal/gt=greater than/ne=not equal")
-  print(" -filter_== bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
+  print(" -filter_eq bonded <float thr.> <element> <element> <Y>  example of filtering for number of bond distances")
   print("\nFORMATION PROPERTIES:")
   print(" -pop                    prints column of population probability calculated from Gibbs free energy")
   print(" -popEL                  prints column of population probability calculated from electronic energy")
@@ -80,10 +80,11 @@ def print_help():
   print(" -conc sa 0.00001        dG at given conc. [conc in Pa] (or use ppt,ppb,cmmc. e.g. 100ppt")
   print("                         use -cnt for self-consistent dG")
   print("\nOTHERS:")
-  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx,")
-  print(" -forces [Eh/Ang], -shuffle, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
-  print(" -column <COL1> <COL2>, -drop <COL>, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
+  print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx, -maxdist")
+  print(" -forces [Eh/Ang], -meanforce, -shuffle, -seed <int>, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
+  print(" -column <COL1> <COL2>, -drop <COL>, -log2out, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize, -gif")
+  print(" -eldisp [Eh], -forcedisp [Eh/Ang], -aimnet_prep")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -135,6 +136,7 @@ def arguments(argument_list = []):
   Qqha = 0 #Run the QHA
   Qt = missing
   Qp = missing
+  Qafc = 0 #Run antiQHA with vib. frequency cutoff
   Qfc = 0 #Run QHA with vib. frequency cutoff
   Qanh = "1"
   Qanharm = 0 #To collect anharmonicities from QC output
@@ -145,7 +147,7 @@ def arguments(argument_list = []):
   Qsplit = 1 #should I split the base on several parts
   Qindex = "no"#
   Qdrop = "0" #drop some column
-  Qout2log = 0 #change column name
+  Qout2log = 0 #change column name #1 = out->log, -1=log->out
   
   #global Qsort,Qselect,Qsample,Quniq,Qarbalign,formation_input_file,Qthreshold,Qcut,Qshuffle
   Qsort = 0 # 0=no sorting, otherwise string
@@ -171,7 +173,12 @@ def arguments(argument_list = []):
   conc = []
   CNTfactor = 0 #see Wyslouzil
   Qsolvation = "0"
-  
+
+  #global Qdisp_electronic_energy,Qdisp_forces,Qaimnet_prep
+  Qdisp_electronic_energy = 0
+  Qdisp_forces = 0
+  Qaimnet_prep = 0
+
   #global folderMAIN,folderSP
   folderMAIN = ""
   folderSP = ""
@@ -319,6 +326,18 @@ def arguments(argument_list = []):
     if i == "-forces" or i == "-force":
       Qforces = 1
       continue
+    #ELECTRONIC ENERGY DISPERSION CORRECTION
+    if i == "-eldisp":
+      Qdisp_electronic_energy = 1
+      continue
+    #FORCES DISPERSION CORRECTION
+    if i == "-forcedisp":
+      Qdisp_forces = 1
+      continue
+    #CREATE AIMNET PREPARATION FILES
+    if i == "-aimnet_prep":
+      Qaimnet_prep = 1
+      continue
     #ORCA EXTENSION
     if i == "-orcaext" or i == "-orca":
       last = "-orcaext"
@@ -433,6 +452,11 @@ def arguments(argument_list = []):
     # OUT 2 LOG
     if i == "-out2log":
       Qout2log = 1
+      Qmodify
+      continue
+    # OUT 2 LOG
+    if i == "-log2out":
+      Qout2log = -1
       Qmodify
       continue
     #RENAME
@@ -559,7 +583,7 @@ def arguments(argument_list = []):
       last = ""
       Quniq = str(i)
       continue
-    if i == "-is" or i == "-filter_==":
+    if i == "-is" or i == "-filter_==" or i == "-filter_eq":
       Qthreshold = 1
       last = "-threshold"
       attach = ["==","absolute"]
@@ -676,6 +700,14 @@ def arguments(argument_list = []):
     # ATOMS
     if i == "-atoms":
       Pout.append("-atoms")
+      continue
+    # MAXDIST
+    if i == "-maxdist":
+      Pout.append("-maxdist")
+      continue
+    # MEANFORCE
+    if i == "-meanforce":
+      Pout.append("-meanforce")
       continue
     # ID
     if i == "-id1":
@@ -905,7 +937,8 @@ def arguments(argument_list = []):
       continue
     if last == "-antifc":
       last = ""
-      Qfc = -float(i)
+      Qafc = float(i)
+      Qfc = float(i)
       continue
     if i == "-id":
       Qid = 1

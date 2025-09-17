@@ -156,6 +156,8 @@ for sampleeach_i in sampleeach_all:
             Qforcemonomers,
             sampledist,
             Qmonomers,
+            Qifeldisp,
+            Qifforcedisp,
         )
 
         #####################################
@@ -265,6 +267,30 @@ for sampleeach_i in sampleeach_all:
                 varsoutfile,
             )
         ###################################
+        elif Qmethod == "aimnet":
+            from src.AIMNetInterface import training
+
+            training(
+                Y_train,
+                F_train,
+                Z_atoms,
+                N_atoms,
+                Qenergytradoff,
+                strs,
+                nn_tvv,
+                Qbatch_size,
+                Qlearningrate,
+                parentdir,
+                varsoutfile,
+                Qearlystop,
+                nn_epochs,
+                Q_charge,
+                Q_charges,
+                file_basenames,
+                seed,
+                Qmonomers,
+            )
+        ###################################
         else:
             print(
                 "JKML: Wrong method ("
@@ -278,7 +304,7 @@ for sampleeach_i in sampleeach_all:
 
         train_time = timer() - train_start
         print(
-            f"JKML training done. Took {train_time:.3f} s ({train_time / X_train.shape[0]:.4f} per sample)."
+            f"JKML training done. Took {train_time:.3f} s ({train_time / Y_train.shape[0]:.4f} per sample)."
         )
     ####################################################################################################
     ####################################################################################################
@@ -298,7 +324,31 @@ for sampleeach_i in sampleeach_all:
             f = open(VARS_PKL, "rb")
             import pickle
 
-            X_train, X_atoms_train, sigmas, alpha, train_metadata = pickle.load(f)
+            if Qrepresentation == "fchl":
+                try:
+                    X_train, sigmas, alpha, train_metadata = pickle.load(f)
+                except:
+                    f.close()
+                    f = open(VARS_PKL, "rb")
+                    train_metadata = {}
+                    X_atoms = None
+                    X_train, sigmas, alpha = pickle.load(f)
+            elif Qrepresentation == "fchl19":
+                try:
+                    X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
+                except:
+                    f.close()
+                    f = open(VARS_PKL, "rb")
+                    train_metadata = {}
+                    X_train, sigmas, alpha = pickle.load(f)
+                    # X_atoms = [strs.iloc[i].get_atomic_numbers() for i in range(len(strs))]
+                    X_atoms = [
+                        sum((X_train[i, 0, 0] < 1e99)) for i in range(len(X_train))
+                    ]
+                    print("JK: This should not work")
+                    exit()
+            elif Qrepresentation == "mbdf":
+                X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
             if len(alpha) != 1:
                 alpha = [alpha]
             f.close()
@@ -346,7 +396,7 @@ for sampleeach_i in sampleeach_all:
                 knn.fit(X_train, Y_train)
             # store the training metadata to locals
             locals().update(train_metadata)
-        elif Qmethod == "nn" or Qmethod == "physnet":
+        elif Qmethod == "nn" or Qmethod == "physnet" or Qmethod == "aimnet":
             varsoutfile = VARS_PKL
             print("JKML: Trained model found.")
         else:
@@ -386,6 +436,7 @@ for sampleeach_i in sampleeach_all:
                 Qmin,
                 Qprintforces,
                 Qifcharges,
+                Qifeldisp,
             )
         )
 
@@ -457,18 +508,38 @@ for sampleeach_i in sampleeach_all:
             Y_predicted, F_predicted = evaluate(varsoutfile, clusters_df, method, Qmin)
             Qa_predicted = None
         #####################################
+        elif Qmethod == "aimnet":
+            from src.AIMNetInterface import evaluate
+
+            Y_predicted, F_predicted = evaluate(
+                varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_atoms
+            )
+            Qa_predicted = None
+        #####################################
         else:
             print("JKML: Wrong method or representation chosen.")
             exit()
         #####################################
 
         eval_time = timer() - eval_start
-        time_per_sample = eval_time / X_train.shape[0]
+        time_per_sample = eval_time / len(Y_predicted)
         print(
             f"JKML evaluation done. Took {eval_time:.3f} s ({time_per_sample:.4f} per sample)."
         )
         ### PRINTING THE RESULTS
         from src.print_output import print_results
+
+        repr_train_wall = None
+        repr_train_cpu = None
+        repr_test_wall = None
+        repr_test_cpu = None
+        train_wall = None
+        train_cpu = None
+        test_wall = None
+        test_cpu = None
+        n_train = None
+        d_train = None
+        d_test = None
 
         print_results(
             clusters_df,
@@ -560,7 +631,7 @@ for sampleeach_i in sampleeach_all:
                 opt_dump,
                 opt_steps,
                 md_temperature,
-                Qmd_timestep,
+                md_timestep,
                 md_thermostatfriction,
                 md_dump,
                 md_steps,
@@ -655,7 +726,6 @@ for sampleeach_i in sampleeach_all:
             for k, v in params["knn"].items():
                 print(f"{k}: {v}")
         print("", flush=True)
-
 
 ####################################################################################################
 ####################################################################################################

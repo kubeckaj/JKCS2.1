@@ -37,7 +37,7 @@ if len(input_pkl_sp) > 0:
 #READ QC FILES
 if len(files) > 0:
   from read_files import read_files
-  clusters_df = read_files(clusters_df, files, orcaextname, orcaext, turbomoleext, Qclustername, Qforces, Qanharm)
+  clusters_df = read_files(clusters_df, files, orcaextname, orcaext, turbomoleext, Qclustername, Qforces, Qanharm, Qdisp_electronic_energy, Qdisp_forces)
   if Qout == 2:
     print("DONE] Files loaded: "+str(time() - start));
 
@@ -72,7 +72,7 @@ if Qoutpkl > 0:
 ## THERMODYNAMICS ##
 if Qqha == 1:
   from thermodynamics import thermodynamics
-  clusters_df = thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg)
+  clusters_df = thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg)
   if Qout == 2:
     print("DONE] Data modification done: "+str(time() - start));
 
@@ -150,6 +150,13 @@ if Qsolvation != "0" or Qformation == 1:
     print_formation(output,Qout,Qt,Qp,Qconc,conc,CNTfactor,QUenergy)
     if Qout == 2:
       print("DONE] Formation done: "+str(time() - start));
+
+# Run AIMNet preparation if requested
+if Qaimnet_prep == 1:
+  from aimnet_prep import convert_pickle_to_aimnet_h5
+  convert_pickle_to_aimnet_h5(clusters_df, output_file="dataset.h5")
+  if Qout == 2:
+    print("DONE] AIMNet prep done: " + str(time() - start))
 
 if Qout == 2:
   print("DONE] JKQC done: "+str(time() - start));

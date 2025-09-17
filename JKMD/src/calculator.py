@@ -1,4 +1,5 @@
-def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qcharge, Qout, atoms, Qmixer_damping, Qcutoff):
+def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations = 300, Qcharge = 0, Qmultiplicity = 1, Qout = 1, 
+               atoms=None, Qmixer_damping=0.4, Qcutoff=10.0):
 
 # TODO
 ### 792 /home/kubeckaj/Applications/JKCS2.1/JKQC/JKCS/lib/python3.9/site-packages/ase/calculators/calculator.py
@@ -12,28 +13,31 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
   else:
     Qprint=Qout
    
-  ### XTB-Lite ###
+  #### XTB-Lite ###
   if Qcalculator == "XTB1":
     #if Qcharge != 0:
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN1-xTB", cache_api=True, charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0, mixer_damping = Qmixer_damping) #, initial_guess = "eeq")
+    return TBLite(method="GFN1-xTB", cache_api=True, charge=float(Qcharge), multiplicity = Qmultiplicity, verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0, mixer_damping = Qmixer_damping) #, initial_guess = "eeq")
 
   elif Qcalculator == "XTB2":
     #if Qcharge != 0:
     #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
     #  exit()
     from tblite.ase import TBLite
-    return TBLite(method="GFN2-xTB", cache_api=True, charge=float(Qcharge), verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0, mixer_damping = Qmixer_damping)
+    return TBLite(method="GFN2-xTB", cache_api=True, charge=float(Qcharge), multiplicity = Qmultiplicity, verbosity = Qprint, max_iterations = Qcalculator_max_iterations, accuracy = 1.0, mixer_damping = Qmixer_damping)
 
   ### XTB ###
   elif Qcalculator == "XTB":
-    if Qcharge != 0:
-      print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
+    #if Qcharge != 0:
+    #  print("Oh sorry, the charge has not been implemented yet, ask Jakub.")
+    #  exit()
+    if Qmultiplicity != 1:
+      print("Oh sorry, the multiplicity has not been implemented yet, ask Jakub.")
       exit()
     from xtb.ase.calculator import XTB
-    return XTB(method=Qcalculator_input);#+" --chrg "+str(Qcharge))#, charge=Qcharge)
+    return XTB(method=Qcalculator_input, charge = float(Qcharge)) ;#+" --chrg "+str(Qcharge))#, charge=Qcharge)
 
   ### ORCA ###
   elif Qcalculator == "ORCA":
@@ -54,7 +58,7 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
     cpus = f'{len(psutil.Process().cpu_affinity())}'
     return ORCA(profile = profile, 
                 charge=Qcharge,
-                mult=1,
+                mult=Qmultiplicity,
                 orcasimpleinput=Qcalculator_input+" engrad",
                 orcablocks='%pal nprocs '+cpus+' end')
 
@@ -104,6 +108,12 @@ def calculator(Qcalculator, Qcalculator_input, Qcalculator_max_iterations, Qchar
       atoms=atoms,
       charge=Qcharge,
       config='input.inp')
+
+  ### AIMNET2 ###
+  elif Qcalculator == "AIMNET2":
+    #from aimnet2calc import AIMNet2ASE
+    from aimnet.calculators.aimnet2ase import AIMNet2ASE
+    return AIMNet2ASE(Qcalculator_input, charge=Qcharge, mult=Qmultiplicity)
 
   else:
     print("Unknown calculator.")

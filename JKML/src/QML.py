@@ -173,9 +173,26 @@ def training(
         K = [
             K[i] + lambdas[i] * np.eye(len(K[i])) for i in range(len(sigmas))
         ]  # corrects kernel
+        # print(Y_train)
+        # from scipy.linalg import cho_factor, cho_solve
+        # K[0] = (K[0] + K[0].T) / 2
+        # c, lower = cho_factor(K[0]) #, check_finite=True)
+        # alpha = [cho_solve((c,lower), Y_train)]
+        # alpha = np.linalg.pinv(K).dot(Y_train)
+        # TODO
         alpha = [
             cho_solve(Ki, Y_train) for Ki in K
         ]  # calculates regression coeffitients
+        # alpha = [[-6.25259, -3.92158, -15.644, 1.91016, 0.0340678, 5.21936, 3.06516, 7.21155, 6.6132, 5.07749]]
+        # print("alpha=",alpha[0],flush=True)
+        Y_pred = K[0] @ alpha[0]
+        mae = np.mean(np.abs(Y_pred - Y_train))
+        eigvals = np.linalg.eigvalsh(K)
+        # print("Min eigenvalue:", eigvals[0])
+        # print("Condition number:", np.max(eigvals) / np.min(eigvals))
+        # print("Y_train=",Y_train,flush=True)
+        # print("Y_pred=",Y_pred,flush=True)
+        # print("JKML(QML): MAE = " + str(mae), flush=True)
         train_wall = time.perf_counter() - train_wall_start
         train_cpu = time.process_time() - train_cpu_start
 

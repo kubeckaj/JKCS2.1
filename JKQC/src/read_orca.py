@@ -1,7 +1,7 @@
 ###############
 ### ORCA ######
 ###############
-def read_orca_init(Qforces = 0, Qanharm = 0):
+def read_orca_init(Qforces = 0, Qanharm = 0, Qdisp_forces = 0):
   from re import compile
   global PATTERN_ORCA_out_method,PATTERN_ORCA_out_vibrational_frequencies,PATTERN_ORCA_out_mulliken_charges
   PATTERN_ORCA_out_method = compile(rb"\n\|.*>.*!.*")
@@ -14,6 +14,9 @@ def read_orca_init(Qforces = 0, Qanharm = 0):
   if Qforces == 1:
     global PATTERN_ORCA_out_forces
     PATTERN_ORCA_out_forces = compile(rb'CARTESIAN GRADIENT.*\w*\n*-{2,}\n*((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\s*[-+]?\d*\.\d+\n)+)\s*\n[D,N]') 
+  if Qdisp_forces == 1:
+    global PATTERN_ORCA_out_dispersion_forces
+    PATTERN_ORCA_out_dispersion_forces = compile(rb'DISPERSION GRADIENT\s*\n-{2,}\n((?:\s+\d+\s+\w+\s*:\s*[-+]?\d*\.\d+(?:[eE][-+]?\d+)?\s+[-+]?\d*\.\d+(?:[eE][-+]?\d+)?\s+[-+]?\d*\.\d+(?:[eE][-+]?\d+)?\n)+)')
 
 def find_line(bytes_string,take_first = 0,idx = 0):
   mm.seek(idx)
@@ -28,11 +31,11 @@ def find_line(bytes_string,take_first = 0,idx = 0):
   else:
     return None, idx
 
-def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
+def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0, Qdisp_electronic_energy = 0, Qdisp_forces = 0):
   from numpy import array,sqrt
   missing = float("nan")
 
-  columns = ["program","method","time","termination","charge","multiplicity","NAtoms","rotational_constants","rotational_constant","sp_electronic_energy","electronic_energy","mulliken_charges","dipole_moment","dipole_moments","polarizability","vibrational_frequencies","temperature","pressure","moments_of_inertia","rotational_symmetry_number","zero_point_correction","energy_thermal_correction","enthalpy_thermal_correction","gibbs_free_energy_thermal_correction","zero_point_energy","internal_energy","enthalpy_energy","gibbs_free_energy","entropy"]
+  columns = ["program","method","time","termination","charge","multiplicity","NAtoms","rotational_constants","rotational_constant","sp_electronic_energy","electronic_energy","mulliken_charges","dipole_moment","dipole_moments","polarizability","vibrational_frequencies","temperature","pressure","moments_of_inertia","rotational_symmetry_number","zero_point_correction","energy_thermal_correction","enthalpy_thermal_correction","gibbs_free_energy_thermal_correction","zero_point_energy","internal_energy","enthalpy_energy","gibbs_free_energy","entropy","scf_energy"]
 
   global mm
   mm = mmm
@@ -211,12 +214,34 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
   except:
     out_enthalpy_energy = missing
 
+  #SCF ENERGY
+  try:
+    line, idx = find_line(rb'Total Energy', 1, 0)
+    out_scf_energy = float(line.split()[3])
+  except:
+    out_scf_energy = missing
+
   #FORCES
   if Qforces == 1:
     try:
       out_forces = [-array([float(line.split()[3]),float(line.split()[4]),float(line.split()[5])])/0.529177 for line in PATTERN_ORCA_out_forces.findall(mm)[-1].decode("utf-8").split("\n")[:-1]]
     except:
       out_forces = missing
+
+  #ELECTRONIC ENERGY DISPERSION CORRECTION
+  if Qdisp_electronic_energy == 1:
+    try:
+      line,idx = find_line(rb'Dispersion correction', 1, 0)
+      out_disp_electronic_energy = float(line.split()[-1])
+    except:
+      out_disp_electronic_energy = missing
+  
+  #FORCES DISPERSION CORRECTION
+  if Qdisp_forces == 1:
+    try:
+      out_disp_forces = [-array([float(line.split()[3]),float(line.split()[4]),float(line.split()[5])]) / 0.529177 for line in PATTERN_ORCA_out_dispersion_forces.findall(mm)[-1].decode("utf-8").split("\n")[1:-1]]
+    except:
+      out_disp_forces = missing
 
   #FINISH MISSING
   try:
@@ -246,6 +271,11 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0):
     dic.update({("extra","forces"):[out_forces]})
   if Qanharm == 1:
     dic.update({("extra","anharm"):[out_anharm]})
+  if Qdisp_electronic_energy == 1:
+    dic.update({("extra", "dispersion_electronic_energy"): [out_disp_electronic_energy]})
+  if Qdisp_forces == 1:
+    dic.update({("extra", "dispersion_forces"): [out_disp_forces]})
+
   #ANHARMONIC FREQS
   return dic
 

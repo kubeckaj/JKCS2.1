@@ -1,7 +1,3 @@
-# PREDEFINED ARGUMENTS
-import os.path
-
-
 def print_help():
     print(
         "#################################################################", flush=True
@@ -53,6 +49,10 @@ def print_help():
     )
     print(
         "    -physnet                         switch to NN = neural network with PhysNet",
+        flush=True,
+    )
+    print(
+        "    -aimnet                          switch to NN = neural network with AIMNet2",
         flush=True,
     )
     print("", flush=True)
@@ -297,6 +297,8 @@ def help_nn():
 
 
 def arguments(argument_list=[]):
+    import os
+
     # Predefined arguments
     method = "direct"  # direct/delta/min
     Qmin = 0
@@ -326,6 +328,8 @@ def arguments(argument_list=[]):
     Qifforces = 1  # IF forces exist use them in calculations
     Qifcharges = 0
     Qifdipole = 0
+    Qifeldisp = 0
+    Qifforcedisp = 0
 
     Qmethod = "krr"
     Qrepresentation = "fchl"
@@ -674,7 +678,7 @@ def arguments(argument_list=[]):
             continue
         if last == "-train":
             TRAIN_HIGH = arg
-            if Qtrain == 0:
+            if Qtrain == 0 or Qsampleeach != 0:
                 Qtrain = 1
             else:
                 raise Exception("Cannot train if taking trained [EXITING]")
@@ -729,6 +733,19 @@ def arguments(argument_list=[]):
 
         # Models and representations
         if arg == "-painn" or arg == "-nn":
+            import sys, os, glob
+
+            try:
+                thepath = glob.glob(
+                    os.path.dirname(os.path.abspath(__file__))
+                    + "/../../JKQC/JKCS/SCHNETPACK/lib/py*/site-packages/"
+                )[0]
+            except:
+                print(
+                    "SCHNETPACK was not set properly during setup (run: sh setup.sh -nn -up grendel). [EXITING]"
+                )
+                exit()
+            sys.path.append(thepath)
             Qmethod = "nn"
             Qrepresentation = "painn"
             continue
@@ -762,6 +779,26 @@ def arguments(argument_list=[]):
             continue
         if arg == "-mlkr":
             Qmethod = "mlkr"
+            continue
+        if arg == "-aimnet":
+            import sys, os, glob
+
+            try:
+                thepath = glob.glob(
+                    os.path.dirname(os.path.abspath(__file__))
+                    + "/../../JKQC/JKCS/AIMNET/lib/py*/site-packages/"
+                )[0]
+            except:
+                print(
+                    "AIMNET was not set properly during setup (run: sh setup.sh -aimnet -up grendel). [EXITING]"
+                )
+                exit()
+            sys.path.append(thepath)
+            Qmethod = "aimnet"
+            Qrepresentation = "aimnet"
+            Qifeldisp = 1
+            Qifforcedisp = 1
+            Qifcharges = 1
             continue
 
         # override representation
@@ -1053,6 +1090,10 @@ def arguments(argument_list=[]):
             Qmethod = "krr"
             Qrepresentation = "fchl"
             continue
+        if arg == "-fchl19":
+            Qmethod = "krr"
+            Qrepresentation = "fchl19"
+            continue
         if arg == "-mbdf":
             Qmethod = "krr"
             Qrepresentation = "mbdf"
@@ -1084,5 +1125,8 @@ def arguments(argument_list=[]):
     if last != "":
         print(last)
         raise Exception(f"Hey looser, the last argument is incomplete. [EXITING]")
+
+    if Qcheckpoint is not None:
+        Qtime = None
 
     return locals()

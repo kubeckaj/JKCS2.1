@@ -1,4 +1,5 @@
 def save_pickle(tosave,output_pkl,Qsplit,Qout):
+  tosave = tosave.reset_index(drop=True)
   if Qsplit == 1:
     try:
       tosave.to_pickle(output_pkl)

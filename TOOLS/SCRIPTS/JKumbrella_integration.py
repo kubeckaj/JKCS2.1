@@ -7,8 +7,6 @@ from scipy.linalg import eigh
 
 ## UNITS ##
 kB = 0.000003166811563 #Eh/K
-T = 298.15 #K
-kBT = T*kB #Eh
 patm = 101325 #Pa
 NA = 6.022*10**23 #mol^-1
 pi = 3.14159265359
@@ -19,6 +17,13 @@ Eh2J = 4.3597447222071*10**-18
 Ang2Bohr = 1.88973
 amu2au = 1822.888486209
 print(" ----- Post-Processing ----- ")
+
+### ARGUMENTS ###
+
+Qfit = int(sys.argv[2])
+Qflatten = float(sys.argv[3])
+T = float(sys.argv[4]) #K
+kBT = T*kB #Eh
 
 ### PREPARING DATA ###
 data = np.loadtxt('out', usecols=(0,1)) #Ang kJ/mol
@@ -41,8 +46,15 @@ print("PIC: PMF_3D_kcalmol-1.png created.")
 PMF_1D = np.column_stack((PMF_3D[:, 0], PMF_3D[:, 1]+ 2*kBT*np.log(PMF_3D[:, 0]))) #Ang Eh
 PMF_1D = np.column_stack((PMF_1D[:, 0], PMF_1D[:, 1]-np.min(PMF_1D[:, 1]))) #Ang Eh
 
+PMF_1D_orginal = np.copy(PMF_1D)
+if Qflatten > 0:
+  mask=PMF_1D[:, 0] <= Qflatten
+  PMF_1D[mask, 1] = (PMF_1D[mask, 1])[-1] 
+ 
 plt.figure()
-plt.plot(PMF_1D[:, 0], PMF_1D[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+plt.plot(PMF_1D[:, 0], PMF_1D_orginal[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+if Qflatten > 0:
+  plt.plot(PMF_1D[mask, 0], PMF_1D[mask, 1]*Eh2kcalmol, marker='.', linestyle='-', color='g')
 plt.xlabel('coordinate')
 plt.ylabel('PMF (kcal/mol)')
 plt.savefig('PMF_1D_kcalmol-1.png')
@@ -53,7 +65,10 @@ min_index = np.argmin(PMF_1D[:, 1]) #index
 print("MIN: Position of minimun has index: "+str(min_index))
 
 ### FITTING ###
-if 0==int(sys.argv[2]):
+max_index = min_index + np.argmax(PMF_3D[min_index:, 1]) #index
+print("MAX: Position of maximum has index: "+str(max_index))
+print("Max = ", PMF_1D[max_index, 0]," Angstrom")
+if Qfit==0:
   def model(w, a, xe, De):
       return (1 - np.exp(-a * (w - xe)))**2 * De
   initial_guess = [1.0, PMF_1D[min_index, 0], 0.001]
@@ -67,25 +82,33 @@ if 0==int(sys.argv[2]):
   w_fit = np.linspace(PMF_1D[min_index, 0], PMF_1D[-1, 0], 100)
   y_fit = model(w_fit, *popt)
 else:
-  max_index = np.argmax(PMF_3D[min_index:, 1]) #index
   def model(w,De):
       return De
-  initial_guess = PMF_1D[(min_index+max_index), 1] #Eh
+  initial_guess = PMF_1D[(max_index), 1] #Eh
   from scipy.optimize import curve_fit
-  popt, pcov = curve_fit(model, PMF_1D[min_index+max_index:, 0], PMF_1D[min_index+max_index:, 1], p0=initial_guess, bounds=(0, np.inf))
+  popt, pcov = curve_fit(model, PMF_1D[max_index:, 0], PMF_1D[max_index:, 1], p0=initial_guess, bounds=(0, np.inf))
   De = popt[0] #Eh
   print("FIT:Fitting parameters of function: 1*De")
   print("FIT: De[kcal/mol] = "+str(De*Eh2kcalmol))
-  w_fit = np.linspace(PMF_1D[min_index+max_index, 0], PMF_1D[-1, 0], 100)
+  w_fit = np.linspace(PMF_1D[max_index, 0], PMF_1D[-1, 0], 100)
   y_fit = model(w_fit, np.array([De]*100))
 
 plt.figure()
-plt.plot(PMF_1D[:, 0], PMF_1D[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+plt.plot(PMF_1D[:, 0], PMF_1D_orginal[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+if Qflatten > 0:
+  plt.plot(PMF_1D[mask, 0], PMF_1D[mask, 1]*Eh2kcalmol, marker='.', linestyle='-', color='g')
 plt.plot(w_fit, y_fit*Eh2kcalmol, color='red')
 plt.xlabel('coordinate')
 plt.ylabel('PMF (kcal/mol)')
 plt.savefig('FITTED.png')
 print("PIC: FITTED.png created.")
+
+try:
+  M1=float(sys.argv[4])
+  M2=float(sys.argv[5])
+except:
+  print("QC not possible to solve. I need commands_TODO.txt file for it")
+  exit()
 
 ### V0 ###
 V0 = kBT*Eh2J/patm * 10**30 #Ang^3
@@ -93,19 +116,22 @@ print("V0 = "+str(V0)+" Ang^3")
 #print("L0 = "+str((3/4/3.14*V0)**(1/3))+" Ang")
 
 ### MULTIPLIER ###
-mult=int(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwise 1
+mult=float(sys.argv[1]) #multiplier, should be 2 for symmetric reactions, otherwise 1
 print("Multiplier = "+str(mult)+" [1 or 2 for symmetric reactions]")
 
 ### INTEGRATION/SUM ###
 dx = PMF_1D[1, 0] - PMF_1D[0, 0]
 sum_element = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/kBT)*4*pi*PMF_1D[:, 0]**2*dx))
+sum_element_ivo = np.column_stack((PMF_1D[:, 0], np.exp(-PMF_1D[:, 1]/kBT)*PMF_1D[:, 0]**2))
+sum_table_ivo = np.array([np.array([sum_element[i,0], np.sum(sum_element_ivo[i,1])]) for i in range(0, len(sum_element))])
 sum_table = np.array([np.array([sum_element[i,0], np.sum(sum_element[0:i,1])]) for i in range(0, len(sum_element))])
 F_well = sum_table[-1, 1] #Eh
 F_table = -kBT*np.log(np.exp(De/kBT)*sum_table[:, 1]/V0/mult) 
-F = F_table[-1] #Eh
+F = F_table[max_index] #Eh
 
 plt.figure()
-plt.plot(sum_table[:, 0], sum_table[:, 1], marker='.', linestyle='-', color='b')
+plt.plot(sum_table[:, 0], F_table[:]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+#plt.plot(sum_table[:, 0], sum_table_ivo[:,1], marker='.', linestyle='-', color='b')
 plt.xlabel('coordinate')
 plt.ylabel('dF (kcal/mol)')
 plt.savefig('dF_convergence.png')
@@ -119,13 +145,6 @@ print("\ndG = "+str((F-kBT)*Eh2kcalmol)+" kcal/mol\n")
 ###########################################
 #####  SOLVIND SCHRODINGER 1D #############
 ###########################################
-
-try:
-  M1=float(sys.argv[3])
-  M2=float(sys.argv[4])
-except:
-  print("QC not possible to solve. I need commands_TODO.txt file for it")
-  exit()
 
 # Convert units to atomic units (a.u.)
 x = PMF_1D[:,0]*Ang2Bohr # Bohr

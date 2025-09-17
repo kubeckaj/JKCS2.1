@@ -9,7 +9,7 @@ def replace_by_nonnegative(new, orig, q):
   orig[mask] = new[mask]
   return list(orig)
 
-def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
+def thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg):
   from numpy import array, sum, log, exp, isnan, mean, pi
   from pandas import isna
   missing = float("nan")
@@ -28,7 +28,7 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
   ########################################################
   # LOW VIBRATIONAL FREQUNECY ANTITREATMENT (S // G,Gc) ##
   ########################################################
-  if Qfc < 0:
+  if Qafc > 0:
     for i in range(len(clusters_df)):
       try:
         lf = float(clusters_df.at[i,("log","vibrational_frequencies")][0])
@@ -38,7 +38,10 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
         clusters_df.at[i,("log","entropy")] = missing
         continue
       if isnan(Qt):
-        Qt = clusters_df.at[i,("log","temperature")]
+        try:
+          Qt = clusters_df.at[i,("log","temperature")]
+        except:
+          Qt = 298.15
       vibs = clusters_df.at[i,("log","vibrational_frequencies")]
       structure = clusters_df.at[i,("xyz","structure")]
 
@@ -47,14 +50,13 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
         mi = mean(structure.get_moments_of_inertia())
         Sr = [R*(0.5+log((8*pi**2.99793*(mu[j]*mi/(mu[j]+mi))*k*Qt/h**2)**0.5)) for j in range(len(mu))]  #cal/mol/K
         Sv = [R*h*vib*2.99793*10**10/k/Qt/(exp(h*vib*2.99793*10**10/k/Qt)-1)-R*log(1-exp(-h*vib*2.99793*10**10/k/Qt)) for vib in vibs] #cal/mol/K
-        w = [1/(1+(Qfc/vib)**4) for vib in vibs]
+        w = [1/(1+(Qafc/vib)**4) for vib in vibs]
         Sv_corr = sum([w[j]*Sv[j]+(1-w[j])*Sr[j] for j in range(len(w))])
         Sv_each = sum(Sv)  #cal/mol/K
         clusters_df.at[i,("log","entropy")] = clusters_df.at[i,("log","entropy")]-(Sv_corr-Sv_each)
       except:
         mi = missing
         clusters_df.at[i,("log","entropy")] = missing
-    Qfc = -Qfc
     ###
  
   #########################
@@ -102,7 +104,7 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
           Sv_OLD = missing
           Ev_OLD = missing
         #
-        if Qanh != "anh" and Qanh != "anh2" and Qanh != "wB97X-3c" and Qanh != "wB97X-D":
+        if str(Qanh) not in {"anh","anh2","B97-3c_1","B97-3c_2","B97-3c_sf","B97-3c_mult","r2SCAN-3c_1","r2SCAN-3c_2","r2SCAN-3c_sf","r2SCAN-3c_mult","wb97-3c_1","wb97-3c_2","wb97-3c_sf","wb97-3c_mult","wB97X-D_1", "wB97X-D_2","wB97X-D_sf","wB97X-D_mult"}:
           try:
             clusters_df.at[i,("log","vibrational_frequencies")] = [float(Qanh) * j for j in clusters_df.at[i,("log","vibrational_frequencies")]]
           except:
@@ -111,36 +113,99 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
           try:
             if Qanh == "anh":
               clusters_df.at[i,("log","vibrational_frequencies")] = replace_by_nonnegative(clusters_df.at[i,("extra","anharm")],clusters_df.at[i,("log","vibrational_frequencies")],0)
-            elif Qanh == "wB97X-3c":
-              from numpy import piecewise
+            ########################################################
+            elif Qanh == "B97-3c_1":
               def anh_corr(x):
-                if 1==1:
-                  #return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), x>=3900],[0.861409, 0.885911, 0.912831, 0.933906, 0.936296, 0.950458, 0.935704, 0.933336, 0.957378, 0.96616, 0.977959, 0.975587, 0.973703, 0.974143, 0.975156, 0.972287, 0.970533, 0.966922, 0.972591, 0.972591, 0.236802, 0.34666, 0.388443, 0.642876, 0.606038, 0.719738, 0.753388, 0.804467, 0.850579, 0.870367, 0.948011, 0.961714, 0.958506, 0.911795, 0.943901, 0.956063, 0.954999, 0.951046, 0.951589, 0.955226])*x
-                  return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), (x>=3900)&(x<4000),x>4000],[0.582728, 0.6407, 0.759964, 0.825341, 0.861125, 0.900091, 0.89788, 0.925491, 0.928046, 0.951405, 0.961447, 0.966595, 0.966203, 0.966312, 0.967825, 0.962537, 0.959766, 0.957327, 0.965982, 0.48524, 0.194003, 0.323196, 0.529488, 0.508194, 0.452896, 0.716601, 0.777274, 0.806458, 0.850253, 0.938257, 0.957628, 0.95651, 0.955162, 0.918533, 0.944945, 0.946553, 0.949621, 0.946313, 0.9493, 0.954287,0.954287])*x
-                if 1==0:
-                  return (1.0204762161801728 - 0.000016154970938850175*x - 50.4350857894416/(239.21983191091954 + x))*x
-                if x < 2000:
-                  return 0.968*x
-                else:
-                  return 0.948*x
+                return 0.944*x
               clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
-            elif Qanh == "wB97X-D":
+            elif Qanh == "B97-3c_2":
+              def anh_corr(x):
+                if x < 2000:
+                  return 0.967*x
+                else:
+                  return 0.937*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "B97-3c_sf":
+              def anh_corr(x):
+                return (0.969507 - 8.55527*10**-6*x + 1.99602/(-0.0447777 + x))*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "B97-3c_mult":
               from numpy import piecewise
               def anh_corr(x):
-                xx=3900
-                return 1.0204762161801728 - 0.000016154970938850175*x - 50.4350857894416/(239.21983191091954 + x)
-                print("ERROR")
-                if x < xx+100 and x > xx-100:
-                   return 1.0204762161801728 - 0.000016154970938850175*x - 50.4350857894416/(239.21983191091954 + x)
-                   #return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), (x>=3900)&(x<4000),x>4000],[0.582728, 0.6407, 0.759964, 0.825341, 0.861125, 0.900091, 0.89788, 0.925491, 0.928046, 0.951405, 0.961447, 0.966595, 0.966203, 0.966312, 0.967825, 0.962537, 0.959766, 0.957327, 0.965982, 0.48524, 0.194003, 0.323196, 0.529488, 0.508194, 0.452896, 0.716601, 0.777274, 0.806458, 0.850253, 0.938257, 0.957628, 0.95651, 0.955162, 0.918533, 0.944945, 0.946553, 0.949621, 0.946313, 0.9493, 0.954287,0.954287])
-                   #if x<2000:
-                   #  return 0.950
-                   #else:
-                   #  return 0.943
-                   #return 0.944
+                scaling = [1.00058, 0.999846, 0.935579, 0.967753, 0.964498, 0.964641, 0.948904, 0.96143, 0.962068, 0.965688, 0.972093, 0.971545, 0.971685, 0.973273, 0.971551, 0.969923, 0.968905, 0.962642, 0.974881, 0.326225, 0.325892, 0.41384, 0.441502, 0.526397, 0.687563, 0.758214, 0.803279, 0.806293, 0.844447, 0.941828, 0.961305, 0.95736, 0.955739, 0.919227, 0.947026, 0.951936, 0.950952, 0.945497, 0.951473, 0.954571, 0.954571]
+                return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), (x>=3900)&(x<4000),x>4000],scaling)*x
+               
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            ########################################################
+            elif Qanh == "r2SCAN-3c_1":
+              def anh_corr(x):
+                return 0.950*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "r2SCAN_2":
+              def anh_corr(x):
+                if x < 2000:
+                  return 0.969*x
                 else:
-                   return 1 
-              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(j)*j for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+                  return 0.944*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "r2SCAN_sf":
+              def anh_corr(x):
+                return (1.0211 - 1.59745*10**-5*x - 102.482/(1517.15 + x))*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "r2SCAN_mult":
+              from numpy import piecewise
+              def anh_corr(x):
+                scaling = [0.993869, 0.929885, 0.940778, 0.962749, 0.970478, 0.967294, 0.953732, 0.964591, 0.966077, 0.973015, 0.976342, 0.972922, 0.972205, 0.974236, 0.973522, 0.97198, 0.972194, 0.970429, 0.946279, 0.450775, 0.429606, 0.533808, 0.593157, 0.657998, 0.747984, 0.78632, 0.802993, 0.852336, 0.879202, 0.947577, 0.961449, 0.954227, 0.91328, 0.925493, 0.956013, 0.953386, 0.949111, 0.951456, 0.954239, 0.956302, 0.956302]
+                return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), (x>=3900)&(x<4000),x>4000],scaling)*x
+
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            ########################################################
+            elif Qanh == "wB97X-3c_1":
+              def anh_corr(x):
+                return 0.954*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "wB97X-3c_2":
+              def anh_corr(x):
+                if x < 2000:
+                  return 0.971*x
+                else:
+                  return 0.949*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "wB97X-3c_sf":
+              def anh_corr(x):
+                return (1.07555 - 2.42816*10**-5*x - 188.46/(1179.03 + x))*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "wB97X-3c_mult":
+              from numpy import piecewise
+              def anh_corr(x):
+                scaling = [0.938768, 0.905829, 0.921018, 0.942186, 0.959706, 0.964414, 0.950646, 0.955143, 0.964944, 0.968226, 0.979111, 0.976256, 0.974098, 0.97433, 0.975238, 0.973679, 0.970807, 0.968801, 0.974567, 0.978848, 0.30976, 0.342098, 0.420479, 0.553954, 0.693097, 0.733632, 0.76931, 0.804974, 0.83931, 0.876033, 0.950491, 0.962892, 0.958473, 0.915792, 0.946232, 0.956013, 0.955388, 0.9524, 0.952433, 0.955203, 0.955203]
+                return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), (x>=3900)&(x<4000),x>4000],scaling)*x
+
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            ########################################################
+            elif Qanh == "wB97X-D_1":
+              def anh_corr(x):
+                return 0.950*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "wB97X-D_2":
+              def anh_corr(x):
+                if x < 2000:
+                  return 0.967*x
+                else:
+                  return 0.945*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "wB97X-D_sf":
+              def anh_corr(x):
+                return (0.961752 - 3.89697*10**-6*x + 2.814/(5.5432 + x))*x
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            elif Qanh == "wB97X-D_mult":
+              from numpy import piecewise
+              def anh_corr(x):
+                scaling = [1.00058, 0.999846, 0.935579, 0.967753, 0.964498, 0.964641, 0.948904, 0.96143, 0.962068, 0.965688, 0.972093, 0.971545, 0.971685, 0.973273, 0.971551, 0.969923, 0.968905, 0.962642, 0.974881, 0.326225, 0.325892, 0.41384, 0.441502, 0.526397, 0.687563, 0.758214, 0.803279, 0.806293, 0.844447, 0.941828, 0.961305, 0.95736, 0.955739, 0.919227, 0.947026, 0.951936, 0.950952, 0.945497, 0.951473, 0.954571, 0.954571]
+                return piecewise(x,[(x>=0)&(x<100), (x>=100)&(x<200), (x>=200)&(x<300), (x>=300)&(x<400), (x>=400)&(x<500), (x>=500)&(x<600), (x>=600)&(x<700), (x>=700)&(x<800), (x>=800)&(x<900), (x>=900)&(x<1000), (x>=1000)&(x<1100), (x>=1100)&(x<1200), (x>=1200)&(x<1300), (x>=1300)&(x<1400), (x>=1400)&(x<1500), (x>=1500)&(x<1600), (x>=1600)&(x<1700), (x>=1700)&(x<1800), (x>=1800)&(x<1900), (x>=1900)&(x<2000), (x>=2000)&(x<2100), (x>=2100)&(x<2200), (x>=2200)&(x<2300), (x>=2300)&(x<2400), (x>=2400)&(x<2500), (x>=2500)&(x<2600), (x>=2600)&(x<2700), (x>=2700)&(x<2800), (x>=2800)&(x<2900), (x>=2900)&(x<3000), (x>=3000)&(x<3100), (x>=3100)&(x<3200), (x>=3200)&(x<3300), (x>=3300)&(x<3400), (x>=3400)&(x<3500), (x>=3500)&(x<3600), (x>=3600)&(x<3700), (x>=3700)&(x<3800), (x>=3800)&(x<3900), (x>=3900)&(x<4000),x>4000],scaling)*x
+
+              clusters_df.at[i,("log","vibrational_frequencies")] = [anh_corr(float(j)) for j in clusters_df.at[i,("log","vibrational_frequencies")]]
+            ########################################################
             else:
               clusters_df.at[i,("log","vibrational_frequencies")] = replace_by_nonnegative(clusters_df.at[i,("extra","anharm")],clusters_df.at[i,("log","vibrational_frequencies")],1)
           except:
@@ -226,7 +291,10 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
         clusters_df.at[i,("log","entropy")] = missing
         continue
       if isnan(Qt):
-        Qt = clusters_df.at[i,("log","temperature")]
+        try:
+          Qt = clusters_df.at[i,("log","temperature")]
+        except:
+          Qt = 298.15
       vibs = clusters_df.at[i,("log","vibrational_frequencies")]
       structure = clusters_df.at[i,("xyz","structure")]
       
@@ -247,7 +315,12 @@ def thermodynamics(clusters_df, Qanh, Qfc, Qt, Qdropimg):
   ## CORRECTIONS FOR GIBBS FREE ENERGY
   for i in range(len(clusters_df)):
     try:
-      clusters_df.at[i,("log","gibbs_free_energy")] = clusters_df.at[i,("log","enthalpy_energy")] - clusters_df.at[i,("log","entropy")]/1000/627.503 * clusters_df.at[i,("log","temperature")]
+      if isnan(Qt):
+        try:
+          Qt = clusters_df.at[i,("log","temperature")]
+        except:
+          Qt = 298.15
+      clusters_df.at[i,("log","gibbs_free_energy")] = clusters_df.at[i,("log","enthalpy_energy")] - clusters_df.at[i,("log","entropy")]/1000/627.503 * Qt
     except:
       clusters_df.at[i,("log","gibbs_free_energy")] = missing
     try:

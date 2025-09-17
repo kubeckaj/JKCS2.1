@@ -54,7 +54,9 @@ def print_results(
         rb = "}"
 
     print("\n########   RESULTS   #########\n")
-
+    #print("Y_predicted = ", Y_predicted[0], flush=True)
+    #print("ens = ", ens, flush=True)
+    #print("ens_correction = ", ens_correction, flush=True)
     ### PRINT THE PROPERTIES ###
     if Qeval == 2:
         print("Ytest = " + lb + ",".join([str(i) for i in ens]) + rb + ";", flush=True)
@@ -240,7 +242,7 @@ def print_results(
             ]
             print("RMSE = " + ",".join([str(i) for i in rmse]) + units, flush=True)
 
-        if Qcharge == 1:
+        if Qcharge == 1 and Qa_predicted is not None:
             print("", flush=True)
             print("Results for charges:", flush=True)
             Qa_predicted = flatten(array([flatten(array(i)) for i in Qa_predicted]))
@@ -257,6 +259,12 @@ def print_results(
                 F_predicted = F_predicted_rem
 
     ### PRINTING THE QML PICKLES
+    if Qforces == 1:
+      if ("extra", "forces") not in clustersout_df.columns:
+          # clustersout_df.loc[clustersout_df.iloc[i].name,("extra","forces")] = [array(force) for force in F_predicted[0][i]]
+          clustersout_df.loc[:, ("extra", "forces")] = None
+      if ("extra", "forces_true") not in clustersout_df.columns:
+          clustersout_df.loc[:, ("extra", "forces_true")] = None
     for i in range(len(clustersout_df)):
         if method != "delta":
             clustersout_df.loc[
@@ -274,12 +282,13 @@ def print_results(
                 multiplier * Y_validation[i]
             )
         if Qforces == 1:
-            if ("extra", "forces") not in clustersout_df.columns:
-                # clustersout_df.loc[clustersout_df.iloc[i].name,("extra","forces")] = [array(force) for force in F_predicted[0][i]]
-                clustersout_df.loc[:, ("extra", "forces")] = None
+            clustersout_df.at[clustersout_df.iloc[i].name, ("extra", "forces_true")] = [
+                array(force) for force in F_test[i]
+            ]
             clustersout_df.at[clustersout_df.iloc[i].name, ("extra", "forces")] = [
                 array(force) for force in F_predicted[0][i]
             ]
+            
     ### SAVE TIME AND SHAPE INFORMATION
     clustersout_df.loc[:, ("extra", "repr_train_wall")] = repr_train_wall
     clustersout_df.loc[:, ("extra", "repr_train_cpu")] = repr_train_cpu
@@ -300,6 +309,7 @@ def print_results(
     clustersout_df.to_pickle(outfile)
     print(f"Saved results to {outfile}", flush=True)
     if Qsampleeach > 0:
+        import os
         if sampleeach_i == 0:
             os.system("JKQC " + outfile + " -out predicted_QML_FULL.pkl -noex")
         else:

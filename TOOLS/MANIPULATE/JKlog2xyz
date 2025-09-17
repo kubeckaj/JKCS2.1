@@ -181,7 +181,7 @@ function convertG16 {
     then
       energy+=" Dipole_moment: `grep "molecular dipole:" $file | tail -n 1 | awk '{print $5}'`"
     fi
-    echo "energy = $energy" >> $newfile
+    echo "$JKenergy" >> $newfile
 
     if [ $Qforce -ne 1 ]
     then

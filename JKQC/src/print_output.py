@@ -37,7 +37,10 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       continue
     if last == "-extra":
       last = ""
-      output.append(clusters_df["extra"][i].values)
+      try:
+        output.append(clusters_df["extra"][i].values)
+      except:
+        output.append([missing]*len(clusters_df))
       continue
     #CITE
     if i == "-cite":
@@ -166,10 +169,14 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       for ind in clusters_df.index:
         try:
           atoms = clusters_df.loc[ind,("xyz","structure")]
+          atoms.wrap()
           write(".movie.xyz",atoms, format='xyz')
           with open(".movie.xyz", 'r') as f2:
             lines = f2.readlines()
-            lines[1] = clusters_df.loc[ind,("info","file_basename")]+"\n"
+            try:
+              lines[1] = clusters_df.loc[ind,("info","file_basename")]+f" Total Energy: {clusters_df.loc[ind,('log','electronic_energy')]}\n"
+            except:
+              lines[1] = clusters_df.loc[ind,("info","file_basename")]+"\n"
           f.writelines(lines)
           f2.close()
         except:
@@ -256,6 +263,33 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
           rg.append(missing)
       output.append(rg)
       continue
+    #mean force
+    if i == "-meanforce":
+      from numpy import mean,sum,array
+      meanforce = []
+      for ind in clusters_df.index:
+        try:
+          aseCL=clusters_df.loc[ind,("extra","forces")]
+          #print(aseCL)
+          force = lambda p: sum(array(p)**2)**0.5
+          meanforce.append(mean([force(array(p)) for p in aseCL]))
+        except:
+          meanforce.append(missing)
+      output.append(meanforce)
+      continue
+    #max dist
+    if i == "-maxdist":
+      from numpy import max,sum
+      maxdist = []
+      for ind in clusters_df.index:
+        try:
+          aseCL=clusters_df.loc[ind,("xyz","structure")]
+          dist = lambda p1, p2: sum((p1-p2)**2)**0.5
+          maxdist.append(max([dist(p1, p2) for p1 in aseCL.get_positions() for p2 in aseCL.get_positions()]))
+        except:
+          maxdist.append(missing)
+      output.append(maxdist)
+      continue
     #ERRPA
     if i == "-errpa":
       err = []
@@ -293,7 +327,7 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
             ratios = ratios / max(ratios)
           else:
             ratios = missing
-          radius.append((prod(maxdist*ratios))**(1/3)/2)	
+          radius.append((prod(maxdist*ratios))**(1/3)/2)
         except:
           radius.append(missing)
       output.append(radius)

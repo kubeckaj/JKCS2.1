@@ -44,7 +44,7 @@ function help {
    -help ............ print this help and exit 
    -oc/-onlycollect . only collects pickle file
    -orca ............ if you collect results from ORCA runs
-   OTHERS: -clean,-cleanfull,-forces
+   OTHERS: -clean,-cleanfull,-forces,-eldisp,-forcedisp
   
   ${cfMAGENTA}OUTPUTS:${cfDEF} 
     -collection[${cfBLUE}FOLDER${cfDEF}].pkl:
@@ -127,6 +127,9 @@ Qonlycollect=0 #after JKQC no recollecting will be done
 Qarray=1 #submit jobs as array?
 Qarraymax=0 #max jobs per array
 Qforces=0 #collect forces?
+Qdisp_electronic_energy=0
+Qdisp_forces=0
+
 ADDdependency=""
 
 last=""
@@ -154,6 +157,18 @@ do
     if [ "$iter" == "-forces" ] || [ "$iter" == "-force" ]
     then
       Qforces=1
+      continue
+    fi
+    # Electronic energy dispersion correction
+    if [ "$iter" == "-eldisp" ]
+    then
+      Qdisp_electronic_energy=1
+      continue
+    fi
+    # Forces dispersion correction
+    if [ "$iter" == "-forcedisp" ]
+    then
+      Qdisp_forces=1
       continue
     fi
     # Array submission
@@ -372,42 +387,46 @@ then
   JKecho 2 "Going through all subfolders: ${cfBLUE}$subfolders${cfDEF}"
 else
   #TODO Do I really want to recollect everytime?
-  if [[ "$method" == *"ABC"* ]]
+  if [[ "$method" == *"ABC"* ]] && [[ "$method" != *"DFT"* ]]
   then
     logsouts=`ls $method/calc-LM/*.xyz $method/*/calc-LM/*.xyz $method/*/*/calc-LM/*.xyz 2>/dev/null | wc -w`
   else
-    logs=`ls $method/*.log $method/*/*.log $method/*/*/*.log 2>/dev/null`
-    if [ ! -z "$logs" ]
+    logs=`find $method -maxdepth 4 -name "*.log" | wc -l`
+    outs=`find $method -maxdepth 4 -name "*.out" | wc -l`
+    JKecho 3 "    Found $logs log files."
+    if [ $logs -gt 0 ]
     then 
-      for i in $logs
+      for i in $method/*.log $method/*/*.log $method/*/*/*.log
       do
+        if [ ! -e $i ]; then continue; fi
         xyz=`echo $i | rev | cut -c4- | rev`xyz
         if [ ! -e $xyz ]; then JKlog2xyz $i -topath; fi
       done
     else
       program="ORCA"
-      outs=`ls $method/*.out $method/*/*.out $method/*/*/*.out 2>/dev/null`
-      for i in $outs
+      JKecho 3 "    Found $outs out files."
+      for i in $method/*.out $method/*/*.out $method/*/*/*.out
       do
+	if [ ! -e $i ]; then continue; fi
 	xyz=`echo $i | rev | cut -c5- | rev`.xyz
 	if [ ! -e $xyz ]; then JKout2xyz $i ; fi
       done
     fi
-    logsouts=`echo $logs $outs 2>/dev/null | wc -w`
+    logsouts=`echo $logs+$outs | bc`
   fi
   if [ $logsouts -eq 0 ]
   then
     JKecho 2 "I cannot recollect if there is anything to collect (xyz/logs/outs)"
     Qrecollect=0
   fi
+  JKecho 3 "Qrecollect = $Qrecollect"
   if [ $Qrecollect -eq 1 ] #&& [[ "$method" != *"ABC"* ]]
   then
     rm $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null
   fi
   PKLinsubfolders=`ls $method/*.pkl $method/*/*.pkl $method/*/*/*.pkl 2>/dev/null | xargs`
   if [ ! -z "$PKLinsubfolders" ]
-  then
-    if [ $Qclean -eq 0 ]
+  then if [ $Qclean -eq 0 ]
     then
       subfolders=""
       JKecho 2 "No need to enter any subfolder (.pkl files exist) ... straight to collecting."
@@ -430,7 +449,7 @@ do
   #command="$toolspath/SCRIPTS/JKcollect RUN $savefile  "${arguments[@]}
   #printf "$command" > run${scriptfilecommand}.sh
   #if [ $method == "ABC" ] || [ $method == "ABC-XTB" ] || [ $method == "ABC_XTB" ]
-  if [[ "$method" == *"ABC"* ]]
+  if [[ "$method" == *"ABC"* ]] && [[ "$method" != *"DFT"* ]]
   then
     if [ -e 0.xyz ]
     then
@@ -476,6 +495,14 @@ do
       if [ $Qforces == "1" ]
       then
         addarg+=" -forces"
+      fi
+      if [ $Qdisp_electronic_energy == "1" ]
+      then
+        addarg+=" -eldisp"
+      fi
+      if [ $Qdisp_forces == "1" ]
+      then
+        addarg+=" -forcedisp"
       fi
       echo "source ~/.JKCSusersetup.txt;" > run${scriptfilecommand}.sh
       echo "program_JKQCpickle $addarg -noex -folder ./ -out $savepklfile" >> run${scriptfilecommand}.sh

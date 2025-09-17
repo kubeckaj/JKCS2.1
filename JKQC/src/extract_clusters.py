@@ -1,3 +1,4 @@
+
 # EXTRACT
 def listToString(s,spaces):
   # initialize an empty string
@@ -10,12 +11,13 @@ def listToString(s,spaces):
   return str1
 
 def seperate_string_number(string):
-    # "1sa_215" -> ["1","sa","_","215"]
     previous_character = string[0]
     groups = []
     newword = string[0]
     for x, i in enumerate(string[1:]):
-        if i.isalpha() and previous_character.isalpha():
+        if i == "_" or previous_character == "_":
+            newword += i
+        elif i.isalpha() and previous_character.isalpha():
             newword += i
         elif i.isnumeric() and previous_character.isnumeric():
             newword += i
@@ -27,6 +29,21 @@ def seperate_string_number(string):
             groups.append(newword)
             newword = ''
     return groups
+
+def is_nameable(input_array):
+  nameable_test = True
+  if len(input_array) % 2 == 0:
+    for input_array_i in input_array[0::2]:
+      if not input_array_i.isnumeric():
+        nameable_test = False
+        break
+    for input_array_i in input_array[1::2]:
+      if input_array_i.isnumeric():
+        nameable_test = False
+        break
+  else:
+    nameable_test = False
+  return nameable_test
 
 def dash(input_array):
   #['1','sa',"23",'-','24','b','_','25',"-","26"]
@@ -165,6 +182,7 @@ def my_special_compare_with_asterix(string1,string2_array,howmany,what):
 
 def extract_clusters(clusters_df,Qextract,Pextract,Qclustername,Qout):
   from pandas import DataFrame,concat
+  from re import split
 
   #COMMA SEPARATED 
   # 1sa,2sa-02 -> ["1sa","2sa-02"]
@@ -216,6 +234,17 @@ def extract_clusters(clusters_df,Qextract,Pextract,Qclustername,Qout):
         Pextract_final.append(corrected)
     Pextract_ultimate = unique(Pextract_final)
 
+  #JK note: I got once fucked up that this was not sorted so I am sorting it here:
+  for index in clusters_df.index:
+    file_basename_split = clusters_df.loc[index,("info","cluster_type")]
+    split_numbers_letters = split('(\d+)',file_basename_split)[1:]
+    cluster_type_array = seperate_string_number(file_basename_split)
+    if is_nameable(cluster_type_array):
+      cluster_type_2array_sorted = sorted([cluster_type_array[i:i + 2] for i in range(0, len(cluster_type_array), 2)],key=lambda x: x[1])
+      cluster_type_array_sorted = [item for sublist in cluster_type_2array_sorted for item in sublist]
+      cluster_type = zeros(cluster_type_array_sorted)
+      clusters_df.loc[index,("info","cluster_type")] = cluster_type    
+
   #SEARCHING FOR CLUSTERS IN THE DATABASE
   newclusters_df = DataFrame()
   for extract_i in Pextract_ultimate: 
@@ -250,7 +279,7 @@ def extract_clusters(clusters_df,Qextract,Pextract,Qclustername,Qout):
             except:
               break
         extracted_df = clusters_df[[my_special_compare_with_asterix(value_i,new_extract_i,howmany,what) for value_i in clusters_df["info"]["cluster_type"].values]].copy()
-              
+   
     if len(extracted_df) > 0:
       if len(newclusters_df) == 0:
         newclusters_df = extracted_df.copy()
