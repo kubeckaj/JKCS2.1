@@ -1,5 +1,5 @@
-module vp_tree
-   use kernel_distance
+module fchl18_vp_tree
+   use fchl18_kernel_distance
    use omp_lib
    implicit none
 
@@ -48,7 +48,7 @@ contains
    subroutine load(X_in, Y_in, vp_index_in, vp_left_in, vp_right_in, vp_threshold_in, verbose_in, n1, nneigh1_in, nm1, nsigmas_in, &
    & t_width_in, d_width_in, cut_start_in, cut_distance_in, order_in, pd_in, &
    & distance_scale_in, angular_scale_in, alchemy_in, two_body_power_in, three_body_power_in, &
-   & kernel_idx_in, parameters_in, root_id)
+   & kernel_idx_in, parameters_in)
       ! raw input data
       double precision, intent(in) :: X_in(:,:, :, :), Y_in(:)
 
@@ -101,13 +101,8 @@ contains
       ! Kernel ID and corresponding parameters
       integer, intent(in) :: kernel_idx_in ! save
       double precision, dimension(:, :), intent(in) :: parameters_in ! save
-      integer, intent(out) :: root_id
 
-      integer :: n_train, i
-      integer, allocatable :: indices(:)
-
-      ! openmp parameters
-      integer :: nthreads, max_depth
+      integer :: n_train
 
       ! clean up training data (if already allocated)
       call clean_training_data()
@@ -308,7 +303,7 @@ contains
       logical :: ret_dists
       integer, allocatable :: heap_idx(:)
       double precision, allocatable :: heap_dist(:)
-      integer :: heap_size, j
+      integer :: heap_size
 
       ret_dists = .false.
       if (present(return_distances)) ret_dists = return_distances
@@ -547,4 +542,4 @@ contains
       deallocate(temp)
    end function quick_median
 
-end module vp_tree
+end module fchl18_vp_tree

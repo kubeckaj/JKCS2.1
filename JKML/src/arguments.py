@@ -298,6 +298,7 @@ def help_nn():
 
 def arguments(argument_list=[]):
     import os
+
     # Predefined arguments
     method = "direct"  # direct/delta/min
     Qmin = 0
@@ -325,7 +326,7 @@ def arguments(argument_list=[]):
     column_name_1 = "log"
     column_name_2 = "electronic_energy"
     Qifforces = 1  # IF forces exist use them in calculations
-    Qifcharges = 0 
+    Qifcharges = 0
     Qifdipole = 0
     Qifeldisp = 0
     Qifforcedisp = 0
@@ -335,6 +336,8 @@ def arguments(argument_list=[]):
 
     # knn default
     no_metric = False
+    metric_only = False
+    subsample_mlkr = False
 
     # Predefined QML
     Qkernel = "Gaussian"
@@ -731,11 +734,17 @@ def arguments(argument_list=[]):
         # Models and representations
         if arg == "-painn" or arg == "-nn":
             import sys, os, glob
+
             try:
-              thepath=glob.glob(os.path.dirname(os.path.abspath(__file__))+'/../../JKQC/JKCS/SCHNETPACK/lib/py*/site-packages/')[0]
+                thepath = glob.glob(
+                    os.path.dirname(os.path.abspath(__file__))
+                    + "/../../JKQC/JKCS/SCHNETPACK/lib/py*/site-packages/"
+                )[0]
             except:
-              print("SCHNETPACK was not set properly during setup (run: sh setup.sh -nn -up grendel). [EXITING]")
-              exit()
+                print(
+                    "SCHNETPACK was not set properly during setup (run: sh setup.sh -nn -up grendel). [EXITING]"
+                )
+                exit()
             sys.path.append(thepath)
             Qmethod = "nn"
             Qrepresentation = "painn"
@@ -768,13 +777,22 @@ def arguments(argument_list=[]):
         if arg == "-knn":
             Qmethod = "knn"
             continue
+        if arg == "-mlkr":
+            Qmethod = "mlkr"
+            continue
         if arg == "-aimnet":
             import sys, os, glob
+
             try:
-              thepath=glob.glob(os.path.dirname(os.path.abspath(__file__))+'/../../JKQC/JKCS/AIMNET/lib/py*/site-packages/')[0]
+                thepath = glob.glob(
+                    os.path.dirname(os.path.abspath(__file__))
+                    + "/../../JKQC/JKCS/AIMNET/lib/py*/site-packages/"
+                )[0]
             except:
-              print("AIMNET was not set properly during setup (run: sh setup.sh -aimnet -up grendel). [EXITING]")
-              exit()
+                print(
+                    "AIMNET was not set properly during setup (run: sh setup.sh -aimnet -up grendel). [EXITING]"
+                )
+                exit()
             sys.path.append(thepath)
             Qmethod = "aimnet"
             Qrepresentation = "aimnet"
@@ -795,6 +813,10 @@ def arguments(argument_list=[]):
         # turn off metric learning for k-NN
         if arg == "-nometric":
             no_metric = True
+            continue
+        # only perform metric learning (no k-NN)
+        if arg == "-metric_only":
+            metric_only = True
             continue
 
         # Epochs
@@ -1091,6 +1113,10 @@ def arguments(argument_list=[]):
             continue
         if arg == "-hyper-cache":
             last = arg
+            continue
+
+        if arg == "-subsample-mlkr":
+            subsample_mlkr = True
             continue
 
         # Unknown argument

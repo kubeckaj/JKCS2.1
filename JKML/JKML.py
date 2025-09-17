@@ -127,28 +127,37 @@ for sampleeach_i in sampleeach_all:
         from src.data import prepare_data_for_training as prepare_data
 
         # returns: strs, Y_train, F_train, Qforces, Q_charge, Q_charges, Qcharge, D_dipole, Qdipole, size
-        locals().update(
-            prepare_data(
-                train_high_database,
-                monomers_high_database,
-                train_low_database,
-                monomers_low_database,
-                seed,
-                size,
-                method,
-                column_name_1,
-                column_name_2,
-                Qmin,
-                Qifforces,
-                Qifcharges,
-                Qifdipole,
-                Qsampleeach,
-                Qforcemonomers,
-                sampledist,
-                Qmonomers,
-                Qifeldisp,
-                Qifforcedisp
-            )
+        (
+            strs_train,
+            Y_train,
+            F_train,
+            Qforces_train,
+            Q_charge_train,
+            Q_charges_train,
+            Qcharge_train,
+            D_dipole_train,
+            Qdipole_train,
+            size_train,
+        ) = prepare_data(
+            train_high_database,
+            monomers_high_database,
+            train_low_database,
+            monomers_low_database,
+            seed,
+            size,
+            method,
+            column_name_1,
+            column_name_2,
+            Qmin,
+            Qifforces,
+            Qifcharges,
+            Qifdipole,
+            Qsampleeach,
+            Qforcemonomers,
+            sampledist,
+            Qmonomers,
+            Qifeldisp,
+            Qifforcedisp,
         )
 
         #####################################
@@ -162,7 +171,7 @@ for sampleeach_i in sampleeach_all:
                     Qrepresentation,
                     Qkernel,
                     Qsplit,
-                    strs,
+                    strs_train,
                     Y_train,
                     krr_cutoff,
                     lambdas,
@@ -170,6 +179,7 @@ for sampleeach_i in sampleeach_all:
                     varsoutfile,
                     Qsplit_i,
                     Qsplit_j,
+                    hyper_cache,
                 )
             )
         #####################################
@@ -179,11 +189,27 @@ for sampleeach_i in sampleeach_all:
             locals().update(
                 training(
                     Qrepresentation,
-                    strs,
+                    strs_train,
                     Y_train,
                     varsoutfile,
+                    sigmas=sigmas,
                     no_metric=no_metric,
                     hyper_cache=hyper_cache,
+                    subsample_mlkr=subsample_mlkr,
+                )
+            )
+        #####################################
+        elif Qmethod == "mlkr":
+            from src.QMLKR import training
+
+            locals().update(
+                training(
+                    Qrepresentation,
+                    strs_train,
+                    Y_train,
+                    varsoutfile,
+                    hyper_cache=hyper_cache,
+                    subsample_mlkr=subsample_mlkr,
                 )
             )
         #####################################
@@ -191,11 +217,11 @@ for sampleeach_i in sampleeach_all:
             from src.SchNetPack import training
 
             training(
-                Qforces,
+                Qforces_train,
                 Y_train,
                 F_train,
                 Qenergytradoff,
-                strs,
+                strs_train,
                 nn_tvv,
                 nn_cutoff,
                 nw,
@@ -213,9 +239,9 @@ for sampleeach_i in sampleeach_all:
                 Qcheckpoint,
                 Qtime,
                 Qifcharges,
-                Q_charges,
+                Q_charges_train,
                 Qifdipole,
-                D_dipole,
+                D_dipole_train,
             )
         ###################################
         elif Qmethod == "physnet":
@@ -225,10 +251,10 @@ for sampleeach_i in sampleeach_all:
                 Qforces,
                 Y_train,
                 F_train,
-                D_dipole,
-                Q_charge,
-                Q_charges,
-                strs,
+                D_dipole_train,
+                Q_charge_train,
+                Q_charges_train,
+                strs_train,
                 nn_atom_basis,
                 nn_rbf,
                 nn_interactions,
@@ -243,14 +269,15 @@ for sampleeach_i in sampleeach_all:
         ###################################
         elif Qmethod == "aimnet":
             from src.AIMNetInterface import training
-            
+
             training(
                 Y_train,
                 F_train,
                 Z_atoms,
                 N_atoms,
                 Qenergytradoff,
-                strs,nn_tvv,
+                strs,
+                nn_tvv,
                 Qbatch_size,
                 Qlearningrate,
                 parentdir,
@@ -261,7 +288,7 @@ for sampleeach_i in sampleeach_all:
                 Q_charges,
                 file_basenames,
                 seed,
-                Qmonomers
+                Qmonomers,
             )
         ###################################
         else:
@@ -299,25 +326,27 @@ for sampleeach_i in sampleeach_all:
 
             if Qrepresentation == "fchl":
                 try:
-                  X_train, sigmas, alpha, train_metadata = pickle.load(f)
+                    X_train, sigmas, alpha, train_metadata = pickle.load(f)
                 except:
-                  f.close()
-                  f = open(VARS_PKL, "rb")
-                  train_metadata = {}
-                  X_atoms = None
-                  X_train, sigmas, alpha = pickle.load(f)
+                    f.close()
+                    f = open(VARS_PKL, "rb")
+                    train_metadata = {}
+                    X_atoms = None
+                    X_train, sigmas, alpha = pickle.load(f)
             elif Qrepresentation == "fchl19":
                 try:
-                  X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
+                    X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
                 except:
-                  f.close()
-                  f = open(VARS_PKL, "rb")
-                  train_metadata = {}
-                  X_train, sigmas, alpha = pickle.load(f)
-                  #X_atoms = [strs.iloc[i].get_atomic_numbers() for i in range(len(strs))]
-                  X_atoms = [ sum((X_train[i,0,0]<1e99)) for i in range(len(X_train)) ]
-                  print("JK: This should not work")
-                  exit()
+                    f.close()
+                    f = open(VARS_PKL, "rb")
+                    train_metadata = {}
+                    X_train, sigmas, alpha = pickle.load(f)
+                    # X_atoms = [strs.iloc[i].get_atomic_numbers() for i in range(len(strs))]
+                    X_atoms = [
+                        sum((X_train[i, 0, 0] < 1e99)) for i in range(len(X_train))
+                    ]
+                    print("JK: This should not work")
+                    exit()
             elif Qrepresentation == "mbdf":
                 X_train, X_atoms, sigmas, alpha, train_metadata = pickle.load(f)
             if len(alpha) != 1:
@@ -407,7 +436,7 @@ for sampleeach_i in sampleeach_all:
                 Qmin,
                 Qprintforces,
                 Qifcharges,
-                Qifeldisp
+                Qifeldisp,
             )
         )
 
@@ -419,7 +448,15 @@ for sampleeach_i in sampleeach_all:
 
             Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
                 evaluate(
-                    Qrepresentation, krr_cutoff, X_train, X_atoms, sigmas, alpha, strs, Qkernel
+                    Qrepresentation,
+                    krr_cutoff,
+                    X_train,
+                    X_atoms_train,
+                    sigmas,
+                    alpha,
+                    strs,
+                    Qkernel,
+                    hyper_cache,
                 )
             )
             Qforces = 0
@@ -442,6 +479,22 @@ for sampleeach_i in sampleeach_all:
             F_predicted = None
             Qa_predicted = None
         #####################################
+        elif Qmethod == "mlkr":
+            from src.QMLKR import evaluate
+
+            Y_predicted, repr_test_wall, repr_test_cpu, test_wall, test_cpu, d_test = (
+                evaluate(
+                    Qrepresentation,
+                    X_train,
+                    strs,
+                    mlkr,
+                    hyper_cache=hyper_cache,
+                )
+            )
+            Qforces = 0
+            F_predicted = None
+            Qa_predicted = None
+        #####################################
         elif Qmethod == "nn":
             from src.SchNetPack import evaluate
 
@@ -457,8 +510,10 @@ for sampleeach_i in sampleeach_all:
         #####################################
         elif Qmethod == "aimnet":
             from src.AIMNetInterface import evaluate
-            
-            Y_predicted, F_predicted = evaluate(varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_atoms)
+
+            Y_predicted, F_predicted = evaluate(
+                varsoutfile, clusters_df, method, Qmin, parentdir, Qmonomers, Z_atoms
+            )
             Qa_predicted = None
         #####################################
         else:
@@ -473,7 +528,18 @@ for sampleeach_i in sampleeach_all:
         )
         ### PRINTING THE RESULTS
         from src.print_output import print_results
-        repr_train_wall = None; repr_train_cpu = None; repr_test_wall = None; repr_test_cpu = None; train_wall = None; train_cpu = None; test_wall = None; test_cpu = None; n_train = None; d_train = None; d_test = None
+
+        repr_train_wall = None
+        repr_train_cpu = None
+        repr_test_wall = None
+        repr_test_cpu = None
+        train_wall = None
+        train_cpu = None
+        test_wall = None
+        test_cpu = None
+        n_train = None
+        d_train = None
+        d_test = None
 
         print_results(
             clusters_df,
@@ -603,26 +669,35 @@ for sampleeach_i in sampleeach_all:
         from src.data import prepare_data_for_training as prepare_data
 
         # returns: strs, Y_train, F_train, Qforces, Q_charge, Q_charges, Qcharge, D_dipole, Qdipole, size
-        locals().update(
-            prepare_data(
-                train_high_database,
-                monomers_high_database,
-                train_low_database,
-                monomers_low_database,
-                seed,
-                size,
-                method,
-                column_name_1,
-                column_name_2,
-                Qmin,
-                Qifforces,
-                Qifcharges,
-                Qifdipole,
-                Qsampleeach,
-                Qforcemonomers,
-                sampledist,
-                Qmonomers,
-            )
+        (
+            strs_train,
+            Y_train,
+            F_train,
+            Qforces_train,
+            Q_charge_train,
+            Q_charges_train,
+            Qcharge_train,
+            D_dipole_train,
+            Qdipole_train,
+            size_train,
+        ) = prepare_data(
+            train_high_database,
+            monomers_high_database,
+            train_low_database,
+            monomers_low_database,
+            seed,
+            size,
+            method,
+            column_name_1,
+            column_name_2,
+            Qmin,
+            Qifforces,
+            Qifcharges,
+            Qifdipole,
+            Qsampleeach,
+            Qforcemonomers,
+            sampledist,
+            Qmonomers,
         )
         print("JKML is starting hyperparameter optimisation.", flush=True)
         if Qmethod == "knn":
@@ -630,9 +705,10 @@ for sampleeach_i in sampleeach_all:
 
             params = hyperopt(
                 Qrepresentation,
-                strs,
+                strs_train,
                 Y_train,
                 varsoutfile,
+                sigmas,
                 no_metric,
                 hyper_cache=hyper_cache,
             )

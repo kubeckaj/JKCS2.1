@@ -6,21 +6,22 @@ import numpy as np
 import pandas as pd
 import pickle
 from sklearn.neighbors import KNeighborsRegressor
-from metric_learn import MLKR
+from src.batched_mlkr import BatchedMLKR as MLKR
 from ase.atoms import Atoms
-from typing import Iterable, Tuple, Union, Dict, Literal, Callable, List, Optional
+from typing import Iterable, Tuple, Union, Dict, Literal, Callable, List, Optional, Any
 import os
 from collections import defaultdict
 import time
 import warnings
 import sys
 import os
+from src.representations import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "fortran"))
-print(sys.path)
-from ffchl_vp_tree import vp_tree
 from qmllib.utils.alchemy import get_alchemy
 from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
+from src.fortran.ffchl19_vp_tree import fchl19_vp_tree
+from src.fortran.ffchl18_vp_tree import fchl18_vp_tree
 
 # ignore sklearn futurewarning
 warnings.filterwarnings(
@@ -29,223 +30,200 @@ warnings.filterwarnings(
 )
 
 
-def _generate_fchl19(
-    strs: Iterable[Atoms], max_atoms=None, elements=None, rcut=8.0, acut=8.0, **kwargs
-) -> np.ndarray:
-    from qmllib.representations import generate_fchl19 as generate_representation
-
-    if elements is None:
-        elements = [1, 6, 7, 8, 16]
-    if max_atoms is None:
-        max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
-    n = len(strs)
-    representation = generate_representation(
-        strs[0].get_atomic_numbers(),
-        strs[0].get_positions(),
-        elements=elements,
-        rcut=rcut,
-        acut=acut,
-        pad=max_atoms,
-    )
-    X = np.zeros((n, representation.shape[1]))
-    X[0, :] = np.sum(representation, axis=0)
-    for i in range(1, n):
-        X[i, :] = generate_representation(
-            strs[i].get_atomic_numbers(),
-            strs[i].get_positions(),
-            elements=elements,
-            rcut=rcut,
-            acut=acut,
-            pad=max_atoms,
-        ).sum(axis=0)
-    if np.isnan(X).any():
-        raise ValueError("NaNs in FCHL representation!")
-    return X
-
-
-def _generate_mbdf(
-    strs: Iterable[Atoms], max_atoms=None, cutoff: float = 8.0, **kwargs
-) -> np.ndarray:
-    from MBDF import generate_mbdf as generate_representation
-
-    if max_atoms is None:
-        max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
-    n = len(strs)
-    ragged_atomic_numbers = np.empty(n, dtype=object)
-    ragged_atomic_numbers[:] = [i.get_atomic_numbers() for i in strs]
-    ragged_positions = np.empty(n, dtype=object)
-    ragged_positions[:] = [i.get_positions() for i in strs]
-    X = generate_representation(
-        ragged_atomic_numbers,
-        ragged_positions,
-        cutoff_r=cutoff,
-        normalized=False,
-        local=False,
-        pad=max_atoms,
-    )
-    return X
-
-
-def _generate_bob(
-    strs: Iterable[Atoms],
-    max_atoms: int = None,
-    asize: Dict[str, Union[np.int64, int]] = None,
-    **kwargs,
-):
-    from qmllib.representations import generate_bob as generate_representation
-
-    n = len(strs)
-    if max_atoms is None:
-        max_atoms = max([len(x) for x in strs])
-
-    if asize is None:
-        asize = defaultdict(int)
-        for struct in strs:
-            elements, counts = np.unique(
-                struct.get_chemical_symbols(), return_counts=True
-            )
-            for e, c in zip(elements, counts):
-                if c > asize[e]:
-                    asize[e] = c
-
-    # get the first representation to find out the length
-    repres = generate_representation(
-        strs[0].get_atomic_numbers(),
-        strs[0].get_positions(),
-        atomtypes=None,
-        size=max_atoms,
-        asize=asize,
-    )
-    X = np.zeros((n, repres.shape[0]))
-    X[0, :] = repres
-    for i in range(1, n):
-        X[i, :] = generate_representation(
-            strs[i].get_atomic_numbers(),
-            strs[i].get_positions(),
-            # this argument is not used for anything, but it's mandatory :) thanks QML!
-            atomtypes=None,
-            size=max_atoms,
-            asize=asize,
-        )
-    return X
-
-
-def _generate_coulomb(strs: Iterable[Atoms], max_atoms: int = None, **kwargs):
-    from qmllib.representations import (
-        generate_coulomb_matrix as generate_representation,
-    )
-
-    n = len(strs)
-    if max_atoms is None:
-        max_atoms = max([len(x) for x in strs])
-
-    # get the first representation to find out the length
-    X = np.zeros((n, max_atoms * (max_atoms + 1) // 2))
-    for i, struct in enumerate(strs):
-        X[i, :] = generate_representation(
-            struct.get_atomic_numbers(),
-            struct.get_positions(),
-            size=max_atoms,
-        )
-    return X
-
-
-def _generate_mbtr(
-    strs: Iterable[Atoms],
-    k2_width=0.1,
-    k2_weight=0.5,
-    k3_width=0.1,
-    k3_weight=0.5,
-    **kwargs,
-):
-    from dscribe.descriptors import MBTR
-
-    unique_atoms = set()
-    for structure in strs:
-        atom_set = set(structure.get_chemical_symbols())
-        unique_atoms = unique_atoms | atom_set
-    unique_atoms = list(unique_atoms)
-    mbtr = MBTR(
-        species=unique_atoms,
-        k2={
-            "geometry": {"function": "inverse_distance"},
-            "grid": {"min": 0, "max": 1, "n": 200, "sigma": k2_width},
-            "weighting": {"function": "exp", "scale": k2_weight, "threshold": 3e-3},
-        },
-        k3={
-            "geometry": {"function": "cosine"},
-            "grid": {"min": -1, "max": 1, "n": 200, "sigma": k3_width},
-            "weighting": {"function": "exp", "scale": k3_weight, "threshold": 3e-3},
-        },
-        periodic=False,
-        normalization="none",
-    )
-    X = np.zeros((len(strs), mbtr.get_number_of_features()))
-    for i, struct in enumerate(strs):
-        X[i, :] = mbtr.create(struct)
-    return X
-
-
-def _generate_fchl18(strs: Iterable[Atoms], max_atoms=None, cutoff=8.0):
-    from qmllib.representations import generate_fchl18 as generate_representation
-
-    if max_atoms is None:
-        max_atoms = max([len(s.get_atomic_numbers()) for s in strs])
-
-    representations = []
-    for struct in strs:
-        representations.append(
-            generate_representation(
-                struct.get_atomic_numbers(),
-                struct.get_positions(),
-                max_size=max_atoms,
-                neighbors=max_atoms,
-                cut_distance=cutoff,
-            )
-        )
-    return np.array(representations)
-
-
 def calculate_representation(Qrepresentation, strs, **repr_kwargs):
     if Qrepresentation == "fchl":
-        return _generate_fchl19(strs, **repr_kwargs)
+        return generate_global_fchl19(strs, **repr_kwargs)
     elif Qrepresentation == "mbdf":
-        return _generate_mbdf(strs, **repr_kwargs)
+        return generate_global_mbdf(strs, **repr_kwargs)
     elif Qrepresentation == "bob":
-        return _generate_bob(strs, **repr_kwargs)
+        return generate_bob(strs, **repr_kwargs)
     elif Qrepresentation == "coulomb":
-        return _generate_coulomb(strs, **repr_kwargs)
+        return generate_coulomb(strs, **repr_kwargs)
     elif Qrepresentation == "mbtr":
-        return _generate_mbtr(strs, **repr_kwargs)
+        return generate_global_mbtr(strs, **repr_kwargs)
     elif Qrepresentation == "fchl-kernel":
-        return _generate_fchl18(strs, **repr_kwargs)
+        return generate_fchl18(strs, **repr_kwargs)
+    elif Qrepresentation == "fchl19-kernel":
+        return generate_fchl19(strs, **repr_kwargs)
     else:
         raise NotImplementedError(
-            f"Representation 'f{Qrepresentation}' not supported with the k-NN model!"
+            f"Representation '{Qrepresentation}' not supported with the k-NN model!"
         )
 
 
-def correct_fchl18_kernel_size(X_test: np.ndarray, X_train: np.ndarray):
-    if X_train.shape[1] != X_test.shape[1]:
-        if X_train.shape[1] > X_test.shape[1]:
-            small = X_test
-            large = X_train
-        else:
-            small = X_train
-            large = X_test
-        newmatrix = np.zeros([small.shape[0], large.shape[1], 5, large.shape[3]])
-        newmatrix[:, :, 0, :] = 1e100
-        newmatrix[0 : small.shape[0], 0 : small.shape[1], 0:5, 0 : small.shape[3]] = (
-            small
+class VPTreeKNN19:
+
+    def __init__(
+        self,
+        n_neighbors: int = 5,
+        weights: Literal["uniform", "distance"] = "uniform",
+        sigma=20.0,
+        verbose=False,
+    ):
+        """
+        Class for fast k-NN with FCHL19 representation.
+
+        Parameters
+        ----------
+        n_neighbors: int, optional
+            Number of neighbours (k). Defaults to 5.
+        weights: "uniform" or "distance", optional
+            Weighing scheme; either uniform (equal weights) or distance (reciprocal).
+            Defaults to uniform.
+        sigma: float, optional
+            Standard deviation for the FCHL19 kernel. Defaults to 20.
+        verbose: boolean, optional
+            Currently unused.
+        """
+        # knn params
+        self.k = n_neighbors
+        self.weights = weights
+        # kernel params
+        self.sigma = sigma
+        # data containers
+        self.X_train: Optional[np.ndarray] = None
+        self.Y_train: Optional[np.ndarray] = None
+        self.X_test: Optional[np.ndarray] = None
+        self.verbose: Optional[bool] = verbose
+
+    def fit(
+        self,
+        X: np.ndarray,
+        X_atoms: np.ndarray,
+        Y: np.ndarray,
+    ):
+        """
+        Fit k-NN model.
+
+        Parameters
+        ----------
+        X: np.ndarray
+            FCHL19 representation of the training data
+        X_atoms: np.ndarray
+            Nuclear charges (element numbers) of the molecules in the training data
+        Y: np.ndarray
+            Labels to be learned.
+        """
+
+        na = np.array([len(x) for x in X_atoms])
+        Q_tr = np.zeros((max(na), X.shape[0]), dtype=np.int32)
+        for i, q in enumerate(X_atoms):
+            Q_tr[: len(q), i] = q
+
+        nm1 = X.shape[0]
+
+        self.X_train = X
+        self.Y_train = Y
+
+        fchl19_vp_tree.train(
+            x_in=X,
+            q_in=Q_tr,
+            y_in=Y,
+            verbose_in=self.verbose,
+            n1=na,
+            nm1=nm1,
+            sigma_in=self.sigma,
         )
-        if X_train.shape[1] > X_test.shape[1]:
-            X_test = newmatrix
+        return
+
+    def _check_test(self, X_test):
+        if self.X_test is not None:
+            f_X_test = self.X_test
+            # the test data is already in the fortran module, no need to reset
+            if np.array_equal(f_X_test, X_test):
+                return True
+        return False
+
+    def _set_test(self, X_test: np.ndarray, X_atoms_test: np.ndarray):
+        if self._check_test(X_test):
+            return
+
+        na_test = np.array([len(x) for x in X_atoms_test])
+        Q_te = np.zeros((max(na_test), X_test.shape[0]), dtype=np.int32)
+        for i, q in enumerate(X_atoms_test):
+            Q_te[: len(q), i] = q
+
+        nm2 = X_test.shape[0]
+        fchl19_vp_tree.set_up_test(
+            X_test,
+            Q_te,
+            na_test,
+            nm2,
+        )
+        self.X_test = X_test
+
+    def kneighbours(
+        self,
+        X: np.ndarray,
+        X_atoms_test: np.ndarray,
+        n_neighbors: Optional[int] = None,
+        return_distance=True,
+    ):
+        """Find closest k neighbors in the tree."""
+        if n_neighbors is None:
+            n_neighbors = self.k
+
+        self._set_test(X, X_atoms_test)
+        if return_distance:
+            (k_neighbors, distances) = fchl19_vp_tree.kneighbors(
+                n_neighbors, X.shape[0], return_distances=True
+            )
+            # fortran indexing is 1-based
+            k_neighbors = k_neighbors - 1
+            # transpose required for sk-learn compatibility as fortran is column-based
+            return distances.T, k_neighbors.T
         else:
-            X_train = newmatrix
-    return X_test, X_train
+            k_neighbors = fchl19_vp_tree.kneighbors(n_neighbors, X.shape[0])
+            # fortran indexing is 1-based
+            k_neighbors = k_neighbors - 1
+            # transpose required for sk-learn compatibility as fortran is column-based
+            return k_neighbors.T
+
+    def predict(
+        self, X: np.ndarray, X_atoms_test: np.ndarray, n_neighbors: Optional[int] = None
+    ):
+        """Wrapper to replicate sklearn k-NN model behaviour."""
+        self._set_test(X, X_atoms_test)
+        if n_neighbors is None:
+            n_neighbors = self.k
+        if self.weights == "uniform":
+            return fchl19_vp_tree.predict(n_neighbors, X.shape[0])
+        elif self.weights == "distance":
+            return fchl19_vp_tree.predict(
+                n_neighbors, X.shape[0], weight_by_distance=True
+            )
+
+    def get_params(self, deep=True):
+        """
+        Get parameters for this estimator.
+
+        Parameters
+        ----------
+        deep : bool, default=True
+            If True, will return the parameters for this estimator and
+            contained subobjects that are estimators.
+
+        Returns
+        -------
+        params : dict
+            Parameter names mapped to their values.
+        """
+        out = dict()
+        out["n_neighbors"] = self.k
+        out["weights"] = self.weights
+        return out
+
+    def get_tree_params(self) -> Dict[str, np.ndarray]:
+        """Get the vp-tree collections, which can be used to rebuild the tree later."""
+        out = dict()
+        out["vp_index"] = fchl19_vp_tree.vp_index
+        out["vp_left"] = fchl19_vp_tree.vp_left
+        out["vp_right"] = fchl19_vp_tree.vp_right
+        out["vp_threshold"] = fchl19_vp_tree.vp_threshold
+        return out
 
 
-class VPTreeKNN:
+class VPTreeKNN18:
 
     def __init__(
         self,
@@ -321,9 +299,9 @@ class VPTreeKNN:
         )
         self.kernel_args = kernel_args
         # data containers
-        self.X_train = None
-        self.Y_train = None
-        self.X_test = None
+        self.X_train: Optional[np.ndarray] = None
+        self.Y_train: Optional[np.ndarray] = None
+        self.X_test: Optional[np.ndarray] = None
 
     def fit(
         self,
@@ -367,27 +345,27 @@ class VPTreeKNN:
         self.X_train = X
         self.Y_train = Y
 
-        vp_tree.train(
-            X,
-            Y,
-            self.verbose,
-            N1,
-            neighbors1,
-            nm1,
-            n_kernels,
-            self.three_body_width,
-            self.two_body_width,
-            self.cut_start,
-            self.cut_distance,
-            self.fourier_order,
-            self.pd,
-            self.two_body_scaling,
-            self.three_body_scaling,
-            self.doalchemy,
-            self.two_body_power,
-            self.three_body_power,
-            kernel_idx,
-            kernel_parameters,
+        fchl18_vp_tree.train(
+            x_in=X,
+            y_in=Y,
+            verbose_in=self.verbose,
+            n1=N1,
+            nneigh1_in=neighbors1,
+            nm1=nm1,
+            nsigmas_in=n_kernels,
+            t_width_in=self.three_body_width,
+            d_width_in=self.two_body_width,
+            cut_start_in=self.cut_start,
+            cut_distance_in=self.cut_distance,
+            order_in=self.fourier_order,
+            pd_in=self.pd,
+            distance_scale_in=self.two_body_scaling,
+            angular_scale_in=self.three_body_scaling,
+            alchemy_in=self.doalchemy,
+            two_body_power_in=self.two_body_power,
+            three_body_power_in=self.three_body_power,
+            kernel_idx_in=kernel_idx,
+            parameters_in=kernel_parameters,
         )
         return
 
@@ -399,7 +377,7 @@ class VPTreeKNN:
                 return True
         return False
 
-    def _set_test(self, X_test, cut_distance=5.0):
+    def _set_test(self, X_test: np.ndarray, cut_distance=5.0):
         if self._check_test(X_test):
             return
 
@@ -418,7 +396,7 @@ class VPTreeKNN:
             ni = N2[a]
             for i, x in enumerate(representation[:ni]):
                 neighbors2[a, i] = len(np.where(x[0] < cut_distance)[0])
-        vp_tree.set_up_test(
+        fchl18_vp_tree.set_up_test(
             X_test,
             N2,
             neighbors2,
@@ -426,14 +404,16 @@ class VPTreeKNN:
         )
         self.X_test = X_test
 
-    def kneighbours(self, X: np.ndarray, n_neighbors: int = None, return_distance=True):
+    def kneighbours(
+        self, X: np.ndarray, n_neighbors: Optional[int] = None, return_distance=True
+    ):
         """Find closest k neighbors in the tree."""
         if n_neighbors is None:
             n_neighbors = self.k
 
         self._set_test(X)
         if return_distance:
-            (k_neighbors, distances) = vp_tree.kneighbors(
+            (k_neighbors, distances) = fchl18_vp_tree.kneighbors(
                 n_neighbors, X.shape[0], return_distances=True
             )
             # fortran indexing is 1-based
@@ -441,21 +421,23 @@ class VPTreeKNN:
             # transpose required for sk-learn compatibility as fortran is column-based
             return distances.T, k_neighbors.T
         else:
-            k_neighbors = vp_tree.kneighbors(n_neighbors, X.shape[0])
+            k_neighbors = fchl18_vp_tree.kneighbors(n_neighbors, X.shape[0])
             # fortran indexing is 1-based
             k_neighbors = k_neighbors - 1
             # transpose required for sk-learn compatibility as fortran is column-based
             return k_neighbors.T
 
-    def predict(self, X: np.ndarray, n_neighbors: int = None):
+    def predict(self, X: np.ndarray, n_neighbors: Optional[int] = None):
         """Wrapper to replicate sklearn k-NN model behaviour."""
         self._set_test(X)
         if n_neighbors is None:
             n_neighbors = self.k
         if self.weights == "uniform":
-            return vp_tree.predict(n_neighbors, X.shape[0])
+            return fchl18_vp_tree.predict(n_neighbors, X.shape[0])
         elif self.weights == "distance":
-            return vp_tree.predict(n_neighbors, X.shape[0], weight_by_distance=True)
+            return fchl18_vp_tree.predict(
+                n_neighbors, X.shape[0], weight_by_distance=True
+            )
 
     def get_params(self, deep=True):
         """
@@ -477,18 +459,18 @@ class VPTreeKNN:
         out["weights"] = self.weights
         return out
 
-    def get_tree_params(self):
+    def get_tree_params(self) -> Dict[str, np.ndarray]:
         """Get the vp-tree collections, which can be used to rebuild the tree later."""
         out = dict()
-        out["vp_index"] = vp_tree.vp_index
-        out["vp_left"] = vp_tree.vp_left
-        out["vp_right"] = vp_tree.vp_right
-        out["vp_threshold"] = vp_tree.vp_threshold
+        out["vp_index"] = fchl18_vp_tree.vp_index
+        out["vp_left"] = fchl18_vp_tree.vp_left
+        out["vp_right"] = fchl18_vp_tree.vp_right
+        out["vp_threshold"] = fchl18_vp_tree.vp_threshold
         return out
 
 
-def load_vp_knn(X_train, Y_train, vp_params, **knn_params):
-    knn = VPTreeKNN(**knn_params)
+def load_fchl18_vp_knn(X_train, Y_train, vp_params, **knn_params):
+    knn = VPTreeKNN18(**knn_params)
     atoms_max = X_train.shape[1]
 
     nm1 = X_train.shape[0]
@@ -510,7 +492,7 @@ def load_vp_knn(X_train, Y_train, vp_params, **knn_params):
     )
     knn.X_train = X_train
     knn.Y_train = Y_train
-    vp_tree.load(
+    fchl18_vp_tree.load(
         X_train,
         Y_train,
         vp_params["index"],
@@ -539,7 +521,39 @@ def load_vp_knn(X_train, Y_train, vp_params, **knn_params):
     return knn
 
 
-def load_hyperparams(hyper_cache: str):
+def load_fchl19_vp_knn(X_train, X_atoms, Y_train, vp_params, **knn_params):
+    knn = VPTreeKNN19(**knn_params)
+    na = np.array([len(x) for x in X_atoms])
+    Q_tr = np.zeros((max(na), X.shape[0]), dtype=np.int32)
+    for i, q in enumerate(X_atoms):
+        Q_tr[: len(q), i] = q
+
+    nm1 = X.shape[0]
+
+    atoms_max = X_train.shape[1]
+
+    nm1 = X_train.shape[0]
+
+    knn.X_train = X_train
+    knn.Y_train = Y_train
+    fchl19_vp_tree.load(
+        x_in=X_train,
+        q_in=Q_tr,
+        y_in=Y_train,
+        vp_index_in=vp_params["index"],
+        vp_left_in=vp_params["left"],
+        vp_right_in=vp_params["right"],
+        vp_threshold_in=vp_params["threshold"],
+        verbose_in=knn.verbose,
+        n1=na,
+        nm1=nm1,
+        sigma_in=knn.sigma,
+    )
+    return knn
+
+
+def load_hyperparams(hyper_cache: Optional[Union[str, os.PathLike]]):
+    """Load hyperparameters from hyper_cache or use defaults."""
     if hyper_cache is not None:
         with open(hyper_cache, "rb") as f:
             hyperparams: dict = pickle.load(f)
@@ -570,15 +584,16 @@ def training(
     strs: pd.Series,
     Y_train: np.ndarray,
     varsoutfile: Union[str, os.PathLike],
-    no_metric=False,
-    hyper_cache=None,
+    sigmas,
+    no_metric: bool = False,
+    hyper_cache: Optional[Union[str, os.PathLike]] = None,
+    subsample_mlkr: bool = False,
 ):
 
     hyperparams = load_hyperparams(hyper_cache)
     # Convert structures to list to avoid indexing issues
     for i, struct in enumerate(strs.values):
         assert struct == strs.iloc[i]
-    print("Values works!")
     strs = strs.values
 
     ### REPRESENTATION CALCULATION ###
@@ -602,15 +617,25 @@ def training(
     )
     # save train input files for off-site debugging
     with open(varsoutfile, "wb") as f:
-        pickle.dump([X_train, Y_train], f)
-        print(f"Saved pretrain vars to {str(f)}.", flush=True)
+        pickle.dump([X_train, Y_train, strs], f)
+        print(f"Saved pretrain vars to {varsoutfile}.", flush=True)
     train_wall_start = time.perf_counter()
     train_cpu_start = time.process_time()
-    if not no_metric and Qrepresentation != "fchl-kernel":
+    if not no_metric and "-kernel" not in Qrepresentation:
         print("JKML(Q-kNN): Training MLKR metric.", flush=True)
         # Limit the number of MLKR components for faster training
         mlkr = MLKR(n_components=50)
-        mlkr.fit(X_train, Y_train)
+        subsample_size = 25_000
+        if subsample_mlkr and (X_train.shape[0] > subsample_size):
+            subsample_indices = np.random.permutation(X_train.shape[0])[:subsample_size]
+            X_mlkr, Y_mlkr = X_train[subsample_indices, :], Y_train[subsample_indices]
+        else:
+            X_mlkr, Y_mlkr = X_train, Y_train
+        if X_mlkr.shape[0] > 40_000:
+            # cast to float 32 to save memory
+            X_mlkr = X_mlkr.astype(np.float32)
+            Y_mlkr = Y_mlkr.astype(np.float32)
+        mlkr.fit(X_mlkr, Y_mlkr)
         A = mlkr.get_mahalanobis_matrix()
         print("JKML(Q-kNN): Training k-NN regressor with MLKR metric.")
         knn = KNeighborsRegressor(
@@ -622,12 +647,19 @@ def training(
     elif Qrepresentation == "fchl-kernel":
 
         print("JKML(Q-kNN): Learn VP-tree of kernel distances.")
-        knn = VPTreeKNN(kernel_args={"sigma": [1.0]}, **hyperparams["knn"])
+        knn = VPTreeKNN18(kernel_args={"sigma": [1.0]}, **hyperparams["knn"])
+    elif Qrepresentation == "fchl19-kernel":
+
+        print("JKML(Q-kNN): Learn VP-tree of kernel distances.")
+        knn = VPTreeKNN19(sigma=sigmas[0], **hyperparams["knn"])
     else:
         # "vanilla" k-NN
         knn = KNeighborsRegressor(n_jobs=-1, algorithm="auto", **hyperparams["knn"])
 
-    knn.fit(X_train, Y_train)
+    if Qrepresentation == "fchl19-kernel":
+        knn.fit(X_train, X_atoms, Y_train)
+    else:
+        knn.fit(X_train, Y_train)
     train_wall = time.perf_counter() - train_wall_start
     train_cpu = time.process_time() - train_cpu_start
     n_train, d_train = X_train.shape[0], np.sum(X_train.shape[1:])
@@ -647,7 +679,7 @@ def training(
         print(f"JKML(Q-kNN): Saving training data to {varsoutfile}")
         if no_metric:
             pickle.dump([X_train, Y_train, X_atoms, knn_params, train_metadata], f)
-        elif Qrepresentation == "fchl-kernel":
+        elif "-kernel" in Qrepresentation:
             vp_params = knn.get_tree_params()
             pickle.dump(
                 [
@@ -727,7 +759,10 @@ def evaluate(Qrepresentation, X_train, strs, knn_model, hyper_cache=None):
 
     test_wall_start = time.perf_counter()
     test_cpu_start = time.process_time()
-    Y_predicted = knn_model.predict(X_test)
+    if Qrepresentation == "fchl19-kernel":
+        Y_predicted = knn_model.predict(X_test, X_atoms)
+    else:
+        Y_predicted = knn_model.predict(X_test)
     test_wall = time.perf_counter() - test_wall_start
     test_cpu = time.process_time() - test_cpu_start
     Y_predicted = Y_predicted[None, :]
@@ -740,6 +775,7 @@ def hyperopt(
     strs,
     Y_train,
     hyperparamfile,
+    sigmas,
     no_metric=False,
     cv_folds=5,
     verbose=True,
@@ -748,7 +784,7 @@ def hyperopt(
 ):
 
     import skopt
-    from skopt.space import Real, Integer, Categorical
+    from skopt.space import Real
     from functools import lru_cache
     from sklearn.model_selection import cross_val_score, KFold
     from sklearn.metrics import pairwise_distances
@@ -792,8 +828,11 @@ def hyperopt(
             repr_params = hyperparams["representation"]
         else:
             repr_params = {}
+            hyperparams = {"knn": {}, "representation": {}}
         global X
+        global X_atoms
         X = calculate_representation(Qrepresentation, strs, **repr_params)
+        X_atoms = [strs[i].get_atomic_numbers() for i in range(len(strs))]
 
     # add k-nn specific hyperparameters
     max_k = 15
@@ -846,21 +885,31 @@ def hyperopt(
         # could preallocate, but won't bother >:)
         distance_matrices = []
         sorted_Ys = []
-        if Qrepresentation == "fchl-kernel":
+        if "-kernel" in Qrepresentation:
             knns = []
         if not no_metric:
             mlkrs = []
 
         for i, (train_index, test_index) in enumerate(kf.split(X)):
             fold_start = time.perf_counter()
-            X_fold, Y_fold = X[train_index], Y_train[train_index]
+            X_fold, Y_fold = (
+                X[train_index],
+                Y_train[train_index],
+            )
             X_test = X[test_index]
+            X_atoms_fold = [X_atoms[j] for j in train_index]
+            X_atoms_test = [X_atoms[j] for j in test_index]
             if no_metric:
                 D = pairwise_distances(X_test, X_fold, n_jobs=-1)
             elif Qrepresentation == "fchl-kernel":
-                knn = VPTreeKNN(kernel_args={"sigma": [1.0]})
+                knn = VPTreeKNN18(kernel_args={"sigma": [1.0]})
                 knn.fit(X_fold, Y_fold)
                 D, neighbors = knn.kneighbours(X_test, n_neighbors=max_k)
+                Y_fold = Y_fold[neighbors]
+            elif Qrepresentation == "fchl19-kernel":
+                knn = VPTreeKNN19(sigma=sigmas[0], **hyperparams["knn"])
+                knn.fit(X_fold, X_atoms_fold, Y_fold)
+                D, neighbors = knn.kneighbours(X_test, X_atoms_test, n_neighbors=max_k)
                 Y_fold = Y_fold[neighbors]
             else:
                 mlkr = MLKR(n_components=50)
@@ -874,7 +923,7 @@ def hyperopt(
             D = np.take_along_axis(D, sorted_indices, axis=1)
             distance_matrices.append(D)
             # also store sorted y_train for prediction
-            if Qrepresentation == "fchl-kernel":
+            if "-kernel" in Qrepresentation:
                 # Y_fold is already made into a matrix; hence need to take along axis
                 Y_sorted = np.take_along_axis(Y_fold, indices=sorted_indices, axis=1)
             else:
@@ -924,6 +973,10 @@ def hyperopt(
             params["knn"][s.name] = v
         else:
             params["representation"][s.name] = v
+    for key, value in hyperparams["knn"].items():
+        if key not in params["knn"]:
+            # copy over value to final hyperdict (such as FCHL19 sigma)
+            params["knn"][key] = value
 
     if (hyper_cache is not None) and (not optimise_representation):
         # use provided representation hyperparams

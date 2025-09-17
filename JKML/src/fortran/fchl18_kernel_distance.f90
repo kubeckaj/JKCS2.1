@@ -1,4 +1,4 @@
-module kernel_distance
+module fchl18_kernel_distance
    use ffchl_module, only: scalar, get_angular_norm2, get_pmax, get_ksi, init_cosp_sinp, get_selfscalar
 
    use ffchl_kernels, only: kernel
@@ -439,4 +439,4 @@ contains
 
    end function test_distance
 
-end module kernel_distance
+end module fchl18_kernel_distance
