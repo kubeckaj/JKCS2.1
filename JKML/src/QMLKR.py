@@ -66,7 +66,7 @@ def load_hyperparams(hyper_cache: str):
         if "mlkr" not in hyperparams:
             hyperparams["mlkr"] = {"n_components": 50}
             print(
-                f"JKML (Q-MLKR): knn params not defined in hyperparams, use default values."
+                f"JKML (Q-MLKR): MLKR params not defined in hyperparams, use default values."
             )
         print(hyperparams, flush=True)
     else:

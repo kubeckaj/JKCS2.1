@@ -18,7 +18,6 @@ import os
 from src.representations import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "fortran"))
-print(sys.path)
 from qmllib.utils.alchemy import get_alchemy
 from qmllib.representations.fchl.fchl_kernel_functions import get_kernel_parameters
 from src.fortran.ffchl19_vp_tree import fchl19_vp_tree
@@ -554,6 +553,7 @@ def load_fchl19_vp_knn(X_train, X_atoms, Y_train, vp_params, **knn_params):
 
 
 def load_hyperparams(hyper_cache: Optional[Union[str, os.PathLike]]):
+    """Load hyperparameters from hyper_cache or use defaults."""
     if hyper_cache is not None:
         with open(hyper_cache, "rb") as f:
             hyperparams: dict = pickle.load(f)
@@ -594,7 +594,6 @@ def training(
     # Convert structures to list to avoid indexing issues
     for i, struct in enumerate(strs.values):
         assert struct == strs.iloc[i]
-    print("Values works!")
     strs = strs.values
 
     ### REPRESENTATION CALCULATION ###
