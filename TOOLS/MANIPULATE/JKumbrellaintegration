@@ -263,7 +263,8 @@ then
     if [ $UPTO -gt 0 ]; then command+=" | awk '\$2 <= $UPTO'"; fi
     if [ $EXPLODED -gt 0 ]; then command+=" | awk '\$15 <= $EXPLODED1'"; fi
     if [ $EXPLODED -gt 0 ]; then command+=" | awk '\$16 <= $EXPLODED2'"; fi
-    command+=" | awk -v d=$distance -v kbias=$k_bias '{printf(\"%s %s %s %.2f\n\",\$3,\$14,d,kbias*4.184)}' | grep -v nan | column -t >> input.txt"
+    #command+=" | awk -v d=$distance -v kbias=$k_bias '{printf(\"%s %s %s %.2f\n\",\$3,\$14,d,kbias*4.184)}' | grep -v nan | column -t >> input.txt"
+    command+=" | awk -v d=$distance -v kbias=$k_bias '{printf(\"%s %s %s %.2f %.2f\n\",\$3,\$14,d,kbias*4.184,\$9)}' | grep -v nan | column -t >> input.txt"
     eval $command
   done
   done

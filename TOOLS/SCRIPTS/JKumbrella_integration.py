@@ -22,7 +22,7 @@ print(" ----- Post-Processing ----- ")
 
 Qfit = int(sys.argv[2])
 Qflatten = float(sys.argv[3])
-T = float(sys.argv[4]) #K
+T = float(sys.argv[6]) #K
 kBT = T*kB #Eh
 
 ### PREPARING DATA ###
@@ -53,6 +53,9 @@ if Qflatten > 0:
  
 plt.figure()
 plt.plot(PMF_1D[:, 0], PMF_1D_orginal[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='b')
+#TODO remove 2 lines
+#plt.plot(PMF_3D[:, 0], PMF_3D[:, 1]*Eh2kcalmol, marker='.', linestyle='-', color='g')
+#plt.plot(PMF_3D[:, 0], 2*kBT*np.log(PMF_3D[:, 0])*Eh2kcalmol, marker='.', linestyle='-', color='r')
 if Qflatten > 0:
   plt.plot(PMF_1D[mask, 0], PMF_1D[mask, 1]*Eh2kcalmol, marker='.', linestyle='-', color='g')
 plt.xlabel('coordinate')
