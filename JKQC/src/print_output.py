@@ -1,11 +1,12 @@
-def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclustername, Qt, Qcolumn, Qbonded, Pout = [], QUenergy = 1, QUentropy = 1):
+def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclustername, Qt, Qcolumn, Qbonded, Qdistances, Pout = [], QUenergy = 1, QUentropy = 1):
   """Print output from JKQC
   clusters_df = Pandas Dataframe
   Pout = list of outputs
   """
   missing = float("nan")
  
-  Qbonded_index = -1 
+  Qbonded_index = -1
+  Qdistances_index = -1 
   Qcolumn_i = 0
   output = []
   last = ''
@@ -289,6 +290,35 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
         except:
           maxdist.append(missing)
       output.append(maxdist)
+      continue
+    # DISTANCES
+    if i == "-distances" or i == "-maxdistances" or i == "-mindistances":
+      from numpy import sum, sort, min, max
+      Qdistances_index += 1
+      atoms = Qdistances[Qdistances_index]
+      coll = []
+      for ind in clusters_df.index:
+        try:
+          aseCL=clusters_df.loc[ind,("xyz","structure")]
+          dist = lambda p1, p2: sum((p1-p2)**2)**0.5
+          positions1 = [atom.position for atom in aseCL if atom.symbol == atoms[0]]
+          positions2 = [atom.position for atom in aseCL if atom.symbol == atoms[1]]
+          if atoms[0] == atoms[1]:
+            distances = [dist(p1, p2) for i, p1 in enumerate(positions1) for j, p2 in enumerate(positions1) if i < j]
+          else:
+            distances = [dist(p1, p2) for p1 in positions1 for p2 in positions2]
+          if i == "-maxdistances":
+            coll.append(max(distances))
+          elif i == "-mindistances":
+            coll.append(min(distances))
+          else:
+            coll.append(sort(distances)) 
+        except:
+          if i == "-maxdistances" or i == "-mindistances":
+            coll.append(missing)
+          else:
+            coll.append([missing])
+      output.append(coll)
       continue
     #ERRPA
     if i == "-errpa":

@@ -84,7 +84,7 @@ def print_help():
   print(" -forces [Eh/Ang], -meanforce, -shuffle, -seed <int>, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
   print(" -column <COL1> <COL2>, -drop <COL>, -log2out, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize, -gif")
-  print(" -eldisp [Eh], -forcedisp [Eh/Ang], -aimnet_prep")
+  print(" -eldisp [Eh], -forcedisp [Eh/Ang], -aimnet_prep","-distances/-maxdistances/-mindistances <atom> <atom>")
 
 #OTHERS: -imos,-imos_xlsx,-esp,-chargesESP
 
@@ -93,7 +93,7 @@ def arguments(argument_list = []):
   missing = float("nan")
   
   #global folder,Qcollect,Qrecursive,files,input_pkl,input_pkl_sp,output_pkl,Qforces
-  folder = "./"	
+  folder = "./"
   Qcollect = "log" #what extension am I collecting?
   Qrecursive = False
   files = []  
@@ -124,6 +124,7 @@ def arguments(argument_list = []):
   Qreacted = 0 #Remove reacted structures?, 1 = yes; 2 = print the reverse 
   bonddistancethreshold = 1.75
   Qbonded = []
+  Qdistances = []
   
   #global Qoutpkl,Qout,Pout,QUenergy,QUentropy
   Qoutpkl = 0 #Do I want to save output.pkl? 0=NO,1=YES
@@ -704,6 +705,27 @@ def arguments(argument_list = []):
     # MAXDIST
     if i == "-maxdist":
       Pout.append("-maxdist")
+      continue
+    # DISTANCES
+    if i == "-distances":
+      Pout.append("-distances")
+      last = "-distances"
+      continue
+    if i == "-maxdistances":
+      Pout.append("-maxdistances")
+      last = "-distances"
+      continue
+    if i == "-mindistances":
+      Pout.append("-mindistances")
+      last = "-distances"
+      continue
+    if last == "-distances":
+      last = "-distances2"
+      Qdistancesrem = str(i)
+      continue
+    if last == "-distances2":
+      last = ""
+      Qdistances.append([Qdistancesrem,str(i)])
       continue
     # MEANFORCE
     if i == "-meanforce":

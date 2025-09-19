@@ -93,7 +93,7 @@ if Qsolvation != "0" or Qformation != 0:
       Pout.insert(0,"-ct")
 if len(Pout) > 0:
   from print_output import print_output
-  output = array(print_output(clusters_df,Qoutpkl,input_pkl,output_pkl,Qsplit,Qclustername,Qt,Qcolumn,Qbonded,Pout,QUenergy,QUentropy))
+  output = array(print_output(clusters_df,Qoutpkl,input_pkl,output_pkl,Qsplit,Qclustername,Qt,Qcolumn,Qbonded,Qdistances,Pout,QUenergy,QUentropy))
   if Qout == 2:
     print("DONE] Printing prepared: "+str(time() - start));
 else:
