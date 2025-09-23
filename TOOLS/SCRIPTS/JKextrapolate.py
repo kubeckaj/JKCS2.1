@@ -47,7 +47,7 @@ OUTPUT = []
 HEADER = ['basename']
 ####HANDLE INPUT#########
 method = argv[1]
-if method == '2p':
+if method == '2p' or method == '2pf':
   doLNOCPS = False
   files = [*argv[2].split(','),*argv[3].split(',')]  #Always make a list of files even if input is given as 
   lowestCardinalNumber = int(argv[4])
@@ -71,7 +71,7 @@ if method == '2p':
     OUTPUT.append(two_point_extrapolation(lowestCardinalNumber,pickles[0],pickles[1],alpha,beta))
     HEADER.append('E(CBS)')
       
-elif method == '2s':
+elif method == '2s' or method == '2sf':
   files = [*argv[2].split(','),*argv[3].split(',')]
   F_val = float(argv[4])
   pickles = readAndSortPickles(files) 
@@ -85,9 +85,28 @@ else:
   print(f"Unknown method '{method}'")
   exit()
 
+file_name = "0"
+if method == "2pf":
+    if doLNOCPS == True:
+        file_name = argv[8]
+    else:
+        file_name = argv[7]
+if method == "2sf":
+    file_name = argv[5]
+if file_name != "0":
+    df = read_pickle(file_name)
+    print(f'Will write results to {file_name} under the "out" "electronic_energy" column.')    
+
 print(*HEADER)
 for x in zip(*OUTPUT):
+    if file_name != "0":
+        mask = df[('info', 'file_basename')] == x[0]
+        df.loc[mask, ('out', 'electronic_energy')] = x[-1]
     print(*x)
+
+if file_name != "0":
+    df.to_pickle(file_name)
+    
   
   
 
