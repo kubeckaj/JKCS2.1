@@ -173,7 +173,12 @@ do
     continue
   fi
   ####
-  arguments_help+=( "${arguments[i]}" )
+  if [[ "${arguments[i]}" == *" "* ]]
+  then
+    arguments_help+=( "\"`echo ${arguments[i]} | sed 's/ /\\ /g'`\"" )
+  else
+    arguments_help+=( "${arguments[i]}" )
+  fi
 done
 arguments=("${arguments_help[@]}")
 therest=${arguments[@]}

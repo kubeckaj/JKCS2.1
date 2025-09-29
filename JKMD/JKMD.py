@@ -57,6 +57,9 @@ def savepickle():
       print("The sim"+Qfolder.split("/")[-1]+".pkl has been hopefully created.")
     except:
       print("Something got fucked up.")
+    if not (Qconstraints == 4 and len(species) == 2):
+      for key in cluster_dic:
+        cluster_dic[key] = cluster_dic[key][::-1]
 
 #print(f"Using {os.environ['OMP_NUM_THREADS']} threads.")
 current_time = 0
@@ -67,6 +70,8 @@ current_step = 0
 from arguments import arguments
 Qfollow_activated = -1
 QEF_applied = 0
+
+#print(repr(argv))
 while not Qfollow_activated == 0:
   if Qfollow_activated == -1:
     locals().update(arguments(argv[1:]))
