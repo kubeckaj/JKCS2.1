@@ -1127,6 +1127,7 @@ def arguments(argument_list=[]):
         raise Exception(f"Hey looser, the last argument is incomplete. [EXITING]")
 
     if Qcheckpoint is not None:
-        Qtime = None
+        from datetime import timedelta
+        Qtime = timedelta(days = 100)
 
     return locals()
