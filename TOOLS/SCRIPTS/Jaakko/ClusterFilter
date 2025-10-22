@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+arguments=("$@")       # arguments of this script
+
+source ~/.JKCSusersetup.txt
+
+if [ -e $analysedfile ] 
+then
+  eval "program_PYTHON $scriptpath/ClusterFilter.py $@"
+fi
