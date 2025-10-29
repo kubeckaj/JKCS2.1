@@ -446,6 +446,8 @@ def print_output(clusters_df, Qoutpkl, input_pkl, output_pkl, Qsplit, Qclusterna
       for ind in clusters_df.index:
         try:
           masses.append(str((clusters_df.loc[ind,("xyz","structure")].get_masses()).sum()))
+          #No hydrogens
+          #masses.append(str((clusters_df.loc[ind,("xyz","structure")].get_masses()[clusters_df.loc[ind,("xyz","structure")].get_atomic_numbers() != 1]).sum()))
         except:
           masses.append(missing)
       output.append(masses)
