@@ -81,7 +81,7 @@ def print_help():
   print("                         use -cnt for self-consistent dG")
   print("\nOTHERS:")
   print(" -add <column> <file>, -extra <column>, -rebasename, -presplit, -i/-index <int:int>, -imos, -imos_xlsx, -maxdist")
-  print(" -forces [Eh/Ang], -meanforce, -shuffle, -seed <int>, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg")
+  print(" -forces [Eh/Ang], -meanforce, -shuffle, -seed <int>, -split <int>, -underscore, -addSP <pickle>, -complement <pickle>, -errpa, -dropimg, -makereal")
   print(" -column <COL1> <COL2>, -drop <COL>, -log2out, -out2log, -levels, -atoms, -hydration/-solvation <str>, -id,-maxf")
   print(" -rh <0.0-1.0>, -psolvent <float in Pa>, -anharm, -test, -bonded <float thr.> <element> <element>, -atomize/-clusterize, -gif")
   print(" -eldisp [Eh], -forcedisp [Eh/Ang], -aimnet_prep","-distances/-maxdistances/-mindistances <atom> <atom>")
@@ -142,6 +142,7 @@ def arguments(argument_list = []):
   Qanh = "1"
   Qanharm = 0 #To collect anharmonicities from QC output
   Qdropimg = 0 #Drop imaginary frequencies
+  Qmakereal = 0 #Real imaginary frequencies
  
   #global Qpresplit,Qsplit,Qindex,Qdrop,Qout2log 
   Qpresplit = 0 #Do I want to take only part of the data?
@@ -641,6 +642,9 @@ def arguments(argument_list = []):
       continue
     if i == "-dropimg":
       Qdropimg = 1
+      continue
+    if i == "-makereal":
+      Qmakereal = 1
       continue
     #
     if last == "-threshold":

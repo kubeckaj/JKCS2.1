@@ -9,7 +9,7 @@ def replace_by_nonnegative(new, orig, q):
   orig[mask] = new[mask]
   return list(orig)
 
-def thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg):
+def thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg, Qmakereal):
   from numpy import array, sum, log, exp, isnan, mean, pi
   from pandas import isna
   missing = float("nan")
@@ -24,6 +24,13 @@ def thermodynamics(clusters_df, Qanh, Qafc, Qfc, Qt, Qdropimg):
       if type(vib) == type(missing):
         continue
       clusters_df.at[i,("log","vibrational_frequencies")] = [item for item in vib if item >= 0]
+
+  if Qmakereal != 0:
+    for i in range(len(clusters_df)):
+      vib = clusters_df.at[i,("log","vibrational_frequencies")]
+      if type(vib) == type(missing):
+        continue
+      clusters_df.at[i,("log","vibrational_frequencies")] = [abs(item) for item in vib]
 
   ########################################################
   # LOW VIBRATIONAL FREQUNECY ANTITREATMENT (S // G,Gc) ##
