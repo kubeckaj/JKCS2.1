@@ -150,20 +150,6 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0, Qdisp_electronic_energ
   except:
     out_dipole_moment = missing
 
-  #ROTATIONAL CONSTANT(S)
-  try:
-    line, idx = find_line(rb'Rotational constants in MHz', 1, idx)
-    out_rotational_constants = [float(line.split()[5])/1000,float(line.split()[6])/1000,float(line.split()[7])/1000]
-  except:
-    try:
-      convert_1_over_cm_to_MHz = 1/0.03335645082
-      line, idx = find_line(rb'Rotational constants in cm-1', 1, idx)
-      out_rotational_constants = [float(line.split()[4])*convert_1_over_cm_to_MHz,float(line.split()[5])*convert_1_over_cm_to_MHz,float(line.split()[6])*convert_1_over_cm_to_MHz]
-    except:
-      out_rotational_constants = [missing]
-  
-  out_rotational_constant = sqrt(sum(array(out_rotational_constants)**2))
-
   #TEMPERATURE
   try:
     line, idx = find_line(rb'Temperature         ...', 1, idx)
@@ -199,7 +185,17 @@ def read_orca(mmm, orcaextname, Qforces = 0, Qanharm = 0, Qdisp_electronic_energ
   except:
     out_rotational_symmetry_number = missing
 
-  #FINAL ENTROPY
+  #ROTATIONAL CONSTANT(S)
+  try:
+    convert_1_over_cm_to_MHz = 1/0.03335645082
+    line, idx = find_line(rb'Rotational constants in cm-1', 1, idx)
+    out_rotational_constants = [float(line.split()[4])*convert_1_over_cm_to_MHz,float(line.split()[5])*convert_1_over_cm_to_MHz,float(line.split()[6])*convert_1_over_cm_to_MHz]
+  except:
+    out_rotational_constants = [missing]
+  
+  out_rotational_constant = sqrt(sum(array(out_rotational_constants)**2))
+  
+ #FINAL ENTROPY
   try:
     line, idx = find_line(rb'Final entropy term', 1, idx)
     out_entropy = float(line.split()[4])*1000*627.503/out_temperature
