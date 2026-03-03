@@ -1,5 +1,7 @@
+from enum import Enum
 from numpy import array, dot, cos, sin, cross, zeros_like, arccos, degrees, exp, pi, radians, all
 from numpy.linalg import norm
+import glob
 import re
 import shutil
 import os
@@ -7,12 +9,32 @@ import pickle
 import random
 from rdkit import Chem
 from rdkit.Chem import AllChem
+
+_G16_SCRATCH_EXTENSIONS = ('.int', '.d2e', '.rwf', '.skr', '.chk')
+
+def _remove_g16_scratch(directory):
+    for path in glob.glob(os.path.join(directory, 'Gau-*')):
+        if path.endswith(_G16_SCRATCH_EXTENSIONS):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
 ##################################################WORKFLOWS#################################################################
+class Step(str, Enum):
+    OPT_CONSTRAIN      = 'opt_constrain'
+    TS_OPT             = 'TS_opt'
+    CREST_SAMPLING     = 'crest_sampling'
+    OPT_CONSTRAIN_CONF = 'opt_constrain_conf'
+    TS_OPT_CONF        = 'TS_opt_conf'
+    OPTIMIZATION       = 'optimization'
+    DLPNO              = 'DLPNO'
+
 # Change as you feel like
-OH_H2O_workflow = ['optimization', 'DLPNO']
-reactant_product_workflow = ['crest_sampling', 'optimization', 'DLPNO']
-TS_workflow = ['opt_constrain', 'TS_opt', 'crest_sampling', 'opt_constrain_conf', 'TS_opt_conf', 'DLPNO']
-# TS_workflow = ['crest_sampling', 'opt_constrain_conf', 'TS_opt_conf', 'DLPNO', 'Done']
+OH_H2O_workflow          = (Step.OPTIMIZATION, Step.DLPNO)
+reactant_product_workflow = (Step.CREST_SAMPLING, Step.OPTIMIZATION, Step.DLPNO)
+TS_workflow               = (Step.OPT_CONSTRAIN, Step.TS_OPT, Step.CREST_SAMPLING,
+                             Step.OPT_CONSTRAIN_CONF, Step.TS_OPT_CONF, Step.DLPNO)
 ############################################################################################################################
 
 class Vector:
@@ -79,7 +101,7 @@ class Molecule(Vector):
         self.coordinates = coordinates if coordinates is not None else []
         self.constrained_indexes = {'C': indexes[0], 'H': indexes[1], 'O': indexes[2], 'OH': indexes[2]+1} if indexes else {}
         self.converged = False
-        self.mult = 1 if self.reactant else 2 
+        self.mult = self._determine_mult()
         self.charge = 0
         self.vibrational_frequencies = []
         self.zero_point = None
@@ -124,20 +146,11 @@ class Molecule(Vector):
 
             if self.reactant or 'reactant' in self.name or self.name in ('OH', 'OH_DLPNO'):
                 self.reactant = True
-                if 'OH' in self.name:
-                    self.mult = 2
-                else:
-                    self.mult = 1
-                
             elif self.product or 'product' in self.name or self.name in ('H2O', 'H2O_DLPNO'):
                 self.product = True
-                if 'H2O' in self.name:
-                    self.mult = 1
-                else:
-                    self.mult = 2
-                        
             else:
                 self.find_active_site(indexes)
+            self.mult = self._determine_mult()
 
             self.workflow = self.determine_workflow()
             self.set_current_step()
@@ -146,35 +159,42 @@ class Molecule(Vector):
 
 
     def set_current_step(self, step=None):
-        if step:
-            # If the step is provided and it's in the workflow, update the current and next steps accordingly
+        if step is not None:
             if step in self.workflow:
-                self.current_step_index = self.workflow.index(step)
                 self.current_step = step
             else:
                 print(f"Step '{step}' not found in the workflow.")
-                return  # Optionally handle the error case differently
+                return
         else:
-            self.current_step = self.determine_current_step()
-            if self.current_step in self.workflow:
-                self.current_step_index =  self.workflow.index(self.current_step)
-            # If no step is provided, reset to the start of the workflow
-            else:
-                self.current_step_index = 0
-                self.current_step = self.workflow[0] if self.workflow else None
+            detected = self.determine_current_step()
+            self.current_step = detected if detected in self.workflow else (self.workflow[0] if self.workflow else None)
 
-        # Update the next step based on the current step index
-        self.next_step_index = self.current_step_index + 1 if self.current_step_index + 1 < len(self.workflow) else None
-        self.next_step = self.workflow[self.next_step_index] if self.next_step_index is not None and self.next_step_index < len(self.workflow) else None
+        idx = list(self.workflow).index(self.current_step) if self.current_step in self.workflow else 0
+        self.next_step = self.workflow[idx + 1] if idx + 1 < len(self.workflow) else None
 
+
+    @property
+    def small_molecule(self):
+        return self.name in ('OH', 'H2O', 'H2O_DLPNO', 'OH_DLPNO')
 
     def determine_workflow(self):
-        if self.name in ('OH', 'H2O', 'H2O_DLPNO', 'OH_DLPNO'):
+        if self.small_molecule:
             return OH_H2O_workflow
         elif self.reactant or self.product:
             return reactant_product_workflow
         else:
             return TS_workflow
+
+    def _determine_mult(self):
+        if 'H2O' in self.name:
+            return 1   # water — singlet
+        if 'OH' in self.name and not self.product:
+            return 2   # OH radical — doublet
+        if self.reactant:
+            return 1   # closed-shell organic reactant
+        if self.product:
+            return 2   # alkyl radical product — doublet
+        return 2       # TS — open-shell doublet
 
 
 #################################################__init__#############################################################
@@ -233,8 +253,9 @@ class Molecule(Vector):
                     if os.path.exists(dest_file_path):
                         os.remove(dest_file_path)
                     shutil.move(file_path, dest_file_path)
-        except:
+        except (OSError, shutil.Error):
             pass
+        _remove_g16_scratch(self.directory)
 
     def move_converged(self):
         try:
@@ -272,7 +293,8 @@ class Molecule(Vector):
             shutil.move(os.path.join(self.directory, f"{self.name}{self.output}"), destination)
         except Exception:
             pass
-            
+        _remove_g16_scratch(self.directory)
+
     def write_xyz_file(self, output_file_path):
         with open(output_file_path, 'w') as file:
             file.write(str(len(self.atoms)) + '\n\n')
@@ -281,19 +303,9 @@ class Molecule(Vector):
                 file.write(f'{atom} {coord_str}\n')
 
 
-    def update_current_and_next_step(self):
-        # Update the current and next step based on the current step index
-        self.current_step = self.workflow[self.current_step_index]
-        self.next_step_index = self.current_step_index + 1
-        if self.next_step_index < len(self.workflow):
-            self.next_step = self.workflow[self.next_step_index]
-        else:
-            self.next_step = None  # Indicates the end of the workflow
-
     def update_step(self):
-        if self.next_step_index < len(self.workflow):
-            self.current_step_index += 1
-            self.update_current_and_next_step()
+        if self.next_step is not None:
+            self.set_current_step(self.next_step)
         else:
             print("Reached the end of the workflow.")
 
@@ -365,14 +377,11 @@ class Molecule(Vector):
 
     @staticmethod
     def molecules_to_pickle(molecules, file_path):
-        '''molecules = [molecule1, molecule2, ...]
-        usage: Molecule.molecules_to_pickle(molecules, 'path_to_temp_pkl_file')'''
         with open(file_path, 'wb') as file:
             pickle.dump(molecules, file)
 
     @staticmethod
     def load_molecules_from_pickle(file_path):
-        '''usage: loaded_molecules = Molecule.load_molecules_from_pickle('path_to_temp_pkl_file')'''
         with open(file_path, 'rb') as file:
             return pickle.load(file)
 
@@ -589,7 +598,7 @@ class Molecule(Vector):
         self.coordinates[O_index] = new_O_position
         try:
             self.coordinates[OH_index] = new_OH_H_position
-        except:
+        except IndexError:
             pass
 
 
@@ -877,7 +886,6 @@ class Molecule(Vector):
 
 
     def compare_structures(self, mol2):
-        """Compares bond lengths and angles between two molecules."""
         if len(self.atoms) != len(mol2.atoms):
             raise ValueError("Molecules have different number of atoms, comparison not possible.")
 

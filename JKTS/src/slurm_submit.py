@@ -2,6 +2,11 @@ import os
 import subprocess
 import re
 #########################################SUBMIT JOBS############################
+
+def _run_submit_script(submit_command):
+    return subprocess.run(submit_command, capture_output=True, text=True, check=True)
+
+
 def submit_array_job(molecules, args, nnodes=1):
     dir = molecules[0].directory
     job_files = [f"{conf.name}{conf.input}" for conf in molecules if conf.converged is False] 
@@ -31,7 +36,13 @@ def submit_array_job(molecules, args, nnodes=1):
     
     if job_program.lower() == "orca" or job_program.lower() == "g16":
         if molecules[0].current_step == 'DLPNO':
-            program_mem = round((mem+12000) * 1.25)
+            max_error_count = max((m.error_termination_count for m in molecules), default=0)
+            if max_error_count == 1:
+                program_mem = round((mem+16000) * 1.25)
+            elif max_error_count >= 2:
+                program_mem = round((mem+20000) * 1.25)
+            else:
+                program_mem = round((mem+12000) * 1.25)
         else:
             program_mem = round(mem * 1.25) # Headspace for program
     else:
@@ -87,9 +98,10 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write("eval \\$MODULE_G16\n")
             file.write("export GAUSS_EXEDIR=\\${PATH_G16}g16/\n")
             file.write("# create and set scratch dir\n")
-            file.write("mkdir -p \\$WRKDIR || exit $?\n")
+            file.write("GAUSS_SCRDIR=\\${TMPDIR:-/tmp/gauss_\\${SLURM_JOB_ID}}\n")
+            file.write("mkdir -p \\$GAUSS_SCRDIR || exit \\$?\n")
             file.write(f"cd $PWD\n")
-            file.write("export GAUSS_SCRDIR=\\$WRKDIR\n\n")
+            file.write("export GAUSS_SCRDIR\n\n")
 
             file.write('GJ=\\$(awk "NR == \\$SLURM_ARRAY_TASK_ID" $IN)\n')
             file.write('LOG=\\${GJ%.*}.log\n\n')
@@ -101,11 +113,12 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write("ulimit -c 0\n")
             file.write("export LD_LIBRARY_PATH=\\$PATH_ORCA:\\$LD_LIBRARY_PATH\n")
             file.write("eval \\$MODULE_ORCA\n")
-            
-            file.write("# create and set scratch dir\n")
-            file.write("mkdir -p \\$WRKDIR || exit $?\n")
 
-            file.write("cd \\$WRKDIR\n")
+            file.write("# create and set scratch dir\n")
+            file.write("ORCA_SCRDIR=\\${TMPDIR:-/tmp/orca_\\${SLURM_JOB_ID}}\n")
+            file.write("mkdir -p \\$ORCA_SCRDIR || exit \\$?\n")
+
+            file.write("cd \\$ORCA_SCRDIR\n")
             file.write(f"cp \\$SLURM_SUBMIT_DIR/{array_txt} .\n")
             file.write(f"cp \\$SLURM_SUBMIT_DIR/*.inp .\n\n")
 
@@ -113,8 +126,6 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write('LOG=\\${GJ%.*}.out\n\n')
 
             file.write("\\${PATH_ORCA}/orca \\$GJ > \\$SLURM_SUBMIT_DIR/\\$LOG\n\n")
-            if args.IRC:
-                file.write(f"cp *xyz \\$SLURM_SUBMIT_DIR/.\n")
             file.write("!EOF\n\n")
 
         else:
@@ -131,13 +142,14 @@ def submit_array_job(molecules, args, nnodes=1):
 
     submit_command = ['sh', path_submit_script, array_txt]
     try:
-        result = subprocess.run(submit_command, capture_output=True, text=True, check=True)
+        result = _run_submit_script(submit_command)
         job_id = extract_job_id(result.stdout)
-        for n, molecule in enumerate(molecules, start=1): 
+        for n, molecule in enumerate(molecules, start=1):
             molecule.job_id = f"{job_id}_{n}"
         return job_id, interval
-    except subprocess.CalledProcessError as e:
-        print(f"Error in job submission: {e}!! Check g16/orca_submit.sh")
+    except (subprocess.CalledProcessError, RuntimeError) as e:
+        stderr = getattr(e, 'stderr', str(e))
+        print(f"Error in job submission (exit {getattr(e, 'returncode', 1)}): {stderr}!! Check g16/orca_submit.sh")
         exit()
 
 
@@ -210,7 +222,7 @@ cat > $SUBMIT <<!EOF
 
 source ~/.JKCSusersetup.txt
 
-mkdir -p \\$WRKDIR || exit $?
+mkdir -p \\$WRKDIR || exit \\$?
 cd \\$WRKDIR
 cp \\$SLURM_SUBMIT_DIR/{molecule.name}.xyz .
 program_CREST {crest_input}
@@ -239,7 +251,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --time={slurm_time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
-#SBATCH --mem={program_mem}  # requested total memory in MB
+#SBATCH --mem={program_mem}
 {account_string}
 
 source ~/.JKCSusersetup.txt
@@ -247,9 +259,10 @@ eval \\$MODULE_G16
 export GAUSS_EXEDIR=\\${{PATH_G16}}/g16/
 
 # Create scratch folder
-mkdir -p \\$WRKDIR || exit $?
+GAUSS_SCRDIR=\\${{TMPDIR:-/tmp/gauss_\\${{SLURM_JOB_ID}}}}
+mkdir -p \\$GAUSS_SCRDIR || exit \\$?
 cd \\$PWD
-export GAUSS_SCRDIR=\\$WRKDIR
+export GAUSS_SCRDIR
 
 \\${{PATH_G16}}/g16/g16 $JOB.com > \\$SLURM_SUBMIT_DIR/$JOB.log
 
@@ -275,7 +288,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --time={slurm_time}
 #SBATCH --partition={partition}
 #SBATCH --no-requeue
-#SBATCH --mem={program_mem}  # requested memory per process in MB
+#SBATCH --mem={program_mem}
 {account_string}
 
 source ~/.JKCSusersetup.txt
@@ -283,9 +296,10 @@ export LD_LIBRARY_PATH=\\$PATH_ORCA:\\$LD_LIBRARY_PATH
 eval \\$MODULE_ORCA
 
 # create and set scratch dir
-mkdir -p \\$WRKDIR || exit $?
+ORCA_SCRDIR=\\${{TMPDIR:-/tmp/orca_\\${{SLURM_JOB_ID}}}}
+mkdir -p \\$ORCA_SCRDIR || exit \\$?
 
-cd \\$WRKDIR
+cd \\$ORCA_SCRDIR
 cp \\$SLURM_SUBMIT_DIR/$JOB.inp .
 \\${{PATH_ORCA}}/orca $JOB.inp > \\$SLURM_SUBMIT_DIR/$JOB.out
 cp *Full_trj.xyz \\$SLURM_SUBMIT_DIR/.
@@ -305,12 +319,13 @@ sbatch $SUBMIT
 
     submit_command = ['sh', path_submit_script, input_file_name]
     try:
-        result = subprocess.run(submit_command, capture_output=True, text=True, check=True)
+        result = _run_submit_script(submit_command)
         job_id = extract_job_id(result.stdout)
         molecule.job_id = f"{job_id}"
         return job_id, interval
-    except subprocess.CalledProcessError as e:
-        print(f"Error in job submission: {e}!! Check g16/orca_submit.sh")
+    except (subprocess.CalledProcessError, RuntimeError) as e:
+        stderr = getattr(e, 'stderr', str(e))
+        print(f"Error in job submission (exit {getattr(e, 'returncode', 1)}): {stderr}!! Check g16/orca_submit.sh")
         exit()
 
 
@@ -347,9 +362,9 @@ def parse_job_statuses(output, main_job_id):
 
             # Handle range of job IDs
             if '[' in job_id_field:
-                range_match = re.search(r'\[(\d+)-(\d+)', job_id_field)
+                range_match = re.search(r'\[(\d+)-(\d+)\]', job_id_field)
                 if range_match:
-                    start, end = range_match.groups(1)
+                    start, end = range_match.groups()
                     for i in range(int(start), int(end) + 1):
                         job_statuses[f"{main_job_id}_{i}"] = status
             else:

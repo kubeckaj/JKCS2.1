@@ -1,4 +1,7 @@
 database/
-test/
 __pycache__/
+**/__pycache__/
 Manual.rst
+output
+.claude/
+CLAUDE.md
