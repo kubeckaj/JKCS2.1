@@ -102,31 +102,37 @@ def normal_mode_displacement_significant(file_content):
 
 
 def good_active_site(molecule, aldehyde=False):
-    if aldehyde:
+    C_index = molecule.constrained_indexes['C']-1
+    H_index = molecule.constrained_indexes['H']-1
+    abstractor_index = molecule.constrained_indexes['X']-1
+    is_Cl = molecule.atoms[abstractor_index] == 'Cl'
+
+    if is_Cl:
         CH_threshold_low, CH_threshold_high = 1.05, 1.4
-        HO_threshold_low, HO_threshold_high = 1.5, 2.0
-        CO_threshold_low, CO_threshold_high = 2.4, 3.2
+        HX_threshold_low, HX_threshold_high = 1.5, 2.5   # H...Cl distance in TS
+        CX_threshold_low, CX_threshold_high = 2.4, 3.5   # C...Cl distance
+        angle_threshold_low, angle_threshold_high = 130, 180
+    elif aldehyde:
+        CH_threshold_low, CH_threshold_high = 1.05, 1.4
+        HX_threshold_low, HX_threshold_high = 1.5, 2.0
+        CX_threshold_low, CX_threshold_high = 2.4, 3.2
         angle_threshold_low, angle_threshold_high = 135, 170
     else:
         CH_threshold_low, CH_threshold_high = 1.05, 1.4
-        HO_threshold_low, HO_threshold_high = 1.2, 1.7
-        CO_threshold_low, CO_threshold_high = 2.2, 2.8
+        HX_threshold_low, HX_threshold_high = 1.2, 1.7
+        CX_threshold_low, CX_threshold_high = 2.2, 2.8
         angle_threshold_low, angle_threshold_high = 135, 180
 
-    C_index = molecule.constrained_indexes['C']-1
-    H_index = molecule.constrained_indexes['H']-1
-    O_index = molecule.constrained_indexes['O']-1
-
     distance_CH = molecule.atom_distance(molecule.coordinates[C_index], molecule.coordinates[H_index])
-    distance_HO = molecule.atom_distance(molecule.coordinates[H_index], molecule.coordinates[O_index])
-    distance_CO = molecule.atom_distance(molecule.coordinates[C_index], molecule.coordinates[O_index])
-    angle_CHO = molecule.calculate_angle(molecule.coordinates[C_index], molecule.coordinates[H_index], molecule.coordinates[O_index])
-    print(distance_CH, distance_HO, distance_CO, angle_CHO)
+    distance_HX = molecule.atom_distance(molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
+    distance_CX = molecule.atom_distance(molecule.coordinates[C_index], molecule.coordinates[abstractor_index])
+    angle_CHX = molecule.calculate_angle(molecule.coordinates[C_index], molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
+    print(distance_CH, distance_HX, distance_CX, angle_CHX)
 
     if (CH_threshold_low <= distance_CH <= CH_threshold_high and
-        HO_threshold_low <= distance_HO <= HO_threshold_high and
-        CO_threshold_low <= distance_CO <= CO_threshold_high and
-        angle_threshold_low <= angle_CHO <= angle_threshold_high):
+        HX_threshold_low <= distance_HX <= HX_threshold_high and
+        CX_threshold_low <= distance_CX <= CX_threshold_high and
+        angle_threshold_low <= angle_CHX <= angle_threshold_high):
         return True
     return False
 
@@ -140,12 +146,12 @@ def check_transition_state(molecule, threshold=0.5):
     try:
         H_index = molecule.constrained_indexes['H']-1
         C_index = molecule.constrained_indexes['C']-1
-        O_index = molecule.constrained_indexes['O']-1
+        abstractor_index = molecule.constrained_indexes['X']-1
     except (TypeError, KeyError):
         molecule.find_active_site()
         H_index = molecule.constrained_indexes['H']-1
         C_index = molecule.constrained_indexes['C']-1
-        O_index = molecule.constrained_indexes['O']-1
+        abstractor_index = molecule.constrained_indexes['X']-1
 
     methyl_C_indexes, aldehyde_groups, ketone_methyl_groups = molecule.identify_functional_groups()
     for aldehyde in aldehyde_groups:
@@ -176,11 +182,11 @@ def check_transition_state(molecule, threshold=0.5):
         displaced_coordinates_plus = [array(original) + array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
         displaced_coordinates_minus = [array(original) - array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
 
-        original_distance_HO = norm(array(molecule.coordinates[H_index]) - array(molecule.coordinates[O_index]))
-        new_distance_HO_plus = norm(displaced_coordinates_plus[H_index] - displaced_coordinates_plus[O_index])
-        new_distance_HO_minus = norm(displaced_coordinates_minus[H_index] - displaced_coordinates_minus[O_index])
-        relative_change_HO_minus = abs((new_distance_HO_minus - original_distance_HO) / original_distance_HO)
-        relative_change_HO_plus = abs((new_distance_HO_plus - original_distance_HO) / original_distance_HO)
+        original_distance_HX = norm(array(molecule.coordinates[H_index]) - array(molecule.coordinates[abstractor_index]))
+        new_distance_HX_plus = norm(displaced_coordinates_plus[H_index] - displaced_coordinates_plus[abstractor_index])
+        new_distance_HX_minus = norm(displaced_coordinates_minus[H_index] - displaced_coordinates_minus[abstractor_index])
+        relative_change_HX_minus = abs((new_distance_HX_minus - original_distance_HX) / original_distance_HX)
+        relative_change_HX_plus = abs((new_distance_HX_plus - original_distance_HX) / original_distance_HX)
 
         original_distance_CH = norm(array(molecule.coordinates[C_index]) - array(molecule.coordinates[H_index]))
         new_distance_CH_plus = norm(displaced_coordinates_plus[C_index] - displaced_coordinates_plus[H_index])
@@ -188,10 +194,10 @@ def check_transition_state(molecule, threshold=0.5):
         relative_change_CH_minus = abs((new_distance_CH_minus - original_distance_CH) / original_distance_CH)
         relative_change_CH_plus = abs((new_distance_CH_plus - original_distance_CH) / original_distance_CH)
 
-        combined_values_plus_minus = relative_change_CH_plus + relative_change_HO_minus
-        combined_values_minus_plus = relative_change_CH_minus + relative_change_HO_plus
-        combined_values_plus = relative_change_CH_plus + relative_change_HO_plus
-        combined_values_minus = relative_change_CH_minus + relative_change_HO_minus
+        combined_values_plus_minus = relative_change_CH_plus + relative_change_HX_minus
+        combined_values_minus_plus = relative_change_CH_minus + relative_change_HX_plus
+        combined_values_plus = relative_change_CH_plus + relative_change_HX_plus
+        combined_values_minus = relative_change_CH_minus + relative_change_HX_minus
 
         if any(value > threshold for value in [combined_values_plus, combined_values_minus, combined_values_plus_minus, combined_values_minus_plus]) and good_TS:
             msg = f"Yay! Normal mode analysis indicate correct TS for {molecule.name} with imaginary frequency: {imag}"

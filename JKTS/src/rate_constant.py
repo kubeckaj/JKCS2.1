@@ -123,8 +123,10 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
     kappa = 1
 
     if reactant_conformers and TS_conformers:
-        reactant_molecules = [mol for mol in reactant_conformers if 'OH' not in mol.name]
-        OH = next((mol for mol in reactant_conformers if 'OH' in mol.name))
+        # Identify the abstracting radical (OH or Cl) from the reactant list
+        _radical_names = ('OH', 'OH_DLPNO', 'Cl', 'Cl_DLPNO', 'NO3', 'NO3_DLPNO')
+        radical = next((mol for mol in reactant_conformers if mol.name in _radical_names), None)
+        reactant_molecules = [mol for mol in reactant_conformers if mol.name not in _radical_names]
 
         lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.zero_point_corrected)
         lowest_TS = min(TS_conformers, key=lambda molecule: molecule.zero_point_corrected)
@@ -132,33 +134,35 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
         lowest_ZP_TS_J = lowest_TS.zero_point_corrected * HtoJ
         lowest_ZP_reactant_J = lowest_reactant.zero_point_corrected * HtoJ
         lowest_ZP_TS_kcalmol = lowest_TS.zero_point_corrected * Htokcalmol
-        lowest_ZP_reactant_kcalmol = (lowest_reactant.zero_point_corrected + OH.zero_point_corrected) * Htokcalmol
 
-        if OH:
-            sum_reactant_ZP_J = lowest_ZP_reactant_J + (OH.zero_point_corrected * HtoJ)
-            Q_reactant = sum([exp(-(lowest_ZP_reactant_J - (mol.zero_point_corrected * HtoJ)) / (k_b * T)) * mol.Q for mol in reactant_molecules]) * OH.Q
+        if radical:
+            sum_reactant_ZP_J = lowest_ZP_reactant_J + (radical.zero_point_corrected * HtoJ)
+            lowest_ZP_reactant_kcalmol = (lowest_reactant.zero_point_corrected + radical.zero_point_corrected) * Htokcalmol
+            Q_reactant = sum([exp(-((mol.zero_point_corrected - lowest_reactant.zero_point_corrected) * HtoJ) / (k_b * T)) * mol.Q for mol in reactant_molecules]) * radical.Q
         else:
             sum_reactant_ZP_J = lowest_ZP_reactant_J
+            lowest_ZP_reactant_kcalmol = lowest_reactant.zero_point_corrected * Htokcalmol
             Q_reactant = sum([exp(-(lowest_ZP_reactant_J - (mol.zero_point_corrected * HtoJ)) / (k_b * T)) * mol.Q for mol in reactant_molecules])
 
         Q_TS = sum([exp(-(mol.zero_point_corrected - lowest_TS.zero_point_corrected) * HtoJ / (k_b * T)) * mol.Q for mol in TS_conformers])
-        Q_reactant = sum([exp(-((mol.zero_point_corrected - lowest_reactant.zero_point_corrected) * HtoJ) / (k_b * T)) * mol.Q for mol in reactant_molecules]) * OH.Q
 
         if product_conformers:
-            product_molecules = [mol for mol in product_conformers if mol.name not in ('H2O', 'H2O_DLPNO')]
-            H2O = next((mol for mol in product_conformers if mol.name in ("H2O", "H2O_DLPNO")), None)
+            # Identify the small product molecule (H2O or HCl)
+            _product_names = ('H2O', 'H2O_DLPNO', 'HCl', 'HCl_DLPNO', 'HNO3', 'HNO3_DLPNO')
+            product_small = next((mol for mol in product_conformers if mol.name in _product_names), None)
+            product_molecules = [mol for mol in product_conformers if mol.name not in _product_names]
 
-            if product_molecules and H2O:
+            if product_molecules and product_small and radical:
                 lowest_product = min(product_molecules, key=lambda molecule: molecule.electronic_energy)
-                lowest_EE_product_kcalmol = (lowest_product.electronic_energy + H2O.electronic_energy) * Htokcalmol
+                lowest_EE_product_kcalmol = (lowest_product.electronic_energy + product_small.electronic_energy) * Htokcalmol
                 lowest_EE_TS_kcalmol = lowest_TS.electronic_energy * Htokcalmol
-                lowest_EE_reactant_kcalmol = (lowest_reactant.electronic_energy + OH.electronic_energy) * Htokcalmol
+                lowest_EE_reactant_kcalmol = (lowest_reactant.electronic_energy + radical.electronic_energy) * Htokcalmol
 
                 imag = abs(lowest_TS.vibrational_frequencies[0])
                 kappa = eckart(lowest_EE_TS_kcalmol, lowest_EE_reactant_kcalmol, lowest_EE_product_kcalmol, imag)
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
             else:
-                print("No H2O in product molecules. No tunneling correction will be calculated")
+                print("No product molecule (H2O/HCl) found. No tunneling correction will be calculated")
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
         else:
             k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))

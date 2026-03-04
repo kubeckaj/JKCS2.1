@@ -11,20 +11,21 @@ def crest_constrain(molecule, force_constant=1):
             molecule.find_active_site(indexes=runtime.args.CHO)
         C_index = molecule.constrained_indexes['C']
         H_index = molecule.constrained_indexes['H']
-        O_index = molecule.constrained_indexes['O']
+        abstractor_index = molecule.constrained_indexes['X']
 
         aldehyde, aldehyde_O = is_aldehyde(molecule, C_index, H_index)
-        CHO_angle = molecule.calculate_angle(molecule.coordinates[C_index-1], molecule.coordinates[H_index-1], molecule.coordinates[O_index-1])
+        CHO_angle = molecule.calculate_angle(molecule.coordinates[C_index-1], molecule.coordinates[H_index-1], molecule.coordinates[abstractor_index-1])
 
         with open(molecule.directory + "/constrain.inp", "w") as f:
             f.write("$constrain\n")
             f.write(f"  force constant={force_constant}\n")
             f.write(f"  distance: {C_index}, {H_index}, auto\n")
-            f.write(f"  distance: {H_index}, {O_index}, auto\n")
-            f.write(f"  angle: {C_index}, {H_index}, {O_index}, {CHO_angle}\n")
-            if runtime.args.OH and aldehyde:
-                f.write(f"  dihedral: {aldehyde_O}, {C_index}, {O_index}, {O_index+1}, 0\n")
-                f.write(f"  dihedral: {C_index}, {H_index}, {O_index}, {O_index+1}, 0\n")
+            f.write(f"  distance: {H_index}, {abstractor_index}, auto\n")
+            f.write(f"  angle: {C_index}, {H_index}, {abstractor_index}, {CHO_angle}\n")
+            if 'XH' in molecule.constrained_indexes and aldehyde:
+                XH_index = molecule.constrained_indexes['XH']
+                f.write(f"  dihedral: {aldehyde_O}, {C_index}, {abstractor_index}, {XH_index}, 0\n")
+                f.write(f"  dihedral: {C_index}, {H_index}, {abstractor_index}, {XH_index}, 0\n")
             f.write("$end\n")
 
 
@@ -43,16 +44,14 @@ def mkdir(molecule, crest_constrain_flag=True):
     if crest_constrain_flag:
         C_index = molecule.constrained_indexes['C']
         H_index = molecule.constrained_indexes['H']
-        O_index = molecule.constrained_indexes['O']
-        with open(molecule.directory + "/.constrain", "w") as f:
-            f.write(f"C: {C_index}\n")
-            f.write(f"H: {H_index}\n")
-            f.write(f"O: {O_index}\n")
-
-        with open(molecule.directory + "/log_files/.constrain", "w") as f:
-            f.write(f"C: {C_index}\n")
-            f.write(f"H: {H_index}\n")
-            f.write(f"O: {O_index}\n")
+        abstractor_index = molecule.constrained_indexes['X']
+        for path in [molecule.directory + "/.constrain", molecule.directory + "/log_files/.constrain"]:
+            with open(path, "w") as f:
+                f.write(f"C: {C_index}\n")
+                f.write(f"H: {H_index}\n")
+                f.write(f"X: {abstractor_index}\n")
+                if 'XH' in molecule.constrained_indexes:
+                    f.write(f"XH: {molecule.constrained_indexes['XH']}\n")
 
 
 def QC_input(molecule, constrain, TS, method=None, basis_set=None):
@@ -85,11 +84,11 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
         if molecule.program.lower() == 'orca':
             C_index = molecule.constrained_indexes['C']-1
             H_index = molecule.constrained_indexes['H']-1
-            O_index = molecule.constrained_indexes['O']-1
+            abstractor_index = molecule.constrained_indexes['X']-1
         else:
             C_index = molecule.constrained_indexes['C']
             H_index = molecule.constrained_indexes['H']
-            O_index = molecule.constrained_indexes['O']
+            abstractor_index = molecule.constrained_indexes['X']
 
         aldehyde, aldehyde_O = is_aldehyde(molecule, C_index, H_index)
 
@@ -121,9 +120,9 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
                 f.write("%geom\n")
                 f.write("Constraints\n")
                 f.write(f"{{B {C_index} {H_index} C}}\n")
-                f.write(f"{{B {H_index} {O_index} C}}\n")
+                f.write(f"{{B {H_index} {abstractor_index} C}}\n")
                 if aldehyde:
-                    f.write(f"{{A {C_index} {H_index} {O_index} C}}\n")
+                    f.write(f"{{A {C_index} {H_index} {abstractor_index} C}}\n")
                 f.write("end\nend\n")
             elif TS:
                 f.write("%geom\n")
@@ -135,9 +134,9 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
                     f.write("Recalc_Hess 1\n")
                     f.write("Trust -0.2\n")
                 if runtime.args.hybrid:
-                    f.write(f"Hybrid_Hess {{ {C_index} {H_index} {O_index} }} end\n")
-                f.write(f"TS_Mode {{ B {H_index} {O_index} }} end\n")
-                f.write(f"TS_Active_Atoms {{ {C_index} {H_index} {O_index} }} end\n")
+                    f.write(f"Hybrid_Hess {{ {C_index} {H_index} {abstractor_index} }} end\n")
+                f.write(f"TS_Mode {{ B {H_index} {abstractor_index} }} end\n")
+                f.write(f"TS_Active_Atoms {{ {C_index} {H_index} {abstractor_index} }} end\n")
                 f.write("TS_Active_Atoms_Factor 3\n")
                 f.write("end\n")
             f.write("\n")
@@ -168,12 +167,14 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
             f.write("\n")
             if constrain:
                 f.write(f"B {C_index} {H_index} F\n")
-                f.write(f"B {H_index} {O_index} F\n")
+                f.write(f"B {H_index} {abstractor_index} F\n")
                 if aldehyde:
-                    f.write(f"A {C_index} {H_index} {O_index} F\n")
-                    if 'conf' in molecule.name:
-                        f.write(f"D {aldehyde_O} {C_index} {O_index} {O_index+1} F\n")
-                        f.write(f"D {C_index} {H_index} {O_index} {O_index+1} F\n")
+                    f.write(f"A {C_index} {H_index} {abstractor_index} F\n")
+                    if 'conf' in molecule.name and 'XH' in molecule.constrained_indexes:
+                        # XH_index is the H of the abstracting OH radical — only valid for OH abstraction
+                        XH_index = molecule.constrained_indexes['XH']
+                        f.write(f"D {aldehyde_O} {C_index} {abstractor_index} {XH_index} F\n")
+                        f.write(f"D {C_index} {H_index} {abstractor_index} {XH_index} F\n")
                 f.write("\n")
     else:
         print(f"QC_input was called but no program was specified for {molecule.name}")

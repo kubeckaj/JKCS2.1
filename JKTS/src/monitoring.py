@@ -118,7 +118,7 @@ def handle_error_termination(molecule, logger, error_termination_string):
                 if molecule.program.lower() == 'g16':
                     logger.log(f"Common G16 errors can be found in: {G16_common_errors}")
             elif 'TS' in molecule.current_step and good_active_site(molecule) or "l801" in last_lines:
-                logger.log("SCF didnt seem to converge due to offset of OH radical. Trying to correct and resubmit.")
+                logger.log("SCF didnt seem to converge due to offset of abstracting radical. Trying to correct and resubmit.")
                 molecule.set_active_site(indexes=runtime.args.CHO)
                 molecule.perturb_active_site(indexes=runtime.args.CHO)
                 resubmit_job(molecule, logger)
@@ -251,18 +251,35 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
                 with runtime.global_molecules_lock:
                     for molecule in molecules:
                         runtime.global_molecules.append(molecule)
-                    needs_H2O = molecules[0].product and not any(mol for mol in runtime.global_molecules if 'H2O' in mol.name)
-                    needs_OH = molecules[0].reactant and not any(mol for mol in runtime.global_molecules if 'OH' in mol.name)
-                if needs_H2O:
-                    H2O = Molecule.create_H2O()
-                    H2O.program = runtime.QC_program
-                    QC_input(H2O, constrain=False, TS=False)
-                    submit_and_monitor(H2O, logger, threads)
-                elif needs_OH:
-                    OH = Molecule.create_OH()
-                    OH.program = runtime.QC_program
-                    QC_input(OH, constrain=False, TS=False)
-                    submit_and_monitor(OH, logger, threads)
+                    if runtime.args.Cl:
+                        needs_small_molecule = molecules[0].product and not any(mol.name in ('HCl', 'HCl_DLPNO') for mol in runtime.global_molecules)
+                        needs_radical = molecules[0].reactant and not any(mol.name in ('Cl', 'Cl_DLPNO') for mol in runtime.global_molecules)
+                    elif runtime.args.NO3:
+                        needs_small_molecule = molecules[0].product and not any(mol.name in ('HNO3', 'HNO3_DLPNO') for mol in runtime.global_molecules)
+                        needs_radical = molecules[0].reactant and not any(mol.name in ('NO3', 'NO3_DLPNO') for mol in runtime.global_molecules)
+                    else:
+                        needs_small_molecule = molecules[0].product and not any('H2O' in mol.name for mol in runtime.global_molecules)
+                        needs_radical = molecules[0].reactant and not any('OH' in mol.name for mol in runtime.global_molecules)
+                if needs_small_molecule:
+                    if runtime.args.Cl:
+                        small_mol = Molecule.create_HCl()
+                    elif runtime.args.NO3:
+                        small_mol = Molecule.create_HNO3()
+                    else:
+                        small_mol = Molecule.create_H2O()
+                    small_mol.program = runtime.QC_program
+                    QC_input(small_mol, constrain=False, TS=False)
+                    submit_and_monitor(small_mol, logger, threads)
+                elif needs_radical:
+                    if runtime.args.Cl:
+                        radical = Molecule.create_Cl()
+                    elif runtime.args.NO3:
+                        radical = Molecule.create_NO3()
+                    else:
+                        radical = Molecule.create_OH()
+                    radical.program = runtime.QC_program
+                    QC_input(radical, constrain=False, TS=False)
+                    submit_and_monitor(radical, logger, threads)
                 return True
             elif runtime.args.auto:
                 handle_termination(molecules, logger, threads, converged=True)
@@ -461,7 +478,7 @@ def handle_termination(molecules, logger, threads, converged):
             m.update_step()
         current_step = molecules[0].current_step
     logger.log(f"Job to be performed: {current_step}")
-    if current_step in runtime.args.filter_step and converged and 'H2O' not in molecules[0].name:
+    if current_step in runtime.args.filter_step and converged and not molecules[0].small_molecule:
         if molecules[0].product:
             conformer_molecules = []
             h_numbers = sorted(set(re.search(r'_H(\d+)[._]', m.name + '_').group(1) for m in molecules if "_H" in m.name))
@@ -519,12 +536,38 @@ def handle_input_molecules(molecules, logger, threads):
 
         if all_converged:
             if all(mol.current_step == 'DLPNO' for mol in molecules):
-                if all(mol.product for mol in molecules) and not any('H2O' in mol.name for mol in molecules):
-                    logger.log("Converged DLPNOs. However, H2O needed for product energies")
-                    check_convergence(molecules, logger, threads, 30, runtime.args.attempts, all_converged=True)
-                elif all(mol.reactant for mol in molecules) and not any('OH' in mol.name for mol in molecules):
-                    logger.log("Converged DLPNOs. However, OH needed for reactant energies")
-                    check_convergence(molecules, logger, threads, 30, runtime.args.attempts, all_converged=True)
+                if all(mol.product for mol in molecules):
+                    if runtime.args.Cl:
+                        product_missing = not any(mol.name in ('HCl', 'HCl_DLPNO') for mol in molecules)
+                    elif runtime.args.NO3:
+                        product_missing = not any(mol.name in ('HNO3', 'HNO3_DLPNO') for mol in molecules)
+                    else:
+                        product_missing = not any('H2O' in mol.name for mol in molecules)
+                    if product_missing:
+                        if runtime.args.Cl:
+                            small_mol_name = "HCl"
+                        elif runtime.args.NO3:
+                            small_mol_name = "HNO3"
+                        else:
+                            small_mol_name = "H2O"
+                        logger.log(f"Converged DLPNOs. However, {small_mol_name} needed for product energies")
+                        check_convergence(molecules, logger, threads, 30, runtime.args.attempts, all_converged=True)
+                elif all(mol.reactant for mol in molecules):
+                    if runtime.args.Cl:
+                        reactant_missing = not any(mol.name in ('Cl', 'Cl_DLPNO') for mol in molecules)
+                    elif runtime.args.NO3:
+                        reactant_missing = not any(mol.name in ('NO3', 'NO3_DLPNO') for mol in molecules)
+                    else:
+                        reactant_missing = not any('OH' in mol.name for mol in molecules)
+                    if reactant_missing:
+                        if runtime.args.Cl:
+                            radical_name = "Cl"
+                        elif runtime.args.NO3:
+                            radical_name = "NO3"
+                        else:
+                            radical_name = "OH"
+                        logger.log(f"Converged DLPNOs. However, {radical_name} needed for reactant energies")
+                        check_convergence(molecules, logger, threads, 30, runtime.args.attempts, all_converged=True)
                 else:
                     logger.log(f"All given molecules are converged DLPNOs")
                     for m in molecules:

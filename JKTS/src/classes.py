@@ -99,7 +99,7 @@ class Molecule(Vector):
         self.job_id = ""
         self.atoms = atoms if atoms is not None else []
         self.coordinates = coordinates if coordinates is not None else []
-        self.constrained_indexes = {'C': indexes[0], 'H': indexes[1], 'O': indexes[2], 'OH': indexes[2]+1} if indexes else {}
+        self.constrained_indexes = {'C': indexes[0], 'H': indexes[1], 'X': indexes[2], 'XH': indexes[2]+1} if indexes else {}
         self.converged = False
         self.mult = self._determine_mult()
         self.charge = 0
@@ -144,9 +144,9 @@ class Molecule(Vector):
                 self.program = 'g16' if self.file_path.split(".")[-1] == 'com' else 'orca'
                 self.atoms, self.coordinates = self.inp2xyz()
 
-            if self.reactant or 'reactant' in self.name or self.name in ('OH', 'OH_DLPNO'):
+            if self.reactant or 'reactant' in self.name or self.name in ('OH', 'OH_DLPNO', 'Cl', 'Cl_DLPNO', 'NO3', 'NO3_DLPNO'):
                 self.reactant = True
-            elif self.product or 'product' in self.name or self.name in ('H2O', 'H2O_DLPNO'):
+            elif self.product or 'product' in self.name or self.name in ('H2O', 'H2O_DLPNO', 'HCl', 'HCl_DLPNO', 'HNO3', 'HNO3_DLPNO'):
                 self.product = True
             else:
                 self.find_active_site(indexes)
@@ -175,7 +175,9 @@ class Molecule(Vector):
 
     @property
     def small_molecule(self):
-        return self.name in ('OH', 'H2O', 'H2O_DLPNO', 'OH_DLPNO')
+        return self.name in ('OH', 'H2O', 'H2O_DLPNO', 'OH_DLPNO',
+                             'Cl', 'HCl', 'Cl_DLPNO', 'HCl_DLPNO',
+                             'NO3', 'HNO3', 'NO3_DLPNO', 'HNO3_DLPNO')
 
     def determine_workflow(self):
         if self.small_molecule:
@@ -186,10 +188,12 @@ class Molecule(Vector):
             return TS_workflow
 
     def _determine_mult(self):
-        if 'H2O' in self.name:
-            return 1   # water — singlet
+        if 'H2O' in self.name or self.name in ('HCl', 'HCl_DLPNO', 'HNO3', 'HNO3_DLPNO'):
+            return 1   # water/HCl/HNO3 — singlet
         if 'OH' in self.name and not self.product:
             return 2   # OH radical — doublet
+        if self.name in ('Cl', 'Cl_DLPNO', 'NO3', 'NO3_DLPNO'):
+            return 2   # Cl/NO3 radical — doublet
         if self.reactant:
             return 1   # closed-shell organic reactant
         if self.product:
@@ -223,6 +227,73 @@ class Molecule(Vector):
         molecule.method = molecule.log2method()
         return molecule
 
+    @classmethod
+    def create_Cl(cls, directory=os.getcwd()):
+        # Creates a Cl radical molecule (reactant for Cl-radical H abstraction)
+        molecule = cls(name='Cl', directory=directory, atoms=['Cl'], coordinates=[[0.0, 0.0, 0.0]], reactant=True)
+        molecule.mult = 2
+        molecule.reactant = True
+        molecule.workflow = molecule.determine_workflow()
+        molecule.converged = False
+        molecule.set_current_step()
+        molecule.method = molecule.log2method()
+        return molecule
+
+    @classmethod
+    def create_HCl(cls, directory=os.getcwd()):
+        # Creates a HCl molecule (product of Cl-radical H abstraction)
+        molecule = cls(name='HCl', directory=directory, atoms=['H', 'Cl'], coordinates=[[0.0, 0.0, 0.0], [1.275, 0.0, 0.0]], product=True)
+        molecule.mult = 1
+        molecule.product = True
+        molecule.workflow = molecule.determine_workflow()
+        molecule.converged = False
+        molecule.set_current_step()
+        molecule.method = molecule.log2method()
+        return molecule
+
+    @classmethod
+    def create_NO3(cls, directory=os.getcwd()):
+        # Creates a NO3 radical molecule (reactant for NO3-radical H abstraction)
+        # Planar D3h: N at center, 3 O atoms at 120°, N-O bond = 1.24 Å
+        N_O = 1.24
+        molecule = cls(name='NO3', directory=directory,
+                       atoms=['N', 'O', 'O', 'O'],
+                       coordinates=[[0.0, 0.0, 0.0],
+                                    [N_O, 0.0, 0.0],
+                                    [-N_O * 0.5,  N_O * 0.866, 0.0],
+                                    [-N_O * 0.5, -N_O * 0.866, 0.0]],
+                       reactant=True)
+        molecule.mult = 2
+        molecule.reactant = True
+        molecule.workflow = molecule.determine_workflow()
+        molecule.converged = False
+        molecule.set_current_step()
+        molecule.method = molecule.log2method()
+        return molecule
+
+    @classmethod
+    def create_HNO3(cls, directory=os.getcwd()):
+        # Creates a HNO3 molecule (product of NO3-radical H abstraction)
+        # Planar structure (Cs symmetry), N-O(H) along +x axis.
+        # Exp. geometry: N-OH=1.406, N=O=1.206/1.211 Å, O-H=0.964 Å
+        # Angles: ∠O=N=O=130.3°, ∠O(H)-N=O=115.9°/113.8°, ∠H-O-N=102.2°
+        # Cis conformer (H cis to the shorter N=O oxygen).
+        molecule = cls(name='HNO3', directory=directory,
+                       atoms=['H', 'O', 'N', 'O', 'O'],
+                       coordinates=[[ 1.609,  0.943, 0.0],   # H  (cis to O-nitro-1)
+                                    [ 1.406,  0.000, 0.0],   # O  (hydroxyl, N-O-H)
+                                    [ 0.000,  0.000, 0.0],   # N
+                                    [-0.524,  1.086, 0.0],   # O  (nitro-1, N=O 1.206 Å, cis to H)
+                                    [-0.490, -1.107, 0.0]],  # O  (nitro-2, N=O 1.211 Å, trans to H)
+                       product=True)
+        molecule.mult = 1
+        molecule.product = True
+        molecule.workflow = molecule.determine_workflow()
+        molecule.converged = False
+        molecule.set_current_step()
+        molecule.method = molecule.log2method()
+        return molecule
+
 
     def read_xyz_file(self):
         try:
@@ -247,7 +318,7 @@ class Molecule(Vector):
                 os.makedirs(dest_directory, exist_ok=True)
 
             for filename in os.listdir(self.directory):
-                if filename.endswith(self.output):
+                if filename.endswith(self.output) and "JKTS" not in filename:
                     file_path = os.path.join(self.directory, filename)
                     dest_file_path = os.path.join(dest_directory, filename)
                     if os.path.exists(dest_file_path):
@@ -311,12 +382,22 @@ class Molecule(Vector):
 
 
     def find_active_site(self, indexes=None):
+        # Migrate old 'O'/'OH' keys to new 'X'/'XH' naming if needed
+        if self.constrained_indexes and 'O' in self.constrained_indexes and 'X' not in self.constrained_indexes:
+            self.constrained_indexes['X'] = self.constrained_indexes.pop('O')
+            if 'OH' in self.constrained_indexes:
+                self.constrained_indexes['XH'] = self.constrained_indexes.pop('OH')
         if self.constrained_indexes:
             return
         if indexes:
-            C_index, H_index, O_index = indexes
-            H_OH_index = O_index + 1
-            self.constrained_indexes = {'C': C_index, 'H': H_index, 'O': O_index, 'OH': H_OH_index}
+            C_index, H_index, abstractor_index = indexes
+            abstractor = self.atoms[abstractor_index - 1] if self.atoms else 'O'
+            if abstractor == 'O' and len(self.atoms) >= abstractor_index and self.atoms[abstractor_index] == 'H':
+                # OH TS: the atom right after the abstracting O is the OH-H
+                self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': abstractor_index, 'XH': abstractor_index + 1}
+            else:
+                # Cl or NO3 TS (or OH TS where H is not immediately after O)
+                self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': abstractor_index}
             return
         else:
             constrain_file_path = os.path.join(self.directory, ".constrain")
@@ -329,9 +410,17 @@ class Molecule(Vector):
                             constraints[atom.strip()] = int(index.strip())
                         C_index = constraints.get('C', None)
                         H_index = constraints.get('H', None)
-                        O_index = constraints.get('O', None)
-                        H_OH_index = O_index + 1
-                        self.constrained_indexes = {'C': C_index, 'H': H_index, 'O': O_index, 'OH': H_OH_index}
+                        # Support both new ('X'/'XH') and old ('O'/'OH') key names
+                        X_index = constraints.get('X', constraints.get('O', None))
+                        XH_index = constraints.get('XH', constraints.get('OH', None))
+                        if X_index is not None and self.atoms:
+                            abstractor = self.atoms[X_index - 1]
+                            if abstractor == 'Cl' or XH_index is None:
+                                # Cl TS or NO3 TS: no secondary radical-H atom
+                                self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': X_index}
+                            else:
+                                # OH TS: secondary H on the radical
+                                self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': X_index, 'XH': XH_index}
                         return
                 except Exception as e:
                     print(f"Error reading .constrain file: {e}")
@@ -339,23 +428,42 @@ class Molecule(Vector):
                     indexes = None
 
             if not indexes:  # Fallback to original logic if indexes not set
-                # Directly access the indexes of the OH radical
-                O_index = len(self.atoms) - 2  # Second-last atom is the oxygen of the OH radical
-                H_OH_index = len(self.atoms) - 1  # Last atom is the hydrogen of the OH radical
+                if self.atoms and self.atoms[-1] == 'Cl':
+                    # Cl radical: single abstractor atom (Cl) appended at the end
+                    Cl_index = len(self.atoms) - 1  # 0-based
+                    for C, atom in enumerate(self.atoms[:-1]):
+                        if atom == 'C':
+                            for H, neighbor in enumerate(self.atoms[:-1]):
+                                if neighbor == 'H' and self.is_nearby(C, H):
+                                    if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[Cl_index]) > 120:
+                                        if self.is_nearby(H, Cl_index, threshold_distance=3.0):
+                                            self.constrained_indexes = {'C': C+1, 'H': H+1, 'X': Cl_index+1}
+                                            return
+                elif len(self.atoms) >= 4 and self.atoms[-3] == 'N' and self.atoms[-4] == 'O':
+                    # NO3 radical: last 4 atoms are O(abstracting), N, O, O
+                    X_0based = len(self.atoms) - 4  # 0-based index of abstracting O
+                    for C, atom in enumerate(self.atoms[:-4]):
+                        if atom == 'C':
+                            for H, neighbor in enumerate(self.atoms[:-4]):
+                                if neighbor == 'H' and self.is_nearby(C, H):
+                                    if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[X_0based]) > 120:
+                                        if self.is_nearby(H, X_0based, threshold_distance=2.5):
+                                            self.constrained_indexes = {'C': C+1, 'H': H+1, 'X': X_0based+1}
+                                            return
+                else:
+                    # OH radical: last two atoms are O and H of the OH radical
+                    abstractor_0based = len(self.atoms) - 2  # Second-last atom is the abstracting O
+                    H_OH_index = len(self.atoms) - 1  # Last atom is the H of the OH radical
 
-                for C, atom in enumerate(self.atoms):
-                    if atom == 'C':
-                        for H, neighbor in enumerate(self.atoms):
-                            if neighbor == 'H' and self.is_nearby(C, H):
-                                # Since we already know the indexes of O and H in the OH radical,
-                                # we directly use them instead of iterating through all atoms again.
-                                if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[O_index]) > 120:
-                                    # Check if the H from the molecule is close enough to the O from the OH radical
-                                    # indicating a potential active site for hydrogen abstraction.
-                                    if self.is_nearby(H, O_index, threshold_distance=2):
-                                        if self.is_nearby(C, O_index, threshold_distance=2.8):
-                                            self.constrained_indexes = {'C': C+1, 'H': H+1, 'O': O_index+1, 'OH': H_OH_index+1}
-                                        return
+                    for C, atom in enumerate(self.atoms):
+                        if atom == 'C':
+                            for H, neighbor in enumerate(self.atoms):
+                                if neighbor == 'H' and self.is_nearby(C, H):
+                                    if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[abstractor_0based]) > 120:
+                                        if self.is_nearby(H, abstractor_0based, threshold_distance=2):
+                                            if self.is_nearby(C, abstractor_0based, threshold_distance=2.8):
+                                                self.constrained_indexes = {'C': C+1, 'H': H+1, 'X': abstractor_0based+1, 'XH': H_OH_index+1}
+                                            return
 
         if not self.constrained_indexes:
             raise ValueError('Indexes for atoms involved in transition state site could not be determined\n Consider using "-CHO c_index h_index o_index" in the input argument. Open visualizer to manually get indexes')
@@ -523,7 +631,10 @@ class Molecule(Vector):
         qtrans = ((2 * pi * mol_mass * k_b * T) / h**2)**(3/2) * V
 
         if 'OH' in self.name:
-            qelec = 3.019 # OH radical with 2 low lying near degenerate energy level
+            qelec = 3.019 # OH radical with 2 low lying near degenerate energy levels
+        elif self.name in ('Cl', 'Cl_DLPNO'):
+            # Cl radical: ²P₃/₂ (g=4) ground state + ²P₁/₂ (g=2) excited state at 882 cm⁻¹
+            qelec = 4 + 2 * exp(-(882 * 100 * h * c) / (k_b * T))
         else:
             qelec = self.mult
 
@@ -531,38 +642,34 @@ class Molecule(Vector):
 
 
     def perturb_active_site(self, indexes=None, scaling_factor=0.1):
-        perturbed_coords = []
         if not self.constrained_indexes:
             self.find_active_site(indexes)
-        C_index = self.constrained_indexes['C']
-        H_index = self.constrained_indexes['H']
-        O_index = self.constrained_indexes['O']
-        OH_index = O_index + 1
-        C_index, H_index, O_index, OH_index = C_index-1, H_index-1, O_index-1, OH_index-1
+        C_index = self.constrained_indexes['C'] - 1
+        H_index = self.constrained_indexes['H'] - 1
+        abstractor_index = self.constrained_indexes['X'] - 1
         original_coordinates = self.coordinates
         perturbed_coords = original_coordinates.copy()
-        for index in [C_index, H_index, O_index]:  # Adjusted for 0 based indexing in ORCA
+        for index in [C_index, H_index, abstractor_index]:
             random_perturbation = [random.uniform(-scaling_factor, scaling_factor) for _ in range(3)]
             perturbed_coords[index] = [coord + delta for coord, delta in zip(original_coordinates[index], random_perturbation)]
         self.coordinates = perturbed_coords
 
 
-    def set_active_site(self, indexes=None, distance_CH=None, distance_HO=None, distance_OH_H=None, reaction_angle=None):
+    def set_active_site(self, indexes=None, distance_CH=None, distance_HX=None, distance_XH=None, reaction_angle=None):
         if not self.constrained_indexes:
             self.find_active_site(indexes)
-        C_index = self.constrained_indexes['C']
-        H_index = self.constrained_indexes['H']
-        O_index = self.constrained_indexes['O']
-        OH_index = O_index + 1
-        C_index, H_index, O_index, OH_index = C_index-1, H_index-1, O_index-1, OH_index-1
+        C_index = self.constrained_indexes['C'] - 1
+        H_index = self.constrained_indexes['H'] - 1
+        abstractor_index = self.constrained_indexes['X'] - 1
+        abstractor = self.atoms[abstractor_index]
 
         # If distances and angle are not given, use predefined values
         if distance_CH is None:
             distance_CH = 1.35
-        if distance_HO is None:
-            distance_HO = 1.38
-        if distance_OH_H is None:
-            distance_OH_H = 0.97
+        if distance_HX is None:
+            distance_HX = 1.84 if abstractor == 'Cl' else 1.38
+        if distance_XH is None:
+            distance_XH = 0.97
         if reaction_angle is None:
             reaction_angle = 173.0
 
@@ -581,28 +688,28 @@ class Molecule(Vector):
             rotation_axis = self.normalize_vector(cross(norm_vector_CH, [0, 1, 0]))
         rotated_vector = self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
 
-        # Set the H-O distance
-        new_O_position = new_H_position - (rotated_vector * distance_HO)
-        if dot(self.calculate_vector(self.coordinates[C_index], new_O_position), vector_CH) < 0:
-            new_O_position = new_H_position + rotated_vector * distance_HO 
+        # Set the H-X distance (X = abstracting atom)
+        new_X_position = new_H_position - (rotated_vector * distance_HX)
+        if dot(self.calculate_vector(self.coordinates[C_index], new_X_position), vector_CH) < 0:
+            new_X_position = new_H_position + rotated_vector * distance_HX
         rotation_axis = self.normalize_vector(rotation_axis)
 
-        rotation_angle_H = radians(104.5)
-        new_OH_H_position = new_O_position - self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_H) * distance_OH_H
-        HOH_angle = self.calculate_angle(new_OH_H_position, new_O_position, new_H_position)
-        if HOH_angle < 95:
-            new_OH_H_position = new_O_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_H) * distance_OH_H
+        # Set the XH position (only for OH TS: the H that stays on the radical's O)
+        if 'XH' in self.constrained_indexes:
+            radical_H_index = self.constrained_indexes['XH'] - 1
+            rotation_angle_XH = radians(104.5)
+            new_XH_position = new_X_position - self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
+            XH_angle = self.calculate_angle(new_XH_position, new_X_position, new_H_position)
+            if XH_angle < 95:
+                new_XH_position = new_X_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
+            self.coordinates[radical_H_index] = new_XH_position
 
         # Update positions
         self.coordinates[H_index] = new_H_position
-        self.coordinates[O_index] = new_O_position
-        try:
-            self.coordinates[OH_index] = new_OH_H_position
-        except IndexError:
-            pass
+        self.coordinates[abstractor_index] = new_X_position
 
 
-    def H_abstraction(self, Cl=False, products=False, num_molecules=None):
+    def H_abstraction(self, Cl=False, NO3=False, products=False, num_molecules=None):
         original_coords = self.coordinates.copy()
         atoms = self.atoms
         method = self.method
@@ -617,9 +724,9 @@ class Molecule(Vector):
                 continue
             # Reset parameters for each hydrogen iteration
             distance_CH = 1.35
-            distance_OH = 1.38
-            distance_OH_H = 0.97
-            water_angle = 104.5
+            distance_HX = 1.38    # H to abstracting atom (X) distance in TS
+            distance_XH = 0.97    # X-H bond in radical (only used for OH)
+            radical_angle = 104.5 # H-X-XH angle in radical product (only used for OH)
             perp_axis = [1, 0, 0]
             perp_axis2 = [0, 1, 0]
             reaction_angle = 170
@@ -632,10 +739,10 @@ class Molecule(Vector):
                         aldehyde_O = group['O']
                         aldehyde_C = group['C']
                         # Adjust settings specifically for aldehyde H
-                        distance_CH = 1.12092  # 1.41
-                        distance_OH = 1.84524 # 1.40971
-                        reaction_angle = 145.391 # 153.569
-                        water_angle = 94.051 # 99.589
+                        distance_CH = 1.12092
+                        distance_HX = 1.84524
+                        reaction_angle = 145.391
+                        radical_angle = 94.051
                         perp_axis = self.normalize_vector(self.calculate_vector(original_coords[aldehyde_O], original_coords[aldehyde_C]))
                         break
             for j, other_atom in enumerate(atoms):
@@ -674,28 +781,55 @@ class Molecule(Vector):
                     rotation_angle = radians(180 - reaction_angle)
                     rotated_vector = self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
 
-                    new_oxygen_position = new_H_position - (rotated_vector * distance_OH)
-                    if self.atom_distance(new_oxygen_position, original_coords[j]) < distance_OH:
-                        new_oxygen_position = new_H_position + (rotated_vector * distance_OH)
+                    # Place the abstracting atom X (O for OH/NO3, Cl for Cl) along the reaction vector
+                    new_X_position = new_H_position - (rotated_vector * distance_HX)
+                    if self.atom_distance(new_X_position.tolist(), original_coords[j]) < distance_HX:
+                        new_X_position = new_H_position + (rotated_vector * distance_HX)
 
-                    rotation_angle_H = radians(180-water_angle)
-                    norm_vector_OH = self.normalize_vector(self.calculate_vector(new_H_position, new_oxygen_position))
-                    new_OH_H_position = new_oxygen_position - self.rotate_vector(norm_vector_OH, rotation_axis, rotation_angle_H) * distance_OH_H
-                    if self.atom_distance(new_OH_H_position, new_H_position) < 1.5:
-                        new_OH_H_position = new_oxygen_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_H) * distance_OH_H
+                    # Compute XH position for OH TS (the H that stays bonded to the abstracting O)
+                    rotation_angle_XH = radians(180 - radical_angle)
+                    norm_vector_XH = self.normalize_vector(self.calculate_vector(new_H_position, new_X_position))
+                    new_XH_position = new_X_position - self.rotate_vector(norm_vector_XH, rotation_axis, rotation_angle_XH) * distance_XH
+                    if self.atom_distance(new_XH_position.tolist(), new_H_position.tolist()) < 1.5:
+                        new_XH_position = new_X_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
 
-                    new_coords[i] = (new_H_position).tolist()
+                    new_coords[i] = new_H_position.tolist()
 
                     if Cl:
+                        # Cl TS: place Cl at H-Cl TS distance (~1.84 Å)
+                        distance_HCl = 1.84
+                        new_Cl_position = new_H_position - (rotated_vector * distance_HCl)
+                        if self.atom_distance(new_Cl_position.tolist(), original_coords[j]) < distance_HCl:
+                            new_Cl_position = new_H_position + (rotated_vector * distance_HCl)
                         new_atoms.append('Cl')
-                        new_coords.append(new_oxygen_position.tolist())
-                        constrained_indexes = {'C': j+1, 'H': i+1, 'O': len(new_coords)}
+                        new_coords.append(new_Cl_position.tolist())
+                        constrained_indexes = {'C': j+1, 'H': i+1, 'X': len(new_coords)}
+                    elif NO3:
+                        # NO3 TS: place abstracting O, then build N and two terminal O atoms
+                        N_O_bond = 1.24
+                        new_atoms.append('O')   # abstracting O of NO3
+                        new_coords.append(new_X_position.tolist())
+                        X_coord_index = len(new_coords)  # 1-based index of abstracting O
+                        # N placed along rotation_axis (perpendicular to C-H-X reaction plane)
+                        new_N_position = new_X_position + rotation_axis * N_O_bond
+                        new_atoms.append('N')
+                        new_coords.append(new_N_position.tolist())
+                        # Two terminal O atoms at ±120° from (N→abstracting O) around the C-H axis
+                        N_to_X = new_X_position - new_N_position
+                        new_O2_position = new_N_position + self.rotate_vector(N_to_X, norm_vector_CH, radians(120))
+                        new_O3_position = new_N_position + self.rotate_vector(N_to_X, norm_vector_CH, radians(-120))
+                        new_atoms.append('O')
+                        new_coords.append(new_O2_position.tolist())
+                        new_atoms.append('O')
+                        new_coords.append(new_O3_position.tolist())
+                        constrained_indexes = {'C': j+1, 'H': i+1, 'X': X_coord_index}
                     else:
+                        # OH TS: abstracting O + H of OH radical
                         new_atoms.append('O')
                         new_atoms.append('H')
-                        new_coords.append(new_oxygen_position.tolist())
-                        new_coords.append(new_OH_H_position.tolist())
-                        constrained_indexes = {'C': j+1, 'H': i+1, 'O': len(new_coords)-1, 'OH': len(new_coords)}
+                        new_coords.append(new_X_position.tolist())
+                        new_coords.append(new_XH_position.tolist())
+                        constrained_indexes = {'C': j+1, 'H': i+1, 'X': len(new_coords)-1, 'XH': len(new_coords)}
 
                     new_molecule = Molecule(self.file_path, smiles=self.smiles, method=method)
                     new_molecule.atoms = new_atoms
@@ -997,11 +1131,17 @@ class Molecule(Vector):
                 for line in file:
                     if start_reading:
                         parts = line.split()
-                        if len(parts) >= 6 and parts[1].isdigit() and all(part.replace('.', '', 1).isdigit() or part.lstrip('-').replace('.', '', 1).isdigit() for part in parts[-3:]):
-                            element_symbol = atomic_number_to_symbol.get(int(parts[1]), 'Unknown')
-                            element.append(element_symbol)
-                            coords = [float(parts[3]), float(parts[4]), float(parts[5])]
-                            coordinates.append(coords)
+                        # Standard orientation lines always have exactly 6 fields:
+                        # Center# AtomicNum Type X Y Z
+                        # parts[0] and parts[1] are both integers (center# and atomic#)
+                        if len(parts) == 6 and parts[0].isdigit() and parts[1].isdigit():
+                            try:
+                                element_symbol = atomic_number_to_symbol.get(int(parts[1]), 'Unknown')
+                                element.append(element_symbol)
+                                coords = [float(parts[3]), float(parts[4]), float(parts[5])]
+                                coordinates.append(coords)
+                            except ValueError:
+                                pass
                     if match_string in line:
                         start_reading = True
                         coordinates = []
@@ -1074,8 +1214,11 @@ class Molecule(Vector):
         output(f"Charge: {self.charge}")
         output(f"Dipole Moment: {self.dipole_moment}")
         output(f"Workflow: {self.workflow}")
-        if 'Cl' in self.atoms[-2:]:
-            output(f"Constrained Indexes: [C: {self.constrained_indexes['C']}, H: {self.constrained_indexes['H']}, Cl: {self.constrained_indexes['O']}]")
+        if self.constrained_indexes and 'X' in self.constrained_indexes:
+            X_idx = self.constrained_indexes['X']
+            abstractor_sym = self.atoms[X_idx - 1] if self.atoms and X_idx <= len(self.atoms) else '?'
+            label = 'Cl' if abstractor_sym == 'Cl' else ('NO3-O' if abstractor_sym == 'O' and 'XH' not in self.constrained_indexes and len(self.atoms) >= 4 and self.atoms[X_idx] == 'N' else 'O')
+            output(f"Constrained Indexes: [C: {self.constrained_indexes['C']}, H: {self.constrained_indexes['H']}, {label}: {X_idx}]")
         else:
             output(f"Constrained Indexes: {self.constrained_indexes}")
         output(f"Electronic Energy: {self.electronic_energy}")

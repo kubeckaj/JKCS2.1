@@ -1,7 +1,7 @@
 #!/bin/bash -norc
 source ~/.JKCSusersetup.txt
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
-toolspath="$scriptpath/../../JKTS/"
+toolspath="$scriptpath/../../JKTS/src"
 INPUT="$@"
 echo "COMMAND: $(basename $0) $@" >> "${PWD}/output"
 
@@ -32,15 +32,15 @@ fi
 for arg in "$@"; do
   case "$arg" in
     -h|--help|-help)
-      program_PYTHON "$toolspath/DATS.py" -h
+      program_PYTHON "$toolspath/main.py" -h
       exit 0
       ;;
     -loc|-collect)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" | tee -a "${PWD}/output"
+      program_PYTHON "$toolspath/main.py" "${PYTHON_ARGS[@]}" | tee -a "${PWD}/output"
       exit 0
       ;;
     -test|-info|-pickle|-init|-plot|-movie)
-      program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}"
+      program_PYTHON "$toolspath/main.py" "${PYTHON_ARGS[@]}"
       exit 0
       ;;
     -reactants)
@@ -88,32 +88,16 @@ done
 
 submit_job() {
   local directory=$1
-sbatch <<EOF
-#!/bin/bash
-#SBATCH --job-name=JKTS_$directory
-#SBATCH --output=JKTS_%j
-#SBATCH --time=$SLURM_TIME
-#SBATCH --partition=$SLURM_PARTITION
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=2000
-#SBATCH $SBATCH_PREFIX
-
-write_timeout_to_log() {
-  echo "Job ran out of time at \$(date)" >> log
-}
-
-trap 'write_timeout_to_log' SIGTERM
-
-source ~/.JKCSusersetup.txt
-program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" 
-
-EOF
+  local args_string
+  args_string=$(printf '%q ' "${PYTHON_ARGS[@]}")
+  nohup bash -c "source ~/.JKCSusersetup.txt; program_PYTHON \"$toolspath/main.py\" $args_string" \
+    > "JKTS_${directory}.log" 2>&1 &
+  echo "JKTS monitoring started for $directory (PID: $!, log: JKTS_${directory}.log)"
 }
 
 
 if [[ "$XYZ" -gt 0 ]]; then
-  program_PYTHON "$toolspath/DATS.py" "${PYTHON_ARGS[@]}" -init
+  program_PYTHON "$toolspath/main.py" "${PYTHON_ARGS[@]}" -init
   for dir in */; do
       dir_name=${dir%/}
       if { [[ $dir_name =~ _H[0-9]+$ ]] && [[ "$SKIP_TS" -eq 0 ]]; } || { [[ $dir_name == "reactants" ]] && [[ "$SKIP_REACTANTS" -eq 0 ]]; } || { [[ $dir_name == "products" ]] && [[ "$SKIP_PRODUCTS" -eq 0 ]]; }; then

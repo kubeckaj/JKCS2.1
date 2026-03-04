@@ -129,8 +129,8 @@ def collect_DFT_and_DLPNO(molecules):
         process_conditions = (m.current_step == 'optimization' and (m.reactant or m.product)) or ('TS_opt_conf' in m.current_step)
 
         if process_conditions:
-            if 'OH' in m.name or 'H2O' in m.name:
-                identifier = 'OH' if 'OH' in m.name else 'H2O'
+            if m.name in ('OH', 'OH_DLPNO', 'H2O', 'H2O_DLPNO', 'Cl', 'Cl_DLPNO', 'HCl', 'HCl_DLPNO', 'NO3', 'NO3_DLPNO', 'HNO3', 'HNO3_DLPNO'):
+                identifier = m.name.replace('_DLPNO', '')
             else:
                 match = re.search(r'conf(\d+)', m.name)
                 identifier = match.group() if match else None

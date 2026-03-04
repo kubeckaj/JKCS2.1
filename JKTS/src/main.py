@@ -103,6 +103,7 @@ def main():
     Examples of use:
                 JKTS pinonaldehyde.xyz -OH
                 JKTS -smiles CO -Cl  # Methanol hydrogen abstraction with Cl radical
+                JKTS molecule.xyz -NO3  # Nighttime H abstraction with NO3 radical
                 JKTS CH4_H1_opt_constrain.pkl -info
                 JKTS benzene.xyz -OH -ORCA -par qtest -auto false
                 JKTS *TS.log -time 5:00:00
@@ -120,6 +121,7 @@ def main():
     reaction_options = parser.add_argument_group("Types of reactions")
     reaction_options.add_argument('-OH', action='store_true', help='Perform H abstraction with OH radical')
     reaction_options.add_argument('-Cl', action='store_true', help='Perform H abstraction with Cl radical')
+    reaction_options.add_argument('-NO3', action='store_true', help='Perform H abstraction with NO3 radical (nighttime chemistry)')
     reaction_options.add_argument('-CC', action='store_true', help='(TBA) Perform addition to C=C bonds')
     reaction_options.add_argument('-OH_CC', action='store_true', help='(TBA) Perform OH addition to C=C bonds')
 
@@ -213,8 +215,8 @@ def main():
             input_file_path = os.path.join(runtime.start_dir, input_file)
             input_molecule = Molecule(input_file_path, reactant=True, method=runtime.args.method)
 
-        if runtime.args.OH or runtime.args.Cl:
-            reacted_molecules, product_molecules = input_molecule.H_abstraction(Cl=runtime.args.Cl, products=runtime.args.products, num_molecules=runtime.args.num_molecules)
+        if runtime.args.OH or runtime.args.Cl or runtime.args.NO3:
+            reacted_molecules, product_molecules = input_molecule.H_abstraction(Cl=runtime.args.Cl, NO3=runtime.args.NO3, products=runtime.args.products, num_molecules=runtime.args.num_molecules)
         elif runtime.args.CC:
             parser.error("Reaction type not supported yet.")
             other_molecule = runtime.args.input_files[1]
@@ -393,8 +395,9 @@ def main():
             Molecule.molecules_to_pickle(runtime.global_molecules, os.path.join(runtime.start_dir, f"Final_reactants_{molecule_name}.pkl"))
         elif all(m.product for m in runtime.global_molecules):
             h_numbers = sorted(set(re.search(r'_H(\d+)[._]', m.name + '_').group(1) for m in molecules if "_H" in m.name))
+            small_product_names = ('H2O', 'H2O_DLPNO', 'HCl', 'HCl_DLPNO', 'HNO3', 'HNO3_DLPNO')
             grouped_lists = [[m for m in runtime.global_molecules if f"_H{h_num}_" in m.name] +
-                             [m for m in runtime.global_molecules if "H2O" in m.name]
+                             [m for m in runtime.global_molecules if m.name in small_product_names]
                              for h_num in h_numbers]
 
             for h, molecules_group in zip(h_numbers, grouped_lists):
