@@ -101,7 +101,7 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
                     method = f'! cc-pVTZ-F12 cc-pVTZ/C cc-pVTZ-F12-CABS DLPNO-CCSD(T)-F12 TightPNO TightSCF'
                 else:
                     molecule.method = 'dlpno-ccsd(t)'
-                    method = f'! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) VeryTightSCF RI-JK aug-cc-pVTZ/JK {SCF}'
+                    method = f'! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK NoTRAH'
                 f.write(f"{method}\n")
                 f.write(f"%pal nprocs {runtime.args.cpu} end\n")
                 if molecule.error_termination_count == 0:
