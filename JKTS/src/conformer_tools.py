@@ -1,13 +1,11 @@
 import os
 import re
-from copy import deepcopy
 
 from classes import Molecule
 import runtime
 
 
 def filter_molecules(molecules, logger=None, pickle=False, RMSD_threshold=0.34, Energy_threshold=1e-4, Dipole_threshold=1e-1):
-    from ArbAlign import compare
     initial_len = len(molecules)
     unique_molecules = []
     energy_difference = 0

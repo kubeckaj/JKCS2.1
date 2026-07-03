@@ -98,7 +98,7 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
             if molecule.current_step == "DLPNO":
                 if runtime.args.F12:
                     molecule.method = 'f12-ccsd(t)'
-                    method = f'! cc-pVTZ-F12 cc-pVTZ/C cc-pVTZ-F12-CABS DLPNO-CCSD(T)-F12 TightPNO TightSCF'
+                    method = f'! cc-pVTZ-F12 cc-pVTZ/C cc-pVTZ-F12-CABS DLPNO-CCSD(T)-F12 TightPNO TightSCF NoTRAH'
                 else:
                     molecule.method = 'dlpno-ccsd(t)'
                     method = f'! aug-cc-pVTZ aug-cc-pVTZ/C DLPNO-CCSD(T) TightSCF RI-JK aug-cc-pVTZ/JK NoTRAH'
