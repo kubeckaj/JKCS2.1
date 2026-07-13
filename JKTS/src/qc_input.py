@@ -1,5 +1,6 @@
 import os
 import runtime
+from output import console
 from ts_validation import is_aldehyde
 
 
@@ -52,6 +53,10 @@ def mkdir(molecule, crest_constrain_flag=True):
                 f.write(f"X: {abstractor_index}\n")
                 if 'XH' in molecule.constrained_indexes:
                     f.write(f"XH: {molecule.constrained_indexes['XH']}\n")
+        # σᵢ persisted per directory (conformers are rebuilt fresh downstream)
+        for path in [molecule.directory + "/.symmetry", molecule.directory + "/log_files/.symmetry"]:
+            with open(path, "w") as f:
+                f.write(f"{getattr(molecule, 'reaction_path_degeneracy', 1)}\n")
 
 
 def QC_input(molecule, constrain, TS, method=None, basis_set=None):
@@ -177,4 +182,4 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
                         f.write(f"D {C_index} {H_index} {abstractor_index} {XH_index} F\n")
                 f.write("\n")
     else:
-        print(f"QC_input was called but no program was specified for {molecule.name}")
+        console.warning(f"QC_input was called but no program was specified for {molecule.name}")

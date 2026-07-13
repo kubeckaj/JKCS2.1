@@ -9,6 +9,7 @@ import pickle
 import random
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from output import console
 
 _G16_SCRATCH_EXTENSIONS = ('.int', '.d2e', '.rwf', '.skr', '.chk')
 
@@ -116,6 +117,7 @@ class Molecule(Vector):
         self.error_termination_count = 0
         self.reactant_pair = None
         self.product_pair = None
+        self.reaction_path_degeneracy = 1  # σᵢ: equivalent H's this TS represents
         self.program = program if program is not None else 'g16'
         self.init_molecule(indexes)
                         
@@ -163,7 +165,7 @@ class Molecule(Vector):
             if step in self.workflow:
                 self.current_step = step
             else:
-                print(f"Step '{step}' not found in the workflow.")
+                console.warning(f"Step '{step}' not found in the workflow of {self.name}.")
                 return
         else:
             detected = self.determine_current_step()
@@ -305,7 +307,7 @@ class Molecule(Vector):
                         self.atoms.append(parts[0])
                         self.coordinates.append([float(parts[1]), float(parts[2]), float(parts[3])])
         except FileNotFoundError:
-            print(f"File not found: {self.file_path}")
+            console.error(f"File not found: {self.file_path}")
 
     def save_to_pickle(self, file_path):
         with open(file_path, 'wb') as file:
@@ -378,7 +380,7 @@ class Molecule(Vector):
         if self.next_step is not None:
             self.set_current_step(self.next_step)
         else:
-            print("Reached the end of the workflow.")
+            console.info(f"{self.name}: reached the end of the workflow.")
 
 
     def find_active_site(self, indexes=None):
@@ -423,7 +425,7 @@ class Molecule(Vector):
                                 self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': X_index, 'XH': XH_index}
                         return
                 except Exception as e:
-                    print(f"Error reading .constrain file: {e}")
+                    console.warning(f"Error reading .constrain file: {e}")
                     # If reading .constrain fails, proceed to loop through the molecule
                     indexes = None
 
@@ -535,27 +537,34 @@ class Molecule(Vector):
                     self.electronic_energy = float(electronic_energy[-1][-1])
                     freq_matches = re.findall(r"Frequencies --\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)?\s+(-?\d+\.\d+)?", log_content)
                     if freq_matches:
-                        self.vibrational_frequencies = [float(freq) for match in freq_matches for freq in match if freq]
+                        flat = [float(freq) for match in freq_matches for freq in match if freq]
                         rot_temp = re.findall(r"Rotational temperatures? \(Kelvin\)\s+(-?\d+\.\d+)(?:\s+(-?\d+\.\d+))?(?:\s+(-?\d+\.\d+))?", log_content)
                         self.rot_temps = [float(rot) for rot in rot_temp[-1] if rot != '']
+                        # Retry-path logs contain the spectrum twice; keep only the last complete 3N-6 (3N-5 linear) block
+                        n = 3*len(self.atoms) - (5 if len(self.rot_temps) == 1 else 6)
+                        if len(flat) != n:
+                            (logger or console).warning(f"{self.name}: parsed {len(flat)} frequencies, expected {n}; keeping last {n}")
+                        self.vibrational_frequencies = flat[-n:]
                         symmetry_num = re.search(r"Rotational symmetry number\s*(\d+)", log_content)
                         if symmetry_num:
                             self.symmetry_num = int(symmetry_num.group(1))
-                        else: 
-                            if logger:
-                                logger.log(f"No symmetry number found in {self.name}. assuming 1")
+                        else:
+                            (logger or console).warning(f"No symmetry number found in {self.name}; assuming 1")
                             self.symmetry_num = 1
                         mol_mass = re.search(r"Molecular mass:\s+(-?\d+\.\d+)", log_content)
                         self.mol_mass = float(mol_mass.group(1))
                         mult = re.search(r"Multiplicity =\s*(\d+)", log_content)
-                        if mult:    
+                        if mult:
                             self.mult = int(mult.group(1))
                         else: self.mult = 2
 
-                        # self.partition_function()
+                        if self.Q is not None:
+                            # Gaussian's Q assumes q_elec = mult; correct it for OH/Cl
+                            correct_qelec = self._electronic_partition_function()
+                            if correct_qelec != self.mult:
+                                self.Q *= correct_qelec / self.mult
                     elif 'TS' in self.name:
-                        if logger:
-                            logger.log(f"No frequencies found in {self.name}")
+                        (logger or console).warning(f"No frequencies found in {self.name}")
 
 
             elif program.lower() == 'orca' or self.current_step == 'DLPNO' or DLPNO:
@@ -572,10 +581,11 @@ class Molecule(Vector):
                         self.dipole_moment = float(dipole_moment[-1])
                     freq_matches = re.findall(r'([-+]?\d*\.\d+)\s*cm\*\*-1', log_content)
                     if freq_matches:
-                        n = 3*len(self.atoms)-6 # Utilizing the fact that non-linear molecules has 3N-6 degrees of freedom
-                        self.vibrational_frequencies = [float(freq) for freq in freq_matches][-n:]
                         rot_temp = re.findall(r"Rotational constants in cm-1: \s*[-+]?(\d*\.\d*)  \s*[-+]?(\d*\.\d*) \s*[-+]?(\d*\.\d*)", log_content)
                         self.rot_temps = [float(rot) for rot in rot_temp[-1]]
+                        linear = len(self.rot_temps) == 1 or 0.0 in self.rot_temps
+                        n = 3*len(self.atoms) - (5 if linear else 6)
+                        self.vibrational_frequencies = [float(freq) for freq in freq_matches][-n:]
                         symmetry_num = re.search(r'Symmetry Number:\s*(\d*)', log_content)
                         if symmetry_num:
                             self.symmetry_num = int(symmetry_num.group(1))
@@ -630,15 +640,21 @@ class Molecule(Vector):
         V = k_b*T/P # R*T/P
         qtrans = ((2 * pi * mol_mass * k_b * T) / h**2)**(3/2) * V
 
-        if 'OH' in self.name:
-            qelec = 3.019 # OH radical with 2 low lying near degenerate energy levels
-        elif self.name in ('Cl', 'Cl_DLPNO'):
-            # Cl radical: ²P₃/₂ (g=4) ground state + ²P₁/₂ (g=2) excited state at 882 cm⁻¹
-            qelec = 4 + 2 * exp(-(882 * 100 * h * c) / (k_b * T))
-        else:
-            qelec = self.mult
+        qelec = self._electronic_partition_function(T)
 
         self.Q = qvib*qrot*qtrans*qelec
+
+
+    def _electronic_partition_function(self, T=298.15):
+        h = 6.62607015e-34  # Planck constant in J.s
+        k_b = 1.380649e-23  # Boltzmann constant in J/K
+        c = 299792458       # Speed of light in m/s
+        if self.name in ('OH', 'OH_DLPNO'):
+            return 3.019  # ²Π spin-orbit splitting (~140 cm⁻¹)
+        elif self.name in ('Cl', 'Cl_DLPNO'):
+            return 4 + 2 * exp(-(882 * 100 * h * c) / (k_b * T))  # ²P₃/₂ + ²P₁/₂ at 882 cm⁻¹
+        else:
+            return self.mult
 
 
     def perturb_active_site(self, indexes=None, scaling_factor=0.1):
@@ -835,6 +851,13 @@ class Molecule(Vector):
                     new_molecule.atoms = new_atoms
                     new_molecule.coordinates = new_coords
                     new_molecule.constrained_indexes = constrained_indexes
+                    # σᵢ: a methyl carbon collapses its equivalent H's into one TS
+                    if j in methyl_C_indexes:
+                        new_molecule.reaction_path_degeneracy = sum(
+                            1 for k, a in enumerate(atoms)
+                            if a == 'H' and self.atom_distance(original_coords[j], original_coords[k]) < 1.3)
+                    else:
+                        new_molecule.reaction_path_degeneracy = 1
                     abstraction_molecules.append(new_molecule)
 
         if num_molecules is not None and 0 <= num_molecules <= len(abstraction_molecules):
@@ -907,11 +930,16 @@ class Molecule(Vector):
                             if abs(angle - 109.5) <= angle_tolerance:
                                 ketone_methyl_groups.append({'methyl_C': i, 'ketone_C': C_neighbor, 'O': O})
                     methyl_C_indexes.append(i)
-                elif len(H_neighbors) in {1, 2}:  # Potential for being part of an aldehyde group
-                    # Look for an oxygen atom double-bonded to this carbon
-                    O_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'O' and self.atom_distance(self.coordinates[i], self.coordinates[j]) < distance]
+                elif len(H_neighbors) in {1, 2}:
+                    # Carbonyl C=O only (~1.20 Å), not a carbinol C-OH
+                    O_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'O' and self.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3]
                     for O in O_neighbors:
-                        aldehyde_groups.append({'C': i, 'H': H_neighbors[0], 'O': O})
+                        O_has_H = any(other_atom == 'H' and self.atom_distance(self.coordinates[O], self.coordinates[k]) < 1.1
+                                      for k, other_atom in enumerate(self.atoms))
+                        if O_has_H:
+                            continue
+                        for H in H_neighbors:  # every H (formaldehyde has two)
+                            aldehyde_groups.append({'C': i, 'H': H, 'O': O})
 
         return methyl_C_indexes, aldehyde_groups, ketone_methyl_groups
 
@@ -959,10 +987,10 @@ class Molecule(Vector):
                     elif '|                 C R E S T                  |' in line:
                         return 'crest'
         except FileNotFoundError:
-            print(f"File not found: {self.log_file_path}")
+            console.error(f"File not found: {self.log_file_path}")
             return None
         except Exception as e:
-            print(f"An error occurred: {e}")
+            console.error(f"Error detecting QC program from {self.log_file_path}: {e}")
             return None
         return None
 
@@ -1195,67 +1223,37 @@ class Molecule(Vector):
                 else: return coordinates
 
 
-    def print_items(self, logger=None):
-        def output(message):
-            if logger:
-                logger.log(message)
-            else:
-                print(message)
-
-        output(f"Molecule: {self.name}")
-        output(f"Method: {self.method.upper()}")
-        output(f"File Path: {self.file_path}")
-        output(f"Directory: {self.directory}")
-        output(f"Log File Path: {self.log_file_path}")
-        output(f"Program: {self.program.upper()}")
-        output(f"Reactant: {self.reactant}")
-        output(f"Product: {self.product}")
-        output(f"Multiplicity: {self.mult}")
-        output(f"Charge: {self.charge}")
-        output(f"Dipole Moment: {self.dipole_moment}")
-        output(f"Workflow: {self.workflow}")
+    def print_items(self):
+        print(f"Molecule: {self.name}")
+        print(f"Method: {self.method.upper()}")
+        print(f"File Path: {self.file_path}")
+        print(f"Directory: {self.directory}")
+        print(f"Log File Path: {self.log_file_path}")
+        print(f"Program: {self.program.upper()}")
+        print(f"Reactant: {self.reactant}")
+        print(f"Product: {self.product}")
+        print(f"Multiplicity: {self.mult}")
+        print(f"Charge: {self.charge}")
+        print(f"Dipole Moment: {self.dipole_moment}")
+        print(f"Workflow: {self.workflow}")
         if self.constrained_indexes and 'X' in self.constrained_indexes:
             X_idx = self.constrained_indexes['X']
             abstractor_sym = self.atoms[X_idx - 1] if self.atoms and X_idx <= len(self.atoms) else '?'
             label = 'Cl' if abstractor_sym == 'Cl' else ('NO3-O' if abstractor_sym == 'O' and 'XH' not in self.constrained_indexes and len(self.atoms) >= 4 and self.atoms[X_idx] == 'N' else 'O')
-            output(f"Constrained Indexes: [C: {self.constrained_indexes['C']}, H: {self.constrained_indexes['H']}, {label}: {X_idx}]")
+            print(f"Constrained Indexes: [C: {self.constrained_indexes['C']}, H: {self.constrained_indexes['H']}, {label}: {X_idx}]")
         else:
-            output(f"Constrained Indexes: {self.constrained_indexes}")
-        output(f"Electronic Energy: {self.electronic_energy}")
-        output(f"Zero Point Correction: {self.zero_point}")
-        output(f"Gibbs free energy: {self.free_energy}")
-        output(f"Partition Function: {self.Q}")
-        output(f"Vibrational Frequencies: {self.vibrational_frequencies}")
-        output(f"Current Step: {self.current_step}")
-        output(f"Next Step: {self.next_step}")
-        output("Atoms and Coordinates:")
+            print(f"Constrained Indexes: {self.constrained_indexes}")
+        print(f"Electronic Energy: {self.electronic_energy}")
+        print(f"Zero Point Correction: {self.zero_point}")
+        print(f"Gibbs free energy: {self.free_energy}")
+        print(f"Partition Function: {self.Q}")
+        print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
+        print(f"Current Step: {self.current_step}")
+        print(f"Next Step: {self.next_step}")
+        print("Atoms and Coordinates:")
         for atom, coord in zip(self.atoms, self.coordinates):
             coord_str = f"{coord[0]:>9.6f} {coord[1]:>9.6f} {coord[2]:>9.6f}"
-            output(f"  {atom:2} {coord_str}")
-        output("-----------------------------------------------------------------------")
+            print(f"  {atom:2} {coord_str}")
+        print("-----------------------------------------------------------------------")
 
 
-class Logger:
-    def __init__(self, log_file):
-        self.log_file = log_file
-
-    def log(self, message):
-        with open(self.log_file, 'a') as file:
-            file.write(message + '\n')
-
-    def log_with_stars(self, message):
-        wrapped_message = self.wrap_in_stars(message)
-        self.log(wrapped_message)
-
-    def log_results(self, message):
-        pass # TODO
-
-    @staticmethod
-    def wrap_in_stars(s):
-        star_length = len(s) + 14  # 6 stars and 2 spaces padding on each side
-
-        top_bottom_line = '*' * star_length
-        middle_line = f"****** {s} ******"
-        wrapped_string = f"\n{top_bottom_line}\n{middle_line}\n{top_bottom_line}\n"
-
-        return wrapped_string

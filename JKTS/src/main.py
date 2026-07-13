@@ -2,13 +2,27 @@
 import argparse
 import os
 import re
+import sys
 
 import runtime
-from classes import Molecule, Logger
+from classes import Molecule
+from output import Logger, console, banner
 from qc_input import mkdir
 from monitoring import handle_termination, handle_input_molecules
 from conformer_tools import initiate_conformers, collect_DFT_and_DLPNO
 from rate_constant import rate_constant
+from results import record_rate, write_molecule_summary, format_rate
+
+
+def read_reaction_path_degeneracy(directory):
+    # σᵢ written per TS directory by mkdir(); defaults to 1
+    for path in (os.path.join(directory, ".symmetry"), os.path.join(directory, "log_files", ".symmetry")):
+        try:
+            with open(path) as f:
+                return int(f.read().strip())
+        except (OSError, ValueError):
+            continue
+    return 1
 
 
 def str2bool(v):
@@ -59,8 +73,8 @@ def read_input():
             molecule.name = file_name
             f(molecule)
         else:
-            print("Invalid input file format. Without a specified reaction type the program expects input files with extensions '.pkl', '.log', '.out', '.com', or '.inp'\nPlease ensure that your input file is in one of these formats and try again. If you provided a different type of file, convert it to a supported format or select an appropriate file for processing.")
-            exit()
+            console.error(f"Unsupported input file '{input_file}'. Without a specified reaction type, JKTS expects '.pkl', '.log', '.out', '.com', '.inp', or '.xyz' files.")
+            sys.exit(1)
 
     molecules.sort(key=extract_conf_number)
 
@@ -189,8 +203,6 @@ def main():
     #####################################################################################################
     if runtime.args.test:
         from ts_validation import check_transition_state
-        threads = []
-        logger = Logger(os.path.join(runtime.start_dir, "test.txt"))
         molecules = read_input()
         if molecules:
             for molecule in molecules:
@@ -204,6 +216,7 @@ def main():
     final_reactants = []
     final_products = []
     molecules = []
+    logger = Logger(os.path.join(runtime.start_dir, "log"))
 
     if runtime.args.init:
         if runtime.args.smiles:
@@ -231,7 +244,6 @@ def main():
                 molecule.name = f"{file_name}_H{count}"
                 molecule.directory = os.path.join(runtime.start_dir, molecule.name)
                 mkdir(molecule)
-                logger = Logger(os.path.join(molecule.directory, "log"))
                 molecule.write_xyz_file(os.path.join(molecule.directory, f"{molecule.name}.xyz"))
                 molecule.save_to_pickle(os.path.join(molecule.directory, f"{molecule.name}.pkl"))
 
@@ -252,6 +264,17 @@ def main():
             pickle_path = os.path.join(product_dir, "product_molecules.pkl")
             Molecule.molecules_to_pickle(product_molecules, pickle_path)
 
+        radical = 'Cl' if runtime.args.Cl else 'NO3' if runtime.args.NO3 else 'OH'
+        workflow_dirs = [d for d, wanted in (('reactants', runtime.args.reactants),
+                                             ('products', runtime.args.products),
+                                             ('TS', runtime.args.TS)) if wanted]
+        banner([("Molecule", file_name),
+                ("Reaction", f"H abstraction by {radical}"),
+                ("Sites", f"{len(reacted_molecules)} unique abstraction site(s)"),
+                ("Method", f"{runtime.args.method} {runtime.args.basis_set}   backend: {runtime.QC_program}"),
+                ("SLURM", f"partition {runtime.args.par}, {runtime.args.cpu} CPUs, {runtime.args.mem} MB"),
+                ("Workflows", ', '.join(workflow_dirs))])
+
     elif runtime.args.info:
         if runtime.args.smiles:
             smiles_molecule = Molecule(smiles=runtime.args.smiles, reactant=True, method=runtime.args.method)
@@ -268,10 +291,10 @@ def main():
                     f.write(f"{m.name}\n")
                     for atom, coord in zip(m.atoms, m.coordinates):
                         f.write(f"{atom} {coord[0]} {coord[1]} {coord[2]}\n")
-        print("movie.xyz generated")
+        console.success("movie.xyz generated")
 
     elif runtime.args.plot:
-        print("Plotting is not available (plotting module has been removed). Use -info to inspect molecule data.")
+        console.warning("Plotting is not available (plotting module has been removed). Use -info to inspect molecule data.")
 
     else:
         if runtime.args.smiles:
@@ -285,14 +308,12 @@ def main():
                     if runtime.args.reactants is False:
                         exit()
                     input_file_path = os.path.join(runtime.start_dir, f"{file_name}_reactant.pkl")
-                    logger = Logger(os.path.join(runtime.start_dir, "log"))
                     reactant = Molecule.load_from_pickle(input_file_path)
                     molecules.append(reactant)
 
                 elif os.path.basename(runtime.start_dir) == 'products':
                     if runtime.args.products is False:
                         exit()
-                    logger = Logger(os.path.join(runtime.start_dir, "log"))
                     pickle_path = os.path.join(runtime.start_dir, "product_molecules.pkl")
                     product_molecules = Molecule.load_molecules_from_pickle(pickle_path)
                     for product in product_molecules:
@@ -302,9 +323,9 @@ def main():
                 else:
                     input_file_path = os.path.join(runtime.start_dir, os.path.basename(runtime.start_dir)+'.pkl')
                     molecule = Molecule.load_from_pickle(input_file_path)
-                    logger = Logger(os.path.join(runtime.start_dir, "log"))
                     molecules.append(molecule)
 
+                logger.info(f"JKTS run started (pid {os.getpid()}, method {runtime.args.method} {runtime.args.basis_set}, program {runtime.QC_program})")
                 handle_termination(molecules, logger, threads, converged=False)
 
             elif file_type == '.pkl':
@@ -335,27 +356,26 @@ def main():
                 input_molecules.append(molecule)
 
             else:
-                print(f"File type {file_type} is not supported")
-                exit()
+                console.error(f"File type {file_type} is not supported")
+                sys.exit(1)
 
         if final_TS and final_reactants:
-            k, kappa = rate_constant(final_TS, final_reactants, final_products)
-            print(f"{k} cm^3 molecules^-1 s^-1")
-            print(f"Tunneling coefficient: {kappa}")
+            symmetry = read_reaction_path_degeneracy(runtime.start_dir)
+            result = rate_constant(final_TS, final_reactants, final_products, symmetry=symmetry)
+            console.results(format_rate(result))
             exit()
 
         if input_molecules and file_type != '.xyz':
-            logger = Logger(os.path.join(runtime.start_dir, "log"))
             if runtime.args.collect:
                 collected_molecules = collect_DFT_and_DLPNO(input_molecules)
                 Molecule.molecules_to_pickle(collected_molecules, os.path.join(runtime.start_dir, "collected_molecules.pkl"))
             elif runtime.args.restart:
-                logger.log("\nJKTS restarted")
+                logger.event(f"JKTS restarted (method {runtime.args.method}, program {runtime.QC_program})")
                 with open(os.path.join(runtime.start_dir, '.method'), 'w') as f:
                     f.write(f"{runtime.args.method}")
                 handle_input_molecules(input_molecules, logger, threads)
             elif runtime.args.rerun:
-                logger.log(f"\nJKTS - rerunning calculations of type: {input_molecules[0].current_step}")
+                logger.event(f"JKTS rerunning calculations of type: {input_molecules[0].current_step}")
                 handle_termination(input_molecules, logger, threads, converged=False)
             elif runtime.args.pickle:
                 filename = re.sub("_conf\d{1,2}", "", input_molecules[0].name)
@@ -368,13 +388,11 @@ def main():
                 runtime.global_molecules.append(m)
 
         elif not input_molecules and file_type != '.xyz':
-            logger = Logger(os.path.join(runtime.start_dir, "log"))
-            logger.log("Error when generating input molecules. Could not create list from given input")
-            print("Error when generating input molecules. Could not create list from given input")
+            logger.error("Could not create molecule list from the given input files")
             if file_type in [".log", ".out"]:
-                logger.log(".log or .out extension detected. Make sure input files are from ORCA or G16")
+                logger.info(".log or .out extension detected. Make sure input files are from ORCA or G16")
             elif file_type == '.pkl':
-                logger.log("Detected .pkl file. Make sure the structure of the pickle file is either a python list, set, tuple or pandas.DataFrame")
+                logger.info("Detected .pkl file. Make sure the structure of the pickle file is either a python list, set, tuple or pandas.DataFrame")
 
     # Monitor and handle convergence of submitted jobs
     while threads:
@@ -384,14 +402,13 @@ def main():
                 threads.remove(thread)
 
     if runtime.global_molecules:
-        logger = Logger(os.path.join(runtime.start_dir, "log"))
-        molecules_logger = Logger(os.path.join(runtime.start_dir, "molecules.txt"))
-        for molecule in runtime.global_molecules:
-            molecule.print_items(molecules_logger)
+        write_molecule_summary(os.path.join(runtime.start_dir, "molecules.txt"),
+                               runtime.global_molecules, title=os.path.basename(runtime.start_dir))
+        logger.info("Molecule summary written to molecules.txt")
 
         if all(m.reactant for m in runtime.global_molecules):
             molecule_name = runtime.global_molecules[0].name.split("_")[0]
-            logger.log(f"Final DLPNO calculations for reactants is done. Logging molecules to Final_reactants_{molecule_name}.pkl")
+            logger.success(f"Final DLPNO calculations for reactants are done. Results saved to Final_reactants_{molecule_name}.pkl")
             Molecule.molecules_to_pickle(runtime.global_molecules, os.path.join(runtime.start_dir, f"Final_reactants_{molecule_name}.pkl"))
         elif all(m.product for m in runtime.global_molecules):
             h_numbers = sorted(set(re.search(r'_H(\d+)[._]', m.name + '_').group(1) for m in molecules if "_H" in m.name))
@@ -403,39 +420,40 @@ def main():
             for h, molecules_group in zip(h_numbers, grouped_lists):
                 molecule_name = f"{molecules_group[0].name.split('_')[0]}_H{h}"
                 pickle_path = os.path.join(runtime.start_dir, f"Final_products_{molecule_name}.pkl")
-                logger.log(f"Final DLPNO calculations for products are done. Logging properties to Final_products_{molecule_name}.pkl")
+                logger.success(f"Final DLPNO calculations for products are done. Results saved to Final_products_{molecule_name}.pkl")
                 Molecule.molecules_to_pickle(molecules_group, pickle_path)
         else:
             molecule_name = os.path.basename(runtime.start_dir)
-            logger.log(f"Final DLPNO calculations for transition state molecules is done. Logging properties to Final_TS_{molecule_name}.pkl")
+            logger.success(f"Final DLPNO calculations for transition state molecules are done. Results saved to Final_TS_{molecule_name}.pkl")
             TS_pkl_path = os.path.join(runtime.start_dir, f"Final_TS_{molecule_name}.pkl")
             Molecule.molecules_to_pickle(runtime.global_molecules, TS_pkl_path)
 
             if runtime.args.k:
+                symmetry = read_reaction_path_degeneracy(runtime.start_dir)
                 reactant_pkl_name = os.path.basename(runtime.start_dir).split("_")[0]
                 product_pkl_name = os.path.basename(runtime.start_dir)
                 reactant_pkl_path = os.path.join(os.path.dirname(runtime.start_dir), f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
                 product_pkl_path = os.path.join(os.path.dirname(runtime.start_dir), f'products/Final_products_{product_pkl_name}.pkl')
-                logger.log(f"{product_pkl_path}, {reactant_pkl_path}")
+                logger.info(f"Looking for reactant and product pickles: {reactant_pkl_path}, {product_pkl_path}")
                 if os.path.exists(reactant_pkl_path):
                     final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                     if os.path.exists(product_pkl_path):
                         final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
-                    k, kappa = rate_constant(runtime.global_molecules, final_reactants, final_products)
-                    results_logger = Logger(os.path.join(os.path.dirname(runtime.start_dir), "Rate_constants.txt"))
-                    results_logger.log_with_stars(f"{molecule_name}: {k} cm^3 molecules^-1 s^-1 with tunneling coefficient {kappa}")
+                    result = rate_constant(runtime.global_molecules, final_reactants, final_products, symmetry=symmetry)
+                    record_rate(os.path.dirname(runtime.start_dir), molecule_name, result, method=runtime.args.method)
+                    logger.results(format_rate(result))
                 else:
                     reactant_pkl_path = os.path.join(runtime.start_dir, f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
                     product_pkl_path = os.path.join(runtime.start_dir, f'products/Final_products_{product_pkl_name}.pkl')
-                    logger.log(f"{product_pkl_path}, {reactant_pkl_path}")
+                    logger.info(f"Looking for reactant and product pickles: {reactant_pkl_path}, {product_pkl_path}")
                     if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
                         final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
                         final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
-                        k, kappa = rate_constant(runtime.global_molecules, final_reactants, final_products)
-                        results_logger = Logger(os.path.join(runtime.start_dir, "Rate_constants.txt"))
-                        results_logger.log_with_stars(f"1 {molecule_name}: {k} cm^3 molecules^-1 s^-1 with tunneling coefficient {kappa}")
+                        result = rate_constant(runtime.global_molecules, final_reactants, final_products, symmetry=symmetry)
+                        record_rate(runtime.start_dir, molecule_name, result, method=runtime.args.method)
+                        logger.results(format_rate(result))
                     else:
-                        logger.log(f"Could not find pickle files in path: {product_pkl_name} and {reactant_pkl_path}")
+                        logger.error(f"Could not find pickle files: {reactant_pkl_path} and {product_pkl_path}")
 
 
 if __name__ == "__main__":

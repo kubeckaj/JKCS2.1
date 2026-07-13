@@ -1,5 +1,6 @@
 import re
 import runtime
+from output import console
 
 
 def extract_normal_coordinates(molecule):
@@ -29,7 +30,7 @@ def extract_normal_coordinates(molecule):
                     break
         return xyz_coordinates[:-1]
     else:
-        print("extract_normal_coordinates() was called, but only works for G16 log files")
+        console.warning("extract_normal_coordinates() was called, but only works for G16 log files")
 
 
 def is_aldehyde(molecule, C_index, H_index):
@@ -127,7 +128,6 @@ def good_active_site(molecule, aldehyde=False):
     distance_HX = molecule.atom_distance(molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
     distance_CX = molecule.atom_distance(molecule.coordinates[C_index], molecule.coordinates[abstractor_index])
     angle_CHX = molecule.calculate_angle(molecule.coordinates[C_index], molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
-    print(distance_CH, distance_HX, distance_CX, angle_CHX)
 
     if (CH_threshold_low <= distance_CH <= CH_threshold_high and
         HX_threshold_low <= distance_HX <= HX_threshold_high and
@@ -176,7 +176,7 @@ def check_transition_state(molecule, threshold=0.5):
         normal_coords = extract_normal_coordinates(molecule)
 
         if len(normal_coords) != len(molecule.coordinates):
-            print("Error: The number of normal mode displacements does not match the number of atoms in the molecule.")
+            console.error(f"{molecule.name}: number of normal mode displacements does not match the number of atoms.")
             return False, ""
 
         displaced_coordinates_plus = [array(original) + array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]
@@ -200,7 +200,7 @@ def check_transition_state(molecule, threshold=0.5):
         combined_values_minus = relative_change_CH_minus + relative_change_HX_minus
 
         if any(value > threshold for value in [combined_values_plus, combined_values_minus, combined_values_plus_minus, combined_values_minus_plus]) and good_TS:
-            msg = f"Yay! Normal mode analysis indicate correct TS for {molecule.name} with imaginary frequency: {imag}"
+            msg = f"Normal mode analysis confirms correct TS for {molecule.name} (imaginary frequency: {imag:.1f} cm**-1)"
             return True, msg
         else:
             if imag < freq_cutoff:
@@ -213,7 +213,7 @@ def check_transition_state(molecule, threshold=0.5):
         with open(molecule.log_file_path, 'r') as f:
             content = f.read()
         if normal_mode_displacement_significant(content) and good_active_site(molecule):
-            msg = f"Yay! Normal mode analysis indicate correct TS for {molecule.name} with imaginary frequency: {imag}"
+            msg = f"Normal mode analysis confirms correct TS for {molecule.name} (imaginary frequency: {imag:.1f} cm**-1)"
             return True, msg
         else:
             if imag < freq_cutoff:

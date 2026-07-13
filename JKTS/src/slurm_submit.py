@@ -1,10 +1,39 @@
 import os
 import subprocess
 import re
+import sys
+import time
+
+from output import console
 #########################################SUBMIT JOBS############################
 
-def _run_submit_script(submit_command):
-    return subprocess.run(submit_command, capture_output=True, text=True, check=True)
+# Transient SLURM rejections that clear on their own as queued jobs drain.
+_TRANSIENT_SUBMIT_MARKERS = (
+    'QOSMaxSubmitJobPerUserLimit', 'AssocMaxSubmitJobLimit',
+    'job submit limit', 'accounting/QOS policy',
+)
+
+
+def _run_submit_script(submit_command, retry_wait=60, max_attempts=240):
+    """Run the sbatch wrapper, retrying on transient QOS/submit-limit rejections rather
+    than aborting the run — the limit clears as the user's queued jobs finish."""
+    if os.environ.get('JKTS_DRYRUN'):
+        console.event(f"[dry-run] would submit: {' '.join(submit_command)}")
+        return subprocess.CompletedProcess(submit_command, 0, stdout='Submitted batch job 999999\n', stderr='')
+    for attempt in range(1, max_attempts + 1):
+        result = subprocess.run(submit_command, capture_output=True, text=True)
+        if result.returncode == 0:
+            return result
+        stderr = result.stderr or ''
+        if not any(marker in stderr for marker in _TRANSIENT_SUBMIT_MARKERS):
+            raise subprocess.CalledProcessError(result.returncode, submit_command,
+                                                output=result.stdout, stderr=stderr)
+        if attempt < max_attempts:
+            console.warning(f"Submission held by SLURM QOS/submit limit (attempt {attempt}/{max_attempts}); "
+                            f"waiting {retry_wait}s for the queue to drain and retrying.")
+            time.sleep(retry_wait)
+    raise subprocess.CalledProcessError(result.returncode, submit_command,
+                                        output=result.stdout, stderr=result.stderr or '')
 
 
 def submit_array_job(molecules, args, nnodes=1):
@@ -149,8 +178,8 @@ def submit_array_job(molecules, args, nnodes=1):
         return job_id, interval
     except (subprocess.CalledProcessError, RuntimeError) as e:
         stderr = getattr(e, 'stderr', str(e))
-        print(f"Error in job submission (exit {getattr(e, 'returncode', 1)}): {stderr}!! Check g16/orca_submit.sh")
-        exit()
+        console.error(f"Job submission failed (exit {getattr(e, 'returncode', 1)}): {stderr.strip()}. Check the *_submit.sh script in {dir}")
+        sys.exit(1)
 
 
 def submit_job(molecule, args, nnodes=1):
@@ -325,8 +354,8 @@ sbatch $SUBMIT
         return job_id, interval
     except (subprocess.CalledProcessError, RuntimeError) as e:
         stderr = getattr(e, 'stderr', str(e))
-        print(f"Error in job submission (exit {getattr(e, 'returncode', 1)}): {stderr}!! Check g16/orca_submit.sh")
-        exit()
+        console.error(f"Job submission failed (exit {getattr(e, 'returncode', 1)}): {stderr.strip()}. Check the *_submit.sh script in {dir}")
+        sys.exit(1)
 
 
 def update_molecules_status(molecules):
@@ -378,7 +407,7 @@ def extract_job_id(output):
     if match:
         return int(match.group(1))
     else:
-        print("Could not extract job ID.")
+        console.error("Could not extract job ID from sbatch output.")
         return None
 
 

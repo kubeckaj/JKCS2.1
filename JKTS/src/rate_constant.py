@@ -1,5 +1,8 @@
 import re
 
+from output import console
+
+
 def log2vib(molecule):
     with open(molecule.log_file_path, 'r') as file:
         content = file.read()
@@ -106,12 +109,13 @@ def eckart(SP_TS, SP_reactant, SP_product, imag, T=[298.15]):
         kappa = G[0]
         return kappa
     except Exception as e:
-        print("Error in calculating the eckart tunneling. Returning tunneling coefficient 1")
+        console.warning(f"Error calculating the Eckart tunneling ({e}). Returning tunneling coefficient 1")
         return 1
 
 
-def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.15):
+def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.15, symmetry=1):
     from numpy import exp, sum, float64, NaN
+    from results import RateResult
     k_b = 1.380649e-23
     h = 6.62607015e-34
     HtoJ = 43.597447222e-19
@@ -127,6 +131,18 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
         _radical_names = ('OH', 'OH_DLPNO', 'Cl', 'Cl_DLPNO', 'NO3', 'NO3_DLPNO')
         radical = next((mol for mol in reactant_conformers if mol.name in _radical_names), None)
         reactant_molecules = [mol for mol in reactant_conformers if mol.name not in _radical_names]
+
+        # Drop molecules whose energies never parsed (would crash the min() below)
+        dropped = [m.name for m in TS_conformers + reactant_molecules if m.zero_point_corrected is None]
+        if radical is not None and radical.zero_point_corrected is None:
+            dropped.append(radical.name)
+        if dropped:
+            console.warning(f"Skipping molecules with missing ZPE/energy in rate step: {dropped}")
+        TS_conformers = [m for m in TS_conformers if m.zero_point_corrected is not None]
+        reactant_molecules = [m for m in reactant_molecules if m.zero_point_corrected is not None]
+        if not TS_conformers or not reactant_molecules or (radical is not None and radical.zero_point_corrected is None):
+            console.error("Cannot compute rate constant - required TS/reactant/radical energies are missing.")
+            return RateResult(sigma=symmetry, T=T)
 
         lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.zero_point_corrected)
         lowest_TS = min(TS_conformers, key=lambda molecule: molecule.zero_point_corrected)
@@ -146,11 +162,17 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
 
         Q_TS = sum([exp(-(mol.zero_point_corrected - lowest_TS.zero_point_corrected) * HtoJ / (k_b * T)) * mol.Q for mol in TS_conformers])
 
+        imag = None
         if product_conformers:
             # Identify the small product molecule (H2O or HCl)
             _product_names = ('H2O', 'H2O_DLPNO', 'HCl', 'HCl_DLPNO', 'HNO3', 'HNO3_DLPNO')
             product_small = next((mol for mol in product_conformers if mol.name in _product_names), None)
             product_molecules = [mol for mol in product_conformers if mol.name not in _product_names]
+
+            # Incomplete products -> fall back to no tunneling rather than crash
+            product_molecules = [mol for mol in product_molecules if mol.electronic_energy is not None]
+            if product_small is not None and product_small.electronic_energy is None:
+                product_small = None
 
             if product_molecules and product_small and radical:
                 lowest_product = min(product_molecules, key=lambda molecule: molecule.electronic_energy)
@@ -162,13 +184,15 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
                 kappa = eckart(lowest_EE_TS_kcalmol, lowest_EE_reactant_kcalmol, lowest_EE_product_kcalmol, imag)
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
             else:
-                print("No product molecule (H2O/HCl) found. No tunneling correction will be calculated")
+                console.warning("No small product molecule (H2O/HCl/HNO3) found. No tunneling correction will be calculated")
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
         else:
             k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
 
-        print(f"Ea: {lowest_ZP_TS_kcalmol - lowest_ZP_reactant_kcalmol:.4f} kcal/mol  Q_TS: {Q_TS}  k: {k}")
-        return k, kappa
+        k *= symmetry  # σᵢ reaction-path degeneracy (k only, not κ)
 
-    from numpy import NaN
-    return NaN, NaN
+        Ea = lowest_ZP_TS_kcalmol - lowest_ZP_reactant_kcalmol
+        return RateResult(k=k, kappa=kappa, Ea=Ea, Q_TS=Q_TS, Q_reactant=Q_reactant, sigma=symmetry,
+                          n_ts=len(TS_conformers), n_reactant=len(reactant_molecules), imag=imag, T=T)
+
+    return RateResult(sigma=symmetry, T=T)
