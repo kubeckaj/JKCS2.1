@@ -81,7 +81,7 @@ def termination_status(molecule, logger):
                 return True, msg
             return None, msg  # converged normally but failed TS validation
         else:
-            return True, f"{molecule.name} converged"
+            return True, f"*{molecule.name} converged*"
 
     for error_termination in runtime.error_strings[molecule.program]:
         if any(error_termination in line.lower() for line in last_lines):
@@ -576,7 +576,7 @@ def handle_input_molecules(molecules, logger, threads):
                     for m in molecules:
                         runtime.global_molecules.append(m)
             else:
-                logger.success(f"All molecules converged for step {current_step}. Proceeding with next step: {molecules[0].next_step}")
+                logger.success(f"***All molecules converged for step {current_step}. Proceeding with next step: {molecules[0].next_step}***")
                 molecules[0].move_files()
                 handle_termination(molecules, logger, threads, converged=True)
         else:

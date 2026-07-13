@@ -1223,37 +1223,70 @@ class Molecule(Vector):
                 else: return coordinates
 
 
+    def _formula(self):
+        # Hill order: C first, H second, remaining elements alphabetical
+        counts = {}
+        for atom in self.atoms:
+            counts[atom] = counts.get(atom, 0) + 1
+        symbols = [s for s in ('C', 'H') if s in counts] + sorted(s for s in counts if s not in ('C', 'H'))
+        return ''.join(f"{s}{counts[s] if counts[s] > 1 else ''}" for s in symbols)
+
     def print_items(self):
-        print(f"Molecule: {self.name}")
-        print(f"Method: {self.method.upper()}")
-        print(f"File Path: {self.file_path}")
-        print(f"Directory: {self.directory}")
-        print(f"Log File Path: {self.log_file_path}")
-        print(f"Program: {self.program.upper()}")
-        print(f"Reactant: {self.reactant}")
-        print(f"Product: {self.product}")
-        print(f"Multiplicity: {self.mult}")
-        print(f"Charge: {self.charge}")
-        print(f"Dipole Moment: {self.dipole_moment}")
-        print(f"Workflow: {self.workflow}")
+        def num(value, spec):
+            return format(value, spec) if isinstance(value, (int, float)) else '-'
+
+        mol_type = 'reactant' if self.reactant else 'product' if self.product else 'TS'
+
+        rows = [('Program / method', f"{(self.program or '-').upper()}  {self.method.upper() if self.method else '-'}"),
+                ('Directory', self.directory or '-'),
+                ('Log file', self.log_file_path or '-'),
+                ('Charge / multiplicity', f"{self.charge} / {self.mult}")]
+
+        workflow = getattr(self, 'workflow', None) or []
+        current_step = getattr(self, 'current_step', None)
+        if workflow:
+            chain = ' -> '.join(f"[{step}]" if step == current_step else f"{step}" for step in workflow)
+            if current_step in workflow:
+                chain += f"   (step {workflow.index(current_step) + 1} of {len(workflow)})"
+            rows.append(('Workflow', chain))
+        elif current_step is not None:
+            rows.append(('Current step', f"{current_step}"))
+
         if self.constrained_indexes and 'X' in self.constrained_indexes:
             X_idx = self.constrained_indexes['X']
             abstractor_sym = self.atoms[X_idx - 1] if self.atoms and X_idx <= len(self.atoms) else '?'
             label = 'Cl' if abstractor_sym == 'Cl' else ('NO3-O' if abstractor_sym == 'O' and 'XH' not in self.constrained_indexes and len(self.atoms) >= 4 and self.atoms[X_idx] == 'N' else 'O')
-            print(f"Constrained Indexes: [C: {self.constrained_indexes['C']}, H: {self.constrained_indexes['H']}, {label}: {X_idx}]")
+            rows.append(('Active site (1-based)', f"C {self.constrained_indexes['C']}, H {self.constrained_indexes['H']}, {label} {X_idx}"))
+
+        rows += [('Electronic energy [Ha]', num(self.electronic_energy, '.6f')),
+                 ('ZPE correction [Ha]', num(self.zero_point, '.6f')),
+                 ('Gibbs free energy [Ha]', num(self.free_energy, '.6f')),
+                 ('Partition function Q', num(self.Q, '.4e')),
+                 ('Dipole moment [D]', num(self.dipole_moment, '.4f'))]
+
+        freqs = self.vibrational_frequencies or []
+        if freqs:
+            imag = [f for f in freqs if f < 0]
+            real = [f for f in freqs if f >= 0]
+            detail = f"{len(freqs)} mode{'s' if len(freqs) != 1 else ''}"
+            if imag:
+                detail += ', imaginary: ' + ', '.join(f"{f:.1f}" for f in imag)
+            if real:
+                detail += f", lowest real: {min(real):.1f}"
+            rows.append(('Frequencies [cm-1]', detail))
         else:
-            print(f"Constrained Indexes: {self.constrained_indexes}")
-        print(f"Electronic Energy: {self.electronic_energy}")
-        print(f"Zero Point Correction: {self.zero_point}")
-        print(f"Gibbs free energy: {self.free_energy}")
-        print(f"Partition Function: {self.Q}")
-        print(f"Vibrational Frequencies: {self.vibrational_frequencies}")
-        print(f"Current Step: {self.current_step}")
-        print(f"Next Step: {self.next_step}")
-        print("Atoms and Coordinates:")
+            rows.append(('Frequencies [cm-1]', '-'))
+
+        label_width = max(len(label) for label, _ in rows)
+        lines = [f" {label.ljust(label_width)} : {value}" for label, value in rows]
+        rule = '=' * min(max(len(line) for line in lines), 78)
+        print(f"{self.name}   ({mol_type}{', ' + self._formula() if self.atoms else ''})")
+        print(rule)
+        print('\n'.join(lines))
+        print(f" Geometry ({len(self.atoms)} atoms):")
         for atom, coord in zip(self.atoms, self.coordinates):
-            coord_str = f"{coord[0]:>9.6f} {coord[1]:>9.6f} {coord[2]:>9.6f}"
-            print(f"  {atom:2} {coord_str}")
-        print("-----------------------------------------------------------------------")
+            print(f"   {atom:2} {coord[0]:>12.6f} {coord[1]:>12.6f} {coord[2]:>12.6f}")
+        print(rule)
+        print()
 
 
