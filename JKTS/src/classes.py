@@ -997,7 +997,7 @@ class Molecule(Vector):
 
     def log2method(self):
         methods = [
-            "wb97xd", "wb97x-d3", "wb97x-d3bj", "wb97x-d4", "b97-3c", "r2scan-3c", "pm3", "am1",
+            "wb97xd", "wb97x-d3bj", "wb97x-d3", "wb97x-d4", "b97-3c", "r2scan-3c", "pm3", "am1",
             "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)", "mp2", "bhandhlyp"
         ]
 

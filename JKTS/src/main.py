@@ -38,7 +38,7 @@ def str2bool(v):
 
 def read_input():
     molecules = []
-    max_conformers = runtime.args.max_conformers if runtime.args.max_conformers else 1000
+    max_conformers = runtime.args.max_conformers
 
     def f(molecule):
         if runtime.args.info:
@@ -105,12 +105,12 @@ def read_input():
         return (molecules_level1[:max_conformers], molecules_level2[:max_conformers], molecules_level3[:max_conformers])
 
 
-def main():
-    parser = argparse.ArgumentParser(description='''    Dynamic Approach for Transition State-
-    Automated tool for generating input files, primarily
-    for transition state geometry optimization.
-    Calculation of tunneling corrected multi-configurational
-    rate constants can also be calculated from log and pickle files.''',
+def build_parser():
+    parser = argparse.ArgumentParser(description='''    JKTS - automated transition state search and MC-TST rate constants.
+    Workflow for an .xyz input: CREST conformer sampling, constrained
+    preoptimization, TS optimization, DLPNO-CCSD(T) single points, and
+    tunneling-corrected multiconformer rate constants. Failed jobs are
+    resubmitted automatically until convergence or the wall-time limit.''',
                                      prog="JKTS",
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog='''
@@ -119,75 +119,73 @@ def main():
                 JKTS -smiles CO -Cl  # Methanol hydrogen abstraction with Cl radical
                 JKTS molecule.xyz -NO3  # Nighttime H abstraction with NO3 radical
                 JKTS CH4_H1_opt_constrain.pkl -info
-                JKTS benzene.xyz -OH -ORCA -par qtest -auto false
+                JKTS benzene.xyz -OH -ORCA -par qtest -stop
                 JKTS *TS.log -time 5:00:00
                                      ''')
 
-    parser.add_argument('input_files', metavar='reactant.xyz', nargs='*', help='Input XYZ files (e.g., pinonaldehyde.xyz)')
-    parser.add_argument('-G16', action='store_true', default=True, help='Use Gaussian16 for QC calculations')
-    parser.add_argument('-ORCA', action='store_true', default=False, help='Use ORCA for QC calculations (default)')
-    parser.add_argument('-reactants', type=str2bool, default=True, metavar='<boolean>', help='Prepare folder for reactants [def: True]')
-    parser.add_argument('-products', type=str2bool, default=True, metavar='<boolean>', help='Prepare folder for products [def: True]')
-    parser.add_argument('-TS', type=str2bool, default=True, metavar='<boolean>', help=argparse.SUPPRESS)
-    parser.add_argument('-auto', type=str2bool, default=True, metavar='<boolean>', help='Automated process with the following workflow:\n- CREST conformer sampling of xyz input file (GFN2-xTB -ewin=5 kcal/mol)\n- Preoptimization of geometry (Low Level of Theory)\n- Optimization towards transition state (High Level of Theory)\n- DLPNO-CCSD(T) SP energy calculations on top of TS conformers\n- Calculate rate constants and branching ratios for reaction type\n* Automatically resubmit failed calculations until convergence or wall-time limit is reached')
+    parser.add_argument('input_files', metavar='reactant.xyz', nargs='*', help='Input files (.xyz, .pkl, .log, .out, .com, .inp)')
 
-    # Argparse reactions
-    reaction_options = parser.add_argument_group("Types of reactions")
-    reaction_options.add_argument('-OH', action='store_true', help='Perform H abstraction with OH radical')
-    reaction_options.add_argument('-Cl', action='store_true', help='Perform H abstraction with Cl radical')
-    reaction_options.add_argument('-NO3', action='store_true', help='Perform H abstraction with NO3 radical (nighttime chemistry)')
-    reaction_options.add_argument('-CC', action='store_true', help='(TBA) Perform addition to C=C bonds')
-    reaction_options.add_argument('-OH_CC', action='store_true', help='(TBA) Perform OH addition to C=C bonds')
+    reaction = parser.add_argument_group("Reaction type")
+    reaction.add_argument('-OH', action='store_true', help='H abstraction by OH radical')
+    reaction.add_argument('-Cl', action='store_true', help='H abstraction by Cl radical')
+    reaction.add_argument('-NO3', action='store_true', help='H abstraction by NO3 radical (nighttime chemistry)')
 
-    # Argparse additional
-    additional_options = parser.add_argument_group("Additional arguments")
-    additional_options.add_argument('-k', type=str2bool, metavar='<boolean>', default=True, help='Calculate Multiconformer Transition State rate constant [def: True]')
-    additional_options.add_argument('-restart', action='store_true', default=False, help='Need: .log, .out, .pkl - Restart from molecule current step')
-    additional_options.add_argument('-smiles', metavar='string', type=str, help='Input molecule as a SMILES string')
-    additional_options.add_argument('-movie', action='store_true', default=False, help='Produce movie.xyz for Molden viewing')
-    additional_options.add_argument('-info', action='store_true', default=False, help='Print information of molecules in log files or .pkl file')
-    additional_options.add_argument('-CHO', dest='CHO', nargs='*', type=int, help="Set indexes of atoms for active site. Indexing starting from 1")
-    additional_options.add_argument('-collect', action='store_true', default=False, help='Collect thermochemical data from TS structures and single point correction from DLPNO')
-    additional_options.add_argument('-method', type=str, default='wB97XD', help='Specify QC method to use for optimization and TS search [def: WB97X-D3BJ]')
-    additional_options.add_argument('-basis_set', type=str, default='6-31++g(d,p)', help='Specify basis set to use with QC method [def: 6-31++g(d,p)]')
-    additional_options.add_argument('-skip_preopt', action='store_true', default=False, help='Skip the preoptimization of the structures before the TS search')
-    additional_options.add_argument('-filter_step', dest='filter_step', default=['opt_constrain_conf', 'DLPNO'], nargs='*', help="Steps at which to perform filtering of conformers")
-    additional_options.add_argument('-cpu', metavar="int", nargs='?', const=1, type=int, default=4, help='Number of CPUs [def: 4]')
-    additional_options.add_argument('-mem', metavar="int", nargs='?', const=1, type=int, default=8000, help='Amount of memory allocated for the job [def: 8000MB]')
-    additional_options.add_argument('-par', metavar="partition", type=str, default="q64", help='Partition to use [def: q64,q48,q28,q24]')
-    additional_options.add_argument('-time', metavar="hh:mm:ss", type=str, default=None, help='Monitoring duration [def: 144 hours]')
-    additional_options.add_argument('-interval', metavar="int", nargs='?', const=1, type=int, help='Time interval between log file checks [def: based on molecule size]')
-    additional_options.add_argument('-initial_delay', metavar="int", nargs='?', const=1, type=int, help='Initial delay before checking log files [def: based on molecule size]')
-    additional_options.add_argument('-attempts', metavar="int", nargs='?', const=1, type=int, default=100, help='Number of log file check attempts [def: 100]')
-    additional_options.add_argument('-max_conformers', metavar="int", nargs='?', const=1, type=int, default=None, help='Maximum number of conformers from CREST [def: 50]')
-    additional_options.add_argument('-freq_cutoff', metavar="int", nargs='?', const=1, type=int, default=-100, help='TS imaginary frequency cutoff [def: -100 cm^-1]')
-    additional_options.add_argument('-F12', action='store_true', help='Use CCSD(T)-F12-pVTZ instead of DLPNO')
-    additional_options.add_argument('-energy_cutoff', metavar="digit", nargs='?', const=1, default=5, type=float, help='After preoptimization, remove conformers which are [int] kcal/mol higher in energy than the lowest conformer [def: 5 kcal/mol]')
-    additional_options.add_argument('-pickle', action='store_true', default=False, help='Store given log files into pickle file')
-    additional_options.add_argument('--gfn', default='2', choices=['1', '2'], help='Specify the GFN version for CREST (1 or 2, default: 2)')
-    additional_options.add_argument('-ewin', metavar="int", nargs='?', const=1, default=5, type=int, help='Energy threshold for CREST conformer sampling [def: 5 kcal/mol]')
-    additional_options.add_argument('--account', type=str, help=argparse.SUPPRESS)
-    additional_options.add_argument('-test', action='store_true', default=False, help=argparse.SUPPRESS)
-    additional_options.add_argument('-num_molecules', type=int, default=None, help=argparse.SUPPRESS)
-    additional_options.add_argument('-rerun', action='store_true', help=argparse.SUPPRESS)
-    additional_options.add_argument('-plot', type=str, default=None, help='Generate plot')
+    workflow = parser.add_argument_group("Workflow control")
+    workflow.add_argument('-reactants', type=str2bool, nargs='?', const=False, default=True, metavar='<bool>', help='Skip the reactants workflow (bare flag or explicit false) [def: run it]')
+    workflow.add_argument('-products', type=str2bool, nargs='?', const=False, default=True, metavar='<bool>', help='Skip the products workflow (bare flag or explicit false) [def: run it]')
+    workflow.add_argument('-TS', type=str2bool, nargs='?', const=False, default=True, metavar='<bool>', help=argparse.SUPPRESS)
+    workflow.add_argument('-stop', action='store_true', help='Stop after the current workflow step completes instead of continuing automatically (resume with -restart)')
+    workflow.add_argument('-restart', action='store_true', help='Resume the workflow from the current step of the given .pkl/.log/.out files')
+    workflow.add_argument('-k', type=str2bool, metavar='<bool>', default=True, help='Calculate the MC-TST rate constant at the end [def: true]')
+    workflow.add_argument('-time', metavar="hh:mm:ss", type=str, default=None, help='SLURM wall time for the monitoring job (used by the JKTS wrapper) [def: 240:00:00]')
 
-    hidden_options = parser.add_argument_group()
-    hidden_options.add_argument('-init', action='store_true', help=argparse.SUPPRESS)
-    hidden_options.add_argument('-hybrid', action='store_true', default=False, help=argparse.SUPPRESS)
-    hidden_options.add_argument('-dispersion', action='store_true', default=False, help=argparse.SUPPRESS)
+    qc = parser.add_argument_group("QC settings")
+    qc.add_argument('-G16', action='store_true', help='Use Gaussian16 (default)')
+    qc.add_argument('-ORCA', action='store_true', help='Use ORCA instead of Gaussian16')
+    qc.add_argument('-method', type=str, default='wB97XD', help='QC method for optimization and TS search [def: wB97XD]')
+    qc.add_argument('-basis_set', type=str, default='6-31++g(d,p)', help='Basis set for the QC method [def: 6-31++g(d,p)]')
+    qc.add_argument('-F12', action='store_true', help='Use CCSD(T)-F12/cc-pVTZ-F12 instead of DLPNO for single points')
+    qc.add_argument('--gfn', default='2', choices=['1', '2'], help='GFN version for CREST [def: 2]')
+    qc.add_argument('-ewin', metavar="int", type=int, default=5, help='CREST conformer sampling energy window [def: 5 kcal/mol]')
+    qc.add_argument('-energy_cutoff', metavar="float", type=float, default=5, help='Drop conformers this much above the lowest after preoptimization [def: 5 kcal/mol]')
+    qc.add_argument('-max_conformers', metavar="int", type=int, default=1000, help='Maximum number of conformers taken from CREST [def: 1000]')
+    qc.add_argument('-freq_cutoff', metavar="int", type=int, default=-100, help='TS imaginary frequency cutoff [def: -100 cm^-1]')
 
+    slurm = parser.add_argument_group("SLURM and monitoring")
+    slurm.add_argument('-par', metavar="partition", type=str, default="q64", help='SLURM partition [def: q64]')
+    slurm.add_argument('-cpu', metavar="int", type=int, default=4, help='Number of CPUs per job [def: 4]')
+    slurm.add_argument('-mem', metavar="int", type=int, default=8000, help='Memory per job in MB [def: 8000]')
+    slurm.add_argument('-interval', metavar="int", type=int, help='Seconds between log file checks [def: based on molecule size]')
+    slurm.add_argument('-initial_delay', metavar="int", type=int, help='Seconds before the first log file check [def: based on molecule size]')
+    slurm.add_argument('-attempts', metavar="int", type=int, default=100, help='Maximum number of log file checks [def: 100]')
+
+    tools = parser.add_argument_group("Utilities")
+    tools.add_argument('-smiles', metavar='string', type=str, help='Input molecule as a SMILES string instead of an .xyz file')
+    tools.add_argument('-info', action='store_true', help='Print molecule information from log or .pkl files')
+    tools.add_argument('-movie', action='store_true', help='Write movie.xyz of the given structures for viewing')
+    tools.add_argument('-collect', action='store_true', help='Collect DFT thermochemistry and DLPNO single points into a .pkl file')
+    tools.add_argument('-pickle', action='store_true', help='Store the given log files into a .pkl file')
+    tools.add_argument('-CHO', nargs='*', type=int, help='Atom indexes of the active site (C H O), 1-indexed')
+
+    hidden = parser.add_argument_group()
+    hidden.add_argument('-init', action='store_true', help=argparse.SUPPRESS)
+    hidden.add_argument('-test', action='store_true', help=argparse.SUPPRESS)
+    hidden.add_argument('-rerun', action='store_true', help=argparse.SUPPRESS)
+    hidden.add_argument('-num_molecules', type=int, default=None, help=argparse.SUPPRESS)
+    hidden.add_argument('-hybrid', action='store_true', help=argparse.SUPPRESS)
+    hidden.add_argument('-dispersion', action='store_true', help=argparse.SUPPRESS)
+    hidden.add_argument('--account', type=str, help=argparse.SUPPRESS)
+    # Accepted for compatibility with the JKTS bash wrapper, which passes these through
+    hidden.add_argument('-loc', dest='collect', action='store_true', help=argparse.SUPPRESS)
+    return parser
+
+
+def main():
+    parser = build_parser()
     runtime.args = parser.parse_args()
     runtime.start_dir = os.getcwd()
 
-    ################################ARGUMENT SPECIFICATIONS############################
-
-    if runtime.args.ORCA:
-        runtime.args.G16 = False
-        runtime.QC_program = "ORCA"
-    else:
-        runtime.args.G16 = True
-        runtime.QC_program = "G16"
+    runtime.QC_program = "ORCA" if runtime.args.ORCA else "G16"
 
     runtime.termination_strings = {
         "g16": ["normal termination"],
@@ -230,14 +228,8 @@ def main():
 
         if runtime.args.OH or runtime.args.Cl or runtime.args.NO3:
             reacted_molecules, product_molecules = input_molecule.H_abstraction(Cl=runtime.args.Cl, NO3=runtime.args.NO3, products=runtime.args.products, num_molecules=runtime.args.num_molecules)
-        elif runtime.args.CC:
-            parser.error("Reaction type not supported yet.")
-            other_molecule = runtime.args.input_files[1]
-            reacted_molecules = input_molecule.addition(other_molecule)
-        elif runtime.args.OH_CC:
-            reacted_molecules = input_molecule.OH_addition()
         else:
-            parser.error("Need to specify reaction type")
+            parser.error("Need to specify a reaction type: -OH, -Cl or -NO3")
 
         if runtime.args.TS:
             for count, molecule in enumerate(reacted_molecules, start=1):
@@ -292,9 +284,6 @@ def main():
                     for atom, coord in zip(m.atoms, m.coordinates):
                         f.write(f"{atom} {coord[0]} {coord[1]} {coord[2]}\n")
         console.success("movie.xyz generated")
-
-    elif runtime.args.plot:
-        console.warning("Plotting is not available (plotting module has been removed). Use -info to inspect molecule data.")
 
     else:
         if runtime.args.smiles:
@@ -381,7 +370,7 @@ def main():
                 filename = re.sub("_conf\d{1,2}", "", input_molecules[0].name)
                 Molecule.molecules_to_pickle(input_molecules, os.path.join(runtime.start_dir, f"collection{filename}.pkl"))
             else:
-                parser.error("Error")
+                parser.error("Input files were loaded but no action was specified. Use -restart, -rerun, -collect or -pickle.")
 
         if final_TS:
             for m in final_TS:

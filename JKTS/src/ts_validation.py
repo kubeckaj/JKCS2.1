@@ -140,7 +140,7 @@ def good_active_site(molecule, aldehyde=False):
 def check_transition_state(molecule, threshold=0.5):
     from numpy import array
     from numpy.linalg import norm
-    freq_cutoff = -abs(runtime.args.freq_cutoff) if runtime.args.freq_cutoff else -80
+    freq_cutoff = -abs(runtime.args.freq_cutoff)
     aldehyde_TS = False
     msg = 'error'
     try:

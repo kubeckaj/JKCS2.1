@@ -71,8 +71,8 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
     aldehyde = False
 
     method = method or molecule.method
-    if method == 'wb97xd' and runtime.QC_program.lower() == 'orca':
-        method = 'wb97x-d3bj'
+    if method.lower() == 'wb97xd' and molecule.program.lower() == 'orca':
+        method = 'wB97X-D3BJ'
 
     if not 'ccsd' in method:
         runtime.DFT_method = method

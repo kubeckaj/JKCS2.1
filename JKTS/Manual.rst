@@ -56,11 +56,7 @@ This command will create three directories: **products**, **reactants**, and **C
 
 Within each directory, the workflow begins with conformer sampling using the xtb program, CREST [1]_. This process results in a file named `collection{molecule name}.pkl`, which contains the sampled conformers. JKTS reads this file once its created and generates input files for the next step of the workflow. All steps and progress inside each directory is logged to a file ``"log"``.
 
-Post conformer sampling, the default subsequent step is geometry relaxation. For reactant and product structures, this optimization is performed at the specified **--high_level**. However, for transition state (TS) structures, the geometry relaxation employs the **--high_level** DFT method but utilizes a smaller basis set. This approach is adopted to facilitate the following optimization towards a first-order saddle point.
-
-.. tip::
-   The pre-geometry relaxation of TS structures can be bypassed with the ``--skip_low`` argument. This triggers immediate optimization towards a first-order saddle point after the conformer sampling for TS structures, but does not affect the ``products`` and ``reactants`` directories.
-
+Post conformer sampling, the default subsequent step is geometry relaxation, performed with the DFT method and basis set given by ``-method`` and ``-basis_set``. For transition state (TS) structures, a constrained preoptimization of the active site precedes the optimization towards a first-order saddle point.
 
 The final step involves an energy correction using DLPNO-CCSD(T) [#]_ [#]_, applied to the geometries derived from the geometry relaxations of product and reactant structures, as well as TS structures from first order saddle point optimization. Utilizing the optimized geometries' thermochemical contributions and single-point energy from DLPNO calculations, the rate constant for specific abstraction sites is calculated using the MC-TST equation:
 
@@ -91,7 +87,7 @@ Log files with error termination of who didnt finish will restart from the last 
 
 
 .. tip::
-	If the user does not wish the program to automatically continue to the next step in the workflow for the submitted job, the ``-auto false`` option is available:        ``JKTS *.log -auto false``
+	If the user does not wish the program to automatically continue to the next step in the workflow for the submitted job, the ``-stop`` option is available:        ``JKTS *.log -stop``
        
     
 Advanced Usage
@@ -101,7 +97,7 @@ To run JKTS with specific settings, like a custom level of theory:
 
 .. code-block:: bash
 
-    JKTS yourfile.xyz -OH --low_level "B3LYP 6-31+g(d)" --high_level "wb97xd 6-311++g(d,p)"
+    JKTS yourfile.xyz -OH -method "B3LYP" -basis_set "6-31+g(d)"
     
 Keep in mind the natural limitation of ORCA and Gaussian16 in relation to which basis sets and methods have been implemented into the respective programs. For the case of methods who utilize a self deployed basis set, such as B97-3c, r2scan-3c, and PM7, the need for specifying basis set is not needed.
 
@@ -130,38 +126,38 @@ Command Line Arguments
      - Description
    * - ``-h``, ``--help``
      - Print help page
-   * - ``-auto``
-     - Enable automated processing of predefined workflow. See ``Workflow`` for more. [def = True]
    * - ``-OH``
      - Perform H abstraction with OH radical
-   * - ``-CC``
-     - Perform addition to C=C bonds
-   * - ``-OH_CC``
-     - Perform OH addition to C=C bonds
+   * - ``-Cl``
+     - Perform H abstraction with Cl radical
+   * - ``-NO3``
+     - Perform H abstraction with NO3 radical (nighttime chemistry)
    * - ``-G16``
      - Gaussian16 is used for QC calculations (default)
    * - ``-ORCA``
      - ORCA is used for QC calculations
-   * - ``-constrain``
-     - Constrain is integrated into relevant input file [def = True]
    * - ``-reactants``
-     - Prepare folder for reactants [def = True]
+     - Skip the reactants workflow (bare flag or explicit false) [def = run it]
    * - ``-products``
-     - Prepare folder for products [def = True]
+     - Skip the products workflow (bare flag or explicit false) [def = run it]
+   * - ``-stop``
+     - Stop after the current workflow step completes instead of continuing automatically (resume with ``-restart``)
+   * - ``-restart``
+     - Resume the workflow from the current step of the given .pkl/.log/.out files
    * - ``-k``
-     - Calculate Multiconformer Transition State rate constant def = [True]
-   * - ``--high_level``
-     - Specify the high level of theory for QC method TS optimization [def = wB97X-D aug-cc-pVTZ]
-   * - ``--low_level``
-     - Specify the low level of theory for preoptimization [def = wB97X-D 6-31+G(d,p)]
+     - Calculate Multiconformer Transition State rate constant [def = True]
+   * - ``-method``
+     - QC method for optimization and TS search [def = wB97XD]
+   * - ``-basis_set``
+     - Basis set for the QC method [def = 6-31++g(d,p)]
    * - ``-cpu``
      - Number of CPUs [def = 4]
    * - ``-mem``
      - Amount of memory allocated for job [def = 8000mb]
    * - ``-par``
-     - Partition to use [def = qany]
+     - Partition to use [def = q64]
    * - ``-time``
-     - Specify how long time the manager monitors [def = 144 Hours]
+     - SLURM wall time for the monitoring job [def = 240:00:00]
    * - ``-interval``
      - Set time interval between checks of log files [def = based on molecule size]
    * - ``-initial_delay``
@@ -169,17 +165,15 @@ Command Line Arguments
    * - ``-attempts``
      - Set how many times a log files should be checked [def = 100]
    * - ``-max_conformers``
-     - Set max number of conformers from CREST [def = 50]
+     - Set max number of conformers from CREST [def = 1000]
    * - ``-freq_cutoff``
-     - Set cutoff for TS imaginary frequency to [int] cm^-1 [def = -200]
+     - Set cutoff for TS imaginary frequency to [int] cm^-1 [def = -100]
    * - ``-ewin``
-     - Set energy threshold to [int] kcal/mol for CREST conformer sampling [def = 8]
-   * - ``-filter``
-     - Filter out identical structures after the transition state optimization using the Arblign program [#]_ [def = True]
+     - Set energy threshold to [int] kcal/mol for CREST conformer sampling [def = 5]
    * - ``-info``
      - Print information of molecules in log files or .pkl file
-   * - ``-XQC``, ``-YQC``, ``-QC``
-     - (G16 only) Use specified SCF algortihm instead of Direct Inversion of Iterative Space (DIIS)
+
+Duplicate conformers are filtered out automatically with the ArbAlign program [#]_ after the constrained conformer optimization and after the DLPNO single points.
 
 
 Citations

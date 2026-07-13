@@ -11,6 +11,9 @@ from conformer_tools import filter_molecules, energy_cutoff, initiate_conformers
 from ts_validation import check_transition_state, good_active_site
 import runtime
 
+# Workflow steps after which duplicate conformers are filtered out
+FILTER_STEPS = ('opt_constrain_conf', 'DLPNO')
+
 
 def read_last_lines(filename, num_lines, interval=200):
     attempts = 0
@@ -68,6 +71,8 @@ def termination_status(molecule, logger):
 
     if termination_detected:
         xyz_coordinates = molecule.log2xyz()
+        if not xyz_coordinates:
+            return False, 'Termination detected but no geometry found in log file'
         molecule.coordinates = xyz_coordinates
         molecule.update_energy(logger)
         if 'TS' in molecule.current_step:
@@ -89,8 +94,12 @@ def handle_error_termination(molecule, logger, error_termination_string):
     if molecule.program.lower() == 'orca':
         logger.warning(f"Error termination found in {molecule.name}. Resubmitting")
         xyz_coordinates = molecule.log2xyz()
-        molecule.coordinates = xyz_coordinates
-        resubmit_job(molecule, logger)
+        if xyz_coordinates:
+            molecule.coordinates = xyz_coordinates
+            resubmit_job(molecule, logger)
+        else:
+            logger.error(f"Geometry coordinates could not be found in {molecule.log_file_path}. Dropping molecule.")
+            molecule.error_termination_count = 3
     else:
         convergence_errors = ["l9999", "l508"]
         intervention_errors = ["l301"]
@@ -105,8 +114,12 @@ def handle_error_termination(molecule, logger, error_termination_string):
                 error = detected_convergence_errors[0]
                 logger.warning(f"Convergence error '{error}' found in {molecule.name}. Resubmitting")
                 xyz_coordinates = molecule.log2xyz()
-                molecule.coordinates = xyz_coordinates
-                resubmit_job(molecule, logger, error)
+                if xyz_coordinates:
+                    molecule.coordinates = xyz_coordinates
+                    resubmit_job(molecule, logger, error)
+                else:
+                    logger.error(f"Geometry coordinates could not be found in {molecule.log_file_path}. Dropping molecule.")
+                    molecule.error_termination_count = 3
             elif detected_intervention_errors:
                 error = detected_intervention_errors[0]
                 logger.error(f"Error '{error}' detected in {molecule.name} needs manual attention. Removing the conformer so the error can be inspected")
@@ -279,11 +292,11 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
                     QC_input(radical, constrain=False, TS=False)
                     submit_and_monitor(radical, logger, threads)
                 return True
-            elif runtime.args.auto:
+            elif not runtime.args.stop:
                 handle_termination(molecules, logger, threads, converged=True)
                 return True
             else:
-                logger.event(f"Automatic processing is turned off; JKTS will not proceed with next step: {molecules[0].next_step}. Restart from {basename}_{job_type}.pkl to continue.")
+                logger.event(f"Stopping as requested (-stop); next step would be {molecules[0].next_step}. Resume from {basename}_{job_type}.pkl with -restart.")
                 return True
         else:
             logger.error(f"No conformer managed to converge for step {job_type}. Terminating.")
@@ -466,12 +479,8 @@ def handle_termination(molecules, logger, threads, converged):
             m.converged = False
             m.update_step()
     current_step = molecules[0].current_step
-    if runtime.args.skip_preopt and current_step in ["opt_constrain", "opt_constrain_conf"]:
-        for m in molecules:
-            m.update_step()
-        current_step = molecules[0].current_step
     logger.event(f"Starting step: {current_step}")
-    if current_step in runtime.args.filter_step and converged and not molecules[0].small_molecule:
+    if current_step in FILTER_STEPS and converged and not molecules[0].small_molecule:
         if molecules[0].product:
             conformer_molecules = []
             h_numbers = sorted(set(re.search(r'_H(\d+)[._]', m.name + '_').group(1) for m in molecules if "_H" in m.name))
