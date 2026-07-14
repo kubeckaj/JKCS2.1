@@ -8,7 +8,7 @@ import os
 import pickle
 import random
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, rdDetermineBonds
 from output import console
 
 _G16_SCRATCH_EXTENSIONS = ('.int', '.d2e', '.rwf', '.skr', '.chk')
@@ -734,7 +734,13 @@ class Molecule(Vector):
         methyl_C_indexes, aldehyde_groups, ketone_methyl_groups = self.identify_functional_groups()
         aldehyde_H_indexes = {group['H'] for group in aldehyde_groups}
         carbon_iteration_counter = {index: 0 for index in range(len(atoms)) if atoms[index] == 'C'}
-        # Carbons whose H's are chemically equivalent, so one TS represents them all:
+        # Symmetry-equivalent H's collapse into one TS with sigma = class size
+        # (e.g. 1-butanol CH2 -> sigma=2, ethane -> one TS with sigma=6).
+        equivalent_hydrogens = self.equivalent_hydrogen_classes()
+        if equivalent_hydrogens is None:
+            console.warning("Hydrogen symmetry classes unavailable (stereocenter detected or bond perception failed); "
+                            "falling back to methyl/aldehyde-only equivalence.")
+        # Fallback path only. Carbons whose H's are chemically equivalent, so one TS represents them all:
         # methyl CH3 (sigma=3) and formaldehyde's CH2 (both aldehyde H's on the same C, sigma=2)
         formaldehyde_C_indexes = {g['C'] for g in aldehyde_groups
                                   if sum(1 for g2 in aldehyde_groups if g2['C'] == g['C']) == 2}
@@ -742,6 +748,9 @@ class Molecule(Vector):
 
         for i, atom in enumerate(atoms):
             if atom != 'H':
+                continue
+            # Only the representative H of each symmetry class generates a TS
+            if equivalent_hydrogens is not None and i not in equivalent_hydrogens:
                 continue
             # Reset parameters for each hydrogen iteration
             distance_CH = 1.35
@@ -768,9 +777,10 @@ class Molecule(Vector):
                         break
             for j, other_atom in enumerate(atoms):
                 if other_atom == "C" and self.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3:
-                    if j in equivalent_H_carbons and carbon_iteration_counter[j] >= 1:
-                        continue
-                    carbon_iteration_counter[j] += 1
+                    if equivalent_hydrogens is None:
+                        if j in equivalent_H_carbons and carbon_iteration_counter[j] >= 1:
+                            continue
+                        carbon_iteration_counter[j] += 1
 
                     vector_CH = self.calculate_vector(original_coords[j], original_coords[i])
                     dist_CH = self.vector_length(vector_CH)
@@ -856,8 +866,10 @@ class Molecule(Vector):
                     new_molecule.atoms = new_atoms
                     new_molecule.coordinates = new_coords
                     new_molecule.constrained_indexes = constrained_indexes
-                    # σᵢ: a carbon with equivalent H's (methyl, formaldehyde) collapses them into one TS
-                    if j in equivalent_H_carbons:
+                    # σᵢ = number of equivalent H's this TS represents
+                    if equivalent_hydrogens is not None:
+                        new_molecule.reaction_path_degeneracy = equivalent_hydrogens[i]
+                    elif j in equivalent_H_carbons:
                         new_molecule.reaction_path_degeneracy = sum(
                             1 for k, a in enumerate(atoms)
                             if a == 'H' and self.atom_distance(original_coords[j], original_coords[k]) < 1.3)
@@ -917,6 +929,44 @@ class Molecule(Vector):
         pass 
 
          
+    def _to_rdkit_mol(self):
+        if self.smiles:
+            mol = Chem.MolFromSmiles(self.smiles)
+            if mol:
+                # AddHs reproduces the atom order used by smiles_to_atoms_coordinates
+                mol = Chem.AddHs(mol)
+                if mol.GetNumAtoms() == len(self.atoms):
+                    return mol
+        xyz_block = f"{len(self.atoms)}\n\n" + '\n'.join(
+            f"{atom} {coord[0]:.6f} {coord[1]:.6f} {coord[2]:.6f}"
+            for atom, coord in zip(self.atoms, self.coordinates))
+        mol = Chem.MolFromXYZBlock(xyz_block)
+        if mol is None:
+            return None
+        rdDetermineBonds.DetermineConnectivity(mol)
+        return mol
+
+    def equivalent_hydrogen_classes(self):
+        #Group abstractable H's (bonded to C) into symmetry-equivalence classes.
+        try:
+            mol = self._to_rdkit_mol()
+            if mol is None or mol.GetNumAtoms() != len(self.atoms):
+                return None
+            if Chem.FindMolChiralCenters(mol, includeUnassigned=True, useLegacyImplementation=False):
+                return None
+            ranks = list(Chem.CanonicalRankAtoms(mol, breakTies=False))
+            classes = {}
+            for atom in mol.GetAtoms():
+                if atom.GetSymbol() != 'H':
+                    continue
+                if not any(neighbor.GetSymbol() == 'C' for neighbor in atom.GetNeighbors()):
+                    continue
+                classes.setdefault(ranks[atom.GetIdx()], []).append(atom.GetIdx())
+            return {members[0]: len(members) for members in classes.values()}
+        except Exception:
+            return None
+
+
     def identify_functional_groups(self, distance=1.5, angle_tolerance=5):
         methyl_C_indexes = []
         aldehyde_groups = []
