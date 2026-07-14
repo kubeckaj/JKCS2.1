@@ -734,6 +734,11 @@ class Molecule(Vector):
         methyl_C_indexes, aldehyde_groups, ketone_methyl_groups = self.identify_functional_groups()
         aldehyde_H_indexes = {group['H'] for group in aldehyde_groups}
         carbon_iteration_counter = {index: 0 for index in range(len(atoms)) if atoms[index] == 'C'}
+        # Carbons whose H's are chemically equivalent, so one TS represents them all:
+        # methyl CH3 (sigma=3) and formaldehyde's CH2 (both aldehyde H's on the same C, sigma=2)
+        formaldehyde_C_indexes = {g['C'] for g in aldehyde_groups
+                                  if sum(1 for g2 in aldehyde_groups if g2['C'] == g['C']) == 2}
+        equivalent_H_carbons = set(methyl_C_indexes) | formaldehyde_C_indexes
 
         for i, atom in enumerate(atoms):
             if atom != 'H':
@@ -763,7 +768,7 @@ class Molecule(Vector):
                         break
             for j, other_atom in enumerate(atoms):
                 if other_atom == "C" and self.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3:
-                    if j in methyl_C_indexes and carbon_iteration_counter[j] >= 1:
+                    if j in equivalent_H_carbons and carbon_iteration_counter[j] >= 1:
                         continue
                     carbon_iteration_counter[j] += 1
 
@@ -851,8 +856,8 @@ class Molecule(Vector):
                     new_molecule.atoms = new_atoms
                     new_molecule.coordinates = new_coords
                     new_molecule.constrained_indexes = constrained_indexes
-                    # σᵢ: a methyl carbon collapses its equivalent H's into one TS
-                    if j in methyl_C_indexes:
+                    # σᵢ: a carbon with equivalent H's (methyl, formaldehyde) collapses them into one TS
+                    if j in equivalent_H_carbons:
                         new_molecule.reaction_path_degeneracy = sum(
                             1 for k, a in enumerate(atoms)
                             if a == 'H' and self.atom_distance(original_coords[j], original_coords[k]) < 1.3)
