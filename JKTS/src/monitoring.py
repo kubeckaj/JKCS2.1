@@ -5,14 +5,21 @@ import time
 from threading import Thread
 
 from classes import Molecule, Step
-from slurm_submit import submit_job, submit_array_job, update_molecules_status
+from slurm_submit import submit_job, submit_array_job, update_molecules_status, get_interval_seconds
 from qc_input import QC_input, crest_constrain
 from conformer_tools import filter_molecules, energy_cutoff, initiate_conformers
 from ts_validation import check_transition_state, good_active_site
+import checkpoint
 import runtime
 
 # Workflow steps after which duplicate conformers are filtered out
 FILTER_STEPS = ('opt_constrain_conf', 'DLPNO')
+
+# Node-failure handling: a job absent from squeue whose log never shows a
+# termination string is considered vanished after this many consecutive polls,
+# and each molecule gets this many vanished-job resubmissions before dropping.
+VANISHED_GRACE_POLLS = 3
+MAX_NODE_FAILURES = 3
 
 
 def read_last_lines(filename, num_lines, interval=200):
@@ -57,10 +64,11 @@ def resubmit_job(molecule, logger, error=None):
     logger.event(f"Resubmitted {molecule.name}{molecule.input} ({job_type}, job id {molecule.job_id})")
 
 
-def termination_status(molecule, logger):
-    last_lines = read_last_lines(molecule.log_file_path, 30)
+def termination_status(molecule, logger, quick=False):
+    # quick: don't wait minutes for a log that may never appear (vanished job,
+    # restart reconciliation) — read_last_lines retries 5x at `interval` seconds.
+    last_lines = read_last_lines(molecule.log_file_path, 30, interval=5 if quick else 200)
     if not last_lines:
-        molecule.error_termination_count += 1
         return False, 'Could not read molecule log file'
 
     termination_detected = any(
@@ -151,17 +159,24 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
     sleeping = False
     max_terminations_allowed = 2
     last_status = {}
+    missing_polls = {}
     job_type = molecules[0].current_step
 
+    # Only reset state for molecules that still have work to do: on a restart
+    # reattach, already-converged molecules ride along untouched (their logs
+    # may have been moved to log_files/ already).
     for m in molecules:
-        m.converged = False
+        if m.converged:
+            continue
         m.error_termination_count = 0
+        m.node_failure_count = getattr(m, 'node_failure_count', 0)
         m.log_file_path = os.path.join(m.directory, f"{m.name}{m.output}")
 
     logger.info(f"Monitoring {len(molecules)} {job_type} job(s); first check in {initial_delay} seconds, then every {interval} seconds")
     time.sleep(initial_delay)
 
     while attempts < max_attempts and not all_converged:
+        dirty = False  # any state change this sweep is checkpointed at the end
         i = 0
         while i < len(molecules):
             molecule = molecules[i]
@@ -169,6 +184,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
                 logger.error(f"Dropping conformer {molecule.name} due to repeated error terminations")
                 molecules.pop(i)
                 molecule.move_failed()
+                checkpoint.save_checkpoint(molecules, logger)
                 if all(m.converged for m in molecules):
                     all_converged = True
                     break
@@ -177,10 +193,8 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
         if all_converged:
             break
 
-        update_molecules_status(molecules)
-
-        # Report queue-status transitions once, aggregated over the batch
         active = [m for m in molecules if not m.converged]
+        update_molecules_status(active)
         newly_running = [m for m in active if m.status == 'running' and last_status.get(m.name) != 'running']
         if not last_status and active:
             n_pending = sum(1 for m in active if m.status == 'pending')
@@ -201,12 +215,15 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
             if molecule.status == 'pending':
                 continue
 
-            normal_termination_detected, termination_string = termination_status(molecule, logger)
+            job_gone = molecule.status == 'completed or not found'
+            normal_termination_detected, termination_string = termination_status(molecule, logger, quick=job_gone)
 
             if normal_termination_detected is True:
                 logger.success(termination_string)
                 molecule.converged = True
                 molecule.error_termination_count = 0
+                missing_polls.pop(molecule.name, None)
+                dirty = True
             elif normal_termination_detected is None:
                 # Job converged normally but failed TS geometry/frequency validation
                 if "Trying to correct" in termination_string and molecule.error_termination_count == 0:
@@ -216,11 +233,31 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
                 else:
                     logger.error(f"TS validation failed for {molecule.name}: {termination_string} Dropping molecule.")
                     molecule.error_termination_count = max_terminations_allowed
+                dirty = True
             elif normal_termination_detected is False:
                 if termination_string in ['Error string not found', 'Could not read molecule log file']:
+                    # No termination string yet: either still running, or the job
+                    # died without a trace (node failure). Only the latter — job
+                    # gone from squeue for several consecutive polls — triggers
+                    # a resubmission; 'unknown' (squeue outage) never does.
+                    if job_gone:
+                        missing_polls[molecule.name] = missing_polls.get(molecule.name, 0) + 1
+                        if missing_polls[molecule.name] >= VANISHED_GRACE_POLLS:
+                            missing_polls[molecule.name] = 0
+                            molecule.node_failure_count = getattr(molecule, 'node_failure_count', 0) + 1
+                            if molecule.node_failure_count > MAX_NODE_FAILURES:
+                                logger.error(f"{molecule.name}: job vanished {MAX_NODE_FAILURES} times without finishing; dropping conformer")
+                                molecule.error_termination_count = max_terminations_allowed
+                            else:
+                                logger.warning(f"{molecule.name}: job {molecule.job_id} disappeared from the queue without finishing (node failure?). Resubmitting.")
+                                resubmit_job(molecule, logger)
+                            dirty = True
+                    else:
+                        missing_polls.pop(molecule.name, None)
                     continue
                 else:
                     molecule.error_termination_count += 1
+                    dirty = True
                     if molecule.error_termination_count >= max_terminations_allowed:
                         continue
                     handle_error_termination(molecule, logger, termination_string)
@@ -229,6 +266,9 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
         if all(m.converged for m in molecules):
             all_converged = True
             break
+
+        if dirty:
+            checkpoint.save_checkpoint(molecules, logger)
 
         if pending_count >= max(1, int(len(molecules) / 1.5)):
             if pending_count == len(molecules):
@@ -255,52 +295,97 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
             basename = os.path.basename(dir)
             pickle_path = os.path.join(dir, f'{basename}_{job_type}.pkl')
             molecules[0].move_files()
-            if len(molecules) > 1:
-                Molecule.molecules_to_pickle(molecules, pickle_path)
+            Molecule.molecules_to_pickle(molecules, pickle_path)
             logger.success(f"All {len(molecules)} job(s) converged for step {job_type}")
+            checkpoint.save_checkpoint(molecules, logger)
             if job_type == "DLPNO":
                 with runtime.global_molecules_lock:
                     for molecule in molecules:
                         runtime.global_molecules.append(molecule)
-                    if runtime.args.Cl:
-                        needs_small_molecule = molecules[0].product and not any(mol.name in ('HCl', 'HCl_DLPNO') for mol in runtime.global_molecules)
-                        needs_radical = molecules[0].reactant and not any(mol.name in ('Cl', 'Cl_DLPNO') for mol in runtime.global_molecules)
-                    elif runtime.args.NO3:
-                        needs_small_molecule = molecules[0].product and not any(mol.name in ('HNO3', 'HNO3_DLPNO') for mol in runtime.global_molecules)
-                        needs_radical = molecules[0].reactant and not any(mol.name in ('NO3', 'NO3_DLPNO') for mol in runtime.global_molecules)
-                    else:
-                        needs_small_molecule = molecules[0].product and not any('H2O' in mol.name for mol in runtime.global_molecules)
-                        needs_radical = molecules[0].reactant and not any('OH' in mol.name for mol in runtime.global_molecules)
-                if needs_small_molecule:
-                    if runtime.args.Cl:
-                        small_mol = Molecule.create_HCl()
-                    elif runtime.args.NO3:
-                        small_mol = Molecule.create_HNO3()
-                    else:
-                        small_mol = Molecule.create_H2O()
-                    small_mol.program = runtime.QC_program
-                    QC_input(small_mol, constrain=False, TS=False)
-                    submit_and_monitor(small_mol, logger, threads)
-                elif needs_radical:
-                    if runtime.args.Cl:
-                        radical = Molecule.create_Cl()
-                    elif runtime.args.NO3:
-                        radical = Molecule.create_NO3()
-                    else:
-                        radical = Molecule.create_OH()
-                    radical.program = runtime.QC_program
-                    QC_input(radical, constrain=False, TS=False)
-                    submit_and_monitor(radical, logger, threads)
+                checkpoint.save_checkpoint(molecules, logger)
+                submit_missing_partner(molecules, logger, threads)
                 return True
             elif not runtime.args.stop:
                 handle_termination(molecules, logger, threads, converged=True)
                 return True
             else:
-                logger.event(f"Stopping as requested (-stop); next step would be {molecules[0].next_step}. Resume from {basename}_{job_type}.pkl with -restart.")
+                logger.event(f"Stopping as requested (-stop); next step would be {molecules[0].next_step}. Resume from {basename}_checkpoint.pkl (or {basename}_{job_type}.pkl) with -restart.")
                 return True
         else:
             logger.error(f"No conformer managed to converge for step {job_type}. Terminating.")
             sys.exit(1)
+
+
+def submit_missing_partner(batch, logger, threads, known=None):
+    if known is None:
+        with runtime.global_molecules_lock:
+            known = list(runtime.global_molecules)
+    if runtime.args.Cl:
+        needs_small_molecule = batch[0].product and not any(mol.name in ('HCl', 'HCl_DLPNO') for mol in known)
+        needs_radical = batch[0].reactant and not any(mol.name in ('Cl', 'Cl_DLPNO') for mol in known)
+    elif runtime.args.NO3:
+        needs_small_molecule = batch[0].product and not any(mol.name in ('HNO3', 'HNO3_DLPNO') for mol in known)
+        needs_radical = batch[0].reactant and not any(mol.name in ('NO3', 'NO3_DLPNO') for mol in known)
+    else:
+        needs_small_molecule = batch[0].product and not any('H2O' in mol.name for mol in known)
+        needs_radical = batch[0].reactant and not any('OH' in mol.name for mol in known)
+
+    if needs_small_molecule:
+        if runtime.args.Cl:
+            partner = Molecule.create_HCl()
+        elif runtime.args.NO3:
+            partner = Molecule.create_HNO3()
+        else:
+            partner = Molecule.create_H2O()
+    elif needs_radical:
+        if runtime.args.Cl:
+            partner = Molecule.create_Cl()
+        elif runtime.args.NO3:
+            partner = Molecule.create_NO3()
+        else:
+            partner = Molecule.create_OH()
+    else:
+        return False
+
+    partner.program = runtime.QC_program
+    QC_input(partner, constrain=False, TS=False)
+    submit_and_monitor(partner, logger, threads)
+    return True
+
+
+def crest_collection_path(molecule):
+    name = molecule.name if molecule.name.endswith('_CREST') else f"{molecule.name}_CREST"
+    return os.path.join(molecule.directory, f"collection{name}.pkl")
+
+
+def _process_crest_output(molecules, logger, threads):
+    all_conformers = []
+    constrained_indexes = molecules[0].constrained_indexes
+    mult = molecules[0].mult
+    charge = molecules[0].charge
+    current_step = molecules[0].current_step
+    dir = molecules[0].directory
+    method = molecules[0].method
+
+    for molecule in molecules:
+        try:
+            conformers = initiate_conformers(crest_collection_path(molecule))
+            logger.success(f"CREST sampling done: {len(conformers)} conformers generated for {molecule.name.replace('_CREST', '')}")
+            for conf in conformers:
+                conf.constrained_indexes = constrained_indexes
+                conf.mult = mult
+                conf.charge = charge
+                conf.current_step = current_step
+                conf.directory = dir
+                conf.method = method
+                all_conformers.append(conf)
+            molecule.move_inputfile()
+            molecule.move_converged()
+        except Exception as e:
+            logger.error(f"Error processing molecule {molecule.name}: {e}")
+            return False
+    handle_termination(all_conformers, logger, threads, converged=True)
+    return True
 
 
 def check_crest(molecules, logger, threads, interval, max_attempts):
@@ -309,14 +394,8 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
     attempts = 0
     sleeping = False
     last_pending = None
-    all_conformers = []
-    expected_files = {f"collection{molecule.name}.pkl" for molecule in molecules}
-    constrained_indexes = molecules[0].constrained_indexes
-    mult = molecules[0].mult
-    charge = molecules[0].charge
-    current_step = molecules[0].current_step
-    dir = molecules[0].directory
-    method = molecules[0].method
+    crest_missing_polls = 0
+    expected_files = {os.path.basename(crest_collection_path(molecule)) for molecule in molecules}
 
     logger.info(f"Monitoring CREST sampling; first check in {initial_delay} seconds, then every {interval} seconds")
     time.sleep(initial_delay)
@@ -353,30 +432,33 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
             continue
 
         if expected_files.issubset(files_in_directory):
-            for molecule in molecules:
-                try:
-                    pickle_file_path = os.path.join(molecule.directory, f"collection{molecule.name}.pkl")
-                    conformers = initiate_conformers(pickle_file_path)
-                    logger.success(f"CREST sampling done: {len(conformers)} conformers generated for {molecule.name.replace('_CREST', '')}")
-                    for conf in conformers:
-                        conf.constrained_indexes = constrained_indexes
-                        conf.mult = mult
-                        conf.charge = charge
-                        conf.current_step = current_step
-                        conf.directory = dir
-                        conf.method = method
-                        all_conformers.append(conf)
-                    molecule.move_inputfile()
-                    molecule.move_converged()
-                except Exception as e:
-                    logger.error(f"Error processing molecule {molecule.name}: {e}")
-                    return False
-            handle_termination(all_conformers, logger, threads, converged=True)
-            return True
+            return _process_crest_output(molecules, logger, threads)
+
+        # All jobs gone from the queue but the CREST output never appeared:
+        # the node likely died. Resubmit the affected jobs after a grace period.
+        if all(m.status == 'completed or not found' for m in molecules):
+            crest_missing_polls += 1
+            if crest_missing_polls >= VANISHED_GRACE_POLLS:
+                crest_missing_polls = 0
+                for molecule in molecules:
+                    if os.path.basename(crest_collection_path(molecule)) in files_in_directory:
+                        continue
+                    molecule.node_failure_count = getattr(molecule, 'node_failure_count', 0) + 1
+                    if molecule.node_failure_count > MAX_NODE_FAILURES:
+                        logger.error(f"{molecule.name}: CREST job vanished {MAX_NODE_FAILURES} times without producing results. Giving up.")
+                        return False
+                    xyz_path = os.path.join(molecule.directory, f"{molecule.name}.xyz")
+                    if not os.path.exists(xyz_path):
+                        molecule.write_xyz_file(xyz_path)
+                    job_id, _ = submit_job(molecule, runtime.args)
+                    molecule.job_id = f"{job_id}"
+                    logger.warning(f"{molecule.name}: CREST job disappeared from the queue without producing results (node failure?). Resubmitted as job {job_id}.")
+                checkpoint.save_checkpoint(molecules, logger)
         else:
+            crest_missing_polls = 0
             if attempts == 1:
                 logger.info(f"CREST results not complete yet. Retrying every {interval} seconds.")
-            time.sleep(interval)
+        time.sleep(interval)
 
         attempts += 1
 
@@ -458,6 +540,9 @@ def submit_and_monitor(molecules, logger, threads):
         logger.event(f"Submitted SLURM array job for {len(molecules)} conformers ({molecules[0].current_step}, job id {job_id})")
 
     if job_id:
+        # Persist job id + current step before monitoring starts, so a crash
+        # from here on can reattach to the submitted job instead of losing it.
+        checkpoint.save_checkpoint(molecules, logger)
         if molecules[0].current_step == 'crest_sampling':
             thread = Thread(target=check_crest, args=(molecules, logger, threads, interval, runtime.args.attempts))
         else:
@@ -511,77 +596,121 @@ def handle_termination(molecules, logger, threads, converged):
     for conf in conformer_molecules:
         if conf.converged is False:
             conf.name = conf.name.replace("_TS", "").replace("_CREST", "").replace("_DLPNO", "")
+            conf.job_id = ""  # no job submitted yet for this step
             handler(conf)
     if conformer_molecules:
+        # Record the step advance (and any conformer expansion/filtering) so a
+        # crash before submission resumes at this step with a clean resubmit.
+        checkpoint.save_checkpoint(conformer_molecules, logger)
         submit_and_monitor(conformer_molecules, logger, threads)
 
 
 def handle_input_molecules(molecules, logger, threads):
-    current_step = molecules[0].current_step
-    if all(m.current_step == current_step for m in molecules):
-        logger.event(f"Detected {len(molecules)} molecule(s) at step {current_step}; checking convergence status")
-        if current_step == 'crest_sampling':
-            all_converged = True
-        else:
-            for m in molecules:
-                if os.path.exists(m.log_file_path):
-                    converge_status, _ = termination_status(m, logger)
-                    if converge_status is True:
-                        m.converged = True
-                    else:
-                        m.converged = False
-                else:
-                    if len(molecules) == 1:
-                        m.converged = False
-                    elif m.atoms and m.coordinates:
-                        m.converged = True
-            all_converged = all(m.converged for m in molecules)
+    groups = {}
+    for m in molecules:
+        # current_step may be a Step enum member or a plain string depending on
+        # how the molecule was created; normalize to the step name.
+        step = m.current_step.value if isinstance(m.current_step, Step) else str(m.current_step)
+        groups.setdefault(step, []).append(m)
+    if len(groups) > 1:
+        logger.event(f"Molecules span {len(groups)} workflow steps ({', '.join(groups)}); reconciling each group separately")
+    for step, group in groups.items():
+        reconcile_group(group, step, logger, threads, all_molecules=molecules)
 
-        if all_converged:
-            if all(mol.current_step == 'DLPNO' for mol in molecules):
-                if all(mol.product for mol in molecules):
-                    if runtime.args.Cl:
-                        product_missing = not any(mol.name in ('HCl', 'HCl_DLPNO') for mol in molecules)
-                    elif runtime.args.NO3:
-                        product_missing = not any(mol.name in ('HNO3', 'HNO3_DLPNO') for mol in molecules)
-                    else:
-                        product_missing = not any('H2O' in mol.name for mol in molecules)
-                    if product_missing:
-                        if runtime.args.Cl:
-                            small_mol_name = "HCl"
-                        elif runtime.args.NO3:
-                            small_mol_name = "HNO3"
-                        else:
-                            small_mol_name = "H2O"
-                        logger.event(f"Converged DLPNOs. However, {small_mol_name} is needed for product energies")
-                        check_convergence(molecules, logger, threads, 30, runtime.args.attempts, all_converged=True)
-                elif all(mol.reactant for mol in molecules):
-                    if runtime.args.Cl:
-                        reactant_missing = not any(mol.name in ('Cl', 'Cl_DLPNO') for mol in molecules)
-                    elif runtime.args.NO3:
-                        reactant_missing = not any(mol.name in ('NO3', 'NO3_DLPNO') for mol in molecules)
-                    else:
-                        reactant_missing = not any('OH' in mol.name for mol in molecules)
-                    if reactant_missing:
-                        if runtime.args.Cl:
-                            radical_name = "Cl"
-                        elif runtime.args.NO3:
-                            radical_name = "NO3"
-                        else:
-                            radical_name = "OH"
-                        logger.event(f"Converged DLPNOs. However, {radical_name} is needed for reactant energies")
-                        check_convergence(molecules, logger, threads, 30, runtime.args.attempts, all_converged=True)
-                else:
-                    logger.success("All given molecules are converged DLPNOs")
-                    for m in molecules:
+
+def reconcile_group(group, step, logger, threads, all_molecules=None):
+    known = list(all_molecules) if all_molecules else list(group)
+    logger.event(f"Reconciling {len(group)} molecule(s) at step {step}")
+
+    if step == 'Done':
+        with runtime.global_molecules_lock:
+            for m in group:
+                if m not in runtime.global_molecules:
+                    runtime.global_molecules.append(m)
+        logger.success(f"{len(group)} molecule(s) have already finished the workflow")
+        return
+
+    if step == 'crest_sampling':
+        _reconcile_crest_group(group, logger, threads)
+        return
+
+    # ----- QC steps: classify each molecule as converged / running / lost -----
+    update_molecules_status(group)
+
+    resubmit_list = []
+    for m in group:
+        if m.converged:
+            continue
+        # Logs of finished jobs may already have been moved to log_files/
+        candidates = [os.path.join(m.directory, f"{m.name}{m.output}"),
+                      os.path.join(m.directory, "log_files", f"{m.name}{m.output}")]
+        m.log_file_path = next((p for p in candidates if os.path.exists(p)), candidates[0])
+        if os.path.exists(m.log_file_path):
+            converge_status, _ = termination_status(m, logger, quick=True)
+            if converge_status is True:
+                m.converged = True
+                continue
+        if m.status in ('running', 'pending', 'unknown'):
+            continue  # still in the queue (or squeue unreachable): reattach below
+        resubmit_list.append(m)
+
+    converged = [m for m in group if m.converged]
+    running = [m for m in group if not m.converged and m not in resubmit_list]
+
+    if len(converged) == len(group):
+        if step == 'DLPNO':
+            with runtime.global_molecules_lock:
+                for m in group:
+                    if m not in runtime.global_molecules:
                         runtime.global_molecules.append(m)
-            else:
-                logger.success(f"***All molecules converged for step {current_step}. Proceeding with next step: {molecules[0].next_step}***")
-                molecules[0].move_files()
-                handle_termination(molecules, logger, threads, converged=True)
+                known_all = list(runtime.global_molecules)
+            known_all += [m for m in known if m not in known_all]
+            checkpoint.save_checkpoint(group, logger)
+            logger.success(f"All {len(group)} DLPNO calculation(s) are converged")
+            if submit_missing_partner(group, logger, threads, known=known_all):
+                logger.event("Partner molecule needed for reaction energies was missing; submitted it")
         else:
-            logger.event("Not all molecules have converged. Non-converged ones will be calculated; converged ones will be skipped.")
-            handle_termination(molecules, logger, threads, converged=False)
-    else:
-        logger.error("Not all molecules in the given files are at the same workflow step. Check that the correct input is provided.")
-        sys.exit(1)
+            logger.success(f"All molecules converged for step {step}. Proceeding with next step: {group[0].next_step}")
+            group[0].move_files()
+            handle_termination(group, logger, threads, converged=True)
+        return
+
+    if resubmit_list and not running and not converged:
+        # Nothing queued and nothing finished: cleanly re-run the whole step
+        # (regenerates the input files and submits one job/array).
+        logger.event(f"No jobs for step {step} are queued and none finished; re-running the step for {len(group)} molecule(s)")
+        handle_termination(group, logger, threads, converged=False)
+        return
+
+    for m in resubmit_list:
+        logger.warning(f"{m.name}: job is no longer queued and its log shows no completion; resubmitting")
+        resubmit_job(m, logger)
+    if running:
+        logger.event(f"Reattaching to {len(running)} queued/running job(s) for step {step} (job id {running[0].job_id})")
+
+    checkpoint.save_checkpoint(group, logger)
+    thread = Thread(target=check_convergence, args=(group, logger, threads, get_interval_seconds(group[0]), runtime.args.attempts))
+    threads.append(thread)
+    thread.start()
+
+
+def _reconcile_crest_group(group, logger, threads):
+    # 1) CREST already produced its conformer collections → process them
+    if all(os.path.exists(crest_collection_path(m)) for m in group):
+        logger.event("CREST output found on disk; processing conformers")
+        _process_crest_output(group, logger, threads)
+        return
+    # 2) CREST job(s) still queued/running → reattach the CREST monitor
+    if any(m.job_id for m in group):
+        update_molecules_status(group)
+        if any(m.status in ('running', 'pending', 'unknown') for m in group):
+            logger.event(f"Reattaching to CREST job (job id {group[0].job_id})")
+            thread = Thread(target=check_crest, args=(group, logger, threads, get_interval_seconds(group[0]), runtime.args.attempts))
+            threads.append(thread)
+            thread.start()
+            return
+    # 3) Nothing queued and no output → (re)submit CREST sampling
+    logger.event("No CREST job queued and no CREST output found; submitting CREST sampling")
+    for m in group:
+        m.converged = False
+    handle_termination(group, logger, threads, converged=False)

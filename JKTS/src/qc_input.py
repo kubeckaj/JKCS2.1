@@ -1,7 +1,11 @@
 import os
+import sys
+from datetime import datetime
+
 import runtime
 from output import console
 from ts_validation import is_aldehyde
+from metadata import update_metadata
 
 
 def crest_constrain(molecule, force_constant=1):
@@ -39,24 +43,21 @@ def mkdir(molecule, crest_constrain_flag=True):
             os.makedirs(os.path.join(molecule.directory, "log_files"))
         if not os.path.exists(os.path.join(molecule.directory, "slurm_output")):
             os.makedirs(os.path.join(molecule.directory, "slurm_output"))
-    with open(molecule.directory + "/.method", "w") as f:
-        f.write(f"{runtime.args.method}")
-
+    fields = {
+        'molecule': molecule.name,
+        'reaction': 'Cl' if runtime.args.Cl else 'NO3' if runtime.args.NO3 else 'OH',
+        'method': runtime.args.method,
+        'basis_set': runtime.args.basis_set,
+        'program': runtime.QC_program,
+        'slurm': {'par': runtime.args.par, 'cpu': runtime.args.cpu, 'mem': runtime.args.mem},
+        'created': datetime.now().isoformat(timespec='seconds'),
+        'jkts_command': ' '.join(sys.argv[1:]),
+    }
     if crest_constrain_flag:
-        C_index = molecule.constrained_indexes['C']
-        H_index = molecule.constrained_indexes['H']
-        abstractor_index = molecule.constrained_indexes['X']
-        for path in [molecule.directory + "/.constrain", molecule.directory + "/log_files/.constrain"]:
-            with open(path, "w") as f:
-                f.write(f"C: {C_index}\n")
-                f.write(f"H: {H_index}\n")
-                f.write(f"X: {abstractor_index}\n")
-                if 'XH' in molecule.constrained_indexes:
-                    f.write(f"XH: {molecule.constrained_indexes['XH']}\n")
-        # σᵢ persisted per directory (conformers are rebuilt fresh downstream)
-        for path in [molecule.directory + "/.symmetry", molecule.directory + "/log_files/.symmetry"]:
-            with open(path, "w") as f:
-                f.write(f"{getattr(molecule, 'reaction_path_degeneracy', 1)}\n")
+        # Active-site indices and σᵢ (conformers are rebuilt fresh downstream)
+        fields['constrained_indexes'] = molecule.constrained_indexes
+        fields['reaction_path_degeneracy'] = getattr(molecule, 'reaction_path_degeneracy', 1)
+    update_metadata(molecule.directory, **fields)
 
 
 def QC_input(molecule, constrain, TS, method=None, basis_set=None):

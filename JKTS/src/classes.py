@@ -5,11 +5,12 @@ import glob
 import re
 import shutil
 import os
-import pickle
 import random
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDetermineBonds
 from output import console
+from checkpoint import atomic_pickle_dump, load_pickle_with_fallback
+from metadata import load_metadata
 
 _G16_SCRATCH_EXTENSIONS = ('.int', '.d2e', '.rwf', '.skr', '.chk')
 
@@ -115,6 +116,7 @@ class Molecule(Vector):
         self.output = None
         self.status = None
         self.error_termination_count = 0
+        self.node_failure_count = 0
         self.reactant_pair = None
         self.product_pair = None
         self.reaction_path_degeneracy = 1  # σᵢ: equivalent H's this TS represents
@@ -310,8 +312,7 @@ class Molecule(Vector):
             console.error(f"File not found: {self.file_path}")
 
     def save_to_pickle(self, file_path):
-        with open(file_path, 'wb') as file:
-            pickle.dump(self, file)
+        atomic_pickle_dump(self, file_path)
 
     def move_files(self, ignore_file=''):
         try:
@@ -402,32 +403,21 @@ class Molecule(Vector):
                 self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': abstractor_index}
             return
         else:
-            constrain_file_path = os.path.join(self.directory, ".constrain")
-            if os.path.exists(constrain_file_path):
-                try:
-                    with open(constrain_file_path, "r") as file:
-                        constraints = {}
-                        for line in file:
-                            atom, index = line.split(":")
-                            constraints[atom.strip()] = int(index.strip())
-                        C_index = constraints.get('C', None)
-                        H_index = constraints.get('H', None)
-                        # Support both new ('X'/'XH') and old ('O'/'OH') key names
-                        X_index = constraints.get('X', constraints.get('O', None))
-                        XH_index = constraints.get('XH', constraints.get('OH', None))
-                        if X_index is not None and self.atoms:
-                            abstractor = self.atoms[X_index - 1]
-                            if abstractor == 'Cl' or XH_index is None:
-                                # Cl TS or NO3 TS: no secondary radical-H atom
-                                self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': X_index}
-                            else:
-                                # OH TS: secondary H on the radical
-                                self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': X_index, 'XH': XH_index}
-                        return
-                except Exception as e:
-                    console.warning(f"Error reading .constrain file: {e}")
-                    # If reading .constrain fails, proceed to loop through the molecule
-                    indexes = None
+            constraints = load_metadata(self.directory).get('constrained_indexes')
+            if constraints:
+                C_index = constraints.get('C', None)
+                H_index = constraints.get('H', None)
+                X_index = constraints.get('X', None)
+                XH_index = constraints.get('XH', None)
+                if X_index is not None and self.atoms:
+                    abstractor = self.atoms[X_index - 1]
+                    if abstractor == 'Cl' or XH_index is None:
+                        # Cl TS or NO3 TS: no secondary radical-H atom
+                        self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': X_index}
+                    else:
+                        # OH TS: secondary H on the radical
+                        self.constrained_indexes = {'C': C_index, 'H': H_index, 'X': X_index, 'XH': XH_index}
+                return
 
             if not indexes:  # Fallback to original logic if indexes not set
                 if self.atoms and self.atoms[-1] == 'Cl':
@@ -482,18 +472,21 @@ class Molecule(Vector):
     
     @staticmethod
     def load_from_pickle(file_path):
-        with open(file_path, 'rb') as file:
-            return pickle.load(file)
+        data = load_pickle_with_fallback(file_path)
+        if data is None:
+            raise FileNotFoundError(f"Could not read pickle file (or its .bak backup): {file_path}")
+        return data
 
     @staticmethod
     def molecules_to_pickle(molecules, file_path):
-        with open(file_path, 'wb') as file:
-            pickle.dump(molecules, file)
+        atomic_pickle_dump(molecules, file_path)
 
     @staticmethod
     def load_molecules_from_pickle(file_path):
-        with open(file_path, 'rb') as file:
-            return pickle.load(file)
+        data = load_pickle_with_fallback(file_path)
+        if data is None:
+            raise FileNotFoundError(f"Could not read pickle file (or its .bak backup): {file_path}")
+        return data
 
     @property
     def program(self):
@@ -1056,26 +1049,17 @@ class Molecule(Vector):
             "pm6", "pm7", 'g3mp2', 'g3', "b3lyp", "m062x", "m06-2x", "m08", "dlpno-ccsd(t)", "mp2", "bhandhlyp"
         ]
 
-        if self.name in ('OH', 'H2O', 'OH_DLPNO', 'H2O_DLPNO'):
-            method_file = os.path.join(self.directory, ".method")
-            if os.path.exists(method_file):
-                with open(method_file, 'r') as file:
-                    method = file.read().strip().lower()
-                    if method in methods:
-                        return method
-            return 'method could not be determined'
+        def method_from_metadata():
+            method = str(load_metadata(self.directory).get('method', '')).strip().lower()
+            return method if method in methods else 'method could not be determined'
 
-        
+        if self.name in ('OH', 'H2O', 'OH_DLPNO', 'H2O_DLPNO'):
+            return method_from_metadata()
+
         file_to_read = self.log_file_path if self.log_file_path else self.file_path if self.file_path else None
         if not file_to_read:
-            method_file = os.path.join(self.directory, ".method")
-            if os.path.exists(method_file):
-                with open(method_file, 'r') as file:
-                    method = file.read().strip().lower()
-                    if method in methods:
-                        return method
-            return 'method could not be determined'
-        
+            return method_from_metadata()
+
         try:
             with open(file_to_read, 'r') as file:
                 for line in file:
@@ -1086,19 +1070,13 @@ class Molecule(Vector):
                     elif self.program.lower() == 'g16':
                         if line.strip().startswith('#'):
                             line_content = line
-                    
+
                     for method in methods:
                         if method.lower() in line_content.lower():
                             return method
         except FileNotFoundError:
-            method_file = os.path.join(self.directory, ".method")
-            if os.path.exists(method_file):
-                with open(method_file, 'r') as file:
-                    method = file.read().strip()
-                    if method in methods:
-                        return method
-            return 'method could not be determined'
-            
+            return method_from_metadata()
+
         return 'method could not be determined'
 
 

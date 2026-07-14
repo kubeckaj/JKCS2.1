@@ -15,8 +15,6 @@ _TRANSIENT_SUBMIT_MARKERS = (
 
 
 def _run_submit_script(submit_command, retry_wait=60, max_attempts=240):
-    """Run the sbatch wrapper, retrying on transient QOS/submit-limit rejections rather
-    than aborting the run — the limit clears as the user's queued jobs finish."""
     if os.environ.get('JKTS_DRYRUN'):
         console.event(f"[dry-run] would submit: {' '.join(submit_command)}")
         return subprocess.CompletedProcess(submit_command, 0, stdout='Submitted batch job 999999\n', stderr='')
@@ -359,25 +357,32 @@ sbatch $SUBMIT
 
 
 def update_molecules_status(molecules):
-    # Gather all unique job IDs
-    unique_job_ids = set(molecule.job_id.split("_")[0] for molecule in molecules)
+    # Gather all unique job IDs; molecules with no job id yet cannot be queued
+    unique_job_ids = set(molecule.job_id.split("_")[0] for molecule in molecules if molecule.job_id)
     job_statuses = {}
+    failed_prefixes = set()
 
     # Query the status of each unique job ID
     for job_id in unique_job_ids:
         try:
             result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True, check=True)
             job_statuses.update(parse_job_statuses(result.stdout, job_id))
-        except subprocess.CalledProcessError:
-            # If the command fails, assume 'unknown' status for all jobs with this prefix
-            for molecule in molecules:
-                if molecule.job_id.startswith(job_id):
-                    molecule.status = 'unknown'
-            continue  # Skip to the next job_id if there's an error
+        except subprocess.CalledProcessError as e:
+            stderr = getattr(e, 'stderr', '') or ''
+            if 'invalid job id' in stderr.lower():
+                # SLURM no longer knows this job: it finished or was lost.
+                continue
+            # squeue itself failed (controller down, timeout): status unknown
+            failed_prefixes.add(job_id)
 
     # Update molecule status based on job_statuses dictionary
     for molecule in molecules:
-        molecule.status = job_statuses.get(molecule.job_id, 'completed or not found')
+        if not molecule.job_id:
+            molecule.status = 'completed or not found'
+        elif molecule.job_id.split("_")[0] in failed_prefixes:
+            molecule.status = 'unknown'
+        else:
+            molecule.status = job_statuses.get(molecule.job_id, 'completed or not found')
 
 def parse_job_statuses(output, main_job_id):
     job_statuses = {}
@@ -389,13 +394,19 @@ def parse_job_statuses(output, main_job_id):
             job_id_field = parts[0]
             status = 'running' if 'R' in parts else 'pending' if 'PD' in parts else 'completed or not found'
 
-            # Handle range of job IDs
+            # Pending array members are shown as e.g. 12345_[3,5-8,11%5]
             if '[' in job_id_field:
-                range_match = re.search(r'\[(\d+)-(\d+)\]', job_id_field)
-                if range_match:
-                    start, end = range_match.groups()
-                    for i in range(int(start), int(end) + 1):
-                        job_statuses[f"{main_job_id}_{i}"] = status
+                bracket_match = re.search(r'\[([^\]]+)\]', job_id_field)
+                if bracket_match:
+                    for token in bracket_match.group(1).split(','):
+                        token = token.strip().split('%')[0]  # drop throttle suffix
+                        range_match = re.fullmatch(r'(\d+)-(\d+)', token)
+                        if range_match:
+                            start, end = range_match.groups()
+                            for i in range(int(start), int(end) + 1):
+                                job_statuses[f"{main_job_id}_{i}"] = status
+                        elif token.isdigit():
+                            job_statuses[f"{main_job_id}_{token}"] = status
             else:
                 job_statuses[job_id_field] = status
 

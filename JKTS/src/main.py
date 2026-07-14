@@ -4,8 +4,10 @@ import os
 import re
 import sys
 
+import checkpoint
 import runtime
 from classes import Molecule
+from metadata import load_metadata, update_metadata
 from output import Logger, console, banner
 from qc_input import mkdir
 from monitoring import handle_termination, handle_input_molecules
@@ -15,14 +17,60 @@ from results import record_rate, write_molecule_summary, format_rate
 
 
 def read_reaction_path_degeneracy(directory):
-    # σᵢ written per TS directory by mkdir(); defaults to 1
-    for path in (os.path.join(directory, ".symmetry"), os.path.join(directory, "log_files", ".symmetry")):
-        try:
-            with open(path) as f:
-                return int(f.read().strip())
-        except (OSError, ValueError):
-            continue
-    return 1
+    # σᵢ recorded per TS directory in .metadata by mkdir(); defaults to 1
+    try:
+        return int(load_metadata(directory).get('reaction_path_degeneracy', 1))
+    except (TypeError, ValueError):
+        return 1
+
+
+def guard_and_write_pid_file():
+    if runtime.args.restart or runtime.args.rerun:
+        old_pid = load_metadata(runtime.start_dir).get('monitor_pid')
+        if old_pid:
+            try:
+                os.kill(int(old_pid), 0)
+            except (OSError, ValueError):
+                pass  # unreadable pid or the process is gone
+            else:
+                console.error(f"A JKTS monitor (pid {old_pid}) still appears to be running in this directory. "
+                              f"Stop it first (kill {old_pid}) or clear 'monitor_pid' in .metadata if it is stale.")
+                sys.exit(1)
+    update_metadata(runtime.start_dir, monitor_pid=os.getpid())
+
+
+def restore_settings_from_metadata(parser, logger):
+    meta = load_metadata(runtime.start_dir)
+    if not meta:
+        return
+    restored = []
+
+    # Reaction type: -OH/-Cl/-NO3 are store_true flags; none given means all False
+    reaction = meta.get('reaction')
+    if reaction in ('OH', 'Cl', 'NO3') and not (runtime.args.OH or runtime.args.Cl or runtime.args.NO3):
+        setattr(runtime.args, reaction, True)
+        restored.append(f"reaction={reaction}")
+
+    # QC backend: -G16/-ORCA are store_true flags; none given means all False
+    program = meta.get('program')
+    if program in ('G16', 'ORCA') and not (runtime.args.G16 or runtime.args.ORCA):
+        runtime.args.ORCA = program == 'ORCA'
+        runtime.args.G16 = program == 'G16'
+        runtime.QC_program = program
+        restored.append(f"program={program}")
+
+    slurm = meta.get('slurm', {})
+    for key, value in (('method', meta.get('method')),
+                       ('basis_set', meta.get('basis_set')),
+                       ('par', slurm.get('par')),
+                       ('cpu', slurm.get('cpu')),
+                       ('mem', slurm.get('mem'))):
+        if value is not None and getattr(runtime.args, key) == parser.get_default(key):
+            setattr(runtime.args, key, value)
+            restored.append(f"{key}={value}")
+
+    if restored:
+        logger.info(f"Restored settings from .metadata: {', '.join(restored)}")
 
 
 def str2bool(v):
@@ -135,7 +183,7 @@ def build_parser():
     workflow.add_argument('-products', type=str2bool, nargs='?', const=False, default=True, metavar='<bool>', help='Skip the products workflow (bare flag or explicit false) [def: run it]')
     workflow.add_argument('-TS', type=str2bool, nargs='?', const=False, default=True, metavar='<bool>', help=argparse.SUPPRESS)
     workflow.add_argument('-stop', action='store_true', help='Stop after the current workflow step completes instead of continuing automatically (resume with -restart)')
-    workflow.add_argument('-restart', action='store_true', help='Resume the workflow from the current step of the given .pkl/.log/.out files')
+    workflow.add_argument('-restart', action='store_true', help='Resume the workflow after a crash or -stop: reattaches to queued jobs and resubmits lost ones. Reads the given .pkl/.log/.out files, or the {dir}_checkpoint.pkl in the current directory if no file is given')
     workflow.add_argument('-k', type=str2bool, metavar='<bool>', default=True, help='Calculate the MC-TST rate constant at the end [def: true]')
     workflow.add_argument('-time', metavar="hh:mm:ss", type=str, default=None, help='SLURM wall time for the monitoring job (used by the JKTS wrapper) [def: 240:00:00]')
 
@@ -216,6 +264,9 @@ def main():
     molecules = []
     logger = Logger(os.path.join(runtime.start_dir, "log"))
 
+    if runtime.args.restart or runtime.args.rerun:
+        restore_settings_from_metadata(parser, logger)
+
     if runtime.args.init:
         if runtime.args.smiles:
             input_molecule = Molecule(smiles=runtime.args.smiles, reactant=True, method=runtime.args.method)
@@ -289,6 +340,15 @@ def main():
         if runtime.args.smiles:
             input_molecule = Molecule(smiles=runtime.args.smiles, reactant=True, method=runtime.args.method)
             runtime.args.input_files = [f"{input_molecule.name}.xyz"]
+        if runtime.args.restart and not runtime.args.input_files:
+            # Bare 'JKTS -restart': resume from the canonical checkpoint in cwd
+            ckpt_path = checkpoint.checkpoint_path(runtime.start_dir)
+            if os.path.exists(ckpt_path) or os.path.exists(ckpt_path + '.bak'):
+                runtime.args.input_files = [ckpt_path]
+                console.event(f"Restarting from checkpoint {os.path.basename(ckpt_path)}")
+            else:
+                console.error(f"No checkpoint file ({os.path.basename(ckpt_path)}) found in {runtime.start_dir}")
+                sys.exit(1)
         for n, input_file in enumerate(runtime.args.input_files, start=1):
             file_name, file_type = os.path.splitext(input_file)
 
@@ -315,21 +375,27 @@ def main():
                     molecules.append(molecule)
 
                 logger.info(f"JKTS run started (pid {os.getpid()}, method {runtime.args.method} {runtime.args.basis_set}, program {runtime.QC_program})")
+                guard_and_write_pid_file()
                 handle_termination(molecules, logger, threads, converged=False)
 
             elif file_type == '.pkl':
-                from pandas import read_pickle, DataFrame
-                df = read_pickle(input_file)
+                from pandas import DataFrame
+                df = checkpoint.load_pickle_with_fallback(input_file)
+                if df is None:
+                    console.error(f"Could not read pickle file {input_file} (nor a .bak backup)")
+                    sys.exit(1)
                 if isinstance(df, DataFrame):
                     conformer_molecules = initiate_conformers(input_file)
                     for m in conformer_molecules:
                         input_molecules.append(m)
                 else:
-                    molecules = Molecule.load_molecules_from_pickle(input_file)
-                    if not isinstance(molecules, list):
-                        molecules = [molecules]
+                    molecules = df if isinstance(df, list) else [df]
+                    # Under -restart/-rerun everything goes through workflow
+                    # reconciliation; the final_* routing is only for assembling
+                    # rate constants from finished pickles.
+                    route_to_final = not (runtime.args.restart or runtime.args.rerun)
                     for m in molecules:
-                        if m.current_step == 'Done' or m.current_step == 'DLPNO':
+                        if route_to_final and (m.current_step == 'Done' or (m.current_step == 'DLPNO' and m.converged)):
                             if m.reactant:
                                 final_reactants.append(m)
                             elif m.product:
@@ -359,12 +425,15 @@ def main():
                 collected_molecules = collect_DFT_and_DLPNO(input_molecules)
                 Molecule.molecules_to_pickle(collected_molecules, os.path.join(runtime.start_dir, "collected_molecules.pkl"))
             elif runtime.args.restart:
+                guard_and_write_pid_file()
                 logger.event(f"JKTS restarted (method {runtime.args.method}, program {runtime.QC_program})")
-                with open(os.path.join(runtime.start_dir, '.method'), 'w') as f:
-                    f.write(f"{runtime.args.method}")
+                update_metadata(runtime.start_dir, method=runtime.args.method)
                 handle_input_molecules(input_molecules, logger, threads)
             elif runtime.args.rerun:
+                guard_and_write_pid_file()
                 logger.event(f"JKTS rerunning calculations of type: {input_molecules[0].current_step}")
+                for m in input_molecules:
+                    m.converged = False
                 handle_termination(input_molecules, logger, threads, converged=False)
             elif runtime.args.pickle:
                 filename = re.sub("_conf\d{1,2}", "", input_molecules[0].name)
@@ -400,7 +469,7 @@ def main():
             logger.success(f"Final DLPNO calculations for reactants are done. Results saved to Final_reactants_{molecule_name}.pkl")
             Molecule.molecules_to_pickle(runtime.global_molecules, os.path.join(runtime.start_dir, f"Final_reactants_{molecule_name}.pkl"))
         elif all(m.product for m in runtime.global_molecules):
-            h_numbers = sorted(set(re.search(r'_H(\d+)[._]', m.name + '_').group(1) for m in molecules if "_H" in m.name))
+            h_numbers = sorted(set(re.search(r'_H(\d+)[._]', m.name + '_').group(1) for m in runtime.global_molecules if "_H" in m.name))
             small_product_names = ('H2O', 'H2O_DLPNO', 'HCl', 'HCl_DLPNO', 'HNO3', 'HNO3_DLPNO')
             grouped_lists = [[m for m in runtime.global_molecules if f"_H{h_num}_" in m.name] +
                              [m for m in runtime.global_molecules if m.name in small_product_names]

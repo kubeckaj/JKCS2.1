@@ -4,7 +4,6 @@ from output import console
 
 
 def extract_normal_coordinates(molecule):
-    '''Return format: [[0.02, -0.02, 0.06], [0.07, -0.11, -0.02], ...]'''
     if molecule.program.lower() == 'g16':
         with open(molecule.log_file_path, 'r') as file:
             lines = file.readlines()
