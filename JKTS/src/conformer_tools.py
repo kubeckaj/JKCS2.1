@@ -1,13 +1,12 @@
 import os
 import re
-from copy import deepcopy
 
 from classes import Molecule
-from output import console
+from output import logger
 import runtime
 
 
-def filter_molecules(molecules, logger=None, pickle=False, RMSD_threshold=0.34, Energy_threshold=1e-4, Dipole_threshold=1e-1):
+def filter_molecules(molecules, pickle=False, RMSD_threshold=0.34, Energy_threshold=1e-4, Dipole_threshold=1e-1):
     from ArbAlign import compare
     initial_len = len(molecules)
     unique_molecules = []
@@ -53,7 +52,7 @@ def filter_molecules(molecules, logger=None, pickle=False, RMSD_threshold=0.34, 
 
         molecules = non_similar_molecules
 
-    (logger or console).event(f"Filtered {initial_len} conformers down to {len(unique_molecules)} "
+    logger.event(f"Filtered {initial_len} conformers down to {len(unique_molecules)} "
                               f"(thresholds: RMSD {RMSD_threshold}, dE {Energy_threshold} Hartree, dDipole {Dipole_threshold} Debye)")
 
     if pickle:
@@ -75,7 +74,7 @@ def initiate_conformers(input_file=None):
     conformer_molecules = []
 
     if not input_file:
-        console.error("No input file specified.")
+        logger.error("No input file specified.")
         return []
 
     with open(input_file, 'rb') as f:

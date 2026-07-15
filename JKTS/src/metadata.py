@@ -2,7 +2,7 @@ import json
 import os
 from threading import Lock
 
-from output import console
+from output import logger
 
 METADATA_FILE = '.metadata'
 
@@ -20,7 +20,7 @@ def load_metadata(directory):
     except FileNotFoundError:
         return _legacy_metadata(directory)
     except (json.JSONDecodeError, OSError) as e:
-        console.warning(f"Could not read {metadata_path(directory)}: {e}")
+        logger.warning(f"Could not read {metadata_path(directory)}: {e}")
         return {}
 
 
@@ -36,7 +36,7 @@ def update_metadata(directory, **fields):
                 f.write('\n')
             os.replace(tmp_path, path)
         except OSError as e:
-            console.warning(f"Could not write {path}: {e}")
+            logger.warning(f"Could not write {path}: {e}")
     return data
 
 
@@ -73,7 +73,7 @@ def _legacy_metadata(directory):
                     indexes['XH'] = indexes.pop('OH')
             data['constrained_indexes'] = indexes
         except (OSError, ValueError):
-            console.warning(f"Could not parse legacy constraint file {path}")
+            logger.warning(f"Could not parse legacy constraint file {path}")
 
     path = _first_existing('.symmetry')
     if path:

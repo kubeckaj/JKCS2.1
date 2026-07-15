@@ -1,6 +1,6 @@
 import re
 
-from output import console
+from output import logger
 
 
 def log2vib(molecule):
@@ -109,12 +109,12 @@ def eckart(SP_TS, SP_reactant, SP_product, imag, T=[298.15]):
         kappa = G[0]
         return kappa
     except Exception as e:
-        console.warning(f"Error calculating the Eckart tunneling ({e}). Returning tunneling coefficient 1")
+        logger.warning(f"Error calculating the Eckart tunneling ({e}). Returning tunneling coefficient 1")
         return 1
 
 
 def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.15, symmetry=1):
-    from numpy import exp, sum, float64, NaN
+    from numpy import exp, sum
     from results import RateResult
     k_b = 1.380649e-23
     h = 6.62607015e-34
@@ -137,11 +137,11 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
         if radical is not None and radical.zero_point_corrected is None:
             dropped.append(radical.name)
         if dropped:
-            console.warning(f"Skipping molecules with missing ZPE/energy in rate step: {dropped}")
+            logger.warning(f"Skipping molecules with missing ZPE/energy in rate step: {dropped}")
         TS_conformers = [m for m in TS_conformers if m.zero_point_corrected is not None]
         reactant_molecules = [m for m in reactant_molecules if m.zero_point_corrected is not None]
         if not TS_conformers or not reactant_molecules or (radical is not None and radical.zero_point_corrected is None):
-            console.error("Cannot compute rate constant - required TS/reactant/radical energies are missing.")
+            logger.error("Cannot compute rate constant - required TS/reactant/radical energies are missing.")
             return RateResult(sigma=symmetry, T=T)
 
         lowest_reactant = min(reactant_molecules, key=lambda molecule: molecule.zero_point_corrected)
@@ -184,7 +184,7 @@ def rate_constant(TS_conformers, reactant_conformers, product_conformers, T=298.
                 kappa = eckart(lowest_EE_TS_kcalmol, lowest_EE_reactant_kcalmol, lowest_EE_product_kcalmol, imag)
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
             else:
-                console.warning("No small product molecule (H2O/HCl/HNO3) found. No tunneling correction will be calculated")
+                logger.warning("No small product molecule (H2O/HCl/HNO3) found. No tunneling correction will be calculated")
                 k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))
         else:
             k = kappa * (k_b*T)/(h*p_ref) * (Q_TS/Q_reactant) * exp(-(lowest_ZP_TS_J - sum_reactant_ZP_J) / (k_b * T))

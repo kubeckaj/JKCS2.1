@@ -59,7 +59,7 @@ Each directory is self-contained and holds:
 
 - ``log`` — one timestamped log file recording state changes (submissions, running transitions, convergences, errors, step transitions).
 - ``.metadata`` — a hidden JSON file with the run settings: reaction type, method/basis set/backend, SLURM resources, the original command line, and (for TS directories) the active-site indexes and :math:`\sigma`.
-- ``{dir}_checkpoint.pkl`` — a crash-safe checkpoint of all molecules in the directory, rewritten atomically at every state change (a ``.bak`` of the previous good copy is kept).
+- ``{dir}_checkpoint.pkl`` — a crash-safe checkpoint of all molecules in the directory, rewritten atomically at every state change.
 - ``input_files/``, ``log_files/``, ``failed_logs/``, ``slurm_output/`` — job artifacts sorted as the workflow progresses.
 
 Within each directory the workflow steps run as SLURM jobs. Conformer sampling uses the xtb program CREST [1]_ and results in a file named ``collection{molecule name}.pkl`` containing the sampled conformers; JKTS reads this file once it is created and generates input files for the next step. Geometry relaxations use the DFT method and basis set given by ``-method`` and ``-basis_set``. For transition state structures, every TS optimization is validated: the imaginary frequency must lie below ``-freq_cutoff`` (default -100 cm⁻¹) and its normal mode must correspond to hydrogen transfer at a geometrically sane active site; structures failing validation are corrected and resubmitted once before being dropped. Duplicate conformers are filtered out automatically with the ArbAlign program [4]_ after the constrained conformer optimization and after the DLPNO single points.
@@ -77,11 +77,13 @@ where :math:`\sigma` is the reaction path degeneracy of the channel and :math:`\
 Stopping, Restarting and Monitoring Time
 ----------------------------------------
 
-For smaller molecules where the computational task is not as intensive, such as methane, the monitoring duration can be modified with the ``-time`` argument:
+By default, the SLURM wall time of every submitted QC job is estimated from the molecule size and the number of monitoring attempts. It can be set explicitly with the ``-time`` argument (any SLURM time format), which is useful for small molecules or clusters with strict wall-time limits:
 
 .. code-block:: bash
 
     JKTS CH4.xyz -OH -time 1:00:00
+
+Similarly, ``-par`` selects the SLURM partition for the submitted jobs; when it is not given, no partition is requested and the cluster's default partition is used.
 
 If the monitoring ends prematurely — the wall time ran out, the node died, or the run was stopped deliberately with ``-stop`` — the workflow can be resumed from the directory's checkpoint. ``cd`` into the affected directory (e.g. **CH4_H1**) and run:
 
@@ -89,7 +91,7 @@ If the monitoring ends prematurely — the wall time ran out, the node died, or 
 
     JKTS -restart
 
-This reads ``{dir}_checkpoint.pkl`` (falling back to its ``.bak`` copy if the main file is corrupt), restores the original run settings from ``.metadata`` (reaction type, method, basis set, backend, SLURM resources — any flag given explicitly on the restart command line wins), and reconciles every molecule against the SLURM queue and the on-disk log files: finished jobs are recognized and advanced, still-queued jobs are reattached to, and jobs that vanished without finishing are resubmitted — queued jobs are never duplicated. A specific pickle or set of log files can also be given explicitly, e.g. ``JKTS CH4_H1_TS_opt.pkl -restart`` or ``JKTS *.log -restart``. A restart refuses to start while a previous JKTS monitor is still alive in the directory (tracked via ``monitor_pid`` in ``.metadata``).
+This reads ``{dir}_checkpoint.pkl``, restores the original run settings from ``.metadata`` (reaction type, method, basis set, backend, SLURM partition/wall time/CPUs/memory — any flag given explicitly on the restart command line wins), and reconciles every molecule against the SLURM queue and the on-disk log files: finished jobs are recognized and advanced, still-queued jobs are reattached to, and jobs that vanished without finishing are resubmitted — queued jobs are never duplicated. A specific pickle or set of log files can also be given explicitly, e.g. ``JKTS CH4_H1_TS_opt.pkl -restart`` or ``JKTS *.log -restart``. A restart refuses to start while a previous JKTS monitor is still alive in the directory (tracked via ``monitor_pid`` in ``.metadata``).
 
 The same resilience applies during a run: a job that disappears from the queue without a termination string in its log (node failure) is automatically resubmitted after a grace period, with its own per-molecule budget separate from the error-termination budget.
 
@@ -174,9 +176,9 @@ Command Line Arguments
    * - ``-mem``
      - Memory per job in MB [def = 8000]
    * - ``-par``
-     - SLURM partition to use [def = q64]
+     - SLURM partition to use [def = cluster default partition]
    * - ``-time``
-     - SLURM wall time for the monitoring job [def = 240:00:00]
+     - SLURM wall time for each generated QC job [def = estimated from molecule size and ``-attempts``]
    * - ``-interval``
      - Time interval between log file checks in seconds [def = based on molecule size]
    * - ``-initial_delay``
@@ -246,7 +248,7 @@ src/slurm_submit.py
 
 HPC integration: writes per-job sbatch wrapper scripts (``{program}_submit.sh``, or ``{step}_submit.sh`` + ``array.txt`` for arrays) in the molecule directory and polls job status. Set ``JKTS_DRYRUN=1`` to print submit commands instead of submitting.
 
-- ``submit_job()`` / ``submit_array_job()`` — write and run the CREST/G16/ORCA wrapper script; wall time is derived from the polling interval, and DLPNO memory escalates with the error count.
+- ``submit_job()`` / ``submit_array_job()`` — write and run the CREST/G16/ORCA wrapper script; wall time is derived from the polling interval (``compute_interval_and_walltime()``) unless overridden with ``-time``, the ``--partition`` line is omitted when ``-par`` is not given, G16/ORCA scratch prefers ``$SCRATCH``, then ``$TMPDIR``, then ``/tmp``, and DLPNO memory escalates with the error count.
 - ``update_molecules_status()`` / ``parse_job_statuses()`` — query ``squeue`` per unique job id and set each molecule's status (``running`` / ``pending`` / ``completed or not found`` / ``unknown`` when squeue itself fails — never treated as job loss).
 - ``get_interval_seconds()`` — heuristic polling interval from heavy-atom count and step type.
 - ``_run_submit_script()`` — runs sbatch with retries on transient QOS/submit-limit rejections.
@@ -256,8 +258,8 @@ src/checkpoint.py
 
 Crash-safe checkpointing; all pickle writes in the tree go through this module.
 
-- ``atomic_pickle_dump()`` — temp file + fsync + ``os.replace``, previous copy rotated to ``.bak`` first, so a crash always leaves one readable copy.
-- ``load_pickle_with_fallback()`` — load a pickle, falling back to ``.bak`` if the main file is missing or corrupt.
+- ``atomic_pickle_dump()`` — temp file + fsync + ``os.replace``; since the rename is atomic and the data is already durable, a crash always leaves the target holding either the old or the new copy, intact.
+- ``load_pickle()`` — load a pickle, returning ``None`` if it is missing or unreadable.
 - ``save_checkpoint()`` / ``load_checkpoint()`` — the canonical per-directory ``{dir}_checkpoint.pkl``: the active batch merged with the already-finished molecules, written under a lock and never raising.
 
 src/metadata.py
@@ -312,7 +314,7 @@ Result formatting: ``RateResult`` (namedtuple with k, :math:`\kappa`, Ea, partit
 src/output.py
 -------------
 
-Logging. One ``Logger`` per working directory writes timestamped, severity-tagged lines to the directory's ``log`` file and echoes state changes to the terminal. Severities: ``info`` (file-only detail), ``event``/``success`` (file + stdout), ``warning``/``error`` (prefixed, errors to stderr), ``results`` (framed between ``=`` rules). Thread-safe (per-logger file lock + process-wide terminal lock). ``console`` is a module-level terminal-only logger for code without directory context; ``banner()`` prints the startup summary.
+Logging. A single module-level ``logger`` serves the whole process — each JKTS process owns exactly one working directory, so there is exactly one ``log``. ``main()`` calls ``logger.bind()`` to point it at that directory's ``log`` file; until then, and for runs that own no directory (``-init``, ``-info``, ``-movie``), it writes to the terminal only. It writes timestamped, severity-tagged lines to the file and echoes state changes to the terminal. Severities: ``info`` (file-only detail, or terminal when unbound), ``event``/``success`` (file + stdout), ``warning``/``error`` (prefixed, errors to stderr), ``results`` (framed between ``=`` rules). Thread-safe (process-wide file and terminal locks). ``monitoring.py`` receives the same object as its ``logger`` parameter, which lets tests substitute their own. ``banner()`` prints the startup summary.
 
 src/runtime.py
 --------------

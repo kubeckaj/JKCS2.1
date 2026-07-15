@@ -8,7 +8,7 @@ import checkpoint
 import runtime
 from classes import Molecule
 from metadata import load_metadata, update_metadata
-from output import Logger, console, banner
+from output import logger, banner
 from qc_input import mkdir
 from monitoring import handle_termination, handle_input_molecules
 from conformer_tools import initiate_conformers, collect_DFT_and_DLPNO
@@ -33,7 +33,7 @@ def guard_and_write_pid_file():
             except (OSError, ValueError):
                 pass  # unreadable pid or the process is gone
             else:
-                console.error(f"A JKTS monitor (pid {old_pid}) still appears to be running in this directory. "
+                logger.error(f"A JKTS monitor (pid {old_pid}) still appears to be running in this directory. "
                               f"Stop it first (kill {old_pid}) or clear 'monitor_pid' in .metadata if it is stale.")
                 sys.exit(1)
     update_metadata(runtime.start_dir, monitor_pid=os.getpid())
@@ -63,6 +63,7 @@ def restore_settings_from_metadata(parser, logger):
     for key, value in (('method', meta.get('method')),
                        ('basis_set', meta.get('basis_set')),
                        ('par', slurm.get('par')),
+                       ('time', slurm.get('time')),
                        ('cpu', slurm.get('cpu')),
                        ('mem', slurm.get('mem'))):
         if value is not None and getattr(runtime.args, key) == parser.get_default(key):
@@ -71,6 +72,12 @@ def restore_settings_from_metadata(parser, logger):
 
     if restored:
         logger.info(f"Restored settings from .metadata: {', '.join(restored)}")
+
+
+def slurm_time(value):
+    if not re.fullmatch(r'\d+|\d+:\d{1,2}|\d+:\d{1,2}:\d{1,2}|\d+-\d{1,2}(:\d{1,2}(:\d{1,2})?)?', value):
+        raise argparse.ArgumentTypeError(f"'{value}' is not a valid SLURM time (e.g. 72:00:00, 3-00:00:00)")
+    return value
 
 
 def str2bool(v):
@@ -121,7 +128,7 @@ def read_input():
             molecule.name = file_name
             f(molecule)
         else:
-            console.error(f"Unsupported input file '{input_file}'. Without a specified reaction type, JKTS expects '.pkl', '.log', '.out', '.com', '.inp', or '.xyz' files.")
+            logger.error(f"Unsupported input file '{input_file}'. Without a specified reaction type, JKTS expects '.pkl', '.log', '.out', '.com', '.inp', or '.xyz' files.")
             sys.exit(1)
 
     molecules.sort(key=extract_conf_number)
@@ -167,8 +174,8 @@ def build_parser():
                 JKTS -smiles CO -Cl  # Methanol hydrogen abstraction with Cl radical
                 JKTS molecule.xyz -NO3  # Nighttime H abstraction with NO3 radical
                 JKTS CH4_H1_opt_constrain.pkl -info
-                JKTS benzene.xyz -OH -ORCA -par qtest -stop
-                JKTS *TS.log -time 5:00:00
+                JKTS benzene.xyz -OH -ORCA -stop
+                JKTS *TS.log -rerun -time 5:00:00
                                      ''')
 
     parser.add_argument('input_files', metavar='reactant.xyz', nargs='*', help='Input files (.xyz, .pkl, .log, .out, .com, .inp)')
@@ -185,7 +192,6 @@ def build_parser():
     workflow.add_argument('-stop', action='store_true', help='Stop after the current workflow step completes instead of continuing automatically (resume with -restart)')
     workflow.add_argument('-restart', action='store_true', help='Resume the workflow after a crash or -stop: reattaches to queued jobs and resubmits lost ones. Reads the given .pkl/.log/.out files, or the {dir}_checkpoint.pkl in the current directory if no file is given')
     workflow.add_argument('-k', type=str2bool, metavar='<bool>', default=True, help='Calculate the MC-TST rate constant at the end [def: true]')
-    workflow.add_argument('-time', metavar="hh:mm:ss", type=str, default=None, help='SLURM wall time for the monitoring job (used by the JKTS wrapper) [def: 240:00:00]')
 
     qc = parser.add_argument_group("QC settings")
     qc.add_argument('-G16', action='store_true', help='Use Gaussian16 (default)')
@@ -200,7 +206,8 @@ def build_parser():
     qc.add_argument('-freq_cutoff', metavar="int", type=int, default=-100, help='TS imaginary frequency cutoff [def: -100 cm^-1]')
 
     slurm = parser.add_argument_group("SLURM and monitoring")
-    slurm.add_argument('-par', metavar="partition", type=str, default="q64", help='SLURM partition [def: q64]')
+    slurm.add_argument('-par', metavar="partition", type=str, default=None, help='SLURM partition [def: cluster default partition]')
+    slurm.add_argument('-time', metavar="hh:mm:ss", type=slurm_time, default=None, help='SLURM wall time for each generated QC job [def: estimated from molecule size and -attempts]')
     slurm.add_argument('-cpu', metavar="int", type=int, default=4, help='Number of CPUs per job [def: 4]')
     slurm.add_argument('-mem', metavar="int", type=int, default=8000, help='Memory per job in MB [def: 8000]')
     slurm.add_argument('-interval', metavar="int", type=int, help='Seconds between log file checks [def: based on molecule size]')
@@ -262,7 +269,10 @@ def main():
     final_reactants = []
     final_products = []
     molecules = []
-    logger = Logger(os.path.join(runtime.start_dir, "log"))
+    # The per-directory log belongs to a workflow run. -init sets up the parent
+    # directory and -info/-movie only report, so those keep talking to the terminal.
+    if not (runtime.args.init or runtime.args.info or runtime.args.movie):
+        logger.bind(os.path.join(runtime.start_dir, "log"))
 
     if runtime.args.restart or runtime.args.rerun:
         restore_settings_from_metadata(parser, logger)
@@ -315,7 +325,8 @@ def main():
                 ("Reaction", f"H abstraction by {radical}"),
                 ("Sites", f"{len(reacted_molecules)} unique abstraction site(s)"),
                 ("Method", f"{runtime.args.method} {runtime.args.basis_set}   backend: {runtime.QC_program}"),
-                ("SLURM", f"partition {runtime.args.par}, {runtime.args.cpu} CPUs, {runtime.args.mem} MB"),
+                ("SLURM", f"partition {runtime.args.par or 'cluster default'}, {runtime.args.cpu} CPUs, {runtime.args.mem} MB"
+                          + (f", wall time {runtime.args.time}" if runtime.args.time else "")),
                 ("Workflows", ', '.join(workflow_dirs))])
 
     elif runtime.args.info:
@@ -334,7 +345,7 @@ def main():
                     f.write(f"{m.name}\n")
                     for atom, coord in zip(m.atoms, m.coordinates):
                         f.write(f"{atom} {coord[0]} {coord[1]} {coord[2]}\n")
-        console.success("movie.xyz generated")
+        logger.success("movie.xyz generated")
 
     else:
         if runtime.args.smiles:
@@ -343,11 +354,11 @@ def main():
         if runtime.args.restart and not runtime.args.input_files:
             # Bare 'JKTS -restart': resume from the canonical checkpoint in cwd
             ckpt_path = checkpoint.checkpoint_path(runtime.start_dir)
-            if os.path.exists(ckpt_path) or os.path.exists(ckpt_path + '.bak'):
+            if os.path.exists(ckpt_path):
                 runtime.args.input_files = [ckpt_path]
-                console.event(f"Restarting from checkpoint {os.path.basename(ckpt_path)}")
+                logger.event(f"Restarting from checkpoint {os.path.basename(ckpt_path)}")
             else:
-                console.error(f"No checkpoint file ({os.path.basename(ckpt_path)}) found in {runtime.start_dir}")
+                logger.error(f"No checkpoint file ({os.path.basename(ckpt_path)}) found in {runtime.start_dir}")
                 sys.exit(1)
         for n, input_file in enumerate(runtime.args.input_files, start=1):
             file_name, file_type = os.path.splitext(input_file)
@@ -380,9 +391,9 @@ def main():
 
             elif file_type == '.pkl':
                 from pandas import DataFrame
-                df = checkpoint.load_pickle_with_fallback(input_file)
+                df = checkpoint.load_pickle(input_file)
                 if df is None:
-                    console.error(f"Could not read pickle file {input_file} (nor a .bak backup)")
+                    logger.error(f"Could not read pickle file {input_file}")
                     sys.exit(1)
                 if isinstance(df, DataFrame):
                     conformer_molecules = initiate_conformers(input_file)
@@ -411,13 +422,13 @@ def main():
                 input_molecules.append(molecule)
 
             else:
-                console.error(f"File type {file_type} is not supported")
+                logger.error(f"File type {file_type} is not supported")
                 sys.exit(1)
 
         if final_TS and final_reactants:
             symmetry = read_reaction_path_degeneracy(runtime.start_dir)
             result = rate_constant(final_TS, final_reactants, final_products, symmetry=symmetry)
-            console.results(format_rate(result))
+            logger.results(format_rate(result))
             exit()
 
         if input_molecules and file_type != '.xyz':

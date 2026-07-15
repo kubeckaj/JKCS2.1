@@ -3,8 +3,9 @@ import sys
 import threading
 from datetime import datetime
 
-# Process-wide lock so concurrent monitoring threads cannot tear lines.
+# Process-wide locks so concurrent monitoring threads cannot tear lines.
 _TERM_LOCK = threading.Lock()
+_FILE_LOCK = threading.Lock()
 
 # level -> (log file tag, terminal prefix)
 _LEVELS = {
@@ -27,19 +28,21 @@ def _write_terminal(stream, text):
 
 
 class Logger:
-    def __init__(self, log_file, tag=None):
+    def __init__(self, log_file=None, tag=None):
+        self.bind(log_file, tag)
+
+    def bind(self, log_file, tag=None):
         self.log_file = log_file
         if tag is None and log_file:
             tag = os.path.basename(os.path.dirname(os.path.abspath(log_file)))
         self.tag = tag
-        self._file_lock = threading.Lock()
 
     def _write_file(self, level_tag, message):
         if not self.log_file:
             return
         stamp = _timestamp()
         lines = ''.join(f"{stamp} [{level_tag}] {line}\n" for line in message.split('\n'))
-        with self._file_lock:
+        with _FILE_LOCK:
             with open(self.log_file, 'a') as f:
                 f.write(lines)
 
@@ -72,7 +75,9 @@ class Logger:
         _write_terminal(sys.stdout, box(text))
 
 
-console = Logger(log_file=None)
+# The one logger of this process. main() binds it to the working directory's log
+# file; until then (and for runs that own no directory) it writes to the terminal.
+logger = Logger()
 
 
 def box(text):

@@ -1,6 +1,6 @@
 import re
 import runtime
-from output import console
+from output import logger
 
 
 def extract_normal_coordinates(molecule):
@@ -29,7 +29,7 @@ def extract_normal_coordinates(molecule):
                     break
         return xyz_coordinates[:-1]
     else:
-        console.warning("extract_normal_coordinates() was called, but only works for G16 log files")
+        logger.warning("extract_normal_coordinates() was called, but only works for G16 log files")
 
 
 def is_aldehyde(molecule, C_index, H_index):
@@ -175,7 +175,7 @@ def check_transition_state(molecule, threshold=0.5):
         normal_coords = extract_normal_coordinates(molecule)
 
         if len(normal_coords) != len(molecule.coordinates):
-            console.error(f"{molecule.name}: number of normal mode displacements does not match the number of atoms.")
+            logger.error(f"{molecule.name}: number of normal mode displacements does not match the number of atoms.")
             return False, ""
 
         displaced_coordinates_plus = [array(original) + array(displacement) for original, displacement in zip(molecule.coordinates, normal_coords)]

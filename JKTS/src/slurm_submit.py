@@ -4,7 +4,7 @@ import re
 import sys
 import time
 
-from output import console
+from output import logger
 #########################################SUBMIT JOBS############################
 
 # Transient SLURM rejections that clear on their own as queued jobs drain.
@@ -16,7 +16,7 @@ _TRANSIENT_SUBMIT_MARKERS = (
 
 def _run_submit_script(submit_command, retry_wait=60, max_attempts=240):
     if os.environ.get('JKTS_DRYRUN'):
-        console.event(f"[dry-run] would submit: {' '.join(submit_command)}")
+        logger.event(f"[dry-run] would submit: {' '.join(submit_command)}")
         return subprocess.CompletedProcess(submit_command, 0, stdout='Submitted batch job 999999\n', stderr='')
     for attempt in range(1, max_attempts + 1):
         result = subprocess.run(submit_command, capture_output=True, text=True)
@@ -27,7 +27,7 @@ def _run_submit_script(submit_command, retry_wait=60, max_attempts=240):
             raise subprocess.CalledProcessError(result.returncode, submit_command,
                                                 output=result.stdout, stderr=stderr)
         if attempt < max_attempts:
-            console.warning(f"Submission held by SLURM QOS/submit limit (attempt {attempt}/{max_attempts}); "
+            logger.warning(f"Submission held by SLURM QOS/submit limit (attempt {attempt}/{max_attempts}); "
                             f"waiting {retry_wait}s for the queue to drain and retrying.")
             time.sleep(retry_wait)
     raise subprocess.CalledProcessError(result.returncode, submit_command,
@@ -48,18 +48,7 @@ def submit_array_job(molecules, args, nnodes=1):
     ncpus = args.cpu
     mem = args.mem
     partition = args.par
-    if partition == 'qtest':
-        interval = min(get_interval_seconds(molecules[0]), 3600/args.attempts)
-        slurm_time = '1:00:00'
-    else:
-        if 'aug' in args.basis_set:
-            interval = 8640
-        else:
-            interval = get_interval_seconds(molecules[0])
-            if args.F12:
-                interval *= 5
-        total_seconds = interval * (args.attempts + 3)
-        slurm_time = seconds_to_hours(total_seconds)
+    interval, slurm_time = compute_interval_and_walltime(molecules[0], args)
     
     if job_program.lower() == "orca" or job_program.lower() == "g16":
         if molecules[0].current_step == 'DLPNO':
@@ -112,7 +101,8 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write(f"#SBATCH --ntasks={ncpus}\n")
         file.write(f"#SBATCH --output=./slurm_output/{job_name}_%A_%a.out\n")
         file.write(f"#SBATCH --time={slurm_time}\n")
-        file.write(f"#SBATCH --partition={partition}\n")
+        if partition:
+            file.write(f"#SBATCH --partition={partition}\n")
         file.write(f"#SBATCH --no-requeue\n")
         file.write(f"#SBATCH --mem={program_mem}\n")
         file.write(f"#SBATCH --array=$ARRAY\n\n")
@@ -125,7 +115,7 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write("eval \\$MODULE_G16\n")
             file.write("export GAUSS_EXEDIR=\\${PATH_G16}g16/\n")
             file.write("# create and set scratch dir\n")
-            file.write("GAUSS_SCRDIR=\\${TMPDIR:-/tmp/gauss_\\${SLURM_JOB_ID}}\n")
+            file.write("GAUSS_SCRDIR=\\${SCRATCH:-\\${TMPDIR:-/tmp}}/gauss_\\${SLURM_JOB_ID}\n")
             file.write("mkdir -p \\$GAUSS_SCRDIR || exit \\$?\n")
             file.write(f"cd $PWD\n")
             file.write("export GAUSS_SCRDIR\n\n")
@@ -142,7 +132,7 @@ def submit_array_job(molecules, args, nnodes=1):
             file.write("eval \\$MODULE_ORCA\n")
 
             file.write("# create and set scratch dir\n")
-            file.write("ORCA_SCRDIR=\\${TMPDIR:-/tmp/orca_\\${SLURM_JOB_ID}}\n")
+            file.write("ORCA_SCRDIR=\\${SCRATCH:-\\${TMPDIR:-/tmp}}/orca_\\${SLURM_JOB_ID}\n")
             file.write("mkdir -p \\$ORCA_SCRDIR || exit \\$?\n")
 
             file.write("cd \\$ORCA_SCRDIR\n")
@@ -176,7 +166,7 @@ def submit_array_job(molecules, args, nnodes=1):
         return job_id, interval
     except (subprocess.CalledProcessError, RuntimeError) as e:
         stderr = getattr(e, 'stderr', str(e))
-        console.error(f"Job submission failed (exit {getattr(e, 'returncode', 1)}): {stderr.strip()}. Check the *_submit.sh script in {dir}")
+        logger.error(f"Job submission failed (exit {getattr(e, 'returncode', 1)}): {stderr.strip()}. Check the *_submit.sh script in {dir}")
         sys.exit(1)
 
 
@@ -188,18 +178,7 @@ def submit_job(molecule, args, nnodes=1):
     ncpus = args.cpu
     mem = args.mem
     partition = args.par
-    if partition == 'qtest':
-        interval = min(get_interval_seconds(molecule), 3600/args.attempts)
-        slurm_time = '1:00:00'
-    else:
-        if 'aug' in args.basis_set:
-            interval = 8640
-        else:
-            interval = get_interval_seconds(molecule)
-            if args.F12:
-                interval *= 5
-        total_seconds = interval * (args.attempts + 3)
-        slurm_time = seconds_to_hours(total_seconds)
+    interval, slurm_time = compute_interval_and_walltime(molecule, args)
 
     if molecule.reactant:
         crest_input = f"{molecule.name}.xyz --gfn{args.gfn} --ewin {args.ewin} --noreftopo --tstep 1"
@@ -226,6 +205,11 @@ def submit_job(molecule, args, nnodes=1):
     else:
         account_string = ''
 
+    if partition:
+        partition_string = f'#SBATCH --partition={partition}'
+    else:
+        partition_string = ''
+
 
     script_content_crest = f"""#!/bin/bash
 IN=$1
@@ -242,7 +226,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --ntasks={ncpus}
 #SBATCH --output=./slurm_output/${{JOB}}_%j.output
 #SBATCH --time={slurm_time}
-#SBATCH --partition={partition}
+{partition_string}
 #SBATCH --no-requeue
 #SBATCH --mem={program_mem}
 {account_string}
@@ -276,7 +260,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --ntasks={nnodes}
 #SBATCH --output=./slurm_output/${{JOB}}_%j.output
 #SBATCH --time={slurm_time}
-#SBATCH --partition={partition}
+{partition_string}
 #SBATCH --no-requeue
 #SBATCH --mem={program_mem}
 {account_string}
@@ -286,7 +270,7 @@ eval \\$MODULE_G16
 export GAUSS_EXEDIR=\\${{PATH_G16}}/g16/
 
 # Create scratch folder
-GAUSS_SCRDIR=\\${{TMPDIR:-/tmp/gauss_\\${{SLURM_JOB_ID}}}}
+GAUSS_SCRDIR=\\${{SCRATCH:-\\${{TMPDIR:-/tmp}}}}/gauss_\\${{SLURM_JOB_ID}}
 mkdir -p \\$GAUSS_SCRDIR || exit \\$?
 cd \\$PWD
 export GAUSS_SCRDIR
@@ -313,7 +297,7 @@ cat > $SUBMIT <<!EOF
 #SBATCH --ntasks={ncpus}
 #SBATCH --output=./slurm_output/${{JOB}}_%j.output
 #SBATCH --time={slurm_time}
-#SBATCH --partition={partition}
+{partition_string}
 #SBATCH --no-requeue
 #SBATCH --mem={program_mem}
 {account_string}
@@ -323,7 +307,7 @@ export LD_LIBRARY_PATH=\\$PATH_ORCA:\\$LD_LIBRARY_PATH
 eval \\$MODULE_ORCA
 
 # create and set scratch dir
-ORCA_SCRDIR=\\${{TMPDIR:-/tmp/orca_\\${{SLURM_JOB_ID}}}}
+ORCA_SCRDIR=\\${{SCRATCH:-\\${{TMPDIR:-/tmp}}}}/orca_\\${{SLURM_JOB_ID}}
 mkdir -p \\$ORCA_SCRDIR || exit \\$?
 
 cd \\$ORCA_SCRDIR
@@ -352,7 +336,7 @@ sbatch $SUBMIT
         return job_id, interval
     except (subprocess.CalledProcessError, RuntimeError) as e:
         stderr = getattr(e, 'stderr', str(e))
-        console.error(f"Job submission failed (exit {getattr(e, 'returncode', 1)}): {stderr.strip()}. Check the *_submit.sh script in {dir}")
+        logger.error(f"Job submission failed (exit {getattr(e, 'returncode', 1)}): {stderr.strip()}. Check the *_submit.sh script in {dir}")
         sys.exit(1)
 
 
@@ -418,7 +402,7 @@ def extract_job_id(output):
     if match:
         return int(match.group(1))
     else:
-        console.error("Could not extract job ID from sbatch output.")
+        logger.error("Could not extract job ID from sbatch output.")
         return None
 
 
@@ -466,3 +450,17 @@ def seconds_to_hours(seconds):
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     return f"{hours:02d}:{minutes:02d}:00"
+
+
+def compute_interval_and_walltime(molecule, args):
+    if 'aug' in args.basis_set:
+        interval = 8640
+    else:
+        interval = get_interval_seconds(molecule)
+        if args.F12:
+            interval *= 5
+    if args.time:
+        slurm_time = args.time
+    else:
+        slurm_time = seconds_to_hours(interval * (args.attempts + 3))
+    return interval, slurm_time

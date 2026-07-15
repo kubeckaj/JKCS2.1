@@ -6,16 +6,12 @@ INPUT="$@"
 echo "COMMAND: $(basename $0) $@" >> "${PWD}/output"
 
 # Default values
-SLURM_TIME="240:00:00"
-SLURM_PARTITION="q64" # removed other partitions
 PYTHON_ARGS=()
 XYZ=0
 PKL=0
 INFO=0
 RESTART=0
-PAR_FLAG=0
 COLLECT=0
-time_arg="" 
 PICKLE=0
 SKIP_REACTANTS=0
 SKIP_PRODUCTS=0
@@ -65,23 +61,7 @@ for arg in "$@"; do
     *.pkl)
       PKL=1
       ;;
-    -time)
-      time_arg="$arg"
-      ;;
-    -par)
-      PAR_FLAG=1
-      ;;
     *)
-      if [[ "$time_arg" == "-time" ]]; then
-        SLURM_TIME="$arg"
-        time_arg=""
-      elif [[ "$PAR_FLAG" -eq 1 ]]; then
-        SLURM_PARTITION="$arg"
-        PAR_FLAG=0
-        if [[ "$SLURM_PARTITION" == "qtest" ]]; then
-            SLURM_TIME="1:00:00"
-        fi
-      fi
       ;;
   esac
 done
@@ -91,8 +71,8 @@ submit_job() {
   local args_string
   args_string=$(printf '%q ' "${PYTHON_ARGS[@]}")
   nohup bash -c "source ~/.JKCSusersetup.txt; program_PYTHON \"$toolspath/main.py\" $args_string" \
-    > "JKTS_${directory}.log" 2>&1 &
-  echo "JKTS monitoring started for $directory (PID: $!, log: JKTS_${directory}.log)"
+    > /dev/null 2>&1 &
+  echo "JKTS monitoring started for $directory (PID: $!, log: $PWD/log)"
 }
 
 

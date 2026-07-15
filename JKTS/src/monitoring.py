@@ -15,9 +15,6 @@ import runtime
 # Workflow steps after which duplicate conformers are filtered out
 FILTER_STEPS = ('opt_constrain_conf', 'DLPNO')
 
-# Node-failure handling: a job absent from squeue whose log never shows a
-# termination string is considered vanished after this many consecutive polls,
-# and each molecule gets this many vanished-job resubmissions before dropping.
 VANISHED_GRACE_POLLS = 3
 MAX_NODE_FAILURES = 3
 
@@ -82,7 +79,7 @@ def termination_status(molecule, logger, quick=False):
         if not xyz_coordinates:
             return False, 'Termination detected but no geometry found in log file'
         molecule.coordinates = xyz_coordinates
-        molecule.update_energy(logger)
+        molecule.update_energy()
         if 'TS' in molecule.current_step:
             ts_check_passed, msg = check_transition_state(molecule)
             if ts_check_passed:
@@ -184,7 +181,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
                 logger.error(f"Dropping conformer {molecule.name} due to repeated error terminations")
                 molecules.pop(i)
                 molecule.move_failed()
-                checkpoint.save_checkpoint(molecules, logger)
+                checkpoint.save_checkpoint(molecules)
                 if all(m.converged for m in molecules):
                     all_converged = True
                     break
@@ -268,7 +265,7 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
             break
 
         if dirty:
-            checkpoint.save_checkpoint(molecules, logger)
+            checkpoint.save_checkpoint(molecules)
 
         if pending_count >= max(1, int(len(molecules) / 1.5)):
             if pending_count == len(molecules):
@@ -297,12 +294,12 @@ def check_convergence(molecules, logger, threads, interval, max_attempts, all_co
             molecules[0].move_files()
             Molecule.molecules_to_pickle(molecules, pickle_path)
             logger.success(f"All {len(molecules)} job(s) converged for step {job_type}")
-            checkpoint.save_checkpoint(molecules, logger)
+            checkpoint.save_checkpoint(molecules)
             if job_type == "DLPNO":
                 with runtime.global_molecules_lock:
                     for molecule in molecules:
                         runtime.global_molecules.append(molecule)
-                checkpoint.save_checkpoint(molecules, logger)
+                checkpoint.save_checkpoint(molecules)
                 submit_missing_partner(molecules, logger, threads)
                 return True
             elif not runtime.args.stop:
@@ -453,7 +450,7 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
                     job_id, _ = submit_job(molecule, runtime.args)
                     molecule.job_id = f"{job_id}"
                     logger.warning(f"{molecule.name}: CREST job disappeared from the queue without producing results (node failure?). Resubmitted as job {job_id}.")
-                checkpoint.save_checkpoint(molecules, logger)
+                checkpoint.save_checkpoint(molecules)
         else:
             crest_missing_polls = 0
             if attempts == 1:
@@ -542,7 +539,7 @@ def submit_and_monitor(molecules, logger, threads):
     if job_id:
         # Persist job id + current step before monitoring starts, so a crash
         # from here on can reattach to the submitted job instead of losing it.
-        checkpoint.save_checkpoint(molecules, logger)
+        checkpoint.save_checkpoint(molecules)
         if molecules[0].current_step == 'crest_sampling':
             thread = Thread(target=check_crest, args=(molecules, logger, threads, interval, runtime.args.attempts))
         else:
@@ -601,7 +598,7 @@ def handle_termination(molecules, logger, threads, converged):
     if conformer_molecules:
         # Record the step advance (and any conformer expansion/filtering) so a
         # crash before submission resumes at this step with a clean resubmit.
-        checkpoint.save_checkpoint(conformer_molecules, logger)
+        checkpoint.save_checkpoint(conformer_molecules)
         submit_and_monitor(conformer_molecules, logger, threads)
 
 
@@ -665,7 +662,7 @@ def reconcile_group(group, step, logger, threads, all_molecules=None):
                         runtime.global_molecules.append(m)
                 known_all = list(runtime.global_molecules)
             known_all += [m for m in known if m not in known_all]
-            checkpoint.save_checkpoint(group, logger)
+            checkpoint.save_checkpoint(group)
             logger.success(f"All {len(group)} DLPNO calculation(s) are converged")
             if submit_missing_partner(group, logger, threads, known=known_all):
                 logger.event("Partner molecule needed for reaction energies was missing; submitted it")
@@ -688,7 +685,7 @@ def reconcile_group(group, step, logger, threads, all_molecules=None):
     if running:
         logger.event(f"Reattaching to {len(running)} queued/running job(s) for step {step} (job id {running[0].job_id})")
 
-    checkpoint.save_checkpoint(group, logger)
+    checkpoint.save_checkpoint(group)
     thread = Thread(target=check_convergence, args=(group, logger, threads, get_interval_seconds(group[0]), runtime.args.attempts))
     threads.append(thread)
     thread.start()

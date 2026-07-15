@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 
 import runtime
-from output import console
+from output import logger
 from ts_validation import is_aldehyde
 from metadata import update_metadata
 
@@ -49,7 +49,7 @@ def mkdir(molecule, crest_constrain_flag=True):
         'method': runtime.args.method,
         'basis_set': runtime.args.basis_set,
         'program': runtime.QC_program,
-        'slurm': {'par': runtime.args.par, 'cpu': runtime.args.cpu, 'mem': runtime.args.mem},
+        'slurm': {'par': runtime.args.par, 'cpu': runtime.args.cpu, 'mem': runtime.args.mem, 'time': runtime.args.time},
         'created': datetime.now().isoformat(timespec='seconds'),
         'jkts_command': ' '.join(sys.argv[1:]),
     }
@@ -183,4 +183,4 @@ def QC_input(molecule, constrain, TS, method=None, basis_set=None):
                         f.write(f"D {C_index} {H_index} {abstractor_index} {XH_index} F\n")
                 f.write("\n")
     else:
-        console.warning(f"QC_input was called but no program was specified for {molecule.name}")
+        logger.warning(f"QC_input was called but no program was specified for {molecule.name}")

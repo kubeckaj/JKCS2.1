@@ -8,8 +8,8 @@ import os
 import random
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDetermineBonds
-from output import console
-from checkpoint import atomic_pickle_dump, load_pickle_with_fallback
+from output import logger
+from checkpoint import atomic_pickle_dump, load_pickle
 from metadata import load_metadata
 
 _G16_SCRATCH_EXTENSIONS = ('.int', '.d2e', '.rwf', '.skr', '.chk')
@@ -167,7 +167,7 @@ class Molecule(Vector):
             if step in self.workflow:
                 self.current_step = step
             else:
-                console.warning(f"Step '{step}' not found in the workflow of {self.name}.")
+                logger.warning(f"Step '{step}' not found in the workflow of {self.name}.")
                 return
         else:
             detected = self.determine_current_step()
@@ -309,7 +309,7 @@ class Molecule(Vector):
                         self.atoms.append(parts[0])
                         self.coordinates.append([float(parts[1]), float(parts[2]), float(parts[3])])
         except FileNotFoundError:
-            console.error(f"File not found: {self.file_path}")
+            logger.error(f"File not found: {self.file_path}")
 
     def save_to_pickle(self, file_path):
         atomic_pickle_dump(self, file_path)
@@ -381,7 +381,7 @@ class Molecule(Vector):
         if self.next_step is not None:
             self.set_current_step(self.next_step)
         else:
-            console.info(f"{self.name}: reached the end of the workflow.")
+            logger.info(f"{self.name}: reached the end of the workflow.")
 
 
     def find_active_site(self, indexes=None):
@@ -472,9 +472,9 @@ class Molecule(Vector):
     
     @staticmethod
     def load_from_pickle(file_path):
-        data = load_pickle_with_fallback(file_path)
+        data = load_pickle(file_path)
         if data is None:
-            raise FileNotFoundError(f"Could not read pickle file (or its .bak backup): {file_path}")
+            raise FileNotFoundError(f"Could not read pickle file: {file_path}")
         return data
 
     @staticmethod
@@ -483,9 +483,9 @@ class Molecule(Vector):
 
     @staticmethod
     def load_molecules_from_pickle(file_path):
-        data = load_pickle_with_fallback(file_path)
+        data = load_pickle(file_path)
         if data is None:
-            raise FileNotFoundError(f"Could not read pickle file (or its .bak backup): {file_path}")
+            raise FileNotFoundError(f"Could not read pickle file: {file_path}")
         return data
 
     @property
@@ -508,7 +508,7 @@ class Molecule(Vector):
             raise ValueError(f"Unsupported program: {value}")
 
 
-    def update_energy(self, logger=None, log_file_path=None, DLPNO=False, program=None):
+    def update_energy(self, log_file_path=None, DLPNO=False, program=None):
         file_path = log_file_path if log_file_path else self.log_file_path
         program = program if program else self.program
 
@@ -536,13 +536,13 @@ class Molecule(Vector):
                         # Retry-path logs contain the spectrum twice; keep only the last complete 3N-6 (3N-5 linear) block
                         n = 3*len(self.atoms) - (5 if len(self.rot_temps) == 1 else 6)
                         if len(flat) != n:
-                            (logger or console).warning(f"{self.name}: parsed {len(flat)} frequencies, expected {n}; keeping last {n}")
+                            logger.warning(f"{self.name}: parsed {len(flat)} frequencies, expected {n}; keeping last {n}")
                         self.vibrational_frequencies = flat[-n:]
                         symmetry_num = re.search(r"Rotational symmetry number\s*(\d+)", log_content)
                         if symmetry_num:
                             self.symmetry_num = int(symmetry_num.group(1))
                         else:
-                            (logger or console).warning(f"No symmetry number found in {self.name}; assuming 1")
+                            logger.warning(f"No symmetry number found in {self.name}; assuming 1")
                             self.symmetry_num = 1
                         mol_mass = re.search(r"Molecular mass:\s+(-?\d+\.\d+)", log_content)
                         self.mol_mass = float(mol_mass.group(1))
@@ -557,7 +557,7 @@ class Molecule(Vector):
                             if correct_qelec != self.mult:
                                 self.Q *= correct_qelec / self.mult
                     elif 'TS' in self.name:
-                        (logger or console).warning(f"No frequencies found in {self.name}")
+                        logger.warning(f"No frequencies found in {self.name}")
 
 
             elif program.lower() == 'orca' or self.current_step == 'DLPNO' or DLPNO:
@@ -731,7 +731,7 @@ class Molecule(Vector):
         # (e.g. 1-butanol CH2 -> sigma=2, ethane -> one TS with sigma=6).
         equivalent_hydrogens = self.equivalent_hydrogen_classes()
         if equivalent_hydrogens is None:
-            console.warning("Hydrogen symmetry classes unavailable (stereocenter detected or bond perception failed); "
+            logger.warning("Hydrogen symmetry classes unavailable (stereocenter detected or bond perception failed); "
                             "falling back to methyl/aldehyde-only equivalence.")
         # Fallback path only. Carbons whose H's are chemically equivalent, so one TS represents them all:
         # methyl CH3 (sigma=3) and formaldehyde's CH2 (both aldehyde H's on the same C, sigma=2)
@@ -1035,10 +1035,10 @@ class Molecule(Vector):
                     elif '|                 C R E S T                  |' in line:
                         return 'crest'
         except FileNotFoundError:
-            console.error(f"File not found: {self.log_file_path}")
+            logger.error(f"File not found: {self.log_file_path}")
             return None
         except Exception as e:
-            console.error(f"Error detecting QC program from {self.log_file_path}: {e}")
+            logger.error(f"Error detecting QC program from {self.log_file_path}: {e}")
             return None
         return None
 
