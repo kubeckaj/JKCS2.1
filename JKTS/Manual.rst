@@ -71,6 +71,8 @@ The final step is an energy correction with DLPNO-CCSD(T) [2]_ [3]_ (or CCSD(T)-
 
 where :math:`\sigma` is the reaction path degeneracy of the channel and :math:`\kappa` the Eckart tunneling coefficient. The results are written to ``molecules.txt`` (per-molecule summary), ``Final_reactants_*.pkl`` / ``Final_products_*.pkl`` / ``Final_TS_*.pkl`` (result pickles), and ``Rate_constants.txt`` (per-channel table with the total rate constant).
 
+The rate constant is evaluated at 298.15 K by default; another temperature can be requested with ``-T`` (in Kelvin). At a non-default temperature, the conformer partition functions are recomputed from the stored frequencies, rotational constants and masses, and the Eckart tunneling coefficient is evaluated at the same temperature. After a workflow has finished, the rate constant can be recomputed from the existing result pickles — for example at a new temperature — without running any new QC jobs, by executing ``JKTS -rate -T 250`` inside the TS channel directory (e.g. **CH4_H1**). This auto-locates ``Final_TS_*.pkl`` in the directory and the reactant/product pickles next to it, and rewrites ``Rate_constants.txt``. Recompute all channels at the same temperature so the total rate stays meaningful.
+
 .. _CREST: https://crest-lab.github.io/crest-docs/
 
 
@@ -91,7 +93,7 @@ If the monitoring ends prematurely — the wall time ran out, the node died, or 
 
     JKTS -restart
 
-This reads ``{dir}_checkpoint.pkl``, restores the original run settings from ``.metadata`` (reaction type, method, basis set, backend, SLURM partition/wall time/CPUs/memory — any flag given explicitly on the restart command line wins), and reconciles every molecule against the SLURM queue and the on-disk log files: finished jobs are recognized and advanced, still-queued jobs are reattached to, and jobs that vanished without finishing are resubmitted — queued jobs are never duplicated. A specific pickle or set of log files can also be given explicitly, e.g. ``JKTS CH4_H1_TS_opt.pkl -restart`` or ``JKTS *.log -restart``. A restart refuses to start while a previous JKTS monitor is still alive in the directory (tracked via ``monitor_pid`` in ``.metadata``).
+This reads ``{dir}_checkpoint.pkl``, restores the original run settings from ``.metadata`` (reaction type, method, basis set, backend, temperature, SLURM partition/wall time/CPUs/memory — any flag given explicitly on the restart command line wins), and reconciles every molecule against the SLURM queue and the on-disk log files: finished jobs are recognized and advanced, still-queued jobs are reattached to, and jobs that vanished without finishing are resubmitted — queued jobs are never duplicated. A specific pickle or set of log files can also be given explicitly, e.g. ``JKTS CH4_H1_TS_opt.pkl -restart`` or ``JKTS *.log -restart``. A restart refuses to start while a previous JKTS monitor is still alive in the directory (tracked via ``monitor_pid`` in ``.metadata``).
 
 The same resilience applies during a run: a job that disappears from the queue without a termination string in its log (node failure) is automatically resubmitted after a grace period, with its own per-molecule budget separate from the error-termination budget.
 
@@ -155,6 +157,10 @@ Command Line Arguments
      - Resume the workflow after a crash or ``-stop``: reattaches to queued jobs and resubmits lost ones. Reads the given .pkl/.log/.out files, or the ``{dir}_checkpoint.pkl`` in the current directory if no file is given
    * - ``-k``
      - Calculate the MC-TST rate constant at the end [def = True]
+   * - ``-T``
+     - Temperature in K for the rate constant [def = 298.15]
+   * - ``-rate``
+     - Recompute the rate constant from finished ``Final_*.pkl`` files without new QC jobs (run in the TS channel directory), e.g. with ``-T`` for a new temperature
    * - ``-method``
      - QC method for optimization and TS search [def = wB97XD]
    * - ``-basis_set``
@@ -212,10 +218,10 @@ src/main.py
 Entry point: argument parsing and mode dispatch.
 
 - ``build_parser()`` — the argparse CLI (the Command Line Arguments table above mirrors it).
-- ``main()`` — mode dispatch: ``-init`` (build TS guesses, create directories, print the banner), ``-info``, ``-movie``; otherwise start or resume the workflow of the current directory, wait for all monitor threads, then write ``molecules.txt``, the ``Final_*.pkl`` result pickle, and — for TS directories with ``-k`` — compute and record the rate constant.
+- ``main()`` — mode dispatch: ``-init`` (build TS guesses, create directories, print the banner), ``-info``, ``-movie``, ``-rate`` (recompute the rate constant from finished ``Final_*.pkl`` files at ``-T``); otherwise start or resume the workflow of the current directory, wait for all monitor threads, then write ``molecules.txt``, the ``Final_*.pkl`` result pickle, and — for TS directories with ``-k`` — compute and record the rate constant.
 - ``read_input()`` — load the given .pkl/.log/.out/.com/.inp/.xyz files into ``Molecule`` objects, sorted by conformer number and capped at ``-max_conformers``.
-- ``restore_settings_from_metadata()`` — on ``-restart``/``-rerun``, restore settings from ``.metadata`` for every flag the user left at its default; explicit flags always win.
-- ``guard_and_write_pid_file()`` — record the monitor pid in ``.metadata`` and refuse to restart while a previous monitor is still alive.
+- ``assemble_and_record_rate()`` — locate the ``Final_reactants_*.pkl`` / ``Final_products_*.pkl`` pickles for the current TS channel directory (parent directory first, then inside the channel directory), compute the rate at ``-T`` and record it via ``results.record_rate``; shared by the end-of-workflow path and ``-rate``.
+- ``str2bool()`` / ``slurm_time()`` — argparse type converters for the ``<bool>`` flags and for ``-time``.
 
 src/classes.py
 --------------
@@ -269,6 +275,8 @@ The single per-directory ``.metadata`` JSON file (see Using JKTS for the fields)
 
 - ``load_metadata()`` — return the metadata dict, falling back read-only to the legacy ``.method``/``.constrain``/``.symmetry`` dotfiles of directories created by older versions.
 - ``update_metadata()`` — atomic, lock-protected read-modify-write; never raises. The first call migrates legacy dotfile values into ``.metadata``.
+- ``restore_settings()`` — on ``-restart``/``-rerun``, restore settings from ``.metadata`` for every flag the user left at its default; explicit flags always win.
+- ``guard_monitor_pid()`` — record the monitor pid in ``.metadata`` and refuse to restart while a previous monitor is still alive.
 
 src/qc_input.py
 ---------------
@@ -303,7 +311,7 @@ src/rate_constant.py
 
 MC-TST rate constants with tunneling.
 
-- ``rate_constant()`` — split off the radical and small product by name, Boltzmann-sum the conformer partition functions, compute the tunneling coefficient, and return a ``RateResult`` with k scaled by :math:`\sigma`.
+- ``rate_constant()`` — split off the radical and small product by name, Boltzmann-sum the conformer partition functions, compute the tunneling coefficient, and return a ``RateResult`` with k scaled by :math:`\sigma`. Takes the temperature as ``T`` (fed from ``-T``); at T ≠ 298.15 K each molecule's ``Q`` is recomputed from its stored spectroscopic data and :math:`\kappa` is evaluated at the same T.
 - ``eckart()`` — Eckart tunneling coefficient :math:`\kappa` from the forward/reverse barriers and the imaginary frequency; returns 1 (with a warning) on failure.
 
 src/results.py

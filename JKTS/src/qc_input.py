@@ -49,6 +49,7 @@ def mkdir(molecule, crest_constrain_flag=True):
         'method': runtime.args.method,
         'basis_set': runtime.args.basis_set,
         'program': runtime.QC_program,
+        'temperature': runtime.args.T,
         'slurm': {'par': runtime.args.par, 'cpu': runtime.args.cpu, 'mem': runtime.args.mem, 'time': runtime.args.time},
         'created': datetime.now().isoformat(timespec='seconds'),
         'jkts_command': ' '.join(sys.argv[1:]),

@@ -1,11 +1,11 @@
 from enum import Enum
-from numpy import array, dot, cos, sin, cross, zeros_like, arccos, degrees, exp, pi, radians, all
-from numpy.linalg import norm
+from numpy import array, dot, cross, exp, pi, radians, all
 import glob
 import re
 import shutil
 import os
 import random
+import geometry
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDetermineBonds
 from output import logger
@@ -39,56 +39,7 @@ TS_workflow               = (Step.OPT_CONSTRAIN, Step.TS_OPT, Step.CREST_SAMPLIN
                              Step.OPT_CONSTRAIN_CONF, Step.TS_OPT_CONF, Step.DLPNO)
 ############################################################################################################################
 
-class Vector:
-    @staticmethod
-    def calculate_vector(coord1, coord2):
-        return array(coord1) - array(coord2)
-
-    @staticmethod
-    def vector_length(vector):
-        return norm(vector)
-
-    @staticmethod
-    def atom_distance(atom1, atom2):
-        return norm(array(atom2) - array(atom1))
-
-    @staticmethod
-    def normalize_vector(vector):
-        norm_ = norm(vector)
-        if norm_ < 1e-8:
-            return zeros_like(vector)
-        return vector / norm_
-
-    @staticmethod
-    def rotate_vector(vector, axis, angle):
-        cos_theta = cos(angle)
-        sin_theta = sin(angle)
-        cross_product = cross(axis, vector)
-        return (vector * cos_theta +
-                cross_product * sin_theta +
-                axis * dot(axis, vector) * (1 - cos_theta))
-
-    @staticmethod
-    def calculate_angle(coord1, coord2, coord3):
-        vector1 = Vector.calculate_vector(coord2, coord1)
-        vector2 = Vector.calculate_vector(coord2, coord3)
-
-        dot_product = dot(vector1, vector2)
-        magnitude1 = Vector.vector_length(vector1)
-        magnitude2 = Vector.vector_length(vector2)
-
-        angle_rad = arccos(dot_product / (magnitude1 * magnitude2))
-        angle_deg = degrees(angle_rad)
-
-        return angle_deg
-
-    @staticmethod
-    def get_upwards_perpendicular_axis(self, direction):
-        # direction is the vector lying between 2 carbons in C=C
-        pass
-
-
-class Molecule(Vector):
+class Molecule
     def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, electronic_energy=None, reactant=False, product=False, program=None, indexes=None, smiles=None, method=''):
         self.smiles = smiles
         self.name = name
@@ -427,7 +378,7 @@ class Molecule(Vector):
                         if atom == 'C':
                             for H, neighbor in enumerate(self.atoms[:-1]):
                                 if neighbor == 'H' and self.is_nearby(C, H):
-                                    if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[Cl_index]) > 120:
+                                    if geometry.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[Cl_index]) > 120:
                                         if self.is_nearby(H, Cl_index, threshold_distance=3.0):
                                             self.constrained_indexes = {'C': C+1, 'H': H+1, 'X': Cl_index+1}
                                             return
@@ -438,7 +389,7 @@ class Molecule(Vector):
                         if atom == 'C':
                             for H, neighbor in enumerate(self.atoms[:-4]):
                                 if neighbor == 'H' and self.is_nearby(C, H):
-                                    if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[X_0based]) > 120:
+                                    if geometry.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[X_0based]) > 120:
                                         if self.is_nearby(H, X_0based, threshold_distance=2.5):
                                             self.constrained_indexes = {'C': C+1, 'H': H+1, 'X': X_0based+1}
                                             return
@@ -451,7 +402,7 @@ class Molecule(Vector):
                         if atom == 'C':
                             for H, neighbor in enumerate(self.atoms):
                                 if neighbor == 'H' and self.is_nearby(C, H):
-                                    if self.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[abstractor_0based]) > 120:
+                                    if geometry.calculate_angle(self.coordinates[C], self.coordinates[H], self.coordinates[abstractor_0based]) > 120:
                                         if self.is_nearby(H, abstractor_0based, threshold_distance=2):
                                             if self.is_nearby(C, abstractor_0based, threshold_distance=2.8):
                                                 self.constrained_indexes = {'C': C+1, 'H': H+1, 'X': abstractor_0based+1, 'XH': H_OH_index+1}
@@ -461,8 +412,7 @@ class Molecule(Vector):
             raise ValueError('Indexes for atoms involved in transition state site could not be determined\n Consider using "-CHO c_index h_index o_index" in the input argument. Open visualizer to manually get indexes')
 
     def is_nearby(self, atom_index1, atoms_index2, threshold_distance=1.7):
-        distance = norm(array(self.coordinates[atom_index1]) - array(self.coordinates[atoms_index2]))
-        return distance < threshold_distance
+        return geometry.atom_distance(self.coordinates[atom_index1], self.coordinates[atoms_index2]) < threshold_distance
 
     @property
     def zero_point_corrected(self):
@@ -603,7 +553,7 @@ class Molecule(Vector):
         k_b = 1.380649e-23  # Boltzmann constant in J/K
         c = 299792458       # Speed of light in m/s
         R = 8.314462618153  # m³ Pa K⁻¹ mol⁻¹
-        P = 100000          # Pa
+        P = 101325          # Pa
 
         # Vibrational partition function
         qvib = 1 
@@ -643,7 +593,7 @@ class Molecule(Vector):
         k_b = 1.380649e-23  # Boltzmann constant in J/K
         c = 299792458       # Speed of light in m/s
         if self.name in ('OH', 'OH_DLPNO'):
-            return 3.019  # ²Π spin-orbit splitting (~140 cm⁻¹)
+            return 2 + 2 * exp(-(140 * 100 * h * c) / (k_b * T))  # ²Π₃/₂ + ²Π₁/₂ at ~140 cm⁻¹
         elif self.name in ('Cl', 'Cl_DLPNO'):
             return 4 + 2 * exp(-(882 * 100 * h * c) / (k_b * T))  # ²P₃/₂ + ²P₁/₂ at 882 cm⁻¹
         else:
@@ -683,34 +633,34 @@ class Molecule(Vector):
             reaction_angle = 173.0
 
         # Set the C-H distance
-        vector_CH = self.calculate_vector(self.coordinates[C_index], self.coordinates[H_index])
-        norm_vector_CH = self.normalize_vector(vector_CH)
+        vector_CH = geometry.calculate_vector(self.coordinates[C_index], self.coordinates[H_index])
+        norm_vector_CH = geometry.normalize_vector(vector_CH)
         new_H_position = self.coordinates[C_index] - (norm_vector_CH * distance_CH)
-        if dot(self.calculate_vector(self.coordinates[C_index], new_H_position), vector_CH) < 0:
+        if dot(geometry.calculate_vector(self.coordinates[C_index], new_H_position), vector_CH) < 0:
             new_H_position = self.coordinates[C_index] + (norm_vector_CH * distance_CH)
 
         # Set the H-C-O angle
         complement_angle = 180.0 - reaction_angle
         rotation_angle = radians(complement_angle)
-        rotation_axis = self.normalize_vector(cross(norm_vector_CH, [1, 0, 0]))
+        rotation_axis = geometry.normalize_vector(cross(norm_vector_CH, [1, 0, 0]))
         if all(rotation_axis == 0):
-            rotation_axis = self.normalize_vector(cross(norm_vector_CH, [0, 1, 0]))
-        rotated_vector = self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
+            rotation_axis = geometry.normalize_vector(cross(norm_vector_CH, [0, 1, 0]))
+        rotated_vector = geometry.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
 
         # Set the H-X distance (X = abstracting atom)
         new_X_position = new_H_position - (rotated_vector * distance_HX)
-        if dot(self.calculate_vector(self.coordinates[C_index], new_X_position), vector_CH) < 0:
+        if dot(geometry.calculate_vector(self.coordinates[C_index], new_X_position), vector_CH) < 0:
             new_X_position = new_H_position + rotated_vector * distance_HX
-        rotation_axis = self.normalize_vector(rotation_axis)
+        rotation_axis = geometry.normalize_vector(rotation_axis)
 
         # Set the XH position (only for OH TS: the H that stays on the radical's O)
         if 'XH' in self.constrained_indexes:
             radical_H_index = self.constrained_indexes['XH'] - 1
             rotation_angle_XH = radians(104.5)
-            new_XH_position = new_X_position - self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
-            XH_angle = self.calculate_angle(new_XH_position, new_X_position, new_H_position)
+            new_XH_position = new_X_position - geometry.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
+            XH_angle = geometry.calculate_angle(new_XH_position, new_X_position, new_H_position)
             if XH_angle < 95:
-                new_XH_position = new_X_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
+                new_XH_position = new_X_position + geometry.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
             self.coordinates[radical_H_index] = new_XH_position
 
         # Update positions
@@ -766,7 +716,7 @@ class Molecule(Vector):
                         distance_HX = 1.84524
                         reaction_angle = 145.391
                         radical_angle = 94.051
-                        perp_axis = self.normalize_vector(self.calculate_vector(original_coords[aldehyde_O], original_coords[aldehyde_C]))
+                        perp_axis = geometry.normalize_vector(geometry.calculate_vector(original_coords[aldehyde_O], original_coords[aldehyde_C]))
                         break
             for j, other_atom in enumerate(atoms):
                 if other_atom == "C" and self.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3:
@@ -775,9 +725,9 @@ class Molecule(Vector):
                             continue
                         carbon_iteration_counter[j] += 1
 
-                    vector_CH = self.calculate_vector(original_coords[j], original_coords[i])
-                    dist_CH = self.vector_length(vector_CH)
-                    norm_vector_CH = self.normalize_vector(vector_CH)
+                    vector_CH = geometry.calculate_vector(original_coords[j], original_coords[i])
+                    dist_CH = geometry.vector_length(vector_CH)
+                    norm_vector_CH = geometry.normalize_vector(vector_CH)
 
                     new_coords = original_coords.copy()
                     new_atoms = atoms.copy()
@@ -794,28 +744,28 @@ class Molecule(Vector):
                         product_molecules.append(product_molecule)
 
                     new_H_position = array(original_coords[i]) + norm_vector_CH * (dist_CH - distance_CH)
-                    new_distance_CH = self.vector_length(self.calculate_vector(new_H_position, new_coords[j]))
+                    new_distance_CH = geometry.vector_length(geometry.calculate_vector(new_H_position, new_coords[j]))
                     if new_distance_CH < dist_CH:
                         new_H_position = array(original_coords[i]) - norm_vector_CH * (dist_CH - new_distance_CH)
 
-                    rotation_axis = self.normalize_vector(cross(perp_axis, norm_vector_CH))
+                    rotation_axis = geometry.normalize_vector(cross(perp_axis, norm_vector_CH))
                     if all(rotation_axis == 0):
-                        rotation_axis = self.normalize_vector(cross(perp_axis2, norm_vector_CH))
+                        rotation_axis = geometry.normalize_vector(cross(perp_axis2, norm_vector_CH))
 
                     rotation_angle = radians(180 - reaction_angle)
-                    rotated_vector = self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
+                    rotated_vector = geometry.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle)
 
                     # Place the abstracting atom X (O for OH/NO3, Cl for Cl) along the reaction vector
                     new_X_position = new_H_position - (rotated_vector * distance_HX)
-                    if self.atom_distance(new_X_position.tolist(), original_coords[j]) < distance_HX:
+                    if geometry.atom_distance(new_X_position.tolist(), original_coords[j]) < distance_HX:
                         new_X_position = new_H_position + (rotated_vector * distance_HX)
 
                     # Compute XH position for OH TS (the H that stays bonded to the abstracting O)
                     rotation_angle_XH = radians(180 - radical_angle)
-                    norm_vector_XH = self.normalize_vector(self.calculate_vector(new_H_position, new_X_position))
-                    new_XH_position = new_X_position - self.rotate_vector(norm_vector_XH, rotation_axis, rotation_angle_XH) * distance_XH
-                    if self.atom_distance(new_XH_position.tolist(), new_H_position.tolist()) < 1.5:
-                        new_XH_position = new_X_position + self.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
+                    norm_vector_XH = geometry.normalize_vector(geometry.calculate_vector(new_H_position, new_X_position))
+                    new_XH_position = new_X_position - geometry.rotate_vector(norm_vector_XH, rotation_axis, rotation_angle_XH) * distance_XH
+                    if geometry.atom_distance(new_XH_position.tolist(), new_H_position.tolist()) < 1.5:
+                        new_XH_position = new_X_position + geometry.rotate_vector(norm_vector_CH, rotation_axis, rotation_angle_XH) * distance_XH
 
                     new_coords[i] = new_H_position.tolist()
 
@@ -823,7 +773,7 @@ class Molecule(Vector):
                         # Cl TS: place Cl at H-Cl TS distance (~1.84 Å)
                         distance_HCl = 1.84
                         new_Cl_position = new_H_position - (rotated_vector * distance_HCl)
-                        if self.atom_distance(new_Cl_position.tolist(), original_coords[j]) < distance_HCl:
+                        if geometry.atom_distance(new_Cl_position.tolist(), original_coords[j]) < distance_HCl:
                             new_Cl_position = new_H_position + (rotated_vector * distance_HCl)
                         new_atoms.append('Cl')
                         new_coords.append(new_Cl_position.tolist())
@@ -840,8 +790,8 @@ class Molecule(Vector):
                         new_coords.append(new_N_position.tolist())
                         # Two terminal O atoms at ±120° from (N→abstracting O) around the C-H axis
                         N_to_X = new_X_position - new_N_position
-                        new_O2_position = new_N_position + self.rotate_vector(N_to_X, norm_vector_CH, radians(120))
-                        new_O3_position = new_N_position + self.rotate_vector(N_to_X, norm_vector_CH, radians(-120))
+                        new_O2_position = new_N_position + geometry.rotate_vector(N_to_X, norm_vector_CH, radians(120))
+                        new_O3_position = new_N_position + geometry.rotate_vector(N_to_X, norm_vector_CH, radians(-120))
                         new_atoms.append('O')
                         new_coords.append(new_O2_position.tolist())
                         new_atoms.append('O')
@@ -865,7 +815,7 @@ class Molecule(Vector):
                     elif j in equivalent_H_carbons:
                         new_molecule.reaction_path_degeneracy = sum(
                             1 for k, a in enumerate(atoms)
-                            if a == 'H' and self.atom_distance(original_coords[j], original_coords[k]) < 1.3)
+                            if a == 'H' and geometry.atom_distance(original_coords[j], original_coords[k]) < 1.3)
                     else:
                         new_molecule.reaction_path_degeneracy = 1
                     abstraction_molecules.append(new_molecule)
@@ -886,14 +836,14 @@ class Molecule(Vector):
             if atoms[i] == "C":
                 for j in range(num_atoms):
                     if atoms[j] == "C" and i != j:
-                        vector_cc = self.calculate_vector(coordinates[i], coordinates[j])
-                        dist_cc = self.vector_length(vector_cc)
+                        vector_cc = geometry.calculate_vector(coordinates[i], coordinates[j])
+                        dist_cc = geometry.vector_length(vector_cc)
                         if dist_cc <= double_bond_distance:
-                            norm_vector_cc = self.normalize_vector(vector_cc)
+                            norm_vector_cc = geometry.normalize_vector(vector_cc)
                             new_coords = coordinates.copy()
 
                             perpendicular_axis = cross(norm_vector_cc, [0,1,0])
-                            perpendicular_axis = self.normalize_vector(perpendicular_axis)
+                            perpendicular_axis = geometry.normalize_vector(perpendicular_axis)
                             # shift carbon
                             new_coords[i][1:] = array(new_coords[i][1:]) + norm_vector_cc * 0.1
                             # update oxygen in OH coordiantes
@@ -902,7 +852,7 @@ class Molecule(Vector):
                             rotation_axis = norm_vector_cc
                             rotation_angle_h = radians(45) 
 
-                            rotated_vector_h = self.rotate_vector(perpendicular_axis, rotation_axis, rotation_angle_h)
+                            rotated_vector_h = geometry.rotate_vector(perpendicular_axis, rotation_axis, rotation_angle_h)
 
                             hydrogen_coords = oxygen_coords + rotated_vector_h * dist_OH
                             
@@ -967,22 +917,22 @@ class Molecule(Vector):
 
         for i, atom in enumerate(self.atoms):
             if atom == 'C':
-                H_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'H' and self.atom_distance(self.coordinates[i], self.coordinates[j]) < distance]
+                H_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'H' and geometry.atom_distance(self.coordinates[i], self.coordinates[j]) < distance]
                 if len(H_neighbors) >= 3:
                     # Check for neighboring carbons that could be part of a ketone
-                    C_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'C' and self.atom_distance(self.coordinates[i], self.coordinates[j]) < distance]
+                    C_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'C' and geometry.atom_distance(self.coordinates[i], self.coordinates[j]) < distance]
                     for C_neighbor in C_neighbors: # Look for an oxygen atom double-bonded to the neighboring carbon
-                        O_neighbors = [k for k, other_atom in enumerate(self.atoms) if other_atom == 'O' and self.atom_distance(self.coordinates[C_neighbor], self.coordinates[k]) < distance]
+                        O_neighbors = [k for k, other_atom in enumerate(self.atoms) if other_atom == 'O' and geometry.atom_distance(self.coordinates[C_neighbor], self.coordinates[k]) < distance]
                         for O in O_neighbors: # Check the angle to see if it's roughly 109.5 degrees, indicative of a ketone
-                            angle = self.calculate_angle(self.coordinates[i], self.coordinates[C_neighbor], self.coordinates[O])
+                            angle = geometry.calculate_angle(self.coordinates[i], self.coordinates[C_neighbor], self.coordinates[O])
                             if abs(angle - 109.5) <= angle_tolerance:
                                 ketone_methyl_groups.append({'methyl_C': i, 'ketone_C': C_neighbor, 'O': O})
                     methyl_C_indexes.append(i)
                 elif len(H_neighbors) in {1, 2}:
                     # Carbonyl C=O only (~1.20 Å), not a carbinol C-OH
-                    O_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'O' and self.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3]
+                    O_neighbors = [j for j, other_atom in enumerate(self.atoms) if other_atom == 'O' and geometry.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3]
                     for O in O_neighbors:
-                        O_has_H = any(other_atom == 'H' and self.atom_distance(self.coordinates[O], self.coordinates[k]) < 1.1
+                        O_has_H = any(other_atom == 'H' and geometry.atom_distance(self.coordinates[O], self.coordinates[k]) < 1.1
                                       for k, other_atom in enumerate(self.atoms))
                         if O_has_H:
                             continue
@@ -1018,7 +968,7 @@ class Molecule(Vector):
         O_index = []
         for i, atom in enumerate(self.coordinates):
             if atom[0] == "O":
-                neighbors = sum(1 for j, other_atom in enumerate(self.coordinates) if i != j and self.atom_distance(atom[1:], other_atom[1:]) < distance)
+                neighbors = sum(1 for j, other_atom in enumerate(self.coordinates) if i != j and geometry.atom_distance(atom[1:], other_atom[1:]) < distance)
                 if neighbors == 1:
                     O_index.append(i)
         return O_index[0]
@@ -1094,8 +1044,8 @@ class Molecule(Vector):
         # Calculate bond length errors
         for i in range(len(self.atoms)):
             for j in range(i + 1, len(self.atoms)):
-                dist1 = Vector.atom_distance(self.coordinates[i], self.coordinates[j])
-                dist2 = Vector.atom_distance(mol2.coordinates[i], mol2.coordinates[j])
+                dist1 = geometry.atom_distance(self.coordinates[i], self.coordinates[j])
+                dist2 = geometry.atom_distance(mol2.coordinates[i], mol2.coordinates[j])
                 bond_length_errors.append(abs(dist1 - dist2))
 
         # Calculate bond angle errors
@@ -1103,8 +1053,8 @@ class Molecule(Vector):
             for j in range(len(self.atoms)):
                 for k in range(j + 1, len(self.atoms)):
                     if i != j and i != k:
-                        angle1 = Vector.calculate_angle(self.coordinates[i], self.coordinates[j], self.coordinates[k])
-                        angle2 = Vector.calculate_angle(mol2.coordinates[i], mol2.coordinates[j], mol2.coordinates[k])
+                        angle1 = geometry.calculate_angle(self.coordinates[i], self.coordinates[j], self.coordinates[k])
+                        angle2 = geometry.calculate_angle(mol2.coordinates[i], mol2.coordinates[j], mol2.coordinates[k])
                         bond_angle_errors.append(abs(angle1 - angle2))
         
         total_weights = len(bond_length_errors)

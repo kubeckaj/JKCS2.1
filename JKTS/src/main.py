@@ -6,158 +6,14 @@ import sys
 
 import checkpoint
 import runtime
+from cli import read_input, str2bool, slurm_time
 from classes import Molecule
-from metadata import load_metadata, update_metadata
+from metadata import guard_monitor_pid, restore_settings, update_metadata
 from output import logger, banner
 from qc_input import mkdir
 from monitoring import handle_termination, handle_input_molecules
-from conformer_tools import initiate_conformers, collect_DFT_and_DLPNO
-from rate_constant import rate_constant
+from rate_constant import rate_constant, assemble_and_record_rate, read_reaction_path_degeneracy
 from results import record_rate, write_molecule_summary, format_rate
-
-
-def read_reaction_path_degeneracy(directory):
-    # σᵢ recorded per TS directory in .metadata by mkdir(); defaults to 1
-    try:
-        return int(load_metadata(directory).get('reaction_path_degeneracy', 1))
-    except (TypeError, ValueError):
-        return 1
-
-
-def guard_and_write_pid_file():
-    if runtime.args.restart or runtime.args.rerun:
-        old_pid = load_metadata(runtime.start_dir).get('monitor_pid')
-        if old_pid:
-            try:
-                os.kill(int(old_pid), 0)
-            except (OSError, ValueError):
-                pass  # unreadable pid or the process is gone
-            else:
-                logger.error(f"A JKTS monitor (pid {old_pid}) still appears to be running in this directory. "
-                              f"Stop it first (kill {old_pid}) or clear 'monitor_pid' in .metadata if it is stale.")
-                sys.exit(1)
-    update_metadata(runtime.start_dir, monitor_pid=os.getpid())
-
-
-def restore_settings_from_metadata(parser, logger):
-    meta = load_metadata(runtime.start_dir)
-    if not meta:
-        return
-    restored = []
-
-    # Reaction type: -OH/-Cl/-NO3 are store_true flags; none given means all False
-    reaction = meta.get('reaction')
-    if reaction in ('OH', 'Cl', 'NO3') and not (runtime.args.OH or runtime.args.Cl or runtime.args.NO3):
-        setattr(runtime.args, reaction, True)
-        restored.append(f"reaction={reaction}")
-
-    # QC backend: -G16/-ORCA are store_true flags; none given means all False
-    program = meta.get('program')
-    if program in ('G16', 'ORCA') and not (runtime.args.G16 or runtime.args.ORCA):
-        runtime.args.ORCA = program == 'ORCA'
-        runtime.args.G16 = program == 'G16'
-        runtime.QC_program = program
-        restored.append(f"program={program}")
-
-    slurm = meta.get('slurm', {})
-    for key, value in (('method', meta.get('method')),
-                       ('basis_set', meta.get('basis_set')),
-                       ('par', slurm.get('par')),
-                       ('time', slurm.get('time')),
-                       ('cpu', slurm.get('cpu')),
-                       ('mem', slurm.get('mem'))):
-        if value is not None and getattr(runtime.args, key) == parser.get_default(key):
-            setattr(runtime.args, key, value)
-            restored.append(f"{key}={value}")
-
-    if restored:
-        logger.info(f"Restored settings from .metadata: {', '.join(restored)}")
-
-
-def slurm_time(value):
-    if not re.fullmatch(r'\d+|\d+:\d{1,2}|\d+:\d{1,2}:\d{1,2}|\d+-\d{1,2}(:\d{1,2}(:\d{1,2})?)?', value):
-        raise argparse.ArgumentTypeError(f"'{value}' is not a valid SLURM time (e.g. 72:00:00, 3-00:00:00)")
-    return value
-
-
-def str2bool(v):
-    if isinstance(v, bool):
-       return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
-def read_input():
-    molecules = []
-    max_conformers = runtime.args.max_conformers
-
-    def f(molecule):
-        if runtime.args.info:
-            molecule.print_items()
-        else:
-            molecule.directory = runtime.start_dir
-            molecules.append(molecule)
-
-    def extract_conf_number(molecule):
-        match = re.search(r'conf(\d+)', molecule.name)
-        return int(match.group(1)) if match else -1
-
-    for input_file in runtime.args.input_files:
-        file_name, file_type = os.path.splitext(input_file)
-        if file_type == '.pkl':
-            from pandas import DataFrame
-            pandas_molecules = Molecule.load_molecules_from_pickle(input_file)
-            if isinstance(pandas_molecules, DataFrame):
-                conformers = initiate_conformers(input_file)
-                for conf in conformers:
-                    f(conf)
-            else:
-                if isinstance(pandas_molecules, list):
-                    for molecule in pandas_molecules:
-                        f(molecule)
-                else:
-                    f(pandas_molecules)
-        elif file_type in ['.log', '.out', '.com', '.inp', '.xyz']:
-            QC_program = 'ORCA' if file_type in ['.out', '.inp'] else 'G16'
-            input_file_path = os.path.join(runtime.start_dir, input_file)
-            molecule = Molecule(input_file_path, indexes=runtime.args.CHO, program=QC_program, method=runtime.args.method)
-            molecule.name = file_name
-            f(molecule)
-        else:
-            logger.error(f"Unsupported input file '{input_file}'. Without a specified reaction type, JKTS expects '.pkl', '.log', '.out', '.com', '.inp', or '.xyz' files.")
-            sys.exit(1)
-
-    molecules.sort(key=extract_conf_number)
-
-    methods = {molecule.method for molecule in molecules}
-
-    if len(methods) == 1:
-        return molecules[:max_conformers]
-    elif len(methods) == 2:
-        molecules_level1 = []
-        molecules_level2 = []
-        for m in molecules:
-            if m.method == list(methods)[0]:
-                molecules_level1.append(m)
-            else:
-                molecules_level2.append(m)
-        return (molecules_level1[:max_conformers], molecules_level2[:max_conformers])
-    elif len(methods) == 3:
-        molecules_level1 = []
-        molecules_level2 = []
-        molecules_level3 = []
-        for m in molecules:
-            if m.method == list(methods)[0]:
-                molecules_level1.append(m)
-            elif m.method == list(methods)[1]:
-                molecules_level2.append(m)
-            else:
-                molecules_level3.append(m)
-        return (molecules_level1[:max_conformers], molecules_level2[:max_conformers], molecules_level3[:max_conformers])
 
 
 def build_parser():
@@ -192,6 +48,8 @@ def build_parser():
     workflow.add_argument('-stop', action='store_true', help='Stop after the current workflow step completes instead of continuing automatically (resume with -restart)')
     workflow.add_argument('-restart', action='store_true', help='Resume the workflow after a crash or -stop: reattaches to queued jobs and resubmits lost ones. Reads the given .pkl/.log/.out files, or the {dir}_checkpoint.pkl in the current directory if no file is given')
     workflow.add_argument('-k', type=str2bool, metavar='<bool>', default=True, help='Calculate the MC-TST rate constant at the end [def: true]')
+    workflow.add_argument('-T', metavar='float', type=float, default=298.15, help='Temperature in K for the rate constant [def: 298.15]')
+    workflow.add_argument('-rate', action='store_true', help='Recompute the rate constant from finished Final_*.pkl files without new QC jobs (run in the TS channel directory), e.g. with -T for a new temperature')
 
     qc = parser.add_argument_group("QC settings")
     qc.add_argument('-G16', action='store_true', help='Use Gaussian16 (default)')
@@ -275,7 +133,7 @@ def main():
         logger.bind(os.path.join(runtime.start_dir, "log"))
 
     if runtime.args.restart or runtime.args.rerun:
-        restore_settings_from_metadata(parser, logger)
+        restore_settings(parser)
 
     if runtime.args.init:
         if runtime.args.smiles:
@@ -338,14 +196,16 @@ def main():
 
     elif runtime.args.movie:
         molecules = read_input()
-        if molecules is not None:
+        if molecules:
             with open(os.path.join(runtime.start_dir, 'movie.xyz'), 'w') as f:
                 for m in molecules:
                     f.write(f"{len(m.atoms)}\n")
                     f.write(f"{m.name}\n")
                     for atom, coord in zip(m.atoms, m.coordinates):
                         f.write(f"{atom} {coord[0]} {coord[1]} {coord[2]}\n")
-        logger.success("movie.xyz generated")
+            logger.success("movie.xyz generated")
+        else:
+            logger.error("No structures could be read from the given input files")
 
     else:
         if runtime.args.smiles:
@@ -359,6 +219,16 @@ def main():
                 logger.event(f"Restarting from checkpoint {os.path.basename(ckpt_path)}")
             else:
                 logger.error(f"No checkpoint file ({os.path.basename(ckpt_path)}) found in {runtime.start_dir}")
+                sys.exit(1)
+        if runtime.args.rate and not runtime.args.input_files:
+            # Bare 'JKTS -rate': recompute the rate from the finished TS pickle in cwd
+            ts_pkl_path = os.path.join(runtime.start_dir, f"Final_TS_{os.path.basename(runtime.start_dir)}.pkl")
+            if os.path.exists(ts_pkl_path):
+                runtime.args.input_files = [ts_pkl_path]
+                logger.event(f"Recomputing rate constant from {os.path.basename(ts_pkl_path)} at T = {runtime.args.T} K")
+            else:
+                logger.error(f"No {os.path.basename(ts_pkl_path)} found in {runtime.start_dir}. "
+                             "Run -rate inside a finished TS channel directory or give the pickle files explicitly.")
                 sys.exit(1)
         for n, input_file in enumerate(runtime.args.input_files, start=1):
             file_name, file_type = os.path.splitext(input_file)
@@ -386,11 +256,12 @@ def main():
                     molecules.append(molecule)
 
                 logger.info(f"JKTS run started (pid {os.getpid()}, method {runtime.args.method} {runtime.args.basis_set}, program {runtime.QC_program})")
-                guard_and_write_pid_file()
+                guard_monitor_pid()
                 handle_termination(molecules, logger, threads, converged=False)
 
             elif file_type == '.pkl':
                 from pandas import DataFrame
+                from conformer_tools import initiate_conformers
                 df = checkpoint.load_pickle(input_file)
                 if df is None:
                     logger.error(f"Could not read pickle file {input_file}")
@@ -427,21 +298,32 @@ def main():
 
         if final_TS and final_reactants:
             symmetry = read_reaction_path_degeneracy(runtime.start_dir)
-            result = rate_constant(final_TS, final_reactants, final_products, symmetry=symmetry)
+            result = rate_constant(final_TS, final_reactants, final_products, T=runtime.args.T, symmetry=symmetry)
+            if runtime.args.rate:
+                record_rate(runtime.start_dir, os.path.basename(runtime.start_dir), result, method=runtime.args.method)
             logger.results(format_rate(result))
+            exit()
+
+        if runtime.args.rate:
+            # 'JKTS -rate' (bare or with just the TS pickle): auto-locate reactants/products
+            if final_TS:
+                assemble_and_record_rate(final_TS)
+            else:
+                logger.error("No finished TS molecules found for -rate (need a Final_TS pickle with converged DLPNO conformers).")
             exit()
 
         if input_molecules and file_type != '.xyz':
             if runtime.args.collect:
+                from conformer_tools import collect_DFT_and_DLPNO
                 collected_molecules = collect_DFT_and_DLPNO(input_molecules)
                 Molecule.molecules_to_pickle(collected_molecules, os.path.join(runtime.start_dir, "collected_molecules.pkl"))
             elif runtime.args.restart:
-                guard_and_write_pid_file()
+                guard_monitor_pid()
                 logger.event(f"JKTS restarted (method {runtime.args.method}, program {runtime.QC_program})")
                 update_metadata(runtime.start_dir, method=runtime.args.method)
                 handle_input_molecules(input_molecules, logger, threads)
             elif runtime.args.rerun:
-                guard_and_write_pid_file()
+                guard_monitor_pid()
                 logger.event(f"JKTS rerunning calculations of type: {input_molecules[0].current_step}")
                 for m in input_molecules:
                     m.converged = False
@@ -498,31 +380,7 @@ def main():
             Molecule.molecules_to_pickle(runtime.global_molecules, TS_pkl_path)
 
             if runtime.args.k:
-                symmetry = read_reaction_path_degeneracy(runtime.start_dir)
-                reactant_pkl_name = os.path.basename(runtime.start_dir).split("_")[0]
-                product_pkl_name = os.path.basename(runtime.start_dir)
-                reactant_pkl_path = os.path.join(os.path.dirname(runtime.start_dir), f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
-                product_pkl_path = os.path.join(os.path.dirname(runtime.start_dir), f'products/Final_products_{product_pkl_name}.pkl')
-                logger.info(f"Looking for reactant and product pickles: {reactant_pkl_path}, {product_pkl_path}")
-                if os.path.exists(reactant_pkl_path):
-                    final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
-                    if os.path.exists(product_pkl_path):
-                        final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
-                    result = rate_constant(runtime.global_molecules, final_reactants, final_products, symmetry=symmetry)
-                    record_rate(os.path.dirname(runtime.start_dir), molecule_name, result, method=runtime.args.method)
-                    logger.results(format_rate(result))
-                else:
-                    reactant_pkl_path = os.path.join(runtime.start_dir, f'reactants/Final_reactants_{reactant_pkl_name}.pkl')
-                    product_pkl_path = os.path.join(runtime.start_dir, f'products/Final_products_{product_pkl_name}.pkl')
-                    logger.info(f"Looking for reactant and product pickles: {reactant_pkl_path}, {product_pkl_path}")
-                    if os.path.exists(reactant_pkl_path) and os.path.exists(product_pkl_path):
-                        final_reactants = Molecule.load_molecules_from_pickle(reactant_pkl_path)
-                        final_products = Molecule.load_molecules_from_pickle(product_pkl_path)
-                        result = rate_constant(runtime.global_molecules, final_reactants, final_products, symmetry=symmetry)
-                        record_rate(runtime.start_dir, molecule_name, result, method=runtime.args.method)
-                        logger.results(format_rate(result))
-                    else:
-                        logger.error(f"Could not find pickle files: {reactant_pkl_path} and {product_pkl_path}")
+                assemble_and_record_rate(runtime.global_molecules)
 
 
 if __name__ == "__main__":

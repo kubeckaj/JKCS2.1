@@ -35,7 +35,7 @@ for arg in "$@"; do
       program_PYTHON "$toolspath/main.py" "${PYTHON_ARGS[@]}" | tee -a "${PWD}/output"
       exit 0
       ;;
-    -test|-info|-pickle|-init|-plot|-movie)
+    -test|-info|-pickle|-init|-plot|-movie|-rate)
       program_PYTHON "$toolspath/main.py" "${PYTHON_ARGS[@]}"
       exit 0
       ;;
