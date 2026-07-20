@@ -1,5 +1,6 @@
 import re
 import runtime
+import geometry
 from output import logger
 
 
@@ -123,10 +124,10 @@ def good_active_site(molecule, aldehyde=False):
         CX_threshold_low, CX_threshold_high = 2.2, 2.8
         angle_threshold_low, angle_threshold_high = 135, 180
 
-    distance_CH = molecule.atom_distance(molecule.coordinates[C_index], molecule.coordinates[H_index])
-    distance_HX = molecule.atom_distance(molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
-    distance_CX = molecule.atom_distance(molecule.coordinates[C_index], molecule.coordinates[abstractor_index])
-    angle_CHX = molecule.calculate_angle(molecule.coordinates[C_index], molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
+    distance_CH = geometry.atom_distance(molecule.coordinates[C_index], molecule.coordinates[H_index])
+    distance_HX = geometry.atom_distance(molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
+    distance_CX = geometry.atom_distance(molecule.coordinates[C_index], molecule.coordinates[abstractor_index])
+    angle_CHX = geometry.calculate_angle(molecule.coordinates[C_index], molecule.coordinates[H_index], molecule.coordinates[abstractor_index])
 
     if (CH_threshold_low <= distance_CH <= CH_threshold_high and
         HX_threshold_low <= distance_HX <= HX_threshold_high and

@@ -39,7 +39,7 @@ TS_workflow               = (Step.OPT_CONSTRAIN, Step.TS_OPT, Step.CREST_SAMPLIN
                              Step.OPT_CONSTRAIN_CONF, Step.TS_OPT_CONF, Step.DLPNO)
 ############################################################################################################################
 
-class Molecule
+class Molecule:
     def __init__(self, file_path=None, log_file_path="", name="", directory="", atoms=None, coordinates=None, electronic_energy=None, reactant=False, product=False, program=None, indexes=None, smiles=None, method=''):
         self.smiles = smiles
         self.name = name
@@ -719,7 +719,7 @@ class Molecule
                         perp_axis = geometry.normalize_vector(geometry.calculate_vector(original_coords[aldehyde_O], original_coords[aldehyde_C]))
                         break
             for j, other_atom in enumerate(atoms):
-                if other_atom == "C" and self.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3:
+                if other_atom == "C" and geometry.atom_distance(self.coordinates[i], self.coordinates[j]) < 1.3:
                     if equivalent_hydrogens is None:
                         if j in equivalent_H_carbons and carbon_iteration_counter[j] >= 1:
                             continue

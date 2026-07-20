@@ -11,6 +11,8 @@ def calculate_vector(coord1, coord2):
 def atom_distance(atom1, atom2):
     return norm(array(atom2) - array(atom1))
 
+def vector_length(vector):
+    return norm(vector)
 
 def normalize_vector(vector):
     norm_ = norm(vector)

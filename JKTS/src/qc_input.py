@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 
 import runtime
+import geometry
 from output import logger
 from ts_validation import is_aldehyde
 from metadata import update_metadata
@@ -19,7 +20,7 @@ def crest_constrain(molecule, force_constant=1):
         abstractor_index = molecule.constrained_indexes['X']
 
         aldehyde, aldehyde_O = is_aldehyde(molecule, C_index, H_index)
-        CHO_angle = molecule.calculate_angle(molecule.coordinates[C_index-1], molecule.coordinates[H_index-1], molecule.coordinates[abstractor_index-1])
+        CHO_angle = geometry.calculate_angle(molecule.coordinates[C_index-1], molecule.coordinates[H_index-1], molecule.coordinates[abstractor_index-1])
 
         with open(molecule.directory + "/constrain.inp", "w") as f:
             f.write("$constrain\n")
