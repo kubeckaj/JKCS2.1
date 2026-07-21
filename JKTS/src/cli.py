@@ -1,6 +1,7 @@
 import sys
 import argparse
 import re
+import os
 import runtime
 from output import logger
 from classes import Molecule
