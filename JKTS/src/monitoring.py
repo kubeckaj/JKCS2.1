@@ -355,6 +355,28 @@ def crest_collection_path(molecule):
     return os.path.join(molecule.directory, f"collection{name}.pkl")
 
 
+# Terminal CREST/xTB self-abort messages. When present, CREST ran to completion
+# and gave up deterministically, so an identical resubmit will fail the same way.
+# A genuine node failure never prints these (the process is killed mid-run).
+CREST_ABORT_SIGNATURES = (
+    "Automatic xtb restart failed",
+    "Please try other settings by hand",
+)
+
+
+def crest_abort_reason(molecule):
+    output_path = os.path.join(molecule.directory, f"{molecule.name}.output")
+    try:
+        with open(output_path, 'r') as f:
+            content = f.read()
+    except OSError:
+        return None
+    for signature in CREST_ABORT_SIGNATURES:
+        if signature in content:
+            return signature.strip()
+    return None
+
+
 def _process_crest_output(molecules, logger, threads):
     all_conformers = []
     constrained_indexes = molecules[0].constrained_indexes
@@ -432,8 +454,16 @@ def check_crest(molecules, logger, threads, interval, max_attempts):
             return _process_crest_output(molecules, logger, threads)
 
         # All jobs gone from the queue but the CREST output never appeared:
-        # the node likely died. Resubmit the affected jobs after a grace period.
+        # either the node died (resubmission can fix it) or CREST aborted
+        # deterministically (resubmission cannot), so distinguish the two.
         if all(m.status == 'completed or not found' for m in molecules):
+            for molecule in molecules:
+                if os.path.basename(crest_collection_path(molecule)) in files_in_directory:
+                    continue
+                reason = crest_abort_reason(molecule)
+                if reason:
+                    logger.error(f"{molecule.name}: CREST aborted deterministically ({reason}); resubmitting will not help. Giving up.")
+                    return False
             crest_missing_polls += 1
             if crest_missing_polls >= VANISHED_GRACE_POLLS:
                 crest_missing_polls = 0

@@ -242,7 +242,7 @@ src/monitoring.py
 Job monitoring and workflow engine. Module constants: ``FILTER_STEPS`` (steps after which conformers are deduplicated), ``VANISHED_GRACE_POLLS`` and ``MAX_NODE_FAILURES`` (node-failure handling).
 
 - ``check_convergence()`` — the polling thread for QC steps: sweep the logs, classify each finished job (converged / error / TS-validation failure / vanished), resubmit or drop failures (two-error budget per molecule), checkpoint every state change, and advance the workflow when all jobs converged.
-- ``check_crest()`` — the polling thread for CREST jobs: wait for the ``collection*.pkl`` files, resubmitting jobs that vanish without producing them.
+- ``check_crest()`` — the polling thread for CREST jobs: wait for the ``collection*.pkl`` files, resubmitting jobs that vanish without producing them. A job that disappears without a ``collection*.pkl`` but whose ``.output`` contains a terminal CREST/xTB self-abort message (``crest_abort_reason()`` — e.g. metadynamics that will not converge) is given up on immediately with the real reason, rather than resubmitted (an identical resubmit would fail the same way and only burn the node-failure budget).
 - ``handle_termination()`` — step-transition hub: advance converged molecules, run ArbAlign filtering after ``FILTER_STEPS``, prepare inputs via ``STEP_HANDLERS``, checkpoint and submit.
 - ``submit_and_monitor()`` — submit one job or an array, checkpoint the job id (so a crash can reattach), start the matching polling thread.
 - ``termination_status()`` / ``handle_error_termination()`` / ``resubmit_job()`` — log classification and error triage (G16 convergence errors resubmit from the last geometry, intervention errors are dropped for manual inspection, SCF failures at a good active site get a geometry repair first).
@@ -294,7 +294,7 @@ TS geometry/frequency validation after a TS optimization converges.
 
 - ``check_transition_state()`` — the full verdict: imaginary frequency below ``-freq_cutoff``, then the relative C–H/H–X bond-length changes along the imaginary mode must exceed a threshold (looser for aldehyde TSs) at a geometrically sane active site. Returns ``(passed, message)``.
 - ``good_active_site()`` — distance/angle sanity check of the active site (wider thresholds for Cl, looser angles for aldehydes).
-- ``extract_normal_coordinates()`` — imaginary-mode displacement vectors from a G16 log; ``is_aldehyde()`` classifies the abstraction site.
+- ``extract_normal_coordinates()`` — imaginary-mode displacement vectors from a G16 log (the last frequency section, to stay consistent with the last-block frequencies kept by ``update_energy`` on retry-path logs that print the spectrum more than once); ``is_aldehyde()`` classifies the abstraction site.
 
 src/conformer_tools.py
 ----------------------
