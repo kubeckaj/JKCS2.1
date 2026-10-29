@@ -680,9 +680,9 @@ cd ..""" >> rename.sh
     # command
     if [ $Qabcxtb -eq 0 ]
     then
-      command="source ~/.JKCSusersetup.txt$loc;\n sleep "`echo "($Qrepeat-1)*2" | bc`"\n program_ABC ${name}.inp;\n sh rename.sh" 
+      command="source ~/.JKCSusersetup.txt$loc;\n sleep "`echo "($Qrepeat-1+$rep)*2" | bc`"\n program_ABC ${name}.inp;\n sh rename.sh" 
     else
-      command="source ~/.JKCSusersetup.txt$loc;\n sleep "`echo "($Qrepeat-1)*2" | bc`"\n program_GEOM ${name}.inp;\n sh rename.sh"
+      command="source ~/.JKCSusersetup.txt$loc;\n sleep "`echo "($Qrepeat-1+$rep)*2" | bc`"\n program_GEOM ${name}.inp;\n sh rename.sh"
     fi
     printf "$command" > run${scriptfilecommand}.sh
     commandTODO="cd $PWD; sh run${scriptfilecommand}.sh;"
