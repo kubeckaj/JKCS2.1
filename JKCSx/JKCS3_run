@@ -43,7 +43,7 @@ function help {
    -help ................ print this help
    -nf,-newfolder \"X\" ... name of the new folder [def=XTB]
    -of,-oldfolder \"X\" ... name of the old folder containing XYZs [def=ABC]
-   -rf,-resultsfile \"X\" . uses 1. column of results\"X\"{_FILTERED}.dat
+   -rf,-resultsfile \"X\" . uses 1. column of results\"X\"{_FILTERED}.dat (.pkl/.jsonl accepted)
    -m,-method \"X\" ....... method used by 3rd party quantum program
    -p,-program \"X\" ...... 3rd party quantum program 
                           (it has to be described in ~/.JKCSusersetup.txt)
@@ -61,6 +61,7 @@ function help {
      $scriptfile    
      $scriptfile -p XTB -of ABC -m \"--opt --gfn 1\" 
      $scriptfile -p XTB -nf XTB_freq -rf XTB -m \"-ohess -temp 298.15\"
+     $scriptfile -p XTB -nf XTB -rf collectionXTB.jsonl -m \"--opt --gfn 1\"
    ${cfYELLOW}G16:${cfDEF}
      $scriptfile -p G16 -rf ABC     -nf PM6      -m \"# PM6 opt=(calcall,verytight)  freq\"
      $scriptfile -p G16 -rf XTB     -nf DFT_sp   -m \"# wb97xd 6-31++g**\"
@@ -144,6 +145,7 @@ QfromfolderOLD=1
 Qtestboth=0
 
 Qpickle=0 #Do I want to unpickle and pickle in the end?
+Qjsonl=0 #Was the input a CJKQC JSONL database?
 
 #how many times repeat in case of fail
 #TODO REPEAT=0
@@ -452,6 +454,18 @@ then
     JKQC ${resultsaddition} -ePKL > toexecute.txt
     resultsaddition=toexecute.txt
   fi
+  if [ "$(echo ${resultsaddition} | rev | cut -c-6 | rev)" == ".jsonl" ]
+  then
+    jsonlxyzdir="$currentdirpath/.JKCS3_jsonl_$(basename "$resultsaddition" .jsonl).$$"
+    trap 'rm -rf "$jsonlxyzdir"; rm -f "$currentdirpath/toexecute.txt"' EXIT
+    if ! program_PYTHON "$toolspath/SCRIPTS/JKjsonl2xyz.py" "$resultsaddition" "$jsonlxyzdir" > toexecute.txt
+    then
+      JKecho 0 "Could not extract XYZ structures from ${cfYELLOW}${resultsaddition}${cfDEF}. [${cfRED}EXIT${cfDEF}]"
+      exit 1
+    fi
+    resultsaddition=toexecute.txt
+    Qjsonl=1
+  fi
   renamcheck="$(basename ${resultsaddition} .dat)_FILTERED.dat"
   if [ -f $renamcheck ]
   then
@@ -646,6 +660,14 @@ else
       count=1
     fi
     if [ $count -eq 1 ]; then mkdir ${name}-LM$ADDc; fi
+    if [ "$Qjsonl" == "1" ]
+    then
+      cp "$file" "$currentdirpath/$folderNEW/${name}-LM$ADDc/" || {
+        JKecho 0 "Could not copy ${cfYELLOW}$file${cfDEF} into ${cfBLUE}$folderNEW/${name}-LM$ADDc${cfDEF}. [${cfRED}EXIT${cfDEF}]"
+        exit 1
+      }
+      file="$(basename "$file")"
+    fi
     if [ $Qjpt_iter -eq 0 ]
     then
       commandTODO="source ~/.JKCSusersetup.txt$loc;"
@@ -672,6 +694,10 @@ else
       fi
     fi
   done
+  if [ "$Qjsonl" == "1" ]
+  then
+    rm -rf "$jsonlxyzdir"
+  fi
   if [ "$Qperform" == 2 ]
   then
     rm .* 2> /dev/null
