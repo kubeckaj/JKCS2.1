@@ -496,16 +496,10 @@ class ClusterFilter(ClusterData):
     
     def get_binding_energies(self, high_df: str=None):
         # 1. Extract monomers
-        self.monomers()
-        self.Hbonded(100, 'X', rel_tol=0.3)
-        # TODO: ('out', 'gibbs_free_energy')
-        self.topology(sort_by=('log', 'gibbs_free_energy')) # determines cluster SMILES
+        monomers = self.get_unique_isomers()
 
-        monomers = self.get_filtered_data(True).sort_values(by=[('log', 'gibbs_free_energy'), ('log', 'electronic_energy')])
-        monomers = monomers.drop_duplicates(subset=[('temp', 'SMILES')])
-
-        self.reset()
         # 2. Extract clusters
+        self.reset()
         self.monomers(False)
         self.Hbonded(100, rel_tol=0.3)
         self.topology(sort_by=('log', 'gibbs_free_energy')) 
