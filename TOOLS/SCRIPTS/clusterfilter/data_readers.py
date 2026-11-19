@@ -1,32 +1,38 @@
 import os
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
+
+from dataclasses import dataclass
+from typing import Iterable, Union
 
 # Look for paths to xyz-bonding files
 def bonding_paths(file_in="parameters.txt"):
     
     if file_in=='calc.inp':
-        d = {'path': [], 'n': []}
+        d = {'name': [], 'path': [], 'n': []}
+        i = 0
         # Read from calc.inp
         with open(file_in) as f:
             while not f.readline().startswith("components"):
                 continue
             line = f.readline()
             while not line.startswith("end"):
+                d['name'].append(i); i +=1
                 path, n = line.split()
                 d['path'].append(path)
                 d['n'].append(int(n))
 
-                for i in range(4):
+                for j in range(4):
                     line = f.readline()
+
     elif file_in.endswith('.txt'):
         d = {'name': [], 'q': [], 'path': []}
         # Read parameters.txt
         with open(file_in) as f:
             while not f.readline().startswith("# name"):
                 continue
-            while True:
-                line = f.readline()
+            for line in f:
                 try:
                     name, q, path = line.split()
                     d['name'].append(name)
@@ -43,32 +49,29 @@ def bonding_paths(file_in="parameters.txt"):
     return d
 
 # Look for SMILES strings
-def get_SMILES(mol_df):
-    n = len(mol_df)
-    smiles = []
-    for i in range(n):
-        path = mol_df.iloc[i]['path']
-        with open(path) as f:
-            if not path.startswith('.sdf'):
-                n_atoms = int(f.readline().strip())
-            line = f.readline().split()
-            smiles.append(line[-1])
-        
-        if smiles[-1].endswith(('.mol', '.sdf')):
-            if not os.path.isfile(smiles[-1]):
-                samepath = os.path.abspath(os.path.dirname(path))+'/'+smiles[-1]
-                if os.path.isfile(samepath):
-                    smiles[-1] = samepath
-                else:
-                    print('Error: could not find file'+smiles[-1]+'from'+path);exit()
-                    
-    mol_df['SMILES'] = smiles
-    return mol_df
+def get_SMILES(path):
+    with open(path) as f:
+        if not path.endswith(('.mol', '.sdf')):
+            n_atoms = int(f.readline().strip())
+        line = f.readline().split()
+        smiles = line[-1]
+    
+    if smiles.endswith(('.mol', '.sdf')):
+        if not os.path.isfile(smiles[-1]):
+            folder = os.path.abspath(os.path.dirname(path))
+            samepath = folder+'/'+smiles
+            if os.path.isfile(samepath):
+                smiles = samepath
+            else:
+                print('Error: could not find file '+smiles+' from '+folder);exit()
+                
+    return smiles
 
-def read_bonding_data(path, n_atoms, xyz_df, smiles=None):
+def read_bonding_data(path, xyz_df, smiles=None):
+    n_atoms = len(xyz_df)
     d = {'i1': [], 'i2': [], 'a1': [], 'a2': [], 'type': [], 'length': []}
-
-    if smiles.endswith(('.sdf', '.mol')):
+    
+    if smiles and smiles.endswith(('.sdf', '.mol')):
         path = smiles
         smiles = None
 
@@ -122,63 +125,156 @@ def read_bonding_data(path, n_atoms, xyz_df, smiles=None):
                     r = xyz_df.loc[i1][['x','y','z']] - xyz_df.loc[i2][['x','y','z']]
                     d['length'].append(np.sqrt(r.iloc[0]**2 + r.iloc[1]**2 + r.iloc[2]**2))
     
-    return pd.DataFrame(data=d)
+    return DataFrame(data=d)
+
+@dataclass
+class MolInfo:
+    name: str
+    q: int # charge, unless using Constraints
+    path: str
+    size: int = 0
+    _smiles: Union[str, None] = None
+    _xyz: Union[pd.DataFrame, None] = None
+    _bonds: Union[pd.DataFrame, None] = None
+    _donors: Union[dict, None] = None
+    _acceptors: Union[dict, None] = None
+    isomers: Union[Iterable[str], None] = None
+
+    @property
+    def xyz(self) -> DataFrame:
+        if self._xyz is None:
+            if not(os.path.isfile(self.path)): print("File "+self.path+" not found."); return
+
+            if self.path.endswith(('.sdf', '.mol')):
+                from ase.io import read
+                atoms = read(self.path)
+                n_atoms = len(atoms)
+                x,y,z = atoms.get_positions().T
+                self._xyz = DataFrame(data={'atom': np.array(atoms.symbols), 'x': x, 'y': y, 'z': z})
+            else:
+                n_atoms = int(pd.read_table(self.path, nrows=0).columns[0])
+
+                # read xyz data
+                self._xyz = pd.read_table(self.path, skiprows=2, sep='\s+', names=['atom', 'x', 'y', 'z'], nrows=n_atoms)
+            
+            self._xyz.index += 1
+            self.size = len(self.xyz)
+
+        return self._xyz
+
+    @property
+    def bonds(self) -> DataFrame:
+        if self._bonds is None:
+            self._bonds = read_bonding_data(self.path, self.xyz, self.smiles)
+        return self._bonds
+    
+    @property
+    def smiles(self) -> str:
+        if self._smiles is None:
+            try:
+                self._smiles = get_SMILES(self.path)
+            except: 
+                print('Warning! Failed to read SMILES')
+
+        return self._smiles
+    
+    @property
+    def donors(self):
+        if self._donors == None:
+            self.get_acceptors_and_donors()
+
+        return self._donors
+    
+    @property
+    def acceptors(self):
+        if self._acceptors == None:
+            self.get_acceptors_and_donors()
+
+        return self._acceptors
+    
+    def get_acceptors_and_donors(self, all_oxygens: bool=True):
+        
+        def add_to_dict(d, k, v):
+            if k not in d.keys():
+                if v == None:
+                    d[k] = []
+                    return
+                d[k] = [v]
+            elif (v != None) and (v not in d[k]):
+                d[k].append(v)
+            
+        # Create lists of donors and acceptors to pair
+        mol = self.bonds
+        donors = {}
+        acceptors = {}
+
+        select_H = (mol['a1'] == 'H') | (mol['a2'] == 'H')
+        select_O = (mol['a1'] == 'O') | (mol['a2'] == 'O')
+        select_C = (mol['a1'] == 'C') | (mol['a2'] == 'C') 
+        select_N = (mol['a1'] == 'N') | (mol['a2'] == 'N')
+        select_S = (mol['a1'] == 'S') | (mol['a2'] == 'S')
+
+        if not all_oxygens:
+            # drop weakly charged oxygens
+            select_C = select_C & (mol ['type'] == 2) # C=O
+            select_N = select_N & (select_H | (mol ['type'] == 2)) # N-H or N=O
+            
+        # bonds with partial charges
+        oh = mol[(select_O | select_N) & select_H] # O/N-H
+        ox = mol[select_O & (select_C | select_S | select_N)] # O-C/N/S
+        
+        for row in oh.values:
+            i1, i2, a1, a2, _, _ = row
+            if a1 == 'H':
+                add_to_dict(donors, i1, i2)
+                add_to_dict(acceptors, i2, i1)
+            else:
+                add_to_dict(donors, i2, i1)
+                add_to_dict(acceptors, i1, i2)
+
+        for row in ox.values:
+            i1, i2, a1, a2, _, _ = row
+
+            if a1 == 'N' or a2 == 'N':
+                if a1 == 'O':
+                    add_to_dict(acceptors, i1, i2)
+                    add_to_dict(donors, i2, i1)
+                else:
+                    add_to_dict(acceptors, i2, i1)
+                    add_to_dict(donors, i1, i2)
+            else:
+                if a1 == 'O':
+                    add_to_dict(acceptors, i1, None)
+                else:
+                    add_to_dict(acceptors, i2, None)
+
+        self._acceptors = acceptors
+        self._donors = donors
+
+        return 
 
 # read xyz and bonding data from files
-def read_molecule_data(mol_file):
-    if mol_file.endswith(('.xyz','.sdf')):
-        d={'name': [mol_file.split('.')[0]], 'q':[0], 'path': mol_file}
+def read_molecule_data(mol_file: str) -> dict[str, MolInfo]:
+    if mol_file.endswith(('.xyz','.sdf','.mol')):
+        d={'name': [mol_file.split('/')[-1].split('.')[0]], 'q': [0], 'path': mol_file}
     else:
+        # input.txt or parameter.txt 
         d = bonding_paths(mol_file)
     
-    mol_df = pd.DataFrame(data=d)
+    mol_df = DataFrame(data=d)
     if 'name' in mol_df.columns:
         mol_df = mol_df.drop_duplicates(subset=['name'], keep='first').dropna()
         mol_df = mol_df.set_index(['name'])
-    n = len(mol_df)
     
-    try:
-        get_SMILES(mol_df)
-    except:
-        print('Warning! Failed to read SMILES')
-        
-    sizes = np.zeros(n, dtype=int)
-    xyzs = np.zeros(n, dtype=pd.DataFrame)
-    bonds = np.zeros(n, dtype=pd.DataFrame)
+    mol_info = {}
+    for k in mol_df.index:
+        q = mol_df.loc[k]['q'] if 'q' in mol_df.columns else mol_df.loc[k]['n'] 
+        path = mol_df.loc[k]['path']
+        mol_info[k] = MolInfo(k, q, path)
 
-    for i in range(n):
-        path = mol_df.iloc[i]['path']
-        if not(os.path.isfile(path)): print("File "+path+" not found."); continue
+    return mol_info
 
-        if path.endswith('.sdf'):
-            from ase.io import read
-            atoms = read(path)
-            n_atoms = len(atoms)
-            x,y,z = atoms.get_positions().T
-            xyz_df = pd.DataFrame(data={'atom': np.array(atoms.symbols), 'x': x, 'y':y, 'z':z})
-            xyz_df.index += 1
-            xyzs[i] = xyz_df
-            sizes[i] = len(xyz_df)
-        else:
-            n_atoms = int(pd.read_table(path, nrows=0).columns[0])
-
-            # read xyz data
-            xyz_df = pd.read_table(path, skiprows=2, sep='\s+', names=['atom', 'x', 'y', 'z'], nrows=n_atoms)
-            xyz_df.index += 1
-            xyzs[i] = xyz_df
-            sizes[i] = len(xyz_df)
-
-        smi = mol_df.iloc[i]['SMILES'] if 'SMILES' in mol_df.columns else None
-        # read bonding data
-        bonds[i] = read_bonding_data(path, n_atoms, xyz_df, smi)
-    
-    mol_df['size'] = sizes
-    mol_df['xyz'] = xyzs
-    mol_df['bonds'] = bonds
-
-    return mol_df
-
-def read_xyz_data(xyz_files, noname=False) -> pd.DataFrame:
+def read_xyz_data(xyz_files, noname=False) -> DataFrame:
     from ase.io import read
     from re import split
     
@@ -195,17 +291,17 @@ def read_xyz_data(xyz_files, noname=False) -> pd.DataFrame:
         
     atoms = [read(f, format='extxyz') for f in xyz_files]
     d = {('info', 'file_basename'): basenames,
-            ('info', 'cluster_type'): cluster_types,
-            ('info', 'components'): components, 
-            ('info', 'component_ratio'): comp_ratio,
-            ('xyz', 'structure'): atoms}
+        ('info', 'cluster_type'): cluster_types,
+        ('info', 'components'): components, 
+        ('info', 'component_ratio'): comp_ratio,
+        ('xyz', 'structure'): atoms}
         
-    clusters_df = pd.DataFrame(data=d)
+    clusters_df = DataFrame(data=d)
     
     return clusters_df
 
-def read_pickled_data(file_in, return_lines=False) -> pd.DataFrame: 
-    if type(file_in) == str:
+def read_pickled_data(file_in, return_lines=False) -> DataFrame: 
+    if isinstance(file_in, str):
         file_in = [file_in]
         
     input_pkl=[f for f in file_in if f.endswith('.pkl')]
@@ -237,7 +333,7 @@ def read_pickled_data(file_in, return_lines=False) -> pd.DataFrame:
     xyz_files = np.unique([l.split()[0] for l in lines if '.xyz' in l])
     lines = np.unique([l.split()[0] for l in lines if '/:EXTRACT:/' in l]) # Drop duplicates
     
-    paths = pd.DataFrame([l.split('/:EXTRACT:/') for l in lines], columns=['file', 'cluster'])
+    paths = DataFrame([l.split('/:EXTRACT:/') for l in lines], columns=['file', 'cluster'])
     input_pkl = pd.unique(paths['file'])
     
     # Read pickle file(s)
@@ -255,7 +351,7 @@ def read_pickled_data(file_in, return_lines=False) -> pd.DataFrame:
             else:
                 len_clusters_df = len(clusters_df2)
                 newclusters_df.index = [str(j+len_clusters_df) for j in range(len(newclusters_df))]
-                clusters_df2 = clusters_df2.append(newclusters_df)
+                clusters_df2 = pd.concat([clusters_df2, newclusters_df])
 
     if len(clusters_df2) > 0:
         clusters_df2 = clusters_df2.drop_duplicates(subset=[("info", "file_basename"), 
@@ -267,7 +363,7 @@ def read_pickled_data(file_in, return_lines=False) -> pd.DataFrame:
         if len_clusters_df == 0:
             clusters_df = clusters_df2
         else:
-            clusters_df = clusters_df.append(clusters_df2)
+            clusters_df = pd.concat([clusters_df, clusters_df2])
     
     if len(xyz_files) > 0:
         newclusters_df = read_xyz_data(xyz_files)
@@ -278,7 +374,6 @@ def read_pickled_data(file_in, return_lines=False) -> pd.DataFrame:
             clusters_df = newclusters_df
         else:
             clusters_df = clusters_df.append(newclusters_df)
-
 
     if return_lines: 
         return clusters_df, lines

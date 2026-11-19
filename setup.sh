@@ -20,6 +20,7 @@ PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
 MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
 EXTRA_ORCA_LINES=""
 MODULE_GCC="module load gcc"
+PATH_CONSTRAINTS=""
 SBATCH_PREFIX=""
 WRKDIR="./"
 
@@ -46,7 +47,7 @@ OPTIONS (cluster):
   <empty> ...... an example setting
   grendel ...... (J.Elm AU [Grendel])
   molas ........ (N.Myllys UH [Puhti])
-  puhti/mahti .. (H.Vehkamaki UH [Puhti/Mahti])
+  roihu ........ (H.Vehkamaki UH [Roihu])
  
 OPTIONS (arguments):
   -r .............. rewrite the old installation
@@ -104,44 +105,26 @@ EXAMPLE:
     queue2="q64,q48,q40,q36"
     continue
   fi
-  if [ "$i" == "mahti" ]
+  if [ "$i" == "roihu" ]
   then
-    PYTHON="python3.9"                             #Please modify this and use python version >3.8.0 but <4.0.0
-    MODULE_PYTHON="module load python-data/3.9-3"    #Is there some module required to load python?
-    PATH_ABC="/users/kubeckaj/ABCluster-2.0-Linux/"
-    PATH_ABC3=$PATH_ABC"../ABCluster-3.1-Linux/"
+    PYTHON="python3.10"                             #Please modify this and use python version >3.8.0 but <4.0.0
+    MODULE_PYTHON="module load python-data/3.10"    #Is there some module required to load python?
+    PATH_ABC="/projappl/hvehkama/kaharaja/Applications/ABCluster/"
+    PATH_ABC3="/projappl/hvehkama/kaharaja/Applications/ABCluster/"
     MODULE_ABC="module load gcc"
-    PATH_XTB="/users/kubeckaj/XTB6.4/"
+    PATH_XTB="/projappl/hvehkama/kaharaja/Applications/xtb-6.6.1/"
     MODULE_XTB=""
-    PATH_CREST=""
-    PATH_G16="/appl/soft/chem/gaussian/G16RevC.01/"
-    MODULE_G16="module load gaussian/G16RevC.01"
-    PATH_ORCA="/users/kubeckaj/ORCA/orca_4_2_0_linux_x86-64_shared_openmpi314/"
-    MODULE_ORCA="module load intel/19.0.4 hpcx-mpi/2.4.0 intel-mkl/2019.0.4"
-    project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
+    PATH_CREST="/projappl/hvehkama/kaharaja/Applications/"
+    PATH_G16="/appl/soft/manual/chem/x86_64/gaussian/G16RevC.02_bin/"
+    MODULE_G16="module load gaussian/G16RevC.02"
+    PATH_ORCA="/projappl/hvehkama/kaharaja/orca_6_1_1_linux_x86-64_shared_openmpi418_avx2/"
+    MODULE_ORCA="module load orca/6.1.1"
+    PATH_CONSTRAINTS="/projappl/project_2013866/interp_graphs_env/bin/"
+    project=`csc-projects | grep Project: | awk '{print $2}' | grep -v $USER | grep -v gaussian | head -n1`
     SBATCH_PREFIX="--account=$project "
     WRKDIR="./"
-    continue
-  fi
-  if [ "$i" == "puhti" ]
-  then
-    PYTHON="python3.9"    #Please modify this and use python version >3.8.0 but <4.0.0
-    MODULE_PYTHON="module load python-data/3.9-22.04"  #Is there some module required to load python?
-    PATH_ABC="/users/kubeckaj/ABCluster-3.0-Linux/"
-    PATH_ABC3="/users/ineefjes/Applications/ABCluster-3.0-Linux/"
-    MODULE_ABC="module load gcc"
-    PATH_XTB="/users/ineefjes/Applications/xtb-6.5.1/"
-    MODULE_XTB=""
-    PATH_CREST=""
-    PATH_G16="/appl/soft/chem/gaussian/G16RevC.02/"
-    MODULE_G16="module load gaussian"
-    PATH_ORCA="/users/ineefjes/Applications/orca_5_0_4_linux_x86-64_shared_openmpi411"
-    MODULE_ORCA="module purge; module load gcc/11.3.0 openmpi/4.1.4 intel-oneapi-mkl/2022.1.0"
-    EXTRA_ORCA_LINES="ORTERUN=\\\\\`which orterun\\\\\`\nln -sf \\\\\${ORTERUN}  \\\\\${SLURM_SUBMIT_DIR}/mpirun\nexport PATH=\\\\\${SLURM_SUBMIT_DIR}:\\\\\${PATH}\n"
-    project="hvehkama"
-    #project=`csc-projects | grep Owner | awk '{print $2}' | grep -v $USER | grep -v gaussian`
-    SBATCH_PREFIX="--account=$project "
-    WRKDIR="./"
+    queue1="small"
+    queue2="longrun"
     continue
   fi
   if [ "$i" == "molas" ]
@@ -346,6 +329,7 @@ then
     sed 's/REPLACE_queue1/'"$queue1"'/g' .help16 > .help17
     sed 's/REPLACE_queue2/'"$queue2"'/g' .help17 > .help18
     sed 's,REPLACE_gcc,'"$MODULE_GCC"',g' .help18 > .help19
+    sed 's,REPLACE_constraints,'"$PATH_CONSTRAINTS"',g' .help18 > .help19
     mv .help19 ~/.JKCSusersetup.txt
     rm .help*
     printf "${cfGREEN}Please, change all required user settings (e.g. paths) in file ~/.JKCSusersetup.txt${cfDEF}\n"

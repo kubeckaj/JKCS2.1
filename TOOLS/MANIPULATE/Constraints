@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# locate TOOLS path
+scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+arguments=("$@")       # arguments of this script
+
+source ~/.JKCSusersetup.txt
+
+if [ -e $MODULE_CONSTRAINTS/python ]
+then
+  #export PATH="$MODULE_CONSTRAINTS:$PATH"
+  eval "$MODULE_CONSTRAINTS/python $scriptpath/../SCRIPTS/Constraints.py $@"
+else 
+  eval "program_PYTHON $scriptpath/../SCRIPTS/Constraints.py $@"
+fi

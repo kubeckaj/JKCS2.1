@@ -1,8 +1,5 @@
-
 import os, sys
-import numpy as np
-import pandas as pd
-from cluster_analysis import *
+sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/clusterfilter')
 
 def printhelp():
   print('   Use this file like this:')
@@ -10,23 +7,45 @@ def printhelp():
   print(' OPTIONS:')
   print('  -i/-itol 0.3     filter out if any intermolecular bond length has changed more than 30% [default=0.2]')
   print('  -d/-dmol 2.5     filter out if smallest distance between molecules greater than 2.5 [default=2.7]')
-  print('  -h 2             filter clusters based on number of hydrogen bonds')
-  print('  -reject sa,am    filter out subclusters consisting only specified molecules (separated with ",")')
+  print('  -h 2(D/H/A)      filter clusters based on the number of hydrogen bonds')
+  print('  -t               filter the lowest unique topologies')
+  print('  -frac 0.2        minimum fraction to select by H-bond filter')
+  print('  -r/-cutr 5       filter clusters with electronic energies above a relative cutoff')
+  print('  -s/-select 5     select at most this many clusters per cluster type')
+  print('  -maxf/minf 0.01  filter (un)converged clusters with max force limit of 0.01 eV/Ang')
+  print('  -extract sa,am   filter subclusters consisting only specified molecules (separated with ",")')
+  print('  -except sa,am    filter out subclusters consisting only specified molecules (separated with ",")')
   print('  -subcl 2         minimum size of returned subclusters (1 returns monomers) [default=2]')
+  print('  -iso iso.txt     monomer isomers to select')  
+  print('  -m True/False    extract/except all monomers ')
+  print('  -sort el/g/gout  sort energies by X [default=el]')
   print('  ')
 
 #######################################################################
 
-internal_limit = 0.2    # largest allowed relative error
+internal_tol = 0.2      # largest allowed relative error
 max_dist = 2.7          # maximum distance for H-bonding between molecules
 min_dist = 1.4          # minimum allowed distance between molecules (otherwise a reaction has occured)
-print_minimums = False
-count_minimums = 1
+print_stats = False
 subcl_size = 2
 Hbonding = None
+topology = 0
+relative_cutoff = -1
+select = 0
+isomer_file = None
+to_extract = None
+to_except = None
+monomers = None
+sort_by=('log','electronic_energy')
+frac = 0.0
+
+maxf = None
+converged = None
 
 # Look for inputs
 file_in = ""
+file_not = None
+mol_file = None
 last = ""
 rejected_types = [] # e.g. sa,a,so4
 n_arg = len(sys.argv)
@@ -40,7 +59,7 @@ for i in range(1,n_arg):
         continue
     if last == "-itol":
         last = ""
-        internal_limit = float(arg)
+        internal_tol = float(arg)
         continue
     if arg == "-dmol" or arg == '-d':
         last = "-dmol"
@@ -49,19 +68,102 @@ for i in range(1,n_arg):
         last = ""
         max_dist = float(arg)
         continue
+    if arg == "-maxf" or arg == '-d':
+        last = "-maxf"
+        continue
+    if last == "-maxf":
+        last = ""
+        maxf = float(arg)
+        converged = True
+        continue
+    if arg == "-minf" or arg == '-d':
+        last = "-minf"
+        continue
+    if last == "-minf":
+        last = ""
+        maxf = float(arg)
+        converged = False
+        continue
     if arg == "-h":
         last = "-h"
         continue
     if last == "-h":
         last = ""
-        Hbonding = int(arg)
+        if arg[-1].isdigit():
+            Hbonding = [int(arg), None]
+        else:
+            Hbonding = [int(arg[:-1]), arg[-1].lower()]
         continue
-    if arg == "-reject":
-        last = "-reject"
+    # TODO: el,g,etc...
+    if arg == "-f" or arg == '-frac':
+        last = "-f"
         continue
-    if last == "-reject":
+    if last == "-f":
         last = ""
-        rejected_types = arg.split(',')
+        frac = max(float(arg),0.0)
+        continue
+    if arg == "-r" or arg == '-cutr':
+        last = "-r"
+        continue
+    if last == "-r":
+        if arg.isalpha():
+            continue
+        last = ""
+        relative_cutoff = float(arg) # in kcal/mol
+        continue
+    if arg == "-s" or arg == '-select':
+        last = "-s"
+        continue
+    if last == "-s":
+        last = ""
+        select = int(arg)
+        continue
+    if arg == "-mol_file" or arg=='--mol_file':
+        last = "-mol_file"
+        continue
+    if last == "-mol_file":
+        last = ""
+        mol_file = arg
+        continue
+    if arg == "-iso" or arg=='-isomers':
+        last = "-iso"
+        continue
+    if last == "-iso":
+        last = ""
+        isomer_file = arg
+        if topology==0:
+            topology=2
+        continue
+    if arg == "-extract":
+        last = "-extract"
+        continue
+    if last == "-extract":
+        last = ""
+        to_extract = arg
+        continue
+    if arg == "-except":
+        last = "-except"
+        continue
+    if last == "-except":
+        last = ""
+        to_except = arg
+        continue
+    if arg == "-m":
+        last = "-m"
+        continue
+    if last == "-m":
+        if arg == 'True' or arg == 'T':
+            monomers = True
+        elif arg == 'False' or arg == 'F':
+            monomers = False
+        last = ""
+        continue
+    if arg == "-sort":
+        last = "-sort"
+        continue
+    if last == "-sort":
+        last = ""
+        sort_by = arg
         continue
     if arg == "-subcl":
         last = "-subcl"
@@ -70,13 +172,32 @@ for i in range(1,n_arg):
         last = ""
         subcl_size = int(arg)
         continue
+    if arg == "-stat" or arg == "-stats":
+        last = ""
+        print_stats = True
+        continue
     if last == "-minimums":
         last = ""
         print_minimums = False
         count_minimums = int(arg)
         continue
+    if arg == "-t" or arg == '-topo':
+        last = "-t"
+        topology = 1
+        continue
+    if last == "-t" and arg.isdigit():
+        last = ""
+        topology = int(arg)
+        continue
+    if arg == "-not":
+        last = "-not"
+        continue
+    if last == "-not":
+        last = ""
+        file_not = arg
+        continue
     file_in = arg
-
+    
 if ( file_in == "" ):
   print('ClusterFilter.py: Missing input file. EXITING')
   exit()
@@ -90,229 +211,93 @@ for line in open(file_in):
 if ( count == 0 ):
     print('ClusterFilter.py: Empty input file. EXITING')
     exit()
-if ( count == 1 ):
-    print('ClusterFilter.py: Only one structure in the input file. EXITING')
-    exit()
-
-mol_file = "parameters.txt"
-if not(os.path.isfile(mol_file)): 
-    mol_file = "input.txt"
-    if not(os.path.isfile(mol_file)): 
-        print("input.txt or parameters.txt not found. Make sure you are in the correct folder!");exit()
-
-d = bonding_paths(mol_file) # looks for molecules in parameters.txt or input.txt
-mol_df = read_molecule_data(d)
-n_mol = len(mol_df)
-
-print("Found", n_mol, "molecules in parameters.txt.")
 
 ###############################################################################
-print('ClusterFilter.py: Start.')
-
+from filter import ClusterFilter
 from time import time
+
 t = time()
+print('ClusterFilter.py: Start.')
+print('Loading data...')
 
-# output file to be printed  
-file_out=file_in[:-4]+'_FILTERED.dat'
+cf = ClusterFilter(file_in, mol_file=mol_file)
+total_size = cf.get_filtered_length()
 
-input_pkl = []
-lines = open(file_in).readlines()
-paths = pd.DataFrame([l.split()[0].split('/:EXTRACT:/') for l in lines], columns=['file', 'cluster'])
+# sort by
+column_dict = {'el': ('log','electronic_energy'), 'g': ('log','gibbs_free_energy'),
+            'elout': ('out','electronic_energy'), 'gout': ('out','gibbs_free_energy'),
+            'rg': (), 'dip': ('log', 'dipole_moment')}
+el,g,elout,gout = list(column_dict.values())[:4]
+if sort_by in column_dict.keys():
+    sort_by = column_dict[sort_by]
+if (sort_by!=gout) and (sort_by not in cf.clusters_df.columns):
+    print('Error! Cannot sort: '+str(sort_by)+' column missing in pickled data.')
 
-# Read pickle file(s)
-clusters_df = read_pickled_data([file_in])
-
-# Remove rows with missing structures (nan)
-has_atoms = [type(x) != float for x in clusters_df[('xyz','structure')].values]
-clusters_df = clusters_df[has_atoms]
-
-# leave out clusters containing only (apart from 1) molecules in rejectd_type, e.g. "sa"
-def rejected_cluster_type(molecules, counts):
-    if len(rejected_types) == 0:
-        return False
-    
-    total = np.sum(counts)
-    n = 0
-    for i in range(len(molecules)):   
-        if molecules[i] in rejected_types:
-            n += counts[i]
-
-    if n >= total-1:
-        return True
-    
-    return False
-
-# Check that all monomers are in mol_df
-monomers = np.unique(np.concatenate(clusters_df[("info", "components")].values))
-for mol in monomers:
-    if mol not in mol_df.index:
-        print("Error: Molecule '"+mol+"' was not found in "+mol_file);exit()
-
-# Separate clusters per type into subsets
-if 'cluster_type' in clusters_df['info'].columns:
-    unique_cluster_types = np.unique(clusters_df[("info", "cluster_type")].values)
-    cluster_subsets = []
-    for unique_cluster_type in unique_cluster_types:
-        indexes = clusters_df[clusters_df[("info", "cluster_type")]==unique_cluster_type].index.values
-        cluster_subsets.append(indexes)
-else:
-    print("Warning: No cluster types found")
-    cluster_subsets = []
-    indexes = clusters_df.index.values
-    cluster_subsets.append(indexes)
-
-"""
-import matplotlib.pyplot as plt
-d = distance_matrix(clusters_df)
-data = []
-for x in d:
-    data.append(x.flatten())
-data = np.concatenate(data)
-data = data[data > 0.0]
-print(len(data))
-
-plt.hist(data, bins=1000)
-plt.show(); exit()
-"""
-
-# Calculate distance matrices and bonding graphs
-clusters_df[("xyz", "distances")] = distance_matrix(clusters_df)
-
-subcl_df = pd.DataFrame()
-k = 0
-# Filter through each cluster type
-for k0 in range(len(cluster_subsets)):
-    unique_cl = clusters_df[clusters_df['info', 'cluster_type']==unique_cluster_types[k0]].iloc[0]
-    
-    components = []
-    for i, c in enumerate(unique_cl['info', 'components']):
-        ratio = unique_cl['info', 'component_ratio'][i]
-        components += [c]*ratio
+if sort_by == gout:
+    for col in [el,g,elout]:
+        if col not in cf.clusters_df.columns:
+            print('Error! Cannot calculate '+str(sort_by)+' column');exit()
+    cf.clusters_df[gout] = cf.clusters_df[g] - cf.clusters_df[el] + cf.clusters_df[elout] 
 
 
-    if print_minimums:
-        subset = clusters_df.loc[cluster_subsets[k0]]
-        names = subset[("info", "file_basename")]
-        clusters = subset[("xyz", "structure")]
-        distances = subset[("xyz", "distances")]
-        energies = subset[('log', 'electronic_energy')]    
-        x = []
-        y = []
-        for cl in subset.index.values:
-            n = len(components)
-            s1 = 0
-            min_distances=[]
-            for m1 in range(n):
-                e1 = s1 + mol_df.at[components[m1], 'size']
-                s2 = e1
+n_mol = len(cf.mol_df)
+print("Found", n_mol, "molecules in parameters.txt.")
 
-                for m2 in range(m1+1, n):
-                    e2 = s2 + mol_df.at[components[m2], 'size']
-                    AB = distances[cl][s1:e1,s2:e2]
-                    i1,i2 = np.unravel_index(np.argmin(AB, axis=None), AB.shape)
-                    t1 = mol_df.at[components[m1], 'xyz']['atom'][i1+1]
-                    t2 = mol_df.at[components[m2], 'xyz']['atom'][i2+1]
-                    bond_type = t1+'-'+t2
-                    # May not work if mol size > 2
-                    if bond_type != 'O-H' and bond_type != 'H-O':
-                        print(names[cl], AB[i1,i2], energies[cl], t1+'-'+t2)
-                    s2 = e2
-                s1 = e1
-        continue
+print('Running filters...')
 
-    subset = clusters_df.loc[cluster_subsets[k0]]
-    if Hbonding == None:
-        # Filter out incorrectly bonded structures (where a chemical reaction has occured)
-        filter = test_internal_bonds(subset, mol_df, components, internal_limit)
-        cluster_subsets[k0] = cluster_subsets[k0][filter]
-        # Filter out clusters where molecules are too far apart
-        filter, sc = test_clustering(subset, mol_df, components, [min_dist, max_dist], subcl_size)
+if isinstance(monomers, bool):
+    if monomers == True:
+        print('  Extracting monomers: ')
     else:
-        mol_df = get_acceptors_and_donors(mol_df, all_oxygens=True)
-        # Filter out clusters with too few H-bonds (doesn't select subclusters)
-        filter, counts = test_Hbonds(subset, mol_df, components, internal_limit, num=Hbonding)
-        cluster_subsets[k0] = cluster_subsets[k0][filter]
-        #sc = subclusters(counts, components)
-        continue
+        print('  Removing monomers: ')
+    cf.monomers(monomers)
+if isinstance(to_extract, str):
+    print('  Extracting: '+to_extract)
+    cf.extract_clusters(to_extract.split(','))
+if isinstance(to_except, str):
+    print('  Excepting: '+to_except)
+    cf.except_clusters(to_except.split(','))
 
-    ######### 
-    # SUBCLUSTERS: rewrite cluster_type, components, ...
-    sc = sc[sc['subsets'].isna() == False]
-    df = clusters_df.loc[sc.index.values]
-    for idx in sc.index.values:
-        
-        n = 0
-        for set in sc.at[idx, 'subsets']:
-            mol = components[set]
-            components = np.unique(mol)
-            component_ratio = [np.count_nonzero(mol == x) for x in components]
-            cluster_type = ""
-            for c in range(len(components)):
-                cluster_type += str(component_ratio[c])+components[c]
-            # Filter out unwanted cluster types
-            if rejected_cluster_type(components, component_ratio):
-                continue
+if isinstance(maxf, float):
+    print('  Convergence: '+('<' if converged else '>')+str(maxf)+' eV/Ang')
+    cf.converged(maxf, not converged)
 
-            subcl_df = pd.concat([subcl_df, df.loc[[idx]]], reject_index=True)
-            subcl_df.at[k, ('info', 'cluster_type')] = cluster_type
-            
-            subcl_df.at[k, ('info', 'components')] = components
-            subcl_df.at[k, ('info', 'component_ratio')] = component_ratio
+if topology > 0 and Hbonding == None:
+    Hbonding = [100, "X"]
 
-            basename = cluster_type+'-'+df.loc[idx][('info', 'file_basename')].split('-')[1]+'_'+str(n)
-            subcl_df.at[k, ('info', 'file_basename')] = basename
-            subcl_df.at[k, ('info', 'folder_path')] = df.loc[idx][('info','folder_path')]
-            
-            s = 0
-            atoms = None
-            for c in range(set[-1]+1):
-                e = s + mol_df.at[components[c], 'size']
-                if c in set:
-                    if atoms == None:
-                        atoms = df.at[idx, ('xyz', 'structure')][s:e]
-                    else:
-                        atoms = atoms + df.at[idx, ('xyz', 'structure')][s:e]
-                s = e
-            subcl_df.at[k, ('xyz', 'structure')] = atoms
+if Hbonding == None:
+    # simple filters
+    print('  Reacted...')
+    cf.reacted(itol=internal_tol)
+    cf.distance(minH=min_dist,max=max_dist)
+else:
+    # H-bond filtering
+    print('  H-bonds...')
+    n,H = Hbonding
+    stats = cf.Hbonded(n,H,internal_tol,frac=frac,return_stats=print_stats)
+    if print_stats:
+        print(stats)
 
-            n += 1
-            k += 1
-    #########
-"""
-plt.ylim(ymax=180)
-plt.ylabel('Bond angle (deg)')
-plt.xlabel('Bond distance (Å)')
-plt.legend()
-plt.show()
-    """
-if print_minimums:
-    exit()
+if topology:
+    print('  Topologies...')
+    n1 = cf.get_filtered_length()
+    cf.topology(topology, isomer_file, file_not, sort_by)
+    n2 = cf.get_filtered_length()
+    print(f'    -> Filtered {n2}/{n1}')
+if relative_cutoff >= 0:
+    print('  Energy Threshold: '+str(relative_cutoff)[:6]+' kcal/mol')
+    relative_cutoff = relative_cutoff / 627.503 # in Hartree
+    n1 = cf.get_filtered_length()
+    cf.cutr(relative_cutoff, sort_by)
+    n2 = cf.get_filtered_length()
+    print(f'    -> Filtered {n2}/{n1}')
+if select > 0:
+    print('  Selecting up to '+str(select))
+    cf.select(select, sort_by)
 
 t = time() - t
+print('Filtered '+str(cf.get_filtered_length())+'/'+str(total_size)+' clusters')
+print("Time taken:", round(t,4), "seconds")
 
-# Saving data
-f = open(file_out, 'w')
-
-len_df = 0
-for k0 in range(len(cluster_subsets)):
-    if len(cluster_subsets[k0]) == 0:
-        continue
-    len_df += len(cluster_subsets[k0])
-    df = clusters_df.loc[cluster_subsets[k0]]
-    ct = df[('info', 'file_basename')].values[0].split('-')[0]
-    for i in range(len(lines)):
-        if paths.at[i, 'cluster'].split('-')[0] == ct:
-            if paths.at[i, 'cluster'] in df[('info', 'file_basename')].values:
-                f.write(lines[i])
-f.close()
-
-print("Filtered", len_df, "clusters")
-print("Time taken:", t, "seconds")
-
-# Saving found subclusters to a pickle file
-subcl_df.index = [str(j) for j in range(len(subcl_df))]
-
-if len(subcl_df) > 0:
-    file_subcl = file_in[:-4]+'_SUBCL'
-    pd.to_pickle(subcl_df, file_subcl+'.pkl')
-    print("Saved", len(subcl_df), "subclusters to "+file_subcl+'.pkl')
+file_out=file_in[:-4]+'_FILTERED.dat'
+cf.save_to(file_out)

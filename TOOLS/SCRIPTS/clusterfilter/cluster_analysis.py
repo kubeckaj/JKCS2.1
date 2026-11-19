@@ -1,6 +1,7 @@
 import numpy as np
 #import pandas as pd
 from pandas import DataFrame, concat
+from data_readers import MolInfo
 
 def distance_matrix(clusters_df):
     from ase import Atoms
@@ -13,7 +14,8 @@ def distance_matrix(clusters_df):
     return distances
 
 def select_lowest(clusters_df, n, by=('log','electronic_energy')):
-    
+    #smiles = clusters_df[('temp', 'SMILES')]
+
     if len(clusters_df) > n:
         passed = np.array([False]*len(clusters_df))
         idx = np.argsort(clusters_df[by].values)[:n]
@@ -49,71 +51,6 @@ def cut_relative(clusters_df, cutoff, by=('log','electronic_energy')):
     passed = clusters_df[by] <= min_value + cutoff
     return passed
 
-def get_acceptors_and_donors(mol_df, all_oxygens=False) -> DataFrame:
-    bonds = mol_df['bonds']
-    
-    def add_to_dict(d, k, v):
-        if k not in d.keys():
-            if v == None:
-                d[k] = []
-                return
-            d[k] = [v]
-        elif (v != None) and (v not in d[k]):
-            d[k].append(v)
-        
-    # Create lists of donors and acceptors to pair
-    donors = [] 
-    acceptors = []
-    
-    for mol in bonds:
-        donors.append({})
-        acceptors.append({})
-
-        select_H = (mol['a1'] == 'H') | (mol['a2'] == 'H')
-        select_O = (mol['a1'] == 'O') | (mol['a2'] == 'O')
-        select_C = (mol['a1'] == 'C') | (mol['a2'] == 'C') 
-        select_N = (mol['a1'] == 'N') | (mol['a2'] == 'N')
-        select_S = (mol['a1'] == 'S') | (mol['a2'] == 'S')
-
-        if not all_oxygens:
-            # drop weakly charged oxygens
-            select_C = select_C & (mol ['type'] == 2) # C=O
-            select_N = select_N & (select_H | (mol ['type'] == 2)) # N-H or N=O
-            
-        # bonds with partial charges
-        oh = mol[(select_O | select_N) & select_H] # O/N-H
-        ox = mol[select_O & (select_C | select_S | select_N)] # O-C/N/S
-        
-        for row in oh.values:
-            i1, i2, a1, a2, _, _ = row
-            if a1 == 'H':
-                add_to_dict(donors[-1], i1, i2)
-                add_to_dict(acceptors[-1], i2, i1)
-            else:
-                add_to_dict(donors[-1], i2, i1)
-                add_to_dict(acceptors[-1], i1, i2)
-
-        for row in ox.values:
-            i1, i2, a1, a2, _, _ = row
-
-            if a1 == 'N' or a2 == 'N':
-                if a1 == 'O':
-                    add_to_dict(acceptors[-1], i1, i2)
-                    add_to_dict(donors[-1], i2, i1)
-                else:
-                    add_to_dict(acceptors[-1], i2, i1)
-                    add_to_dict(donors[-1], i1, i2)
-            else:
-                if a1 == 'O':
-                    add_to_dict(acceptors[-1], i1, None)
-                else:
-                    add_to_dict(acceptors[-1], i2, None)
-
-    mol_df['acceptors'] = acceptors
-    mol_df['donors'] = donors
-    
-    return mol_df
-
 def default_Hbond_limits() -> DataFrame:
     df = DataFrame(data={'D': ['H', 'H', 'N'], 'A': ['O', 'N', 'O'], 
                                     'length': [(1.4, 2.2), (1.4, 2.2), (2.5, 3.2)],
@@ -125,64 +62,147 @@ def default_Hbond_limits() -> DataFrame:
 #acceptor = """[$([O,S;H1;v2;!$(*-*=[O,N,P,S])]),$([O,S;H0;v2]),$([O,S;-]),$([N;v3;!$(N-*=[O,N,P,S])]),n&H0&+0,$([o,s;+0;!$([o,s]:n);!$([o,s]:c:n)])]"""
 #OH_pair = "O-[H]"
 
-# Returns a cluster info dictionary of general cluster properties using mol_df
-def construct_cluster(mol_df, components, bond_limits=None) -> dict:
+from dataclasses import dataclass
+from typing import Iterable, Union
+
+@dataclass
+class ClusterInfo:
+    size: int
+    charge: int
+    components: Iterable[str] # 5sa = [sa-1,sa-1,sa,sa,sa]
+    component_sizes: Iterable[int]
+    atoms: DataFrame
+    bonds: DataFrame
+    donors: Iterable[dict]
+    acceptors: Iterable[dict]
+    smiles: Union[Iterable[str], None] = None
+    isomers: Union[Iterable[str], None] = None
     
+# Returns a cluster info dictionary of general cluster properties using mol_df
+def construct_cluster(mol_df: dict[str, MolInfo], 
+                      components: Iterable[str], 
+    ) -> ClusterInfo:
+
     cluster_size = len(components)
     cluster = []
     bonds = []
     donors = [] # mostly hydrogens (sometimes N) bonded to O 
     acceptors = [] # mostly oxygens (C-O-H, C-OO-H, C-O-C, C-O-O-C, C=O, NO2)
-    if not isinstance(bond_limits, DataFrame):
-        bond_limits = default_Hbond_limits()
+    smiles = []
 
-    s = 0
-    for i in range(len(components)):
-        mol = mol_df.loc[components[i]]
-        cluster.append(mol['xyz'].copy())
+    start = 0
+    total_charge = 0
+    for i, k in enumerate(components):
+        mol_info = mol_df[k]
+        total_charge += mol_info.q
+        cluster.append(mol_info.xyz.copy())
         cluster[-1]['mol'] = i
-        bonds.append(mol['bonds'].copy())
+        bonds.append(mol_info.bonds.copy())
         
         # shift indeces
-        cluster[-1].index += s
+        cluster[-1].index += start
         if 'rank' in cluster[-1].columns:
-            cluster[-1]['rank'] += s
+            cluster[-1]['rank'] += start
 
-        bonds[-1]['i1'] += s
-        bonds[-1]['i2'] += s
+        bonds[-1]['i1'] += start
+        bonds[-1]['i2'] += start
         
-        donors.append({ k+s: np.array(v)+s for k,v in mol['donors'].items()})
-        acceptors.append({ k+s: np.array(v)+s for k,v in mol['acceptors'].items()})
-        s += mol['size']
+        donors.append({ k+start: np.array(v)+start for k,v in mol_info.donors.items()})
+        acceptors.append({ k+start: np.array(v)+start for k,v in mol_info.acceptors.items()})
+        start += mol_info.size
 
-    if cluster_size > 1:
-        cluster = concat(cluster)
+        smiles.append(mol_info.smiles)
+    
+    cluster = concat(cluster) if cluster_size > 1 else cluster[0]
+    
+    for smi in smiles:
+        if smi==None:
+            smiles = None
+            break
+
+    cluster_info = ClusterInfo(len(components), total_charge, components, [mol_df[k].size for k in components],
+                               cluster, bonds, donors,  acceptors, smiles)
+    return cluster_info
+
+def select_fraction(cluster_info: ClusterInfo, counts, reacted, options, frac=0.0):
+    n_mol = cluster_info.size
+
+    # filtering options
+    if isinstance(options, str):
+        if options[-1].isdigit():
+            num = int(options)
+        else:
+            options = [int(options[:-1]), options[-1]]
+    if isinstance(options, list):
+        num, filter_type = options
+        if isinstance(filter_type, str):
+            filter_type = filter_type.lower()
+            
+    # total number of H-bonds per cluster
+    totals = np.sum(counts,axis=(1,2))
+    
+    if n_mol == 1:
+        # monomers
+        passed = np.ones(len(totals), dtype=bool)
     else:
-        cluster = cluster[0]
+        di1, di2 = np.diag_indices(n_mol)
+        # the number of inter-molecular H-bonds per cluster
+        inner_counts = np.sum(counts[:, di1, di2], axis=1)
+        # test if H-bonds are only inter-molecular
+        passed = (totals > inner_counts)
+        # TODO: might leave out separated monomers!
     
-    cluster = {'size': len(components), 'components': components, 'atoms': cluster, 'bonds': bonds, 
-               'donors': donors, 'acceptors': acceptors, 'limits': bond_limits}
+    if filter_type == 'x':
+        min_count = 0
+        passed = ~reacted
+    elif num == None:
+        passed &= np.array(totals) >= 1
+    else:
+        from functools import reduce
+        DA = reduce(lambda x, y: x|y, cluster_info.donors)
+        don = list(DA.keys())
+        if filter_type == 'a':
+            acc = np.concatenate([list(x.keys()) for x in cluster_info.acceptors])
+            min_count = len(acc) - num
+        elif filter_type == 'd':
+            min_count = len(don) - num
+        elif filter_type == 'h':
+            atoms = cluster_info.atoms['atom']
+            nH = np.sum(atoms[don]=='H')
+            min_count = nH - num
+        else:
+            min_count = np.max(totals) - num
+        min_count = max(1, min_count) # cluster should have at least 1 H-bond
+        
+        n_passable = sum(passed)
+        filtered = passed & (np.array(totals) >= min_count)
+        while min_count > 1:
+            # select clusters with highest H-bond counts
+            if sum(filtered)/n_passable > frac:
+                break    
+            min_count -= 1
+            filtered = passed & (np.array(totals) >= min_count)
+            
+        passed = filtered
+
+    return passed, totals, min_count
+
+def test_Hbonds(clusters_df: DataFrame, cluster_info: ClusterInfo, rel_tol: float=0.2, 
+                bond_limits=None, options=None, frac: float=0.0, return_stats=False):
     
-    if 'SMILES' in mol_df.columns:
-        smiles = mol_df.loc[components]['SMILES'].values
-        cluster.update({'SMILES': smiles})
-
-    return cluster
-
-def test_Hbonds(clusters_df: DataFrame, cluster_info: dict, rel_tol=0.2, options=None, return_stats=False):
     n_cl = len(clusters_df)
-    n_mol = cluster_info['size']
+    n_mol = cluster_info.size
+    
     distances = clusters_df[("temp", "distances")].values
     xyz = clusters_df[("xyz", "structure")].values
-    atoms = cluster_info['atoms']['atom']
-    mols = cluster_info['atoms']['mol'].to_numpy()
-    bond_limits = cluster_info['limits']
+    atoms = cluster_info.atoms['atom']
+    mols = cluster_info.atoms['mol'].to_numpy()
     
     from functools import reduce
-    DA = reduce(lambda x, y: x|y, cluster_info['donors'])
+    DA = reduce(lambda x, y: x|y, cluster_info.donors)
     don = list(DA.keys())
-    acc = np.concatenate([list(x.keys()) for x in cluster_info['acceptors']])
-
+    acc = np.concatenate([list(x.keys()) for x in cluster_info.acceptors])
+    
     # list of donor-acceptor pairs to test
     pairs = {k: ([], []) for k in bond_limits.index.values}
     used_idx = []
@@ -195,12 +215,12 @@ def test_Hbonds(clusters_df: DataFrame, cluster_info: dict, rel_tol=0.2, options
             pairs[(t1,t2)][1].append(i2)
             used_idx.append([i1,i2])
     
-    # shift indeces by -1 to match distance matrices
+    # start indeces by -1 to match distance matrices
     pairs = {k: (np.array(v[0])-1, np.array(v[1])-1) for k,v in pairs.items() if len(v[0]) > 0 }
     # atoms each donor is bonded to (for angle calculations)
     triples = {k: np.array([DA[i+1]-1 for i in v[0]],dtype=object) for k,v in pairs.items()}
     
-    internal = concat(cluster_info['bonds'])
+    internal = concat(cluster_info.bonds)
     i1 = internal['i1'].values-1
     i2 = internal['i2'].values-1
     int_length = internal['length'].values # reference covalent bond lengths
@@ -267,163 +287,32 @@ def test_Hbonds(clusters_df: DataFrame, cluster_info: dict, rel_tol=0.2, options
             Hbonds[-1][2] += list(d[select])
             Hbonds[-1][3] += [angles[i] for i in range(len(select)) if select[i]]
             
-    # filtering options
-    if isinstance(options, str):
-        if options[-1].isdigit():
-            num = int(options)
-        else:
-            options = [int(options[:-1]), options[-1]]
-    if isinstance(options, list):
-        num, filter_type = options
-        if isinstance(filter_type, str):
-            filter_type = filter_type.lower()
             
-    # total number of H-bonds per cluster
-    totals = np.sum(counts,axis=(1,2))
-    
-    if n_mol == 1:
-        # monomers
-        passed = np.ones(len(totals), dtype=bool)
-    else:
-        di1, di2 = np.diag_indices(n_mol)
-        # the number inter-molecular H-bonds per cluster
-        inner_counts = np.sum(counts[:, di1, di2], axis=1)
-        # test if H-bonds are only inter-molecular
-        passed = (totals > inner_counts)
-        
+    passed, totals, min_count = select_fraction(cluster_info, counts, reacted, options, frac)
+
     if return_stats:
         uq, uc = np.unique(totals, return_counts=True)
         stat_counts = np.zeros(np.max(uq)+1,dtype=int)
         for i,u in enumerate(uq):
             stat_counts[u] += uc[i]
 
-    if filter_type == 'x':
-        min_count = 0
-        passed = ~reacted
-    elif num == None:
-        passed &= np.array(totals) >= 1
-    else:
-        if filter_type == 'a':
-            min_count = len(acc) - num
-        elif filter_type == 'd':
-            min_count = len(don) - num
-        elif filter_type == 'h':
-            nH = np.sum(atoms[don]=='H')
-            min_count = nH - num
-        else:
-            min_count = np.max(totals) - num
-        min_count = max(1, min_count) # cluster should have at least 1 H-bond
-
-        # select clusters with highest H-bond counts
-        passed &= np.array(totals) >= min_count
-        
-    if return_stats:
         strings = [clusters_df[('info','cluster_type')].values[0], stat_counts, min_count, '{:2.2%}'.format(np.sum(passed) / len(passed))]
-        return passed, counts, Hbonds, strings
+    else:
+        strings = None
     
-    return passed, counts, Hbonds, None
-
-"""
-import matplotlib.pyplot as plt
-def test_Hbonding_old(clusters_df, mol_df, components, num, subn_mol=2):
-
-    n_cl = len(clusters_df)
-    bonds, counts = get_bonding(clusters_df, mol_df, components)
-    
-    passed = np.zeros(n_cl, dtype=bool)
-    
-    di = np.diag_indices(len(components))
-    for cl in range(n_cl):
-        if bonds[cl]['type'].values[-1] == 'O':
-            continue
-        c = counts[cl]
-        c[di] = 0
-        s = np.sum(c)
-        passed[cl] = s > 0
-
-    return passed, 0
-
-    totals = np.zeros(n_cl)
-    totals_w = np.zeros(n_cl)
-    totals_w2 = np.zeros(n_cl)
-    for cl in range(n_cl):
-        n = len(components)
-        counts=np.zeros((n,n)) # H-bond counts between each molecule
-        
-        for i1,i2 in pairs:
-            if i2 in DA[i1]:
-                continue
-            a1,m1 = atoms.loc[i1]
-            a2,m2 = atoms.loc[i2]
-            
-            d = distances[cl][i1-1,i2-1]
-            closest = min(d, closest)
-            l,u = bond_limits.at[(a1,a2), 'length']
-            if d < l or d > u:
-                continue
-
-            i3 = DA[i1][0]
-            angle = xyz[cl].get_angle(i3-1, i1-1, i2-1)
-            
-            l,u = bond_limits.at[(a1,a2), 'angle']
-            if angle < l or angle > u:
-                continue
-            
-            counts[m1,m2] += 1
-            totals[cl] += 1
-            q1 = charges[cl][i1-1] 
-            q2 = charges[cl][i2-1]
-            q3 = charges[cl][i3-1]
-
-            r.append(d); theta.append(angle)
-
-            #print(q1,q2,q3)
-
-            w = -10*q1*q2*4/d**2
-            alphas.append(w * (angle/150)**2)
-            totals_w[cl] += w * (angle/150)**2.
-            if a1 == 'N':
-                angle = 180 - abs(angle-90)
-
-            d2 = distances[cl][i3-1,i2-1] # O--O
-            totals_w2[cl] += -20*(q1*q2*4/d**2. + q2*q3*4/d2**2.)
-            
-    totals_w /= np.mean(totals_w)/4
-    totals_w2 /= np.mean(totals_w2)/4
-    m = []
-    for u in np.unique(totals):
-        y = el[totals == u]
-        m.append(np.mean(y))
-        x = [u] * len(y)
-        plt.plot(x,y,'bo', alpha=0.4)
-    plt.plot(np.unique(totals),m,'r-')
-    plt.plot(totals_w,el,'go', alpha=0.4)
-    plt.plot(totals_w2,el,'ro', alpha=0.4)
-    plt.show();exit()
-    #plt.hist(r, bins=100, label=clusters_df['info']['cluster_type'][0])
-    alphas -= np.min(alphas)
-    alphas /= np.max(alphas)
-    plt.scatter(r,theta, alpha=alphas, label=clusters_df['info']['cluster_type'][0])
-    #plt.show()
-    
-    return
-"""
+    return passed, counts, Hbonds, strings
 
 # Test that molecules have not reacted internally
-def test_internal_bonds(clusters_df, mol_df, components, rel_tol):
+def test_internal_bonds(clusters_df, components,  mol_df, rel_tol):
     
     n = len(clusters_df)
     distances = clusters_df[("temp", "distances")].values
-
     passed = np.array([True]*n)
     for cl in range(n):
-        # read cluster xyz data
-        
         s = 0
         for mol in components:
-            n = mol_df.at[mol, 'size']
             # reference bond lengths
-            bond_df = mol_df.at[mol, 'bonds']
+            bond_df = mol_df[mol].bonds
             
             a1 = bond_df['i1'] + s-1
             a2 = bond_df['i2'] + s-1
@@ -432,7 +321,7 @@ def test_internal_bonds(clusters_df, mol_df, components, rel_tol):
 
             # compute relative errors in bond lengths
             passed[cl] = np.allclose(dist, bond_df['length'], rel_tol)
-            s += n
+            s += mol_df[mol].size
 
     return passed
 
@@ -442,7 +331,7 @@ def subclusters():
 
 # Test which molecules are properly clustered.
 # Also returns any found subclusters.
-def test_clustering(clusters_df, mol_df, components, limits=None, subn_mol=2):
+def test_clustering(clusters_df, components, mol_df , limits=None, subn_mol=2):
     n_cl = len(clusters_df)
 
     if len(components) < 2:
@@ -469,12 +358,12 @@ def test_clustering(clusters_df, mol_df, components, limits=None, subn_mol=2):
         subcl = np.split(np.arange(n), n) # [[mol1], [mol2], ..., [molN]]
         
         for m1 in range(n):
-            e1 = s1 + mol_df.at[components[m1], 'size']
+            e1 = s1 + mol_df[components[m1]].size
             s2 = e1
 
             idxa = np.where([m1 in sc for sc in subcl])[0][0]
             for m2 in range(m1+1, n):
-                e2 = s2 + mol_df.at[components[m2], 'size']
+                e2 = s2 + mol_df[components[m1]].size
                 AB = distances[cl][s1:e1,s2:e2]
                 d = np.min(AB)
 
